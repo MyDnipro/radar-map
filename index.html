@@ -61,6 +61,9 @@
       background: #0b1120;
     }
 
+    /* ==========================================================================
+       4 ЖЕСТКО ЗАФИКСИРОВАННЫХ УГЛА (БЕЗ ПЕРЕТАСКИВАНИЯ, НЕ ПЕРЕКРЫВАЮТ ДРУГ ДРУГА)
+       ========================================================================== */
     /* 1. ЛЕВЫЙ ВЕРХНИЙ: ТОЧЕК XX */
     .dashboard {
       position: absolute !important;
@@ -135,7 +138,7 @@
     }
     html.dash-collapsed #collapsibleBody { display: none; }
 
-    /* 2. ПРАВЫЙ ВЕРХНИЙ: ШІ */
+    /* 2. ПРАВЫЙ ВЕРХНИЙ: ШІ (ВСЕГДА ПРИВЯЗАН СПРАВА, РАСКРЫВАЕТСЯ ВЛЕВО) */
     .ai-pill-panel {
       position: absolute !important;
       top: 15px !important;
@@ -349,7 +352,7 @@
       white-space: nowrap;
     }
 
-    /* ПУЛЬСАЦИЯ ПРИ ПЕРЕМЕЩЕНИИ */
+    /* АНИМАЦИЯ ПЕРЕМЕЩЕНИЯ */
     .moving-super-marker {
       transform: scale(2.6) !important;
       background: #f59e0b !important;
@@ -363,28 +366,43 @@
       to { transform: scale(2.8); }
     }
 
-    /* БЕЙДЖИ РАЙОНОВ НА КАРТЕ */
-    .district-badge {
-      background: rgba(15, 23, 42, 0.88);
-      border: 1.5px solid #38bdf8;
-      border-radius: 8px;
+    .radar-circle.needs-training {
+      background: #f59e0b !important;
+      border-color: #ffffff !important;
+      box-shadow: 0 0 0 3px #f59e0b, 0 0 16px #f59e0b !important;
+      animation: pulse-training 1.3s infinite !important;
+      cursor: pointer !important;
+    }
+    @keyframes pulse-training {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.35); }
+      100% { transform: scale(1); }
+    }
+
+    /* ИНТЕРАКТИВНЫЕ БЕЙДЖИ РАЙОНОВ НА КАРТЕ */
+    .district-map-badge {
+      background: rgba(15, 23, 42, 0.92);
+      border: 1.5px solid #00f3ff;
+      border-radius: 10px;
       color: #fff;
-      font-size: 10px;
+      font-size: 11px;
       font-weight: 800;
-      padding: 3px 6px;
+      padding: 4px 8px;
       white-space: nowrap;
       cursor: pointer;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+      box-shadow: 0 4px 14px rgba(0, 243, 255, 0.35);
       transition: all 0.2s ease;
       display: inline-flex;
       align-items: center;
-      gap: 4px;
+      gap: 5px;
+      pointer-events: auto !important;
     }
-    .district-badge.disabled {
-      background: rgba(30, 41, 59, 0.7);
+    .district-map-badge.off {
+      background: rgba(30, 41, 59, 0.85);
       border-color: #64748b;
       color: #94a3b8;
-      opacity: 0.6;
+      box-shadow: none;
+      opacity: 0.7;
     }
 
     .subtitle { font-size: 10px; color: #94a3b8; margin-bottom: 8px; }
@@ -766,7 +784,7 @@
         <span id="btnMapLayerIcon">🗺️</span><span id="btnMapLayerText">Карта: Google (з вулицями)</span>
       </button>
       <button id="btnToggleDistrictsLayer" class="btn-secondary" onclick="toggleDistrictsVisibility()">
-        <span id="btnDistrictsIcon">🏙️</span><span id="btnDistrictsText">Показати межі районів</span>
+        <span id="btnDistrictsIcon">👁️</span><span id="btnDistrictsText">Сховати межі районів</span>
       </button>
       <a href="stats.html" class="btn-secondary btn-stats-link" target="_blank">
         <span>📊</span><span>Аналітика блокпостів</span>
@@ -1003,7 +1021,8 @@
     let showTrafficLights = localStorage.getItem("radar_tl_visible") !== "false";
     let showNeonLines = localStorage.getItem("radar_neon_visible") !== "false";
     let showRouteStatusBar = localStorage.getItem("radar_show_route_status") !== "false";
-    let showDistrictsOnMap = localStorage.getItem("radar_districts_visible") === "true";
+    // РАЙОНЫ НА КАРТЕ ВКЛЮЧЕНЫ ПО УМОЛЧАНИЮ
+    let showDistrictsOnMap = localStorage.getItem("radar_districts_visible") !== "false";
     let currentMapType = localStorage.getItem("radar_map_type") || "google";
     let isEditMode = false;
     let trafficMarkersMap = {};
@@ -1109,16 +1128,14 @@
       setTimeout(() => { toast.style.display = "none"; }, 3000);
     }
 
-    function hardReload() { window.location.href = window.location.origin + window.location.pathname + '?v=' + Date.now(); }
-
     function refreshRadarClick() {
-      showToast("🔄 Оновлення та повернення додому...");
-      map.flyTo(INITIAL_CENTER, INITIAL_ZOOM, { duration: 0.7 });
+      showToast("🔄 Оновлення та повернення на старт...");
+      map.flyTo(INITIAL_CENTER, INITIAL_ZOOM, { animate: true, duration: 0.8 });
       loadPoints();
     }
 
     // ==========================================================================
-    // СЕКТОРЫ И ИНТЕРАКТИВНЫЕ РАЙОНЫ ПРЯМО НА КАРТЕ
+    // ИНТЕРАКТИВНЫЕ РАЙОНЫ ГОРОДА ПРЯМО НА КАРТЕ
     // ==========================================================================
     let activeSectors = ['s1'];
     try {
@@ -1132,7 +1149,7 @@
         color: "#00f3ff",
         keys: ["парус", "покровськ", "комунар", "коммунар", "червон.*кам", "камни", "набережн.*завод", "речпорт", "річпорт", "репорт", "водокачк", "стан.*550", "водолікарн", "свобод", "кайдак", "павлов", "белелюб", "краснозавод", "дтрз", "комбайн", "ударник", "вокзал", "старомостов", "островськ", "озерк", "курчатов", "шмідт", "бандер", "робоч", "канатн", "філософськ", "савченко", "свердлов", "криворізьк"],
         bounds: { minLat: 48.435, maxLat: 48.510, minLng: 34.885, maxLng: 35.038 },
-        poly: [[48.484, 34.890], [48.508, 34.950], [48.485, 35.035], [48.440, 35.015], [48.435, 34.980], [48.465, 34.910]],
+        poly: [[48.484, 34.890], [48.510, 34.950], [48.485, 35.035], [48.440, 35.015], [48.435, 34.980], [48.465, 34.910]],
         center: [48.472, 34.965]
       },
       s2: {
@@ -1140,40 +1157,40 @@
         color: "#a855f7",
         keys: ["центр", "міст.*сіті", "мост.*сити", "європейськ", "яворницьк", "нагірк", "гагарін", "науки", "перемог", "побед", "соборн"],
         bounds: { minLat: 48.410, maxLat: 48.480, minLng: 35.038, maxLng: 35.120 },
-        poly: [[48.480, 35.035], [48.475, 35.085], [48.410, 35.120], [48.425, 35.040]],
-        center: [48.450, 35.070]
+        poly: [[48.480, 35.035], [48.475, 35.090], [48.405, 35.125], [48.425, 35.040]],
+        center: [48.448, 35.075]
       },
       s3: {
         name: "Тополя — 12 Квартал — Поля",
         color: "#f59e0b",
         keys: ["12.*квартал", "квартал", "топол", "сокіл", "сокол", "мирн", "кротов", "гальченк", "шинн", "хмельницьк", "поля", "кіров", "титов"],
         bounds: { minLat: 48.380, maxLat: 48.445, minLng: 34.980, maxLng: 35.070 },
-        poly: [[48.440, 34.980], [48.445, 35.050], [48.380, 35.070], [48.380, 34.980]],
-        center: [48.410, 35.025]
+        poly: [[48.440, 34.980], [48.445, 35.045], [48.375, 35.070], [48.375, 34.980]],
+        center: [48.405, 35.025]
       },
       s4: {
         name: "Мазепи — Нігояна — Західний",
         color: "#ec4899",
         keys: ["мазеп", "петровськ", "нігоян", "калінін", "металург", "західн", "западн", "діївк"],
         bounds: { minLat: 48.450, maxLat: 48.485, minLng: 34.910, maxLng: 34.980 },
-        poly: [[48.485, 34.920], [48.485, 34.980], [48.445, 34.980], [48.445, 34.920]],
-        center: [48.465, 34.950]
+        poly: [[48.485, 34.910], [48.485, 34.980], [48.445, 34.980], [48.445, 34.910]],
+        center: [48.465, 34.945]
       },
       s5: {
         name: "Лівий: Шосе — Калинова",
         color: "#10b981",
         keys: ["донецьк.*шосе", "караван", "лівобереж", "левобереж", "березинк", "калинов", "янтарн", "клочко"],
         bounds: { minLat: 48.500, maxLat: 48.560, minLng: 34.960, maxLng: 35.070 },
-        poly: [[48.560, 34.960], [48.560, 35.070], [48.500, 35.070], [48.500, 34.960]],
-        center: [48.530, 35.015]
+        poly: [[48.560, 34.960], [48.560, 35.070], [48.495, 35.070], [48.495, 34.960]],
+        center: [48.528, 35.015]
       },
       s6: {
         name: "Лівий: Слобожанський — Сонячний",
         color: "#3b82f6",
         keys: ["слобожанськ", "правд", "калнишевськ", "сонячн", "солнечн", "малиновськ", "придніпров", "ігрень", "придніпр", "придник"],
         bounds: { minLat: 48.460, maxLat: 48.530, minLng: 35.040, maxLng: 35.150 },
-        poly: [[48.520, 35.040], [48.520, 35.150], [48.440, 35.150], [48.460, 35.040]],
-        center: [48.490, 35.095]
+        poly: [[48.520, 35.040], [48.520, 35.150], [48.395, 35.150], [48.455, 35.040]],
+        center: [48.480, 35.095]
       }
     };
 
@@ -1221,25 +1238,34 @@
 
       Object.entries(SECTOR_DEFS).forEach(([secId, sec]) => {
         const isActive = activeSectors.includes(secId);
+        
+        // Полупрозрачный контур района
         const poly = L.polygon(sec.poly, {
           color: isActive ? sec.color : "#64748b",
           weight: isActive ? 2.5 : 1.5,
-          opacity: isActive ? 0.85 : 0.4,
-          fillColor: isActive ? sec.color : "#334155",
-          fillOpacity: isActive ? 0.12 : 0.05,
+          opacity: isActive ? 0.9 : 0.4,
+          fillColor: isActive ? sec.color : "#1e293b",
+          fillOpacity: isActive ? 0.14 : 0.04,
           dashArray: isActive ? null : "4, 4"
         }).addTo(districtsLayer);
 
-        poly.on('click', () => toggleDistrictDirectly(secId));
+        poly.on('click', (e) => {
+          L.DomEvent.stopPropagation(e);
+          toggleDistrictDirectly(secId);
+        });
 
-        // Бейдж с названием и статусом в центре района
+        // Кликабельный бейдж района в центре
         const statusEmoji = isActive ? "✅" : "❌";
-        const badgeHtml = `<div class="district-badge ${isActive ? '' : 'disabled'}" onclick="toggleDistrictDirectly('${secId}')">${statusEmoji} ${sec.name}</div>`;
-        const badgeIcon = L.divIcon({ className: '', html: badgeHtml, iconAnchor: [50, 10] });
-        L.marker(sec.center, { icon: badgeIcon, interactive: true }).addTo(districtsLayer).on('click', () => toggleDistrictDirectly(secId));
+        const badgeHtml = `<div class="district-map-badge ${isActive ? '' : 'off'}">${statusEmoji} ${sec.name}</div>`;
+        const badgeIcon = L.divIcon({ className: '', html: badgeHtml, iconAnchor: [55, 12] });
+        
+        const badgeMarker = L.marker(sec.center, { icon: badgeIcon }).addTo(districtsLayer);
+        badgeMarker.on('click', (e) => {
+          L.DomEvent.stopPropagation(e);
+          toggleDistrictDirectly(secId);
+        });
       });
     }
-    renderDistrictsOnMap();
 
     function isCleanPoint(p) {
       if (p.is_clean === true || p.color === "green" || p.status === "чисто") return true;
@@ -1340,7 +1366,7 @@
       updateRouteStatus();
     }
 
-    function smoothGlideMarker(marker, startLatLng, endLatLng, duration = 1100, onDone = null) {
+    function smoothGlideMarker(marker, startLatLng, endLatLng, duration = 1000, onDone = null) {
       if (!marker) { if (onDone) onDone(); return; }
       const startTime = performance.now();
       function animateStep(currentTime) {
@@ -1438,7 +1464,7 @@
     }
 
     // ==========================================================================
-    // ПЕРЕМЕЩЕНИЕ: БЕЗ ДУБЛИРОВАНИЯ + ТОЧКА НА МЕСТЕ + ОСТАЕМСЯ ТАМ ЖЕ
+    // ПЕРЕМЕЩЕНИЕ: ТОЧКА СРАЗУ НА НОВОМ МЕСТЕ, КАМЕРА ОСТАЕТСЯ РЯДОМ С НЕЙ
     // ==========================================================================
     async function applyPointRelocation(streetName, lat, lng) {
       if (!currentTrainingPoint) return;
@@ -1452,10 +1478,10 @@
         });
       }
 
-      const startPos = m ? m.getLatLng() : L.latLng(p.lat, p.lng);
+      const startPos = L.latLng(p.lat, p.lng);
       const targetPos = L.latLng(Number(lat.toFixed(5)), Number(lng.toFixed(5)));
 
-      // Сразу обновляем координаты в объекте точки, чтобы исключить дублирование
+      // Сразу обновляем координаты точки, чтобы не было дублей
       p.lat = targetPos.lat;
       p.lng = targetPos.lng;
 
@@ -1464,42 +1490,32 @@
         marker: m,
         startPos: startPos,
         targetPos: targetPos,
-        streetName: streetName
+        streetName: streetName,
+        originalCenter: map.getCenter(),
+        originalZoom: map.getZoom()
       };
 
       const banner = document.getElementById("transferBanner");
       if (banner) {
-        banner.innerText = "⏳ Виконується перенесення мітки...";
+        banner.innerText = `⏳ Перенесення до ${streetName}...`;
         banner.style.display = "block";
       }
 
-      // 1. Карта плавно отдаляется
-      map.flyTo([48.465, 35.045], 11, { duration: 0.7 });
+      // Карта летит сразу в целевой район к метке
+      map.flyTo([targetPos.lat, targetPos.lng], 16, { animate: true, duration: 0.9 });
 
-      // 2. Метка пульсирует желтым
-      const circleEl = m ? m.getElement()?.querySelector('.radar-circle') : null;
-      if (circleEl) circleEl.classList.add('moving-super-marker');
+      // Метка плавно скользит к новому месту
+      smoothGlideMarker(m, startPos, targetPos, 900, () => {
+        if (banner) banner.style.display = "none";
+        if (m) m.setLatLng(targetPos);
 
-      // 3. Метка скользит точно на новый адрес
-      setTimeout(() => {
-        smoothGlideMarker(m, startPos, targetPos, 1100, () => {
-          if (circleEl) circleEl.classList.remove('moving-super-marker');
-          if (banner) banner.style.display = "none";
-
-          // Гарантируем, что маркер жестко сидит на новом месте
-          if (m) m.setLatLng(targetPos);
-
-          // 4. Карта приближается к целевому месту
-          map.flyTo([targetPos.lat, targetPos.lng], 16, { duration: 0.85 });
-
-          // 5. Открываем подтверждение (точка уже стоит на новом перекрестке!)
-          setTimeout(() => {
-            const confirmBox = document.getElementById("confirmMoveModal");
-            document.getElementById("confirmStreetName").innerText = `📍 ${streetName}`;
-            confirmBox.style.display = "block";
-          }, 850);
-        });
-      }, 650);
+        // Показываем меню подтверждения на новом месте
+        setTimeout(() => {
+          const confirmBox = document.getElementById("confirmMoveModal");
+          document.getElementById("confirmStreetName").innerText = `📍 ${streetName}`;
+          confirmBox.style.display = "block";
+        }, 400);
+      });
     }
 
     function finalizeMoveConfirm(isConfirmed) {
@@ -1507,9 +1523,10 @@
       confirmBox.style.display = "none";
 
       if (!pendingRelocation) return;
-      const { point, marker, startPos, targetPos, streetName } = pendingRelocation;
+      const { point, marker, startPos, targetPos, streetName, originalCenter, originalZoom } = pendingRelocation;
 
       if (isConfirmed) {
+        // Подтверждено: координаты зафиксированы, ОСТАЕМСЯ В ЭТОМ РАЙОНЕ
         point.lat = targetPos.lat;
         point.lng = targetPos.lng;
         point.needs_training = false;
@@ -1538,19 +1555,19 @@
         learnedRules.push({ phrase: phrase, address: streetName, lat: point.lat, lng: point.lng });
         localStorage.setItem("radar_learned_rules", JSON.stringify(learnedRules));
 
-        showToast(`✅ «${streetName}» зафіксовано!`);
+        showToast(`✅ «${streetName}» підтверджено!`);
         pendingRelocation = null;
         renderMarkers();
         renderTrafficLights();
         updateRouteStatus();
-        // КАРТА ОСТАЕТСЯ НА ЭТОМ МЕСТЕ, НИКУДА НЕ ПЕРЕЛЕТАЕМ!
+        // КАМЕРА НИКУДА НЕ ВОЗВРАЩАЕТСЯ — ОСТАЕТСЯ РЯДОМ С МЕТКОЙ!
 
       } else {
-        // Отмена: возвращаем координаты и маркер назад
+        // Отмена: возвращаем метку на старое место и летим назад
         point.lat = startPos.lat;
         point.lng = startPos.lng;
         if (marker) marker.setLatLng(startPos);
-        map.flyTo(startPos, 14, { duration: 0.7 });
+        map.flyTo(originalCenter, originalZoom, { animate: true, duration: 0.8 });
         showToast("↩️ Перенесення скасовано");
         pendingRelocation = null;
         renderMarkers();
@@ -1575,7 +1592,7 @@
         if (circleEl) circleEl.classList.remove('moving-super-marker');
         const pos = e.target.getLatLng();
         pendingRelocation.targetPos = pos;
-        pendingRelocation.streetName = "Встановлено користувачем";
+        pendingRelocation.streetName = "Встановлено користувачем (ручне)";
 
         document.getElementById("confirmStreetName").innerText = "📍 Встановлено користувачем (ручне)";
         confirmBox.style.display = "block";
@@ -2158,6 +2175,7 @@ ${allLiveReportsText || "Повідомлень немає"}
     function updateTrafficLightsBtnUI() {
       const icon = document.getElementById("btnToggleTlIcon");
       const text = document.getElementById("btnToggleTlText");
+      if (!text) return;
       if (showTrafficLights) {
         if (icon) icon.innerText = "👁️";
         text.innerText = "Сховати світлофори";
@@ -2531,9 +2549,9 @@ ${allLiveReportsText || "Повідомлень немає"}
       if (!e.target.closest(".search-box")) searchResults.style.display = "none";
     });
 
-    // ЗАГРУЗКА ТОЧЕК (С БЛОКИРОВКОЙ НА ВРЕМЯ ПЕРЕНОСА)
+    // ЗАГРУЗКА ТОЧЕК И ОЧИСТКА СПАМА
     async function loadPoints() {
-      if (pendingRelocation) return; // Не сбиваем перенос и не создаем дубликат!
+      if (pendingRelocation) return;
       try {
         const res = await fetch(`${FIREBASE_POINTS_URL}?t=${Date.now()}`);
         if (!res.ok) return;
@@ -2708,6 +2726,7 @@ ${allLiveReportsText || "Повідомлень немає"}
 
     loadCheckpointsFromCloud().then(() => {
       loadNeonLines().then(() => {
+        renderDistrictsOnMap();
         loadPoints();
       });
     });
