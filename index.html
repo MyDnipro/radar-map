@@ -172,7 +172,7 @@
       border-color: #ffffff !important;
       box-shadow: 0 0 0 3px #f59e0b, 0 0 16px #f59e0b !important;
       animation: pulse-training 1.3s infinite !important;
-      cursor: grab !important;
+      cursor: pointer !important;
     }
     @keyframes pulse-training {
       0% { transform: scale(1); }
@@ -188,7 +188,7 @@
       animation: neonStreetBlink 0.5s ease-in-out infinite !important;
     }
 
-    /* 3. СТРОКА СТАТУСА (МІЙ ШЛЯХ) */
+    /* 3. СТРОКА СТАТУСА: МІЙ ШЛЯХ */
     .route-status-bar {
       position: absolute; bottom: 25px; left: 15px; z-index: 1000;
       height: 38px; box-sizing: border-box;
@@ -358,6 +358,66 @@
       z-index: 2000; background: #0f172a; border: 1px solid #38bdf8; color: #fff; padding: 8px 18px;
       border-radius: 8px; font-size: 12px; font-weight: 600; box-shadow: 0 4px 20px rgba(0, 243, 255, 0.35); display: none; text-align: center;
     }
+
+    /* МОДАЛЬНОЕ ОКНО ПРИВЯЗКИ И ОБУЧЕНИЯ ТОЧЕК */
+    .train-modal-backdrop {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(4, 7, 15, 0.75); backdrop-filter: blur(8px);
+      z-index: 3000; display: none; align-items: center; justify-content: center;
+      padding: 16px;
+    }
+    .train-modal-card {
+      background: #0f172a; border: 1.5px solid #0284c7; border-radius: 16px;
+      width: 100%; max-width: 360px; padding: 16px; color: #fff;
+      box-shadow: 0 10px 35px rgba(0, 243, 255, 0.25); animation: popIn 0.2s ease-out;
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    @keyframes popIn {
+      from { transform: scale(0.92); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+    .train-header {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 13px; font-weight: 800; color: #38bdf8;
+      border-bottom: 1px solid #1e293b; padding-bottom: 6px;
+    }
+    .train-text-quote {
+      background: #1e293b; border-radius: 8px; padding: 8px 10px;
+      font-size: 12px; color: #e2e8f0; line-height: 1.35; word-break: break-word;
+      border-left: 3px solid #f59e0b;
+    }
+    .train-suggestions-title {
+      font-size: 11px; font-weight: 700; color: #94a3b8; margin-top: 2px;
+    }
+    .train-suggestions-box {
+      display: flex; flex-wrap: wrap; gap: 6px; max-height: 120px; overflow-y: auto;
+    }
+    .train-chip {
+      background: #1e293b; border: 1px solid #0284c7; color: #38bdf8;
+      padding: 6px 10px; border-radius: 8px; font-size: 11px; font-weight: 700;
+      cursor: pointer; transition: all 0.15s ease;
+    }
+    .train-chip:active {
+      transform: scale(0.95); background: #0284c7; color: #fff;
+    }
+    .train-input-row {
+      display: flex; gap: 6px; margin-top: 4px;
+    }
+    .train-input {
+      flex: 1; background: #0b1120; border: 1px solid #334155; border-radius: 8px;
+      color: #fff; padding: 7px 10px; font-size: 11px; outline: none;
+    }
+    .train-input:focus { border-color: #38bdf8; }
+    .btn-train-search {
+      background: #0284c7; border: none; color: #fff; border-radius: 8px;
+      padding: 0 12px; font-size: 11px; font-weight: 700; cursor: pointer;
+    }
+    .btn-train-manual {
+      background: transparent; border: 1px dashed #64748b; color: #cbd5e1;
+      padding: 7px 10px; border-radius: 8px; font-size: 11px; font-weight: 600;
+      cursor: pointer; text-align: center; margin-top: 4px;
+    }
+    .btn-train-manual:hover { border-color: #38bdf8; color: #fff; }
   </style>
 </head>
 <body>
@@ -436,7 +496,7 @@
     <div class="ai-pill-body" id="aiPillBody">
       <div id="aiChatBox" class="ai-chat-box">
         <div class="ai-msg bot">
-          👋 Вітаю! Я ваш ШІ-штурман. Всі повідомлення з каналу на карті. Точки з оранжевим ореолом готові до перетягування — затисніть їх та перетягніть на потрібне місце!
+          👋 Вітаю! Я ваш ШІ-штурман. Всі повідомлення з каналу на карті. Затисніть будь-яку точку або тапніть по помаранчевій для швидкої прив'язки до вулиці!
         </div>
       </div>
 
@@ -455,7 +515,7 @@
     </div>
   </div>
 
-  <!-- 3. СТРОКА СТАТУСА: МІЙ ШЛЯХ -->
+  <!-- 3. СТРОКА СТАТУСА: МІЙ ШЛЯХ (СТРОГО ПО СВЕТОФОРАМ) -->
   <div id="routeStatusBar" class="route-status-bar">
     <span id="routeStatusIcon">🟢</span>
     <span id="routeStatusText">Мій шлях: Чисто</span>
@@ -466,6 +526,25 @@
   <div id="btnRefresh" class="btn-refresh" onclick="refreshRadarClick()">
     <span>🔄</span><span>Оновити</span>
     <span class="status-drag-hint">✥</span>
+  </div>
+
+  <!-- МОДАЛЬНОЕ ОКНО ПРИВЯЗКИ И ОБУЧЕНИЯ ТОЧЕК -->
+  <div id="trainModal" class="train-modal-backdrop" onclick="closeTrainModal(event)">
+    <div class="train-modal-card" onclick="event.stopPropagation()">
+      <div class="train-header">
+        <span>🎯 Прив'язка повідомлення</span>
+        <span style="cursor:pointer; font-size:16px; padding:0 4px;" onclick="closeTrainModal()">✕</span>
+      </div>
+      <div class="train-text-quote" id="trainTextQuote">...</div>
+      <div class="train-suggestions-title">Оберіть відповідну вулицю зі схожих:</div>
+      <div class="train-suggestions-box" id="trainSuggestionsBox"></div>
+      <div class="train-suggestions-title" style="margin-top:4px;">Або введіть свою назву:</div>
+      <div class="train-input-row">
+        <input type="text" id="trainCustomInput" class="train-input" placeholder="Вулиця чи орієнтир..." onkeydown="if(event.key==='Enter') executeCustomTrain();">
+        <button class="btn-train-search" onclick="executeCustomTrain()">Знайти</button>
+      </div>
+      <button class="btn-train-manual" onclick="startManualDragFromModal()">✋ Перетягнути вручну пальцем на карті</button>
+    </div>
   </div>
 
   <!-- СЕКРЕТНОЕ МЕНЮ -->
@@ -518,6 +597,50 @@
     const FIREBASE_NEON_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/config/neon_lines.json";
     const FIREBASE_KB_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/knowledge_base.json";
 
+    // БАЗА УЛИЦ ДНЕПРА ДЛЯ МГНОВЕННЫХ ПОДСКАЗОК ПРИ ПРИВЯЗКЕ
+    const DNIPRO_STREETS_MAP = {
+      "криворізьк": { name: "вул. Криворізька", lat: 48.4385, lng: 34.9920 },
+      "криворож": { name: "вул. Криворізька", lat: 48.4385, lng: 34.9920 },
+      "криворізьке шосе": { name: "Криворізьке шосе", lat: 48.4280, lng: 34.9350 },
+      "робоч": { name: "вул. Робоча", lat: 48.4480, lng: 35.0080 },
+      "канатн": { name: "вул. Канатна", lat: 48.4600, lng: 35.0100 },
+      "парус": { name: "ж/м Парус", lat: 48.4840, lng: 34.9180 },
+      "покровськ": { name: "ж/м Покровський", lat: 48.4820, lng: 34.9380 },
+      "комунар": { name: "ж/м Покровський (Комунар)", lat: 48.4820, lng: 34.9380 },
+      "червон.*кам": { name: "ж/м Червоний Камінь", lat: 48.4830, lng: 34.9520 },
+      "камни": { name: "ж/м Червоний Камінь", lat: 48.4830, lng: 34.9520 },
+      "свобод": { name: "просп. Свободи", lat: 48.4810, lng: 34.9750 },
+      "водолікарн": { name: "Водолікарня (пр. Свободи)", lat: 48.4848, lng: 34.9735 },
+      "павлов": { name: "вул. Академіка Павлова", lat: 48.4818, lng: 35.0012 },
+      "белелюб": { name: "вул. Белелюбського", lat: 48.4800, lng: 34.9880 },
+      "краснозавод": { name: "вул. Краснозаводська", lat: 48.4812, lng: 34.9940 },
+      "комбайн": { name: "Комбайновий завод", lat: 48.4795, lng: 34.9845 },
+      "дтрз": { name: "ДТРЗ", lat: 48.4812, lng: 34.9940 },
+      "набережн": { name: "Січеславська Набережна / Заводська", lat: 48.4800, lng: 35.0150 },
+      "речпорт": { name: "Річпорт", lat: 48.4805, lng: 35.0210 },
+      "річпорт": { name: "Річпорт", lat: 48.4805, lng: 35.0210 },
+      "стан.*550": { name: "Стан 550", lat: 48.4865, lng: 34.9850 },
+      "водокачк": { name: "Водокачка", lat: 48.4910, lng: 34.9480 },
+      "кайдак": { name: "Кайдацький міст / з'їзд", lat: 48.4925, lng: 34.9625 },
+      "вокзал": { name: "Залізничний вокзал", lat: 48.4760, lng: 35.0160 },
+      "старомостов": { name: "Старомостова площа", lat: 48.4770, lng: 35.0220 },
+      "озерк": { name: "Ринок Озерка", lat: 48.4715, lng: 35.0215 },
+      "курчатов": { name: "вул. 128-ї Бригади (Курчатова)", lat: 48.4740, lng: 35.0140 },
+      "шмідт": { name: "вул. Степана Бандери (Шмідта)", lat: 48.4680, lng: 35.0240 },
+      "бандер": { name: "вул. Степана Бандери", lat: 48.4680, lng: 35.0240 },
+      "поля": { name: "просп. Олександра Поля", lat: 48.4450, lng: 35.0230 },
+      "титов": { name: "вул. Титова", lat: 48.4350, lng: 35.0070 },
+      "мазеп": { name: "просп. Івана Мазепи", lat: 48.4650, lng: 34.9650 },
+      "нігоян": { name: "просп. Сергія Нігояна", lat: 48.4730, lng: 34.9850 },
+      "західн": { name: "ж/м Західний", lat: 48.4650, lng: 34.9350 },
+      "передов": { name: "вул. Передова", lat: 48.5250, lng: 34.9750 },
+      "донецьк": { name: "Донецьке шосе", lat: 48.5200, lng: 35.0100 },
+      "калинов": { name: "вул. Калинова", lat: 48.5080, lng: 35.0550 },
+      "слобожанськ": { name: "просп. Слобожанський", lat: 48.5000, lng: 35.0680 },
+      "12.*квартал": { name: "12-й Квартал", lat: 48.4120, lng: 35.0150 },
+      "топол": { name: "ж/м Тополя", lat: 48.3950, lng: 35.0350 }
+    };
+
     const PRESET_STREETS = {
       "парус": [[48.484, 34.915], [48.486, 34.928]],
       "набережн": [[48.490, 34.950], [48.480, 35.030]],
@@ -539,6 +662,9 @@
 
     let filterShowGreen = true;
     let filterShowRed = true;
+
+    let currentTrainingPoint = null;
+    let currentTrainingMarker = null;
 
     let learnedRules = [];
     try {
@@ -568,99 +694,218 @@
     requestWakeLock();
 
     // ==========================================================================
-    // ПЕРЕМЕЩЕНИЕ И ОБУЧЕНИЕ ТОЧЕК
+    // ЛОГИКА СТАТУСА «МІЙ ШЛЯХ» (ТОЛЬКО ПО СВЕТОФОРАМ ОТ КАНАТНОЙ ДО СВОБОДЫ)
     // ==========================================================================
-    const dragController = {
-      activeMarker: null, activePoint: null, isDragging: false,
-      reset: function() {
-        if (this.activeMarker) {
-          const el = this.activeMarker.getElement()?.querySelector('.radar-circle');
-          if (el) el.classList.remove('active-dragging-target');
-        }
-        map.dragging.enable();
-        this.activeMarker = null; this.activePoint = null; this.isDragging = false;
+    function updateRouteStatus() {
+      const bar = document.getElementById("routeStatusBar");
+      const icon = document.getElementById("routeStatusIcon");
+      const text = document.getElementById("routeStatusText");
+      if (!bar) return;
+
+      if (!showRouteStatusBar) {
+        bar.style.display = "none";
+        return;
       }
-    };
+      bar.style.display = "inline-flex";
 
-    async function finishDragAndTrainAI(point, newLatLng) {
-      if (!point || !newLatLng) return;
-      const newLat = Number(newLatLng.lat.toFixed(5));
-      const newLng = Number(newLatLng.lng.toFixed(5));
+      const now = Date.now();
+      const redCheckpoints = [];
 
-      let rawClean = (point.raw_text || point.text || "")
+      // Анализируем строго светофоры маршрута
+      checkpoints.forEach(cp => {
+        const override = manualOverrides[cp.id];
+        const isOverrideActive = override && (now - override.time < LIFETIME_MS);
+
+        const matched = allPoints.filter(p => {
+          const t = ((p.raw_text || p.text || "") + " " + (p.address || "")).toLowerCase();
+          return cp.keys.some(k => {
+            if (k === "стан") return /\bстан\b/i.test(t) && !/остановил/i.test(t);
+            return t.includes(k);
+          });
+        });
+        matched.sort((a,b) => (b.time||0) - (a.time||0));
+        const latest = matched[0];
+
+        let isRed = false;
+        if (isOverrideActive) {
+          if (override.status === 'red') isRed = true;
+        } else if (latest) {
+          if (!isCleanPoint(latest)) isRed = true;
+        }
+
+        if (isRed) {
+          let shortName = cp.name.split('(')[0].replace(/вул\.\s*/i, '').replace(/РОВД\s*\/\s*/i, '').trim();
+          redCheckpoints.push(shortName);
+        }
+      });
+
+      if (redCheckpoints.length > 0) {
+        bar.classList.add("danger");
+        if (icon) icon.innerText = "🔴";
+        if (redCheckpoints.length === 1) {
+          if (text) text.innerText = `Мій шлях: Увага (${redCheckpoints[0]})!`;
+        } else {
+          if (text) text.innerText = `Мій шлях: ${redCheckpoints.length} БП (${redCheckpoints.slice(0, 2).join(', ')}${redCheckpoints.length > 2 ? '...' : ''})!`;
+        }
+      } else {
+        bar.classList.remove("danger");
+        if (icon) icon.innerText = "🟢";
+        if (text) text.innerText = "Мій шлях: Чисто";
+      }
+    }
+
+    function toggleRouteStatusBarVisible() {
+      const chk = document.getElementById("chkRouteStatusBar");
+      showRouteStatusBar = chk ? chk.checked : true;
+      localStorage.setItem("radar_show_route_status", showRouteStatusBar);
+      updateRouteStatus();
+    }
+
+    // ==========================================================================
+    // НОВАЯ СИСТЕМА ПРИВЯЗКИ И ОБУЧЕНИЯ (БЕЗ РАЗДРАЖАЮЩИХ ОКОН PROMPT)
+    // ==========================================================================
+    function openTrainingModal(point, marker) {
+      currentTrainingPoint = point;
+      currentTrainingMarker = marker;
+
+      const rawTxt = point.raw_text || point.text || "";
+      document.getElementById("trainTextQuote").innerText = `«${rawTxt}»`;
+      const box = document.getElementById("trainSuggestionsBox");
+      box.innerHTML = "";
+
+      const lower = rawTxt.toLowerCase();
+      const matchedStreets = [];
+
+      // Ищем совпадения в локальной базе улиц
+      Object.entries(DNIPRO_STREETS_MAP).forEach(([key, val]) => {
+        if (new RegExp(key, "i").test(lower)) {
+          if (!matchedStreets.some(s => s.name === val.name)) {
+            matchedStreets.push(val);
+          }
+        }
+      });
+
+      // Если в тексте не найдено, предлагаем популярные точки маршрута
+      if (matchedStreets.length === 0) {
+        matchedStreets.push(
+          DNIPRO_STREETS_MAP["криворізьк"],
+          DNIPRO_STREETS_MAP["робоч"],
+          DNIPRO_STREETS_MAP["парус"],
+          DNIPRO_STREETS_MAP["свобод"],
+          DNIPRO_STREETS_MAP["набережн"]
+        );
+      }
+
+      matchedStreets.forEach(st => {
+        const chip = document.createElement("div");
+        chip.className = "train-chip";
+        chip.innerText = `📍 ${st.name}`;
+        chip.onclick = () => applyPointRelocation(st.name, st.lat, st.lng);
+        box.appendChild(chip);
+      });
+
+      document.getElementById("trainCustomInput").value = "";
+      document.getElementById("trainModal").style.display = "flex";
+    }
+
+    function closeTrainModal(e) {
+      if (e && e.target && e.target.id !== "trainModal" && !e.target.closest(".train-modal-card")) return;
+      document.getElementById("trainModal").style.display = "none";
+    }
+
+    async function applyPointRelocation(streetName, lat, lng) {
+      if (!currentTrainingPoint) return;
+      closeTrainModal();
+
+      const p = currentTrainingPoint;
+      p.lat = Number(lat.toFixed(5));
+      p.lng = Number(lng.toFixed(5));
+      p.needs_training = false;
+      p.address = streetName;
+
+      // Извлекаем ключевую фразу для обучения Базы Знаний
+      let phrase = (p.raw_text || p.text || "")
         .replace(/^(?:❓|\bчисто\b|\bбп\b|\bпатруль\b|\(чисто\))/gi, "")
         .replace(/(?:чисто|спокійно|вільно|пусто)/gi, "")
-        .trim();
-      
-      let defaultWord = (point.address && !point.address.includes("навчан")) ? point.address : rawClean.slice(0, 25).trim();
-      const userWord = prompt(`🎯 Навчання радара!\nТекст: «${point.raw_text || point.text}»\n\nВведіть ключове слово (вулицю) для закріплення:`, defaultWord);
-      
-      let phrase = (userWord || defaultWord).toLowerCase().trim();
-      if (!phrase || phrase.length < 3) phrase = (point.raw_text || point.text || "").slice(0, 25).trim().toLowerCase();
+        .trim().toLowerCase();
 
-      point.lat = newLat;
-      point.lng = newLng;
-      point.needs_training = false;
-      point.address = userWord ? userWord.trim() : (point.address || "Дніпро");
+      if (phrase.length < 3) phrase = streetName.toLowerCase();
 
-      if (point._fbKey) {
+      if (p._fbKey) {
         try {
-          await fetch(FIREBASE_POINTS_URL.replace(".json", `/${point._fbKey}.json`), {
-            method: "PATCH", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ lat: newLat, lng: newLng, needs_training: false, address: point.address })
+          await fetch(FIREBASE_POINTS_URL.replace(".json", `/${p._fbKey}.json`), {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ lat: p.lat, lng: p.lng, needs_training: false, address: streetName })
           });
         } catch(e) {}
       }
 
       try {
         await fetch(FIREBASE_KB_URL, {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ phrase: phrase, address: point.address, lat: newLat, lng: newLng, updated_at: Date.now() })
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phrase: phrase, address: streetName, lat: p.lat, lng: p.lng, updated_at: Date.now() })
         });
       } catch(e) {}
 
-      showToast(`🎯 Навчено! «${phrase}» закріплено на цьому місці!`);
+      map.flyTo([p.lat, p.lng], 16, { animate: true, duration: 0.8 });
+      showToast(`🎯 Прив'язано: «${streetName}»!`);
       renderMarkers();
+      renderTrafficLights();
       updateRouteStatus();
     }
 
-    function onGlobalMove(clientX, clientY) {
-      if (dragController.activeMarker && dragController.isDragging) {
-        const container = map.getContainer();
-        const rect = container.getBoundingClientRect();
-        const px = clientX - rect.left;
-        const py = clientY - rect.top;
-        const newLatLng = map.containerPointToLatLng([px, py]);
-        dragController.activeMarker.setLatLng(newLatLng);
+    async function executeCustomTrain() {
+      const q = document.getElementById("trainCustomInput").value.trim();
+      if (!q) return;
+
+      // Проверяем по внутренней базе
+      const lower = q.toLowerCase();
+      for (const [key, val] of Object.entries(DNIPRO_STREETS_MAP)) {
+        if (lower.includes(key)) {
+          applyPointRelocation(val.name, val.lat, val.lng);
+          return;
+        }
       }
+
+      // Если нет — ищем через геокодер
+      try {
+        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q + ", Дніпро")}&countrycodes=ua&limit=1`;
+        const res = await fetch(url);
+        const data = await res.json();
+        if (data && data.length > 0) {
+          const item = data[0];
+          applyPointRelocation(item.display_name.split(",")[0], parseFloat(item.lat), parseFloat(item.lon));
+          return;
+        }
+      } catch(e) {}
+
+      showToast(`⚠️ Не вдалося знайти «${q}». Спробуйте іншу назву.`);
     }
 
-    window.addEventListener('touchmove', (e) => {
-      if (dragController.isDragging && dragController.activeMarker) {
-        const t = e.touches[0];
-        onGlobalMove(t.clientX, t.clientY);
-        if (e.cancelable) e.preventDefault();
-      }
-    }, { passive: false });
-    window.addEventListener('mousemove', (e) => {
-      if (dragController.isDragging && dragController.activeMarker) onGlobalMove(e.clientX, e.clientY);
-    });
-    window.addEventListener('touchend', () => {
-      if (dragController.isDragging && dragController.activeMarker) {
-        const p = dragController.activePoint;
-        const pos = dragController.activeMarker.getLatLng();
-        dragController.reset();
-        finishDragAndTrainAI(p, pos);
-      }
-    });
-    window.addEventListener('mouseup', () => {
-      if (dragController.isDragging && dragController.activeMarker) {
-        const p = dragController.activePoint;
-        const pos = dragController.activeMarker.getLatLng();
-        dragController.reset();
-        finishDragAndTrainAI(p, pos);
-      }
-    });
+    function startManualDragFromModal() {
+      if (!currentTrainingMarker || !currentTrainingPoint) return;
+      closeTrainModal();
+
+      const m = currentTrainingMarker;
+      const p = currentTrainingPoint;
+
+      m.dragging.enable();
+      map.setView([p.lat, p.lng], 16);
+
+      const iconEl = m.getElement()?.querySelector('.radar-circle');
+      if (iconEl) iconEl.classList.add('active-dragging-target');
+
+      showToast("✋ Затисніть та перетягніть мітку в потрібне місце!");
+
+      m.once('dragend', async (e) => {
+        const pos = e.target.getLatLng();
+        m.dragging.disable();
+        if (iconEl) iconEl.classList.remove('active-dragging-target');
+        applyPointRelocation("Встановлено користувачем", pos.lat, pos.lng);
+      });
+    }
 
     // СВЕТОФОРЫ
     let manualOverrides = {};
@@ -830,73 +1075,6 @@
         if (lat >= def.bounds.minLat && lat <= def.bounds.maxLat && lng >= def.bounds.minLng && lng <= def.bounds.maxLng) return true;
         return false;
       });
-    }
-
-    // ЛОГИКА СТРОКИ «МІЙ ШЛЯХ»
-    function updateRouteStatus() {
-      const bar = document.getElementById("routeStatusBar");
-      const icon = document.getElementById("routeStatusIcon");
-      const text = document.getElementById("routeStatusText");
-      if (!bar) return;
-
-      if (!showRouteStatusBar) {
-        bar.style.display = "none";
-        return;
-      }
-      bar.style.display = "inline-flex";
-
-      const now = Date.now();
-      let dangerCount = 0;
-
-      // 1. Проверяем опасные точки в секторе s1 (маршрут)
-      allPoints.forEach(p => {
-        if (!p.needs_training && !isCleanPoint(p)) {
-          const def = SECTOR_DEFS['s1'];
-          const fullText = ((p.raw_text || p.text || "") + " " + (p.address || "")).toLowerCase();
-          const inKeys = def.keys.some(k => new RegExp(k, "i").test(fullText));
-          const inBounds = p.lat >= def.bounds.minLat && p.lat <= def.bounds.maxLat && p.lng >= def.bounds.minLng && p.lng <= def.bounds.maxLng;
-          if (inKeys || inBounds) dangerCount++;
-        }
-      });
-
-      // 2. Проверяем светофоры маршрута
-      checkpoints.forEach(cp => {
-        const override = manualOverrides[cp.id];
-        const matched = allPoints.filter(p => {
-          const t = ((p.raw_text || p.text || "") + " " + (p.address || "")).toLowerCase();
-          return cp.keys.some(k => t.includes(k));
-        });
-        matched.sort((a,b) => (b.time||0) - (a.time||0));
-        const latest = matched[0];
-
-        let isRed = false;
-        if (override && (now - override.time < LIFETIME_MS)) {
-          if (override.status === 'red') isRed = true;
-        } else if (latest && !isCleanPoint(latest)) {
-          isRed = true;
-        }
-        if (isRed) dangerCount++;
-      });
-
-      if (dangerCount > 0) {
-        bar.classList.add("danger");
-        if (icon) icon.innerText = "🔴";
-        let word = "блокпостів";
-        if (dangerCount === 1) word = "блокпост";
-        else if (dangerCount < 5) word = "блокпости";
-        if (text) text.innerText = `Мій шлях: Є ${dangerCount} ${word}!`;
-      } else {
-        bar.classList.remove("danger");
-        if (icon) icon.innerText = "🟢";
-        if (text) text.innerText = "Мій шлях: Чисто";
-      }
-    }
-
-    function toggleRouteStatusBarVisible() {
-      const chk = document.getElementById("chkRouteStatusBar");
-      showRouteStatusBar = chk ? chk.checked : true;
-      localStorage.setItem("radar_show_route_status", showRouteStatusBar);
-      updateRouteStatus();
     }
 
     window.deleteSinglePoint = async function(fbKey, pointText) {
@@ -1883,7 +2061,7 @@ ${allLiveReportsText || "Повідомлень немає"}
       }
     }
 
-    // ПЕРЕМЕЩЕНИЕ И БЕЗОПАСНОЕ ПОЗИЦИОНИРОВАНИЕ ПЛАВАЮЩИХ ПАНЕЛЕЙ
+    // ПЕРЕМЕЩЕНИЕ И БЕЗОПАСНОЕ ПОЗИЦИОНИРОВАНИЕ ПАНЕЛЕЙ
     const dashPanel = document.getElementById("dashPanel");
     const aiPillPanelEl = document.getElementById("aiPillPanel");
     const routeStatusBarEl = document.getElementById("routeStatusBar");
@@ -2053,7 +2231,6 @@ ${allLiveReportsText || "Повідомлень немає"}
 
     // ЗАГРУЗКА ТОЧЕК
     async function loadPoints() {
-      if (dragController.activeMarker) return;
       try {
         const res = await fetch(`${FIREBASE_POINTS_URL}?t=${Date.now()}`);
         if (!res.ok) return;
@@ -2106,13 +2283,13 @@ ${allLiveReportsText || "Повідомлень немає"}
         const fbKeySafe = p._fbKey || "";
 
         const trainingHint = p.needs_training
-          ? `<div style="font-size:11px; color:#f59e0b; font-weight:800; margin:4px 0; background:rgba(245,158,11,0.15); padding:4px 6px; border-radius:5px; border:1px solid #f59e0b;">🎯 Потребує прив'язки! Затисніть та перетягніть на потрібну вулицю.</div>`
-          : `<div style="font-size:10px; color:#f59e0b; margin-top:6px; font-weight:600;">💡 Затисніть 0.35с для переміщення</div>`;
+          ? `<div style="font-size:11px; color:#f59e0b; font-weight:800; margin:4px 0; background:rgba(245,158,11,0.15); padding:5px 6px; border-radius:6px; border:1px solid #f59e0b; text-align:center;">🎯 Потребує прив'язки!<br><span style="color:#38bdf8; text-decoration:underline;">Натисніть сюди для вибору вулиці</span></div>`
+          : `<div style="font-size:10px; color:#94a3b8; margin-top:4px;">💡 Затисніть на 0.35с для зміни місця</div>`;
 
         const popupContent = `
           <div style="padding:4px; font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif; min-width:170px;">
             <div style="font-weight:700; font-size:13px;">${emoji} ${p.text || ""}</div>
-            ${trainingHint}
+            <div onclick="window.triggerTrainingFromPopup('${fbKeySafe}')" style="cursor:pointer;">${trainingHint}</div>
             <div style="font-size:11px; color:#64748b; margin-top:3px;">⏳ Зникне через: ${remMinutes} хв</div>
             <div style="font-size:11px; color:#64748b;">🕒 Додано: ${dateStr}</div>
             <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px; border-top:1px solid #e2e8f0; padding-top:4px;">
@@ -2122,37 +2299,31 @@ ${allLiveReportsText || "Повідомлень немає"}
           </div>
         `;
 
-        // ДЛЯ ТОЧЕК НАВЧАННЯ — ПРЯМОЙ ПЕРЕНОС DRAGGABLE: TRUE
-        const isDirectDraggable = p.needs_training === true;
-        const marker = L.marker([p.lat, p.lng], { icon: dotIcon, draggable: isDirectDraggable });
+        const marker = L.marker([p.lat, p.lng], { icon: dotIcon, draggable: false });
         marker.bindPopup(popupContent);
 
-        if (isDirectDraggable) {
-          marker.on('dragend', (e) => {
-            finishDragAndTrainAI(p, e.target.getLatLng());
+        // Если точка требует обучения — при нажатии сразу открываем карточку выбора улицы
+        if (p.needs_training) {
+          marker.on('click', () => {
+            openTrainingModal(p, marker);
           });
         }
 
+        // ЖЕСТ ДОЛГОГО НАЖАТИЯ ДЛЯ ВЫЗОВА МЕНЮ ПРИВЯЗКИ
         let timer = null;
+        let isLongPress = false;
         let startX = 0, startY = 0;
 
         function startGesture(clientX, clientY) {
-          if (isDirectDraggable) return;
+          isLongPress = false;
           startX = clientX; startY = clientY;
 
           timer = setTimeout(() => {
+            isLongPress = true;
             timer = null;
-            if (navigator.vibrate) navigator.vibrate([60, 40, 60]);
-
-            dragController.activeMarker = marker;
-            dragController.activePoint = p;
-            dragController.isDragging = true;
-
+            if (navigator.vibrate) navigator.vibrate(50);
             marker.closePopup();
-            map.dragging.disable();
-
-            const iconEl = marker.getElement()?.querySelector('.radar-circle');
-            if (iconEl) iconEl.classList.add('active-dragging-target');
+            openTrainingModal(p, marker);
           }, 350);
         }
 
@@ -2174,7 +2345,14 @@ ${allLiveReportsText || "Повідомлень немає"}
             cancelGesture(e.touches[0].clientX, e.touches[0].clientY);
           }, { passive: true });
 
-          el.addEventListener('touchend', () => { if (timer) { clearTimeout(timer); timer = null; } });
+          el.addEventListener('touchend', (e) => {
+            if (isLongPress) {
+              if (e.cancelable) e.preventDefault();
+              e.stopPropagation();
+            }
+            if (timer) { clearTimeout(timer); timer = null; }
+          });
+
           el.addEventListener('mousedown', (e) => { startGesture(e.clientX, e.clientY); });
           el.addEventListener('mousemove', (e) => { cancelGesture(e.clientX, e.clientY); });
           el.addEventListener('mouseup', () => { if (timer) { clearTimeout(timer); timer = null; } });
@@ -2185,6 +2363,11 @@ ${allLiveReportsText || "Повідомлень немає"}
       });
       document.getElementById('countText').innerHTML = `<span>Точок: ${visibleCount}</span><span class="drag-handle-hint">✥</span>`;
     }
+
+    window.triggerTrainingFromPopup = function(fbKey) {
+      const p = allPoints.find(x => x._fbKey === fbKey);
+      if (p) openTrainingModal(p, null);
+    };
 
     loadCheckpointsFromCloud().then(() => {
       loadNeonLines().then(() => {
