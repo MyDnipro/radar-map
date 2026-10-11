@@ -13,6 +13,12 @@
   <link rel="apple-touch-icon" href="icon.png">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script>
+    // Очищаем старые сбившиеся координаты углов
+    localStorage.removeItem("dash_pos_top"); localStorage.removeItem("dash_pos_left");
+    localStorage.removeItem("ai_pos_top"); localStorage.removeItem("ai_pos_left");
+    localStorage.removeItem("route_status_pos_top"); localStorage.removeItem("route_status_pos_left");
+    localStorage.removeItem("refresh_pos_top"); localStorage.removeItem("refresh_pos_left");
+
     if (localStorage.getItem("radar_dash_collapsed") === "true") {
       document.documentElement.classList.add("dash-collapsed");
     }
@@ -56,32 +62,16 @@
       background: #0b1120;
     }
 
-    /* ПЛАВАЮЩИЕ ПАНЕЛИ */
-    .hud-pill {
-      height: 38px;
-      box-sizing: border-box;
-      background: rgba(15, 23, 42, 0.94);
-      backdrop-filter: blur(10px);
-      border: 1.5px solid #334155;
-      border-radius: 12px;
-      color: #f8fafc;
-      font-size: 12px;
-      font-weight: 800;
-      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
-      cursor: move;
-      user-select: none;
-      touch-action: none;
-      white-space: nowrap;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    /* 1. ШАПКА КАРТЫ */
+    /* ==========================================================================
+       4 ЖЕСТКО ЗАФИКСИРОВАННЫХ УГЛА (НИКОГДА НЕ НАЕЗЖАЮТ ДРУГ НА ДРУГА)
+       ========================================================================== */
+    /* 1. ЛЕВЫЙ ВЕРХНИЙ УГОЛ: ТОЧЕК XX */
     .dashboard {
-      position: absolute;
-      top: 15px;
-      left: 15px;
+      position: absolute !important;
+      top: 15px !important;
+      left: 15px !important;
+      right: auto !important;
+      bottom: auto !important;
       z-index: 1000;
       background: rgba(15, 23, 42, 0.94);
       backdrop-filter: blur(10px);
@@ -91,7 +81,6 @@
       box-shadow: 0 6px 25px rgba(0,0,0,0.45);
       width: 235px;
       border: 1.5px solid #334155;
-      touch-action: none;
       transition: width 0.28s cubic-bezier(0.4, 0, 0.2, 1), padding 0.25s ease;
       overflow: hidden;
     }
@@ -100,11 +89,9 @@
       justify-content: space-between;
       align-items: center;
       margin-bottom: 8px;
-      cursor: move;
       user-select: none;
       padding-bottom: 4px;
       border-bottom: 1px solid #1e293b;
-      transition: all 0.25s ease;
     }
     .points-count { 
       font-size: 12px;
@@ -116,8 +103,6 @@
       cursor: pointer;
       white-space: nowrap;
     }
-    .drag-handle-hint { font-size: 10px; color: #64748b; margin-left: 2px; }
-    
     .btn-toggle {
       background: #1e293b;
       border: 1px solid #334155;
@@ -130,7 +115,6 @@
       align-items: center;
       justify-content: center;
       font-size: 10px;
-      touch-action: auto;
       flex-shrink: 0;
       margin-left: 6px;
     }
@@ -155,11 +139,13 @@
     }
     html.dash-collapsed #collapsibleBody { display: none; }
 
-    /* 2. БЛОК ШІ (УМНОЕ РАСКРЫТИЕ БЕЗ ВЫХОДА ЗА ЭКРАН) */
+    /* 2. ПРАВЫЙ ВЕРХНИЙ УГОЛ: ШІ */
     .ai-pill-panel {
-      position: absolute;
-      top: 15px;
-      right: 15px;
+      position: absolute !important;
+      top: 15px !important;
+      right: 15px !important;
+      left: auto !important;
+      bottom: auto !important;
       z-index: 2000;
       background: rgba(15, 23, 42, 0.95);
       backdrop-filter: blur(10px);
@@ -169,7 +155,6 @@
       box-shadow: 0 4px 18px rgba(0,0,0,0.45);
       transition: width 0.25s ease, height 0.25s ease, padding 0.2s ease;
       overflow: hidden;
-      touch-action: none;
     }
     .ai-pill-panel.compact {
       width: auto !important;
@@ -178,7 +163,7 @@
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      cursor: move;
+      cursor: pointer;
     }
     .ai-pill-panel.compact .ai-pill-tools { display: none !important; }
     .ai-pill-panel.compact .ai-pill-body { display: none !important; }
@@ -190,9 +175,9 @@
 
     .ai-pill-panel.expanded {
       width: 310px !important;
-      max-width: calc(100vw - 24px) !important;
+      max-width: calc(100vw - 30px) !important;
       height: auto !important;
-      max-height: 70vh;
+      max-height: 72vh;
       padding: 10px 12px !important;
       border-radius: 14px !important;
       border-color: #00f3ff !important;
@@ -205,7 +190,6 @@
       align-items: center;
       justify-content: space-between;
       width: 100%;
-      cursor: move;
       user-select: none;
       border-bottom: 1px solid #1e293b;
       padding-bottom: 6px;
@@ -222,7 +206,6 @@
       cursor: pointer;
       white-space: nowrap;
     }
-
     .ai-pill-body {
       display: flex;
       flex-direction: column;
@@ -230,7 +213,6 @@
       flex: 1;
       min-height: 0;
     }
-
     .ai-chat-box {
       max-height: 200px;
       min-height: 90px;
@@ -312,38 +294,13 @@
       justify-content: center;
     }
 
-    /* ДВОЙНОЙ ПУЛЬС ПРИ ПЕРЕМЕЩЕНИИ */
-    @keyframes success-pulse-big {
-      0% { transform: scale(1); filter: drop-shadow(0 0 0px #00f3ff); }
-      25% { transform: scale(2.6); filter: drop-shadow(0 0 20px #00f3ff); }
-      50% { transform: scale(1.1); filter: drop-shadow(0 0 4px #00f3ff); }
-      75% { transform: scale(2.4); filter: drop-shadow(0 0 16px #00f3ff); }
-      100% { transform: scale(1); filter: none; }
-    }
-    .pulse-big-twice {
-      animation: success-pulse-big 1.35s ease-in-out !important;
-      z-index: 9999 !important;
-    }
-
-    /* ОРАНЖЕВЫЙ ОРЕОЛ ОБУЧЕНИЯ */
-    .radar-circle.needs-training {
-      background: #f59e0b !important;
-      border-color: #ffffff !important;
-      box-shadow: 0 0 0 3px #f59e0b, 0 0 16px #f59e0b !important;
-      animation: pulse-training 1.3s infinite !important;
-      cursor: pointer !important;
-    }
-    @keyframes pulse-training {
-      0% { transform: scale(1); }
-      50% { transform: scale(1.35); }
-      100% { transform: scale(1); }
-    }
-
-    /* 3. СТРОКА СТАТУСА: МІЙ ШЛЯХ */
+    /* 3. ЛЕВЫЙ НИЖНИЙ УГОЛ: МІЙ ШЛЯХ */
     .route-status-bar {
-      position: absolute;
-      bottom: 25px;
-      left: 15px;
+      position: absolute !important;
+      bottom: 25px !important;
+      left: 15px !important;
+      right: auto !important;
+      top: auto !important;
       z-index: 1000;
       height: 38px;
       box-sizing: border-box;
@@ -359,9 +316,7 @@
       align-items: center;
       gap: 6px;
       box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
-      cursor: move;
       user-select: none;
-      touch-action: none;
       white-space: nowrap;
       transition: border-color 0.3s ease, box-shadow 0.3s ease;
     }
@@ -370,11 +325,13 @@
       box-shadow: 0 0 18px rgba(255, 51, 75, 0.45) !important;
     }
 
-    /* 4. КНОПКА ОБНОВИТЬ */
+    /* 4. ПРАВЫЙ НИЖНИЙ УГОЛ: ОНОВИТИ */
     .btn-refresh {
-      position: absolute;
-      bottom: 25px;
-      right: 15px;
+      position: absolute !important;
+      bottom: 25px !important;
+      right: 15px !important;
+      left: auto !important;
+      top: auto !important;
       z-index: 1000;
       height: 38px;
       box-sizing: border-box;
@@ -393,8 +350,35 @@
       justify-content: center;
       gap: 6px;
       user-select: none;
-      touch-action: none;
       white-space: nowrap;
+    }
+
+    /* АНИМАЦИЯ: МЕТКА УВЕЛИЧИВАЕТСЯ И ПУЛЬСИРУЕТ ЖЕЛТЫМ ПРИ ПЕРЕМЕЩЕНИИ */
+    .moving-super-marker {
+      transform: scale(2.6) !important;
+      background: #f59e0b !important;
+      border: 3px solid #ffffff !important;
+      box-shadow: 0 0 0 5px #f59e0b, 0 0 28px 8px #f59e0b !important;
+      z-index: 99999 !important;
+      animation: superPulseYellow 0.45s infinite alternate !important;
+    }
+    @keyframes superPulseYellow {
+      from { transform: scale(2.2); }
+      to { transform: scale(2.8); }
+    }
+
+    /* ОРАНЖЕВЫЙ ОРЕОЛ ОБУЧЕНИЯ */
+    .radar-circle.needs-training {
+      background: #f59e0b !important;
+      border-color: #ffffff !important;
+      box-shadow: 0 0 0 3px #f59e0b, 0 0 16px #f59e0b !important;
+      animation: pulse-training 1.3s infinite !important;
+      cursor: pointer !important;
+    }
+    @keyframes pulse-training {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.35); }
+      100% { transform: scale(1); }
     }
 
     .subtitle { font-size: 10px; color: #94a3b8; margin-bottom: 8px; }
@@ -547,7 +531,7 @@
     .dot-red { background: var(--color-red); }
 
     .custom-dot-marker { background: transparent !important; border: none !important; }
-    .radar-circle { width: 18px; height: 18px; border-radius: 50%; cursor: pointer; position: relative; touch-action: none; }
+    .radar-circle { width: 18px; height: 18px; border-radius: 50%; cursor: pointer; position: relative; touch-action: none; transition: transform 0.2s ease; }
     .radar-circle.color-green { background: var(--color-green) !important; border: var(--border-green-size) solid var(--border-green-color) !important; }
     .radar-circle.color-red { background: var(--color-red) !important; border: var(--border-red-size) solid var(--border-red-color) !important; }
     .radar-circle.fresh.color-green::after {
@@ -559,12 +543,6 @@
       border-radius: 50%; border: 2px solid var(--color-red); animation: ripple-ring 1.8s infinite ease-out; pointer-events: none;
     }
     @keyframes ripple-ring { 0% { transform: scale(1); opacity: 1; } 100% { transform: scale(2.4); opacity: 0; } }
-
-    .radar-circle.active-dragging-target {
-      transform: scale(1.6) !important; box-shadow: 0 0 0 4px #00f3ff, 0 0 25px 8px #00f3ff !important;
-      cursor: grab !important; z-index: 9999 !important; animation: target-pulse 0.7s infinite alternate !important;
-    }
-    @keyframes target-pulse { from { transform: scale(1.4); } to { transform: scale(1.7); } }
 
     .traffic-pill {
       background: #0f172a !important; border: 1.5px solid #ffffff !important;
@@ -583,7 +561,7 @@
     .traffic-marker-icon { background: transparent !important; border: none !important; }
 
     .neon-panel {
-      position: absolute; top: 60px; right: 15px; z-index: 1500;
+      position: absolute; top: 60px; right: 15px; z-index: 2500;
       background: rgba(15, 23, 42, 0.96); border: 1px solid #00f3ff;
       border-radius: 14px; padding: 12px 14px; color: #fff; width: 260px;
       max-height: 85vh; overflow-y: auto; display: none; box-shadow: 0 6px 25px rgba(0,0,0,0.5);
@@ -591,7 +569,7 @@
     }
     .neon-title {
       font-size: 13px; font-weight: 800; color: #00f3ff; margin-bottom: 8px;
-      display: flex; justify-content: space-between; align-items: center; cursor: move; user-select: none;
+      display: flex; justify-content: space-between; align-items: center; user-select: none;
     }
     .neon-colors { display: flex; gap: 6px; margin-bottom: 8px; }
     .btn-color { width: 22px; height: 22px; border-radius: 50%; border: 2px solid #334155; cursor: pointer; }
@@ -631,7 +609,7 @@
       display: none; white-space: nowrap; pointer-events: none;
     }
 
-    /* МОДАЛЬНОЕ ОКНО ПРИВЯЗКИ (БЕЗОПАСНОЕ ДЛЯ КЛАВИАТУРЫ ТЕЛЕФОНА) */
+    /* МОДАЛЬНОЕ ОКНО ПРИВЯЗКИ */
     .train-modal-backdrop {
       position: fixed;
       inset: 0;
@@ -696,10 +674,14 @@
       color: #fff; padding: 7px 10px; font-size: 11px; outline: none;
     }
     .train-input:focus { border-color: #38bdf8; }
+    
+    /* КНОПКА ПЕРЕМІСТИТИ */
     .btn-train-search {
       background: #0284c7; border: none; color: #fff; border-radius: 8px;
-      padding: 0 12px; font-size: 11px; font-weight: 700; cursor: pointer;
+      padding: 0 12px; font-size: 11px; font-weight: 800; cursor: pointer;
     }
+    .btn-train-search:active { transform: scale(0.95); background: #00f3ff; color: #000; }
+
     .btn-train-manual {
       background: transparent; border: 1px dashed #64748b; color: #cbd5e1;
       padding: 7px 10px; border-radius: 8px; font-size: 11px; font-weight: 600;
@@ -728,12 +710,11 @@
   <!-- БАННЕР ПЕРЕМЕЩЕНИЯ ВВЕРХУ ЭКРАНА -->
   <div id="transferBanner" class="transfer-banner">⏳ Виконується перенесення мітки...</div>
 
-  <!-- 1. ШАПКА КАРТЫ -->
+  <!-- 1. ЛЕВЫЙ ВЕРХНИЙ УГОЛ: ТОЧЕК XX -->
   <div id="dashPanel" class="dashboard">
     <div id="dashHeader" class="dash-header">
       <div class="points-count" id="countText" onclick="handleSecretClick()">
         <span>Точок: 0</span>
-        <span class="drag-handle-hint">✥</span>
       </div>
       <button class="btn-toggle" id="btnToggle" onclick="togglePanelCollapse()">▲</button>
     </div>
@@ -783,13 +764,12 @@
     </div>
   </div>
 
-  <!-- 2. БЛОК ШІ GEMINI (СТРОГО РАСКРЫВАЕТСЯ ВНУТРЬ ЭКРАНА) -->
+  <!-- 2. ПРАВЫЙ ВЕРХНИЙ УГОЛ: ШІ (ВСЕГДА ЗАКРЕПЛЕН СПРАВА) -->
   <div id="aiPillPanel" class="ai-pill-panel compact">
     <div id="aiPillHeader" class="ai-pill-compact-content" onclick="toggleAiPillExpand()">
       <div class="ai-titleBadge">
         <span style="font-size:14px;">🤖</span>
         <span id="aiPillLabel">ШІ</span>
-        <span class="drag-handle-hint">✥</span>
       </div>
       <div style="display:flex; align-items:center; gap:4px;">
         <span class="ai-pill-tools" style="font-size:10px; color:#64748b; cursor:pointer; padding:2px;" title="Очистити історію діалогу" onclick="clearAiChatHistory(event)">🗑️</span>
@@ -820,17 +800,15 @@
     </div>
   </div>
 
-  <!-- 3. СТРОКА СТАТУСА: МІЙ ШЛЯХ (СТРОГО ПО СВЕТОФОРАМ) -->
+  <!-- 3. ЛЕВЫЙ НИЖНИЙ УГОЛ: МІЙ ШЛЯХ (СТРОГО ПО СВЕТОФОРАМ) -->
   <div id="routeStatusBar" class="route-status-bar">
     <span id="routeStatusIcon">🟢</span>
     <span id="routeStatusText">Мій шлях: Чисто</span>
-    <span class="status-drag-hint">✥</span>
   </div>
 
-  <!-- 4. КНОПКА ОБНОВИТЬ -->
+  <!-- 4. ПРАВЫЙ НИЖНИЙ УГОЛ: ОНОВИТИ -->
   <div id="btnRefresh" class="btn-refresh" onclick="refreshRadarClick()">
     <span>🔄</span><span>Оновити</span>
-    <span class="status-drag-hint">✥</span>
   </div>
 
   <!-- МОДАЛЬНОЕ ОКНО ПРИВЯЗКИ -->
@@ -846,7 +824,7 @@
       <div class="train-suggestions-title" style="margin-top:4px;">Або введіть свою назву:</div>
       <div class="train-input-row">
         <input type="text" id="trainCustomInput" class="train-input" placeholder="Вулиця чи орієнтир..." onkeydown="if(event.key==='Enter') executeCustomTrain();">
-        <button class="btn-train-search" onclick="executeCustomTrain()">Знайти</button>
+        <button class="btn-train-search" onclick="executeCustomTrain()">Перемістити</button>
       </div>
       <button class="btn-train-manual" onclick="startManualDragFromModal()">✋ Перетягнути вручну пальцем на карті</button>
       
@@ -860,7 +838,7 @@
   <!-- СЕКРЕТНОЕ МЕНЮ -->
   <div id="neonPanel" class="neon-panel">
     <div id="neonHeader" class="neon-title">
-      <span>⚙️ Секретне меню ✥</span>
+      <span>⚙️ Секретне меню</span>
       <span style="cursor:pointer; font-size:16px; padding: 0 4px;" onclick="closeNeonPanel()">✕</span>
     </div>
     <div style="font-size:11px; font-weight:700; color:#38bdf8; margin-bottom:5px;">🛣️ Інформер дороги:</div>
@@ -964,6 +942,14 @@
       "б4": { name: "Б4 / пр. Богдана Хмельницького", lat: 48.4200, lng: 35.0180 }
     };
 
+    const PRESET_STREETS = {
+      "парус": [[48.484, 34.915], [48.486, 34.928]],
+      "набережн": [[48.490, 34.950], [48.480, 35.030]],
+      "робоч": [[48.435, 35.005], [48.460, 35.012]],
+      "поля": [[48.432, 35.025], [48.460, 35.025]],
+      "яворницьк": [[48.472, 35.020], [48.455, 35.065]]
+    };
+
     const LIFETIME_MS = 40 * 60 * 1000;
     const FRESH_THRESHOLD_MS = 10 * 60 * 1000;
 
@@ -1008,9 +994,7 @@
     }, 10000);
     requestWakeLock();
 
-    // ==========================================================================
-    // КАРТА LEAFLET + АВТО-ПЕРЕРИСОВКА ПРИ ИЗМЕНЕНИИ РАЗМЕРА ЭКРАНА
-    // ==========================================================================
+    // LEAFLET КАРТА
     const isMobile = window.innerWidth < 768;
     const map = L.map('map', { zoomControl: false }).setView([48.484, 34.985], isMobile ? 12 : 13);
 
@@ -1022,11 +1006,8 @@
     else if (currentMapType === "satellite") satelliteLayer.addTo(map);
     else googleLayer.addTo(map);
 
-    // Защита от черных пустых зон на карте при открытии/закрытии клавиатуры
     window.addEventListener('resize', () => {
-      setTimeout(() => {
-        if (map) map.invalidateSize();
-      }, 120);
+      setTimeout(() => { if (map) map.invalidateSize(); }, 120);
     });
 
     function updateMapLayerBtnUI() {
@@ -1117,7 +1098,7 @@
     }
 
     // ==========================================================================
-    // ЛОГИКА СТАТУСА «МІЙ ШЛЯХ» (СТРОГО ПО СВЕТОФОРАМ)
+    // ЛОГИКА СТАТУСА «МІЙ ШЛЯХ» (ТОЛЬКО ПО СВЕТОФОРАМ)
     // ==========================================================================
     function updateRouteStatus() {
       const bar = document.getElementById("routeStatusBar");
@@ -1184,7 +1165,32 @@
     }
 
     // ==========================================================================
-    // МОДАЛЬНОЕ ОКНО ПРИВЯЗКИ (БЕЗОПАСНОЕ ДЛЯ КЛАВИАТУРЫ)
+    // ПЛАВНАЯ АНИМАЦИЯ ПОЛЕТА МЕТКИ
+    // ==========================================================================
+    function smoothGlideMarker(marker, startLatLng, endLatLng, duration = 1200, onDone = null) {
+      if (!marker) { if (onDone) onDone(); return; }
+      const startTime = performance.now();
+      function animateStep(currentTime) {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const ease = 1 - Math.pow(1 - progress, 3);
+
+        const currentLat = startLatLng.lat + (endLatLng.lat - startLatLng.lat) * ease;
+        const currentLng = startLatLng.lng + (endLatLng.lng - startLatLng.lng) * ease;
+        marker.setLatLng([currentLat, currentLng]);
+
+        if (progress < 1) {
+          requestAnimationFrame(animateStep);
+        } else {
+          marker.setLatLng(endLatLng);
+          if (onDone) onDone();
+        }
+      }
+      requestAnimationFrame(animateStep);
+    }
+
+    // ==========================================================================
+    // МОДАЛЬНОЕ ОКНО ПРИВЯЗКИ
     // ==========================================================================
     function openTrainingModal(point, marker) {
       currentTrainingPoint = point;
@@ -1258,6 +1264,9 @@
       deleteSinglePoint(p._fbKey, p.text || p.raw_text || "");
     }
 
+    // ==========================================================================
+    // ПОШАГОВАЯ АНИМАЦИЯ ПЕРЕНОСА МЕТКИ
+    // ==========================================================================
     async function applyPointRelocation(streetName, lat, lng) {
       if (!currentTrainingPoint) return;
       closeTrainModal();
@@ -1270,64 +1279,79 @@
         });
       }
 
-      const targetPos = { lat: Number(lat.toFixed(5)), lng: Number(lng.toFixed(5)) };
+      const startPos = m ? m.getLatLng() : { lat: p.lat, lng: p.lng };
+      const targetPos = L.latLng(Number(lat.toFixed(5)), Number(lng.toFixed(5)));
 
-      // Баннер вверху экрана
-      const banner = document.getElementById("transferBanner");
-      if (banner) {
-        banner.innerText = "⏳ Виконується перенесення мітки...";
-        banner.style.display = "block";
-      }
+      // Запоминаем исходное положение и зум карты
+      const originalCenter = map.getCenter();
+      const originalZoom = map.getZoom();
 
+      // Очищаем фразу для обучения
       let phrase = (p.raw_text || p.text || "")
         .replace(/^(?:❓|\bчисто\b|\bбп\b|\bпатруль\b|\(чисто\))/gi, "")
         .replace(/(?:чисто|спокійно|вільно|пусто)/gi, "")
         .trim().toLowerCase();
       if (phrase.length < 3) phrase = streetName.toLowerCase();
 
-      map.flyTo([targetPos.lat, targetPos.lng], 16, { animate: true, duration: 0.8 });
-      if (m) m.setLatLng([targetPos.lat, targetPos.lng]);
-
-      p.lat = targetPos.lat;
-      p.lng = targetPos.lng;
-      p.needs_training = false;
-      p.address = streetName;
-
-      if (p._fbKey) {
-        fetch(FIREBASE_POINTS_URL.replace(".json", `/${p._fbKey}.json`), {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ lat: p.lat, lng: p.lng, needs_training: false, address: streetName })
-        }).catch(() => {});
+      // 1. Показываем баннер вверху
+      const banner = document.getElementById("transferBanner");
+      if (banner) {
+        banner.innerText = "⏳ Виконується перенесення мітки...";
+        banner.style.display = "block";
       }
 
-      fetch(FIREBASE_KB_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phrase: phrase, address: streetName, lat: p.lat, lng: p.lng, updated_at: Date.now() })
-      }).catch(() => {});
+      // 2. КАРТА ОТДАЛЯЕТСЯ НА ВЕСЬ ГОРОД (ZOOM 11)
+      map.flyTo([48.465, 35.045], 11, { duration: 0.8 });
 
-      learnedRules.push({ phrase: phrase, address: streetName, lat: p.lat, lng: p.lng });
-      localStorage.setItem("radar_learned_rules", JSON.stringify(learnedRules));
+      // 3. МЕТКА УВЕЛИЧИВАЕТСЯ И ПУЛЬСИРУЕТ ЖЕЛТЫМ
+      const circleEl = m ? m.getElement()?.querySelector('.radar-circle') : null;
+      if (circleEl) circleEl.classList.add('moving-super-marker');
 
+      // 4. МЕТКА ПЛАВНО ПЕРЕМЕЩАЕТСЯ НА НОВОЕ МЕСТО
       setTimeout(() => {
-        if (banner) banner.style.display = "none";
+        smoothGlideMarker(m, startPos, targetPos, 1200, async () => {
+          // 5. ЗАГОРАЕТСЯ СВОИМ ЦВЕТОМ
+          if (circleEl) circleEl.classList.remove('moving-super-marker');
 
-        const circleEl = m ? m.getElement()?.querySelector('.radar-circle') : null;
-        if (circleEl) {
-          circleEl.classList.add('pulse-big-twice');
-          setTimeout(() => {
-            circleEl.classList.remove('pulse-big-twice');
-            renderMarkers();
-          }, 1450);
-        } else {
+          p.lat = targetPos.lat;
+          p.lng = targetPos.lng;
+          p.needs_training = false;
+          p.address = streetName;
+
+          // 6. ПРИБЛИЖАЕТСЯ В УПОР, ЧТОБЫ БЫЛО ВИДНО КУДА ПОПАЛИ (ZOOM 16)
+          map.flyTo([targetPos.lat, targetPos.lng], 16, { duration: 0.85 });
+
+          if (banner) banner.style.display = "none";
+          showToast(`🎯 «${streetName}» зафіксовано!`);
+
+          // Сохраняем в Firebase и Базу Знаний
+          if (p._fbKey) {
+            fetch(FIREBASE_POINTS_URL.replace(".json", `/${p._fbKey}.json`), {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ lat: p.lat, lng: p.lng, needs_training: false, address: streetName })
+            }).catch(() => {});
+          }
+
+          fetch(FIREBASE_KB_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ phrase: phrase, address: streetName, lat: p.lat, lng: p.lng, updated_at: Date.now() })
+          }).catch(() => {});
+
+          learnedRules.push({ phrase: phrase, address: streetName, lat: p.lat, lng: p.lng });
+          localStorage.setItem("radar_learned_rules", JSON.stringify(learnedRules));
+
           renderMarkers();
-        }
+          renderTrafficLights();
+          updateRouteStatus();
 
-        showToast(`🎯 «${streetName}» збережено!`);
-        renderTrafficLights();
-        updateRouteStatus();
-      }, 850);
+          // 7. ЧЕРЕЗ 2 СЕКУНДЫ ВОЗВРАЩАЕТСЯ НА НАЧАЛЬНОЕ ПОЛОЖЕНИЕ КАРТЫ
+          setTimeout(() => {
+            map.flyTo(originalCenter, originalZoom, { duration: 0.9 });
+          }, 2000);
+        });
+      }, 750);
     }
 
     async function executeCustomTrain() {
@@ -1357,6 +1381,7 @@
       showToast(`⚠️ Не знайдено координат для «${q}». Спробуйте іншу назву.`);
     }
 
+    // РУЧНОЙ ПЕРЕНОС БЕЗ СЛОЖНОЙ АНИМАЦИИ
     function startManualDragFromModal() {
       if (!currentTrainingMarker || !currentTrainingPoint) return;
       closeTrainModal();
@@ -1368,14 +1393,14 @@
       map.setView([p.lat, p.lng], 16);
 
       const iconEl = m.getElement()?.querySelector('.radar-circle');
-      if (iconEl) iconEl.classList.add('active-dragging-target');
+      if (iconEl) iconEl.classList.add('moving-super-marker');
 
       showToast("✋ Затисніть та перетягніть мітку пальцем!");
 
       m.once('dragend', async (e) => {
         const pos = e.target.getLatLng();
         m.dragging.disable();
-        if (iconEl) iconEl.classList.remove('active-dragging-target');
+        if (iconEl) iconEl.classList.remove('moving-super-marker');
 
         p.lat = Number(pos.lat.toFixed(5));
         p.lng = Number(pos.lng.toFixed(5));
@@ -1485,9 +1510,7 @@
       showToast("🗑️ Повідомлення успішно видалено!");
     };
 
-    // ==========================================================================
-    // ДИАЛОГОВЫЙ ЧАТ ШІ (УМНОЕ РАСКРЫТИЕ ВНУТРЬ ВИДИМОЙ ОБЛАСТИ)
-    // ==========================================================================
+    // ДИАЛОГОВЫЙ ЧАТ ШІ
     const aiPillPanel = document.getElementById("aiPillPanel");
     const aiInlineInput = document.getElementById("aiInlineInput");
     const aiChatBox = document.getElementById("aiChatBox");
@@ -1511,25 +1534,6 @@
       btnAiPillToggle.innerText = isExpanded ? "▲" : "▼";
 
       if (isExpanded) {
-        const winW = window.innerWidth;
-        const winH = window.innerHeight;
-
-        // Если блок расположен в правой половине экрана — фиксируем к правому краю, распахиваем влево
-        const curCenter = aiPillPanel.offsetLeft + (aiPillPanel.offsetWidth / 2);
-        if (curCenter > winW / 2) {
-          aiPillPanel.style.left = "auto";
-          aiPillPanel.style.right = "12px";
-        } else {
-          aiPillPanel.style.left = "12px";
-          aiPillPanel.style.right = "auto";
-        }
-
-        // Защита от вылетания вниз
-        if (aiPillPanel.offsetTop + 320 > winH) {
-          aiPillPanel.style.top = Math.max(12, winH - 340) + "px";
-          aiPillPanel.style.bottom = "auto";
-        }
-
         setTimeout(() => {
           aiChatBox.scrollTop = aiChatBox.scrollHeight;
           if (map) map.invalidateSize();
@@ -2274,18 +2278,8 @@ ${allLiveReportsText || "Повідомлень немає"}
       }
     }
 
-    // ПОЗИЦИОНИРОВАНИЕ ПАНЕЛЕЙ
     const dashPanel = document.getElementById("dashPanel");
-    const aiPillPanelEl = document.getElementById("aiPillPanel");
-    const routeStatusBarEl = document.getElementById("routeStatusBar");
-    const btnRefreshEl = document.getElementById("btnRefresh");
-    const neonPanel = document.getElementById("neonPanel");
     const btnToggle = document.getElementById("btnToggle");
-
-    if (localStorage.getItem("radar_dash_collapsed") === "true") {
-      document.documentElement.classList.add("dash-collapsed");
-      btnToggle.innerText = "▼";
-    }
 
     function togglePanelCollapse(e) {
       if (e) e.stopPropagation();
@@ -2293,103 +2287,6 @@ ${allLiveReportsText || "Повідомлень немає"}
       btnToggle.innerText = isNowCollapsed ? "▼" : "▲";
       localStorage.setItem("radar_dash_collapsed", isNowCollapsed ? "true" : "false");
     }
-
-    function sanitizePos(storagePrefix, elmnt) {
-      if (!elmnt) return;
-      const savedTop = localStorage.getItem(storagePrefix + "_top");
-      const savedLeft = localStorage.getItem(storagePrefix + "_left");
-      if (savedTop && savedLeft) {
-        const topNum = parseInt(savedTop, 10);
-        const leftNum = parseInt(savedLeft, 10);
-        if (!isNaN(topNum) && !isNaN(leftNum) && topNum >= 0 && topNum <= window.innerHeight - 50 && leftNum >= 0 && leftNum <= window.innerWidth - 60) {
-          elmnt.style.top = `${topNum}px`;
-          elmnt.style.left = `${leftNum}px`;
-          elmnt.style.bottom = "auto";
-          elmnt.style.right = "auto";
-        } else {
-          localStorage.removeItem(storagePrefix + "_top");
-          localStorage.removeItem(storagePrefix + "_left");
-        }
-      }
-    }
-
-    sanitizePos("dash_pos", dashPanel);
-    sanitizePos("ai_pos", aiPillPanelEl);
-    sanitizePos("route_status_pos", routeStatusBarEl);
-    sanitizePos("refresh_pos", btnRefreshEl);
-    sanitizePos("neon_pos", neonPanel);
-
-    function makeElementDraggable(elmnt, handle, storagePrefix, clickCallback = null) {
-      if (!elmnt || !handle) return;
-      let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
-      let startX = 0, startY = 0;
-      let hasDragged = false;
-
-      handle.onmousedown = dragMouseDown;
-      handle.ontouchstart = dragTouchStart;
-
-      function dragMouseDown(e) {
-        if (e.target.closest('#btnToggle') || e.target.closest('#btnAiPillToggle') || e.target.closest('textarea') || e.target.closest('input')) return;
-        e.preventDefault();
-        startX = e.clientX; startY = e.clientY;
-        hasDragged = false;
-        pos3 = e.clientX; pos4 = e.clientY;
-        document.onmouseup = closeDragElement;
-        document.onmousemove = elementDrag;
-      }
-
-      function elementDrag(e) {
-        e.preventDefault();
-        if (Math.hypot(e.clientX - startX, e.clientY - startY) > 5) hasDragged = true;
-        pos1 = pos3 - e.clientX; pos2 = pos4 - e.clientY;
-        pos3 = e.clientX; pos4 = e.clientY;
-        const topVal = Math.max(10, Math.min(window.innerHeight - 50, elmnt.offsetTop - pos2)) + "px";
-        const leftVal = Math.max(10, Math.min(window.innerWidth - 60, elmnt.offsetLeft - pos1)) + "px";
-        elmnt.style.top = topVal; elmnt.style.left = leftVal;
-        elmnt.style.bottom = "auto"; elmnt.style.right = "auto";
-        localStorage.setItem(storagePrefix + "_top", topVal);
-        localStorage.setItem(storagePrefix + "_left", leftVal);
-      }
-
-      function closeDragElement() {
-        document.onmouseup = null; document.onmousemove = null;
-        if (!hasDragged && clickCallback) clickCallback();
-      }
-
-      function dragTouchStart(e) {
-        if (e.target.closest('#btnToggle') || e.target.closest('#btnAiPillToggle') || e.target.closest('textarea') || e.target.closest('input')) return;
-        const touch = e.touches[0];
-        startX = touch.clientX; startY = touch.clientY;
-        hasDragged = false;
-        pos3 = touch.clientX; pos4 = touch.clientY;
-        document.ontouchend = closeTouchDrag;
-        document.ontouchmove = elementTouchDrag;
-      }
-
-      function elementTouchDrag(e) {
-        const touch = e.touches[0];
-        if (Math.hypot(touch.clientX - startX, touch.clientY - startY) > 5) hasDragged = true;
-        pos1 = pos3 - touch.clientX; pos2 = pos4 - touch.clientY;
-        pos3 = touch.clientX; pos4 = touch.clientY;
-        const topVal = Math.max(10, Math.min(window.innerHeight - 50, elmnt.offsetTop - pos2)) + "px";
-        const leftVal = Math.max(10, Math.min(window.innerWidth - 60, elmnt.offsetLeft - pos1)) + "px";
-        elmnt.style.top = topVal; elmnt.style.left = leftVal;
-        elmnt.style.bottom = "auto"; elmnt.style.right = "auto";
-        localStorage.setItem(storagePrefix + "_top", topVal);
-        localStorage.setItem(storagePrefix + "_left", leftVal);
-      }
-
-      function closeTouchDrag() {
-        document.ontouchend = null; document.ontouchmove = null;
-        if (!hasDragged && clickCallback) clickCallback();
-      }
-    }
-
-    makeElementDraggable(dashPanel, document.getElementById("dashHeader"), "dash_pos");
-    makeElementDraggable(aiPillPanelEl, document.getElementById("aiPillHeader"), "ai_pos");
-    if (routeStatusBarEl) makeElementDraggable(routeStatusBarEl, routeStatusBarEl, "route_status_pos");
-    if (btnRefreshEl) makeElementDraggable(btnRefreshEl, btnRefreshEl, "refresh_pos");
-    makeElementDraggable(neonPanel, document.getElementById("neonHeader"), "neon_pos");
 
     // ПОИСК УЛИЦ
     const streetSearchInput = document.getElementById("streetSearchInput");
@@ -2442,7 +2339,7 @@ ${allLiveReportsText || "Повідомлень немає"}
       if (!e.target.closest(".search-box")) searchResults.style.display = "none";
     });
 
-    // ЗАГРУЗКА ТОЧЕК И ОЧИСТКА СПАМА
+    // ЗАГРУЗКА ТОЧЕК
     async function loadPoints() {
       try {
         const res = await fetch(`${FIREBASE_POINTS_URL}?t=${Date.now()}`);
@@ -2602,7 +2499,7 @@ ${allLiveReportsText || "Повідомлень немає"}
         markersLayer.addLayer(marker);
         visibleCount++;
       });
-      document.getElementById('countText').innerHTML = `<span>Точок: ${visibleCount}</span><span class="drag-handle-hint">✥</span>`;
+      document.getElementById('countText').innerHTML = `<span>Точок: ${visibleCount}</span>`;
     }
 
     window.triggerTrainingFromPopup = function(fbKey) {
@@ -2610,7 +2507,7 @@ ${allLiveReportsText || "Повідомлень немає"}
       if (p) {
         let m = null;
         markersLayer.eachLayer(l => {
-          if (l.getLatLng().lat === p.lat && l.getLatLng().lng === p.lng) m = l;
+          if (l.getLatLng && l.getLatLng().lat === p.lat && l.getLatLng().lng === p.lng) m = l;
         });
         openTrainingModal(p, m);
       }
