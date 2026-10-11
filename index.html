@@ -61,7 +61,7 @@
       background: #0b1120;
     }
 
-    /* 1. ЛЕВЫЙ ВЕРХНИЙ: ТОЧЕК XX */
+    /* 1. ЛЕВЫЙ ВЕРХНИЙ: ТОЧЕК XX (КОМПАКТНАЯ ШИРИНА БЕЗ ПЕРЕКРЫТИЯ) */
     .dashboard {
       position: absolute !important;
       top: 15px !important;
@@ -897,7 +897,7 @@
     </div>
   </div>
 
-  <!-- 2. ПРАВЫЙ ВЕРХНИЙ УГОЛ: ШІ (ВЕРСИЯ 2.7 С МОДУЛЬНЫМ БЛОКОМ И ЖЁСТКИМ ACTION ENGINE) -->
+  <!-- 2. ПРАВЫЙ ВЕРХНИЙ УГОЛ: ШІ (С БЕЙДЖЕМ ВЕРСИИ 2.7) -->
   <div id="aiPillPanel" class="ai-pill-panel compact">
     <div id="aiPillHeader" class="ai-pill-compact-content">
       <div class="ai-titleBadge" onclick="toggleAiPillExpand()">
@@ -1856,24 +1856,30 @@
       showToast(`⚠️ Не знайдено координат для «${q}». Спробуйте іншу назву.`);
     }
 
-    // ИСПОЛНИТЕЛЬНЫЙ ДВИЖОК ДЕЙСТВИЙ ШІ (ACTION ENGINE v2.7)
+    // ИСПОЛНИТЕЛЬНЫЙ ДВИЖОК ДЕЙСТВИЙ ШІ (ACTION ENGINE v2.7 с поддержкой NAVIGATE, FLYTO, MOVE, STATUS)
     async function executeAiActionDirective(actionType, payload) {
-      if (actionType === "MOVE" || actionType === "RELOCATE") {
+      if (actionType === "NAVIGATE") {
+        if (payload.url) {
+          window.location.href = payload.url;
+        }
+      } else if (actionType === "FLYTO") {
+        let lat = Number(payload.lat);
+        let lng = Number(payload.lng);
+        if (lat && lng && !isNaN(lat) && !isNaN(lng)) {
+          map.flyTo([lat, lng], 16, { animate: true, duration: 0.85 });
+          showToast(`🎯 Фокус наведено!`);
+        }
+      } else if (actionType === "MOVE" || actionType === "RELOCATE") {
         let p = null;
-        if (payload.key) {
-          p = allPoints.find(x => x._fbKey === payload.key);
+        if (payload.key) p = allPoints.find(x => x._fbKey === payload.key);
+        if (!p && payload.target_text) {
+          const q = payload.target_text.toLowerCase();
+          p = allPoints.find(x => ((x.text || '') + ' ' + (x.raw_text || '')).toLowerCase().includes(q));
         }
         if (!p && targetedPointContext && targetedPointContext.id) {
           p = allPoints.find(x => x._fbKey === targetedPointContext.id);
         }
-        if (!p && payload.target_text) {
-          const query = payload.target_text.toLowerCase();
-          p = allPoints.find(x => ((x.text || '') + ' ' + (x.raw_text || '')).toLowerCase().includes(query));
-        }
-        if (!p && targetedPointContext) {
-          const tName = (targetedPointContext.raw_text || targetedPointContext.name || "").toLowerCase();
-          p = allPoints.find(x => ((x.text || '') + ' ' + (x.raw_text || '')).toLowerCase().includes(tName));
-        }
+        if (!p && allPoints.length > 0) p = allPoints[allPoints.length - 1];
         if (!p) return;
 
         let lat = Number(payload.lat);
@@ -1883,37 +1889,24 @@
         if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
           const lowSt = street.toLowerCase();
           for (const [k, v] of Object.entries(DNIPRO_STREETS_MAP)) {
-            if (lowSt.includes(k)) {
-              lat = v.lat;
-              lng = v.lng;
-              street = v.name;
-              break;
-            }
+            if (lowSt.includes(k)) { lat = v.lat; lng = v.lng; street = v.name; break; }
           }
         }
-
         if (!lat || !lng) return;
 
         const startPos = L.latLng(p.lat, p.lng);
         const targetPos = L.latLng(lat, lng);
         let m = findMarkerByPoint(p);
 
-        p.lat = targetPos.lat;
-        p.lng = targetPos.lng;
-        p.address = street;
-        p.needs_training = false;
+        p.lat = targetPos.lat; p.lng = targetPos.lng; p.address = street; p.needs_training = false;
 
         if (m) {
           smoothGlideMarker(m, startPos, targetPos, 850, () => {
             m.setLatLng(targetPos);
-            renderMarkers();
-            renderTrafficLights();
-            updateRouteStatus();
+            renderMarkers(); renderTrafficLights(); updateRouteStatus();
           });
         } else {
-          renderMarkers();
-          renderTrafficLights();
-          updateRouteStatus();
+          renderMarkers(); renderTrafficLights(); updateRouteStatus();
         }
 
         map.flyTo([targetPos.lat, targetPos.lng], 15, { animate: true, duration: 0.85 });
@@ -1925,31 +1918,23 @@
             body: JSON.stringify({ lat: p.lat, lng: p.lng, address: street, needs_training: false })
           }).catch(() => {});
         }
-
-        let phrase = (p.raw_text || p.text || "").replace(/^(?:❓|\bчисто\b|\bбп\b|\bпатруль\b|\(чисто\))/gi, "").trim().toLowerCase();
-        if (phrase.length >= 3) {
-          learnedRules.push({ phrase: phrase, address: street, lat: p.lat, lng: p.lng, is_clean: p.is_clean });
-          localStorage.setItem("radar_learned_rules", JSON.stringify(learnedRules));
-          fetch(FIREBASE_KB_URL, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ phrase: phrase, address: street, lat: p.lat, lng: p.lng, is_clean: p.is_clean, updated_at: Date.now() })
-          }).catch(() => {});
-        }
-
         showToast(`🚀 ШІ переніс точку ➔ ${street}!`);
+
       } else if (actionType === "STATUS") {
         const isClean = payload.clean === true || payload.status === "чисто";
-        
         let targetPoint = null;
+
         if (payload.key) {
           targetPoint = allPoints.find(x => x._fbKey === payload.key);
+        }
+        if (!targetPoint && payload.target_text) {
+          const query = payload.target_text.toLowerCase();
+          targetPoint = allPoints.find(x => ((x.text || '') + ' ' + (x.raw_text || '')).toLowerCase().includes(query));
         }
         if (!targetPoint && targetedPointContext && targetedPointContext.id) {
           targetPoint = allPoints.find(x => x._fbKey === targetedPointContext.id);
         }
         if (!targetPoint && allPoints.length > 0) {
-          // Если нет фокуса, берем самую свежую точку
           targetPoint = allPoints[allPoints.length - 1];
         }
 
@@ -2302,7 +2287,7 @@
 
       const systemInstructionText = `
 Ти — високоінтелектуальний військово-дорожній ШІ-штурман у місті Дніпро для водія.
-Ти маєш ПРЯМУ ВЛАДУ над картою. Коли користувач просить виконати дію, ти зобов'язаний сформувати дію у кінці відповіді!
+Ти маєш ПРЯМУ ВЛАДУ над картою. Якщо користувач просить відкрити аналітику, перенести точку чи змінити статус, ти ОБОВ'ЯЗКОВО повинен додати в самий кінець своєї відповіді відповідний тег дії (COMMAND)!
 
 ${currentTargetInfo}
 СТАН СВІТЛОФОРІВ:
@@ -2312,24 +2297,26 @@ ${tlStatusText}
 ${allLiveReportsText || "Повідомлень немає"}
 
 ІНСТРУКЦІЯ З ДІЙ (COMMANDS):
-1. ПЕРЕМІЩЕННЯ ТОЧКИ НА НОВЕ МІСЦЕ:
-<<<ACTION:MOVE:{"key":"KEY_ТОЧКИ","street":"Назва вулиці або орієнтиру","lat":48.XXXXX,"lng":34.XXXXX}>>>
-Координати важливих орієнтирів Дніпра:
+1. ВІДКРИТТЯ СТАТИСТИКИ (Аналітика):
+<<<ACTION:NAVIGATE:{"url":"stats.html"}>>>
+
+2. ПЕРЕМІЩЕННЯ КАРИ (Покажи ближче):
+<<<ACTION:FLYTO:{"lat":48.XXXXX,"lng":34.XXXXX}>>>
+
+3. ПЕРЕМІЩЕННЯ ТОЧКИ НА НОВЕ МІСЦЕ:
+<<<ACTION:MOVE:{"key":"KEY_ТОЧКИ","street":"Назва вулиці","lat":48.XXXXX,"lng":34.XXXXX}>>>
+Важливі координати:
 - Каштанова (Таромське): lat 48.4710, lng 34.8250
 - Лакофарбовий завод (Західний): lat 48.4680, lng 34.9520
-- Аеропорт Дніпро: lat 48.3570, lng 35.1000
+- Аеропорт: lat 48.3570, lng 35.1000
 - Старі Кодаки: lat 48.3650, lng 35.1050
 - Тьощин язик: lat 48.4140, lng 35.0510
 - Молодогвардійська: lat 48.4680, lng 35.1220
-- Діївка (Братів Трофімових): lat 48.4840, lng 34.9180
-- Робоча: lat 48.4480, lng 35.0080
-- Центр / ЦУМ: lat 48.4650, lng 35.0450
-- Поля (Кірова): lat 48.4480, lng 35.0240
 
-2. ЗМІНА СТАТУСУ НА ЧИСТО / БЛОКПОСТ:
-<<<ACTION:STATUS:{"key":"KEY_ТОЧКИ","clean":true}>>>  (true для чисто, false для блокпоста)
+4. ЗМІНА СТАТУСУ (Чисто / Блокпост):
+<<<ACTION:STATUS:{"target_text":"текст","clean":true}>>> (true - чисто, false - блокпост)
 
-Відповідай коротко і дружньо, і ЗАВЖДИ випускай <<<ACTION:...>>>, коли потрібно виконати дію!
+Завжди випускай <<<ACTION:...>>>, коли користувач просить виконати дію на карті!
 `;
 
       geminiChatHistory.push({ role: "user", parts: [{ text: query }] });
@@ -2741,7 +2728,7 @@ ${allLiveReportsText || "Повідомлень немає"}
             startX = clientX; startY = clientY;
             pressTimer = setTimeout(() => {
               isLongPress = true;
-              if (navigator.vibrate) navigator.vibrate(50);
+              if (navigator.vibrate) navigator.vibrate(60);
               openTrafficLightControl(cp.id);
             }, 500);
           }
