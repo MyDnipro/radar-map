@@ -44,10 +44,6 @@ def rotate_to_next_key():
 PROCESSED_POST_IDS = set()
 
 # ФИЛЬТР РЕКЛАМЫ И СПАМА
-# Фильтр рекламы и спама бота
-ad_words = ["напоминаем", "у нас есть бот", "пробный доступ", "события живут", "метки появляются", "без отдельных приложений"]
-if any(w in message_text.lower() for w in ad_words):
-    continue  # пропускаем рекламный пост целиком
 AD_FILTER_REGEX = re.compile(
     r'(?:'
     r'напоминаем.*?бот|'
