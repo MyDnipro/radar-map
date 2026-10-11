@@ -87,7 +87,7 @@
     }
     html.dash-collapsed #collapsibleBody { display: none; }
 
-    /* 2. БЛОК ШІ */
+    /* 2. БЛОК ШІ (КОМПАКТНЫЙ В СВЁРНУТОМ ВИДЕ, ЕДИНОГО РАЗМЕРА 38px) */
     .ai-pill-panel {
       position: absolute; top: 15px; right: 15px; z-index: 1000;
       background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(10px);
@@ -98,10 +98,15 @@
     }
     .ai-pill-panel.compact {
       width: auto !important; height: 38px !important;
-      padding: 0 12px !important; display: inline-flex;
+      padding: 0 10px !important; display: inline-flex;
       align-items: center; gap: 6px; cursor: move;
     }
-    .ai-pill-panel.compact .ai-pill-body { display: none; }
+    .ai-pill-panel.compact .ai-pill-tools { display: none !important; }
+    .ai-pill-panel.compact .ai-pill-body { display: none !important; }
+    .ai-pill-panel.compact .ai-pill-compact-content {
+      border-bottom: none !important; margin-bottom: 0 !important; padding-bottom: 0 !important;
+    }
+
     .ai-pill-panel.expanded {
       width: 320px !important; height: auto !important; max-height: 82vh;
       padding: 10px 12px !important; border-radius: 14px !important;
@@ -111,11 +116,11 @@
     .ai-pill-compact-content {
       display: flex; align-items: center; justify-content: space-between; width: 100%;
       cursor: move; user-select: none; border-bottom: 1px solid #1e293b;
-      padding-bottom: 6px; margin-bottom: 8px;
+      padding-bottom: 6px; margin-bottom: 8px; gap: 6px;
     }
     .ai-titleBadge {
-      font-size: 12px; font-weight: 800; color: #00f3ff; display: flex; align-items: center; gap: 5px;
-      cursor: pointer;
+      font-size: 12px; font-weight: 800; color: #00f3ff; display: flex; align-items: center; gap: 4px;
+      cursor: pointer; white-space: nowrap;
     }
 
     .ai-pill-body { display: flex; flex-direction: column; gap: 6px; flex: 1; min-height: 0; }
@@ -163,9 +168,11 @@
 
     /* АНИМАЦИЯ МЕТОК ОБУЧЕНИЯ (ОРАНЖЕВЫЙ ОРЕОЛ) */
     .radar-circle.needs-training {
-      border-color: #f59e0b !important;
-      box-shadow: 0 0 0 3px #f59e0b, 0 0 14px #f59e0b !important;
-      animation: pulse-training 1.4s infinite !important;
+      background: #f59e0b !important;
+      border-color: #ffffff !important;
+      box-shadow: 0 0 0 3px #f59e0b, 0 0 16px #f59e0b !important;
+      animation: pulse-training 1.3s infinite !important;
+      cursor: grab !important;
     }
     @keyframes pulse-training {
       0% { transform: scale(1); }
@@ -181,14 +188,14 @@
       animation: neonStreetBlink 0.5s ease-in-out infinite !important;
     }
 
-    /* 3. СТРОКА СТАТУСА */
+    /* 3. СТРОКА СТАТУСА (МІЙ ШЛЯХ) */
     .route-status-bar {
       position: absolute; bottom: 25px; left: 15px; z-index: 1000;
       height: 38px; box-sizing: border-box;
       background: rgba(15, 23, 42, 0.94); backdrop-filter: blur(10px);
       border: 1.5px solid #10b981; border-radius: 12px;
       color: #f8fafc; padding: 0 12px;
-      font-size: 12px; font-weight: 800; display: flex; align-items: center; gap: 6px;
+      font-size: 12px; font-weight: 800; display: inline-flex; align-items: center; gap: 6px;
       box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45); cursor: move; user-select: none;
       touch-action: none; white-space: nowrap;
       transition: border-color 0.3s ease, box-shadow 0.3s ease;
@@ -204,7 +211,7 @@
       height: 38px; box-sizing: border-box;
       background: rgba(15, 23, 42, 0.94); backdrop-filter: blur(10px);
       color: #f8fafc; border: 1.5px solid #334155;
-      padding: 0 12px; border-radius: 12px; cursor: move;
+      padding: 0 12px; border-radius: 12px; cursor: pointer;
       font-size: 12px; font-weight: 800; box-shadow: 0 4px 18px rgba(0,0,0,0.45);
       display: inline-flex; align-items: center; justify-content: center; gap: 6px;
       user-select: none; touch-action: none; white-space: nowrap;
@@ -411,17 +418,17 @@
     </div>
   </div>
 
-  <!-- 2. БЛОК ШІ GEMINI (ДИАЛОГОВЫЙ ЧАТ) -->
+  <!-- 2. БЛОК ШІ GEMINI (КОМПАКТНЫЙ В СВЁРНУТОМ ВИДЕ, ЕДИНОГО РАЗМЕРА 38px) -->
   <div id="aiPillPanel" class="ai-pill-panel compact">
     <div id="aiPillHeader" class="ai-pill-compact-content" onclick="toggleAiPillExpand()">
       <div class="ai-titleBadge">
         <span style="font-size:14px;">🤖</span>
-        <span id="aiPillLabel">ШІ-Діалог</span>
+        <span id="aiPillLabel">ШІ</span>
         <span class="drag-handle-hint">✥</span>
       </div>
       <div style="display:flex; align-items:center; gap:4px;">
-        <span style="font-size:10px; color:#64748b; cursor:pointer; padding:2px;" title="Очистити історію діалогу" onclick="clearAiChatHistory(event)">🗑️</span>
-        <span style="font-size:10px; color:#64748b; cursor:pointer; padding:2px;" title="Налаштування API Key" onclick="configureGeminiKey(event)">🔑</span>
+        <span class="ai-pill-tools" style="font-size:10px; color:#64748b; cursor:pointer; padding:2px;" title="Очистити історію діалогу" onclick="clearAiChatHistory(event)">🗑️</span>
+        <span class="ai-pill-tools" style="font-size:10px; color:#64748b; cursor:pointer; padding:2px;" title="Налаштування API Key" onclick="configureGeminiKey(event)">🔑</span>
         <button class="btn-toggle" id="btnAiPillToggle">▼</button>
       </div>
     </div>
@@ -429,7 +436,7 @@
     <div class="ai-pill-body" id="aiPillBody">
       <div id="aiChatBox" class="ai-chat-box">
         <div class="ai-msg bot">
-          👋 Вітаю! Я ваш ШІ-штурман. Всі повідомлення з каналу на карті. Точки з оранжевим ореолом чекають вашої прив'язки — затисніть їх та перетягніть на потрібне місце!
+          👋 Вітаю! Я ваш ШІ-штурман. Всі повідомлення з каналу на карті. Точки з оранжевим ореолом готові до перетягування — затисніть їх та перетягніть на потрібне місце!
         </div>
       </div>
 
@@ -448,7 +455,7 @@
     </div>
   </div>
 
-  <!-- 3. СТРОКА СТАТУСА -->
+  <!-- 3. СТРОКА СТАТУСА: МІЙ ШЛЯХ -->
   <div id="routeStatusBar" class="route-status-bar">
     <span id="routeStatusIcon">🟢</span>
     <span id="routeStatusText">Мій шлях: Чисто</span>
@@ -456,7 +463,7 @@
   </div>
 
   <!-- 4. КНОПКА ОБНОВИТЬ -->
-  <div id="btnRefresh" class="btn-refresh">
+  <div id="btnRefresh" class="btn-refresh" onclick="refreshRadarClick()">
     <span>🔄</span><span>Оновити</span>
     <span class="status-drag-hint">✥</span>
   </div>
@@ -511,6 +518,14 @@
     const FIREBASE_NEON_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/config/neon_lines.json";
     const FIREBASE_KB_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/knowledge_base.json";
 
+    const PRESET_STREETS = {
+      "парус": [[48.484, 34.915], [48.486, 34.928]],
+      "набережн": [[48.490, 34.950], [48.480, 35.030]],
+      "робоч": [[48.435, 35.005], [48.460, 35.012]],
+      "поля": [[48.432, 35.025], [48.460, 35.025]],
+      "яворницьк": [[48.472, 35.020], [48.455, 35.065]]
+    };
+
     const LIFETIME_MS = 40 * 60 * 1000;
     const FRESH_THRESHOLD_MS = 10 * 60 * 1000;
 
@@ -522,11 +537,9 @@
     let trafficMarkersMap = {};
     let allPoints = [];
 
-    // ФИЛЬТРЫ ВИДИМОСТИ
     let filterShowGreen = true;
     let filterShowRed = true;
 
-    // ПАМЯТЬ ОБУЧЕННЫХ ПРАВИЛ
     let learnedRules = [];
     try {
       const storedRules = localStorage.getItem("radar_learned_rules");
@@ -555,7 +568,7 @@
     requestWakeLock();
 
     // ==========================================================================
-    // ПЕРЕМЕЩЕНИЕ И ОБУЧЕНИЕ ТОЧЕК В 1 КЛИК
+    // ПЕРЕМЕЩЕНИЕ И ОБУЧЕНИЕ ТОЧЕК
     // ==========================================================================
     const dragController = {
       activeMarker: null, activePoint: null, isDragging: false,
@@ -574,15 +587,13 @@
       const newLat = Number(newLatLng.lat.toFixed(5));
       const newLng = Number(newLatLng.lng.toFixed(5));
 
-      // Предлагаем ключевое слово из текста сообщения
       let rawClean = (point.raw_text || point.text || "")
         .replace(/^(?:❓|\bчисто\b|\bбп\b|\bпатруль\b|\(чисто\))/gi, "")
         .replace(/(?:чисто|спокійно|вільно|пусто)/gi, "")
         .trim();
       
       let defaultWord = (point.address && !point.address.includes("навчан")) ? point.address : rawClean.slice(0, 25).trim();
-
-      const userWord = prompt(`🎯 Навчання радара!\nТекст: «${point.raw_text || point.text}»\n\nВведіть ключове слово (вулицю) для закріплення точки:`, defaultWord);
+      const userWord = prompt(`🎯 Навчання радара!\nТекст: «${point.raw_text || point.text}»\n\nВведіть ключове слово (вулицю) для закріплення:`, defaultWord);
       
       let phrase = (userWord || defaultWord).toLowerCase().trim();
       if (!phrase || phrase.length < 3) phrase = (point.raw_text || point.text || "").slice(0, 25).trim().toLowerCase();
@@ -608,8 +619,9 @@
         });
       } catch(e) {}
 
-      showToast(`🎯 Навчено! «${phrase}» назавжди закріплено на цьому місці!`);
+      showToast(`🎯 Навчено! «${phrase}» закріплено на цьому місці!`);
       renderMarkers();
+      updateRouteStatus();
     }
 
     function onGlobalMove(clientX, clientY) {
@@ -633,8 +645,22 @@
     window.addEventListener('mousemove', (e) => {
       if (dragController.isDragging && dragController.activeMarker) onGlobalMove(e.clientX, e.clientY);
     });
-    window.addEventListener('touchend', () => { if (dragController.isDragging) dragController.isDragging = false; });
-    window.addEventListener('mouseup', () => { if (dragController.isDragging) dragController.isDragging = false; });
+    window.addEventListener('touchend', () => {
+      if (dragController.isDragging && dragController.activeMarker) {
+        const p = dragController.activePoint;
+        const pos = dragController.activeMarker.getLatLng();
+        dragController.reset();
+        finishDragAndTrainAI(p, pos);
+      }
+    });
+    window.addEventListener('mouseup', () => {
+      if (dragController.isDragging && dragController.activeMarker) {
+        const p = dragController.activePoint;
+        const pos = dragController.activeMarker.getLatLng();
+        dragController.reset();
+        finishDragAndTrainAI(p, pos);
+      }
+    });
 
     // СВЕТОФОРЫ
     let manualOverrides = {};
@@ -769,6 +795,11 @@
 
     function hardReload() { window.location.href = window.location.origin + window.location.pathname + '?v=' + Date.now(); }
 
+    function refreshRadarClick() {
+      showToast("🔄 Оновлення даних...");
+      loadPoints();
+    }
+
     function isCleanPoint(p) {
       if (p.is_clean === true || p.color === "green" || p.status === "чисто") return true;
       if (p.is_clean === false && (p.color === "red" || p.status === "опасно")) return false;
@@ -784,12 +815,11 @@
       if (/(?:🌞|☀️|🌤️|чисто|чистенько|пусто|вільно|спокійно|проїзд|без\s+бп|сонце|сонечко|солнечно|солнце|ясно|сухо|пролітайте|знялися)/i.test(fullStr) && !/(?:не\s+чисто|не\s+пусто)/i.test(fullStr)) {
         return true;
       }
-
       return false;
     }
 
     function isPointInActiveSectors(p) {
-      if (p.needs_training) return true; // Точки обучения показываем всегда!
+      if (p.needs_training) return true;
       if (activeSectors.length === 6) return true;
       const fullText = ((p.raw_text || p.text || "") + " " + (p.address || "")).toLowerCase();
       const lat = p.lat, lng = p.lng;
@@ -800,6 +830,73 @@
         if (lat >= def.bounds.minLat && lat <= def.bounds.maxLat && lng >= def.bounds.minLng && lng <= def.bounds.maxLng) return true;
         return false;
       });
+    }
+
+    // ЛОГИКА СТРОКИ «МІЙ ШЛЯХ»
+    function updateRouteStatus() {
+      const bar = document.getElementById("routeStatusBar");
+      const icon = document.getElementById("routeStatusIcon");
+      const text = document.getElementById("routeStatusText");
+      if (!bar) return;
+
+      if (!showRouteStatusBar) {
+        bar.style.display = "none";
+        return;
+      }
+      bar.style.display = "inline-flex";
+
+      const now = Date.now();
+      let dangerCount = 0;
+
+      // 1. Проверяем опасные точки в секторе s1 (маршрут)
+      allPoints.forEach(p => {
+        if (!p.needs_training && !isCleanPoint(p)) {
+          const def = SECTOR_DEFS['s1'];
+          const fullText = ((p.raw_text || p.text || "") + " " + (p.address || "")).toLowerCase();
+          const inKeys = def.keys.some(k => new RegExp(k, "i").test(fullText));
+          const inBounds = p.lat >= def.bounds.minLat && p.lat <= def.bounds.maxLat && p.lng >= def.bounds.minLng && p.lng <= def.bounds.maxLng;
+          if (inKeys || inBounds) dangerCount++;
+        }
+      });
+
+      // 2. Проверяем светофоры маршрута
+      checkpoints.forEach(cp => {
+        const override = manualOverrides[cp.id];
+        const matched = allPoints.filter(p => {
+          const t = ((p.raw_text || p.text || "") + " " + (p.address || "")).toLowerCase();
+          return cp.keys.some(k => t.includes(k));
+        });
+        matched.sort((a,b) => (b.time||0) - (a.time||0));
+        const latest = matched[0];
+
+        let isRed = false;
+        if (override && (now - override.time < LIFETIME_MS)) {
+          if (override.status === 'red') isRed = true;
+        } else if (latest && !isCleanPoint(latest)) {
+          isRed = true;
+        }
+        if (isRed) dangerCount++;
+      });
+
+      if (dangerCount > 0) {
+        bar.classList.add("danger");
+        if (icon) icon.innerText = "🔴";
+        let word = "блокпостів";
+        if (dangerCount === 1) word = "блокпост";
+        else if (dangerCount < 5) word = "блокпости";
+        if (text) text.innerText = `Мій шлях: Є ${dangerCount} ${word}!`;
+      } else {
+        bar.classList.remove("danger");
+        if (icon) icon.innerText = "🟢";
+        if (text) text.innerText = "Мій шлях: Чисто";
+      }
+    }
+
+    function toggleRouteStatusBarVisible() {
+      const chk = document.getElementById("chkRouteStatusBar");
+      showRouteStatusBar = chk ? chk.checked : true;
+      localStorage.setItem("radar_show_route_status", showRouteStatusBar);
+      updateRouteStatus();
     }
 
     window.deleteSinglePoint = async function(fbKey, pointText) {
@@ -813,7 +910,6 @@
       }
 
       allPoints = allPoints.filter(p => p._fbKey !== fbKey && p.text !== pointText && p.raw_text !== pointText);
-
       renderMarkers();
       renderTrafficLights();
       updateRouteStatus();
@@ -822,7 +918,6 @@
 
     // ПОДСВЕТКА УЛИЦ
     let streetBlinkTimeout = null;
-
     async function highlightStreetOnMap(streetName) {
       if (!streetName) return;
       const cleanName = streetName.toLowerCase().replace(/^(вулиця|вул\.|проспект|пр\.|тупик|провулок|улица|ул\.)\s*/i, '').trim();
@@ -930,10 +1025,11 @@
     function configureGeminiKey(e) {
       if (e) e.stopPropagation();
       const currentKey = localStorage.getItem("gemini_api_key") || "";
-      const newKey = prompt("Введіть ваш Google Gemini API Key:", currentKey);
+      const newKey = prompt("Введіть ваші Google Gemini API Keys через кому (до 10 шт):", currentKey);
       if (newKey !== null) {
         localStorage.setItem("gemini_api_key", newKey.trim());
-        showToast("🔑 Gemini API Key збережено!");
+        const count = newKey.split(/[,;\s]+/).filter(k => k.trim().length > 15).length;
+        showToast(`🔑 У пул збережено ${count} API-ключів!`);
       }
     }
 
@@ -1081,95 +1177,48 @@
       return { handled: false };
     }
 
-    async function applyFixPointColor(targetQuery, newColor, learnedKeyword) {
-      const isClean = (newColor === 'green');
-      let matchedCount = 0;
+    async function executeGeminiRequestPool(promptPayload) {
+      const raw = localStorage.getItem("gemini_api_key") || "";
+      const apiKeys = raw.split(/[,;\s]+/).map(k => k.trim()).filter(k => k.length > 15);
 
-      allPoints.forEach(p => {
-        const fullStr = ((p.text || p.raw_text || "") + " " + (p.address || "")).toLowerCase();
-        let isHit = false;
-
-        if (targetedPointContext && targetedPointContext.type === 'point' && p._fbKey === targetedPointContext.id) {
-          isHit = true;
-        } else if (targetQuery && fullStr.includes(targetQuery.toLowerCase())) {
-          isHit = true;
-        }
-
-        if (isHit) {
-          p.is_clean = isClean;
-          p.color = newColor;
-          p.status = isClean ? "чисто" : "опасно";
-          matchedCount++;
-
-          if (p._fbKey) {
-            fetch(FIREBASE_POINTS_URL.replace(".json", `/${p._fbKey}.json`), {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ is_clean: isClean, color: newColor, status: p.status })
-            }).catch(() => {});
-          }
-        }
-      });
-
-      if (learnedKeyword) {
-        const ruleObj = { phrase: learnedKeyword.trim(), is_clean: isClean, updated_at: Date.now() };
-        learnedRules = learnedRules.filter(r => r.phrase.toLowerCase() !== ruleObj.phrase.toLowerCase());
-        learnedRules.push(ruleObj);
-        localStorage.setItem("radar_learned_rules", JSON.stringify(learnedRules));
-
-        fetch(FIREBASE_KB_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(ruleObj)
-        }).catch(() => {});
+      if (apiKeys.length === 0) {
+        throw new Error("Не вказано Gemini API Key. Натисніть 🔑 та введіть ключі!");
       }
 
-      renderMarkers();
-      renderTrafficLights();
-      updateRouteStatus();
-      targetedPointContext = null;
-
-      showToast(`🎯 Метку змінено на ${isClean ? '🟢 ЗЕЛЕНИЙ' : '🔴 ЧЕРВОНИЙ'}!`);
-    }
-
-    async function executeGeminiRequest(promptPayload, apiKey) {
-      const models = ['gemini-3.8-flash', 'gemini-3.5-flash-lite', 'gemini-3.5-flash'];
+      const models = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-2.0-flash'];
       let lastErr = null;
 
-      for (const m of models) {
-        try {
-          const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${apiKey}`;
-          const res = await fetch(url, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(promptPayload)
-          });
+      for (const k of apiKeys) {
+        for (const m of models) {
+          try {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${k}`;
+            const res = await fetch(url, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(promptPayload)
+            });
 
-          if (res.ok) {
-            const data = await res.json();
-            return { model: m, data: data };
-          } else {
-            const errJson = await res.json().catch(() => ({}));
-            lastErr = errJson.error?.message || `HTTP ${res.status}`;
+            if (res.ok) {
+              const data = await res.json();
+              return { model: m, data: data };
+            } else {
+              const errJson = await res.json().catch(() => ({}));
+              lastErr = errJson.error?.message || `HTTP ${res.status}`;
+              if (res.status === 429 || res.status === 403 || lastErr.includes("quota")) {
+                break;
+              }
+            }
+          } catch (e) {
+            lastErr = e.message;
           }
-        } catch (e) {
-          lastErr = e.message;
         }
       }
-      throw new Error(lastErr || "Сервери Google тимчасово перевантажені");
+      throw new Error(lastErr || "Всі ключі з пулу вичерпали квоту.");
     }
 
     async function submitAiChatMessage() {
       const query = aiInlineInput.value.trim();
       if (!query) return;
-
-      let apiKey = localStorage.getItem("gemini_api_key");
-      if (!apiKey) {
-        apiKey = prompt("Введіть ваш Google Gemini API Key для роботи ШІ:");
-        if (!apiKey) return;
-        apiKey = apiKey.trim();
-        localStorage.setItem("gemini_api_key", apiKey);
-      }
 
       aiInlineInput.value = "";
 
@@ -1222,6 +1271,9 @@
         return `• ${cp.name} (id: "${cp.id}"): стан ${state}.`;
       }).join('\n');
 
+      const routeStatusTextEl = document.getElementById("routeStatusText");
+      const currentRouteText = routeStatusTextEl ? routeStatusTextEl.innerText : '';
+
       const systemInstructionText = `
 Ти — високоінтелектуальний військово-дорожній ШІ-штурман у місті Дніпро для водія.
 Ти ведеш ЖИВИЙ ДІАЛОГ з водієм і МАЄШ ПОВНИЙ КОНТРОЛЬ НАД КАРТОЮ.
@@ -1232,7 +1284,7 @@
 - Активні райони: ${activeSectors.join(', ')}
 - Світлофори: ${showTrafficLights ? "Увімкнено" : "Приховано"}
 - Неон ліній: ${showNeonLines ? "Увімкнено" : "Приховано"}
-- Рядок 'Мій шлях': "${routeStatusText ? routeStatusText.innerText : ''}"
+- Рядок 'Мій шлях': "${currentRouteText}"
 
 СТАН 8 СВІТЛОФОРІВ:
 ${tlStatusText}
@@ -1240,12 +1292,12 @@ ${tlStatusText}
 ТОЧКИ НА КАРТІ (${allPoints.length} шт.):
 ${allLiveReportsText || "Повідомлень немає"}
 
-КОМАНДИ КЕРУВАННЯ (обов'язково додавай тег у самий кінець повідомлення):
+КОМАНДИ КЕРУВАННЯ (додавай тег у самий кінець повідомлення):
 1. Сховати/показати колір точок: <<<ACTION:{"cmd":"filter_color","color":"green"|"red"|"all","show":true|false}>>>
 2. Увімкнути/відключити район: <<<ACTION:{"cmd":"toggle_sector","sector":"left_bank"|"topol"|"center"|"west"|"route","enable":true|false}>>>
 3. Світлофор в авто: <<<ACTION:{"cmd":"set_tl","id":"id_світлофора","val":"auto"}>>>
 4. Світлофор ручний: <<<ACTION:{"cmd":"set_tl","id":"id","val":"green"|"red"|"off"}>>>
-5. Видалити повідомлення / точку: <<<ACTION:{"cmd":"delete_point","key":"fbKey","target":"текст"}>>>
+5. Видалити повідомлення: <<<ACTION:{"cmd":"delete_point","key":"fbKey","target":"текст"}>>>
 6. Підсвітити вулицю: <<<ACTION:{"cmd":"highlight_street","street":"Назва"}>>>
 7. Відкрити аналітику: <<<ACTION:{"cmd":"open_stats"}>>>
 `;
@@ -1261,10 +1313,10 @@ ${allLiveReportsText || "Повідомлень немає"}
       }
 
       try {
-        const resObj = await executeGeminiRequest({
+        const resObj = await executeGeminiRequestPool({
           contents: contentsPayload,
           generationConfig: { temperature: 0.2 }
-        }, apiKey);
+        });
 
         let reply = resObj.data.candidates?.[0]?.content?.parts?.[0]?.text || "Готово.";
 
@@ -1301,7 +1353,6 @@ ${allLiveReportsText || "Повідомлень немає"}
         }
 
         const cleanReply = reply.replace(/<<<ACTION:.*?>>>/g, '').trim();
-
         geminiChatHistory.push({ role: "model", parts: [{ text: cleanReply }] });
 
         loadingBubble.className = "ai-msg bot";
@@ -1333,6 +1384,7 @@ ${allLiveReportsText || "Повідомлень немає"}
         secretClickCount = 0;
         document.getElementById("neonPanel").style.display = "block";
         syncSectorCheckboxesUI();
+        const chkRouteStatusBar = document.getElementById("chkRouteStatusBar");
         if (chkRouteStatusBar) chkRouteStatusBar.checked = showRouteStatusBar;
         showToast("⚡ Секретне меню відкрито!");
       }
@@ -1420,16 +1472,6 @@ ${allLiveReportsText || "Повідомлень немає"}
         finishCurrentLine();
       }
     }
-
-    map.on('click', function() {
-      if (dragController.activeMarker) {
-        const p = dragController.activePoint;
-        const pos = dragController.activeMarker.getLatLng();
-        dragController.reset();
-        finishDragAndTrainAI(p, pos);
-        return;
-      }
-    });
 
     map.on('click', function(e) {
       if (!isDrawingNeon) return;
@@ -1686,7 +1728,6 @@ ${allLiveReportsText || "Повідомлень немає"}
         }
 
         const overrideBadge = isOverrideActive ? '<span style="font-size:9px; background:#0284c7; color:#fff; padding:1px 4px; border-radius:3px; margin-left:4px;">РУЧНИЙ</span>' : "";
-
         const cleanSafeCpName = cp.name.replace(/'/g, "\\'");
         const latestMsgSafe = latest ? (latest.text || latest.raw_text || "").replace(/'/g, "\\'").replace(/"/g, '') : "";
         const latestKeySafe = latest ? (latest._fbKey || "") : "";
@@ -1842,7 +1883,7 @@ ${allLiveReportsText || "Повідомлень немає"}
       }
     }
 
-    // ПЕРЕМЕЩЕНИЕ 4 ПРЯМОУГОЛЬНИКОВ
+    // ПЕРЕМЕЩЕНИЕ И БЕЗОПАСНОЕ ПОЗИЦИОНИРОВАНИЕ ПЛАВАЮЩИХ ПАНЕЛЕЙ
     const dashPanel = document.getElementById("dashPanel");
     const aiPillPanelEl = document.getElementById("aiPillPanel");
     const routeStatusBarEl = document.getElementById("routeStatusBar");
@@ -1862,27 +1903,33 @@ ${allLiveReportsText || "Повідомлень немає"}
       localStorage.setItem("radar_dash_collapsed", isNowCollapsed ? "true" : "false");
     }
 
-    const savedDashTop = localStorage.getItem("dash_pos_top");
-    const savedDashLeft = localStorage.getItem("dash_pos_left");
-    if (savedDashTop && savedDashLeft) { dashPanel.style.top = savedDashTop; dashPanel.style.left = savedDashLeft; }
+    function sanitizePos(storagePrefix, elmnt) {
+      if (!elmnt) return;
+      const savedTop = localStorage.getItem(storagePrefix + "_top");
+      const savedLeft = localStorage.getItem(storagePrefix + "_left");
+      if (savedTop && savedLeft) {
+        const topNum = parseInt(savedTop, 10);
+        const leftNum = parseInt(savedLeft, 10);
+        if (!isNaN(topNum) && !isNaN(leftNum) && topNum >= 0 && topNum <= window.innerHeight - 50 && leftNum >= 0 && leftNum <= window.innerWidth - 60) {
+          elmnt.style.top = `${topNum}px`;
+          elmnt.style.left = `${leftNum}px`;
+          elmnt.style.bottom = "auto";
+          elmnt.style.right = "auto";
+        } else {
+          localStorage.removeItem(storagePrefix + "_top");
+          localStorage.removeItem(storagePrefix + "_left");
+        }
+      }
+    }
 
-    const savedAiTop = localStorage.getItem("ai_pos_top");
-    const savedAiLeft = localStorage.getItem("ai_pos_left");
-    if (savedAiTop && savedAiLeft) { aiPillPanelEl.style.top = savedAiTop; aiPillPanelEl.style.left = savedAiLeft; }
-
-    const savedStatusTop = localStorage.getItem("route_status_pos_top");
-    const savedStatusLeft = localStorage.getItem("route_status_pos_left");
-    if (savedStatusTop && savedStatusLeft && routeStatusBarEl) { routeStatusBarEl.style.top = savedStatusTop; routeStatusBarEl.style.left = savedStatusLeft; }
-
-    const savedRefreshTop = localStorage.getItem("refresh_pos_top");
-    const savedRefreshLeft = localStorage.getItem("refresh_pos_left");
-    if (savedRefreshTop && savedRefreshLeft && btnRefreshEl) { btnRefreshEl.style.top = savedRefreshTop; btnRefreshEl.style.left = savedRefreshLeft; }
-
-    const savedNeonTop = localStorage.getItem("neon_pos_top");
-    const savedNeonLeft = localStorage.getItem("neon_pos_left");
-    if (savedNeonTop && savedNeonLeft) { neonPanel.style.top = savedNeonTop; neonPanel.style.left = savedNeonLeft; }
+    sanitizePos("dash_pos", dashPanel);
+    sanitizePos("ai_pos", aiPillPanelEl);
+    sanitizePos("route_status_pos", routeStatusBarEl);
+    sanitizePos("refresh_pos", btnRefreshEl);
+    sanitizePos("neon_pos", neonPanel);
 
     function makeElementDraggable(elmnt, handle, storagePrefix, clickCallback = null) {
+      if (!elmnt || !handle) return;
       let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
       let startX = 0, startY = 0;
       let hasDragged = false;
@@ -1950,7 +1997,7 @@ ${allLiveReportsText || "Повідомлень немає"}
     makeElementDraggable(dashPanel, document.getElementById("dashHeader"), "dash_pos");
     makeElementDraggable(aiPillPanelEl, document.getElementById("aiPillHeader"), "ai_pos");
     if (routeStatusBarEl) makeElementDraggable(routeStatusBarEl, routeStatusBarEl, "route_status_pos");
-    if (btnRefreshEl) makeElementDraggable(btnRefreshEl, btnRefreshEl, "refresh_pos", () => hardReload());
+    if (btnRefreshEl) makeElementDraggable(btnRefreshEl, btnRefreshEl, "refresh_pos");
     makeElementDraggable(neonPanel, document.getElementById("neonHeader"), "neon_pos");
 
     // ПОИСК УЛИЦ
@@ -2059,8 +2106,8 @@ ${allLiveReportsText || "Повідомлень немає"}
         const fbKeySafe = p._fbKey || "";
 
         const trainingHint = p.needs_training
-          ? `<div style="font-size:11px; color:#f59e0b; font-weight:800; margin:4px 0; background:rgba(245,158,11,0.15); padding:4px 6px; border-radius:5px; border:1px solid #f59e0b;">🎯 Потребує прив'язки! Затисніть на 0.4с та перетягніть на потрібну вулицю.</div>`
-          : `<div style="font-size:10px; color:#f59e0b; margin-top:6px; font-weight:600;">💡 Затисніть 0.4с для переміщення</div>`;
+          ? `<div style="font-size:11px; color:#f59e0b; font-weight:800; margin:4px 0; background:rgba(245,158,11,0.15); padding:4px 6px; border-radius:5px; border:1px solid #f59e0b;">🎯 Потребує прив'язки! Затисніть та перетягніть на потрібну вулицю.</div>`
+          : `<div style="font-size:10px; color:#f59e0b; margin-top:6px; font-weight:600;">💡 Затисніть 0.35с для переміщення</div>`;
 
         const popupContent = `
           <div style="padding:4px; font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif; min-width:170px;">
@@ -2075,20 +2122,22 @@ ${allLiveReportsText || "Повідомлень немає"}
           </div>
         `;
 
-        const marker = L.marker([p.lat, p.lng], { icon: dotIcon, draggable: false });
+        // ДЛЯ ТОЧЕК НАВЧАННЯ — ПРЯМОЙ ПЕРЕНОС DRAGGABLE: TRUE
+        const isDirectDraggable = p.needs_training === true;
+        const marker = L.marker([p.lat, p.lng], { icon: dotIcon, draggable: isDirectDraggable });
         marker.bindPopup(popupContent);
+
+        if (isDirectDraggable) {
+          marker.on('dragend', (e) => {
+            finishDragAndTrainAI(p, e.target.getLatLng());
+          });
+        }
 
         let timer = null;
         let startX = 0, startY = 0;
 
         function startGesture(clientX, clientY) {
-          if (dragController.activeMarker && dragController.activeMarker !== marker) {
-            const oldPoint = dragController.activePoint;
-            const oldPos = dragController.activeMarker.getLatLng();
-            dragController.reset();
-            finishDragAndTrainAI(oldPoint, oldPos);
-          }
-          dragController.reset();
+          if (isDirectDraggable) return;
           startX = clientX; startY = clientY;
 
           timer = setTimeout(() => {
@@ -2104,7 +2153,7 @@ ${allLiveReportsText || "Повідомлень немає"}
 
             const iconEl = marker.getElement()?.querySelector('.radar-circle');
             if (iconEl) iconEl.classList.add('active-dragging-target');
-          }, 400);
+          }, 350);
         }
 
         function cancelGesture(clientX, clientY) {
@@ -2118,7 +2167,7 @@ ${allLiveReportsText || "Повідомлень немає"}
           if (!el) return;
 
           el.addEventListener('touchstart', (e) => {
-            startPress(e.touches[0].clientX, e.touches[0].clientY);
+            startGesture(e.touches[0].clientX, e.touches[0].clientY);
           }, { passive: true });
 
           el.addEventListener('touchmove', (e) => {
