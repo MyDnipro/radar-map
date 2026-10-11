@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Радар Дніпро — Карта та ШІ-Аналітика</title>
+  <title>Радар Дніпро — Карта та ШІ</title>
   
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -69,7 +69,7 @@
       100% { transform: scale(0.95); opacity: 0.8; }
     }
 
-    /* КНОПКИ УПРАВЛЕНИЯ КАРТОЙ (ГЕОЛОКАЦИЯ И Т.Д.) */
+    /* КНОПКИ УПРАВЛЕНИЯ СПРАВА */
     .map-controls {
       position: absolute;
       right: 14px;
@@ -99,7 +99,7 @@
       transform: scale(0.92);
     }
 
-    /* КОМПАКТНАЯ КНОПКА ШІ / ПАНЕЛЬ ЧАТА */
+    /* БЛОК ШІ СЛЕВА ВНИЗУ */
     .ai-wrapper {
       position: absolute;
       bottom: 20px;
@@ -110,7 +110,7 @@
       align-items: flex-start;
     }
     
-    /* Свернутая кнопка ШІ — аккуратная круглая, того же размера (44x44) */
+    /* Свернутая кнопка ШІ — компактная круглая 44x44 */
     .ai-fab-btn {
       width: 44px;
       height: 44px;
@@ -130,7 +130,7 @@
       transform: scale(0.9);
     }
 
-    /* Раскрытое окно чата ШІ */
+    /* Развернутое окно чата ШІ */
     .ai-chat-card {
       display: none;
       width: calc(100vw - 28px);
@@ -234,7 +234,7 @@
       cursor: pointer;
     }
 
-    /* СТИЛИ МЕТОК (РАДАРНЫЕ ТОЧКИ) */
+    /* РАДАРНЫЕ ТОЧКИ */
     .radar-pin-wrap {
       display: flex;
       align-items: center;
@@ -245,13 +245,13 @@
       cursor: grabbing;
     }
     .radar-dot {
-      width: 22px;
-      height: 22px;
+      width: 24px;
+      height: 24px;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 11px;
+      font-size: 12px;
       color: #fff;
       font-weight: bold;
       border: 2px solid #fff;
@@ -277,7 +277,7 @@
       100% { transform: scale(1); }
     }
 
-    /* ВСПЛЫВАЮЩИЕ УВЕДОМЛЕНИЯ (TOAST) */
+    /* ВСПЛЫВАЮЩИЕ УВЕДОМЛЕНИЯ */
     .toast {
       position: absolute;
       top: 65px;
@@ -309,13 +309,14 @@
     </div>
   </div>
 
-  <!-- БОКОВЫЕ КНОПКИ -->
+  <!-- БОКОВЫЕ КНОПКИ УПРАВЛЕНИЯ -->
   <div class="map-controls">
+    <div class="control-btn" title="Змінити карту (Кольорова / Біла)" onclick="toggleMapTheme()">🗺️</div>
     <div class="control-btn" title="Моя геолокація" onclick="locateMe()">🎯</div>
     <div class="control-btn" title="Оновити точки" onclick="loadPoints()">🔄</div>
   </div>
 
-  <!-- ПАНЕЛЬ ШІ: СВЁРНУТА В КОМПАКТНУЮ ИКОНКУ (44x44) -->
+  <!-- КОМПАКТНЫЙ ШІ -->
   <div class="ai-wrapper">
     <div class="ai-fab-btn" id="aiToggleBtn" onclick="toggleAIChat()" title="ШІ Асистент">🤖</div>
 
@@ -323,15 +324,15 @@
       <div class="ai-header">
         <div class="ai-header-title">🤖 ШІ Асистент радара</div>
         <div class="ai-header-actions">
-          <button class="icon-action-btn" onclick="configureGeminiKey(event)" title="Налаштувати Gemini API Keys">🔑</button>
+          <button class="icon-action-btn" onclick="configureGeminiKey(event)" title="Налаштувати ключі Gemini">🔑</button>
           <button class="icon-action-btn" onclick="toggleAIChat()" title="Згорнути">✕</button>
         </div>
       </div>
       <div class="ai-messages" id="aiMessages">
-        <div class="ai-msg bot">Привіт! Можете запитати обстановку в місті або перетягнути будь-яку точку на карті для навчання.</div>
+        <div class="ai-msg bot">Привіт! Можете перетягнути будь-який кружок на карті, щоб навчити радар правильній вулиці.</div>
       </div>
       <div class="ai-input-area">
-        <input type="text" class="ai-input" id="aiInput" placeholder="Запитати про вулицю чи район..." onkeydown="handleInputKey(event)" />
+        <input type="text" class="ai-input" id="aiInput" placeholder="Запитати про обстановку..." onkeydown="handleInputKey(event)" />
         <button class="ai-send-btn" onclick="sendAIMessage()">➤</button>
       </div>
     </div>
@@ -347,13 +348,38 @@
     const POINTS_URL = `${FIREBASE_BASE}/points.json`;
     const KB_URL = `${FIREBASE_BASE}/knowledge_base.json`;
 
-    // Инициализация карты Дніпра
-    const map = L.map('map', { zoomControl: false }).setView([48.4647, 35.0462], 12);
-
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+    // 1. ДВЕ БЕСПЛАТНЫЕ ПОДЛОЖКИ (БЕЗ ВСЯКИХ КЛЮЧЕЙ И ВОДЯНЫХ ЗНАКОВ)
+    const colorLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
-      attribution: '© OpenStreetMap'
-    }).addTo(map);
+      attribution: '© OpenStreetMap contributors'
+    });
+
+    const lightLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+      maxZoom: 16,
+      attribution: '© Esri Light Canvas'
+    });
+
+    // Инициализация карты Дніпра
+    const map = L.map('map', { 
+      zoomControl: false,
+      layers: [colorLayer] // По умолчанию цветная
+    }).setView([48.4647, 35.0462], 12);
+
+    let activeTheme = 'color';
+
+    function toggleMapTheme() {
+      if (activeTheme === 'color') {
+        map.removeLayer(colorLayer);
+        map.addLayer(lightLayer);
+        activeTheme = 'light';
+        showToast("🗺️ Увімкнено світлу (білу) карту");
+      } else {
+        map.removeLayer(lightLayer);
+        map.addLayer(colorLayer);
+        activeTheme = 'color';
+        showToast("🗺️ Увімкнено детальну кольорову карту");
+      }
+    }
 
     let markersLayer = L.layerGroup().addTo(map);
     let myLocMarker = null;
@@ -365,9 +391,7 @@
       setTimeout(() => { t.style.opacity = "0"; }, duration);
     }
 
-    // =========================================================================
-    // ПЕРЕКЛЮЧЕНИЕ СВЁРНУТОГО / РАЗВЁРНУТОГО ВИДА ШІ
-    // =========================================================================
+    // СВЕРНУТЬ / РАЗВЕРНУТЬ ЧАТ
     function toggleAIChat() {
       const card = document.getElementById("aiChatCard");
       const btn = document.getElementById("aiToggleBtn");
@@ -381,14 +405,12 @@
       }
     }
 
-    // =========================================================================
-    // ПУЛ GEMINI КЛЮЧЕЙ
-    // =========================================================================
+    // ВВОД ПУЛА КЛЮЧЕЙ
     function configureGeminiKey(e) {
       if (e) e.stopPropagation();
       const current = localStorage.getItem("gemini_api_key") || "";
       const input = prompt(
-        "Введіть ваші Gemini API Keys через кому (від 1 до 10 ключів):",
+        "Вставте ваші Gemini API Keys через кому (10 ключів):",
         current
       );
       if (input !== null) {
@@ -438,9 +460,7 @@
       throw new Error(lastErr || "Всі ключі з пулу вичерпали квоту.");
     }
 
-    // =========================================================================
-    // ЗАГРУЗКА ТОЧЕК + ВОЗМОЖНОСТЬ РУЧНОГО ПЕРЕТАСКИВАНИЯ (ОБУЧЕНИЕ)
-    // =========================================================================
+    // ЗАГРУЗКА ТОЧЕК И РУЧНОЕ ПЕРЕТАСКИВАНИЕ ДЛЯ ОБУЧЕНИЯ
     async function loadPoints() {
       try {
         const res = await fetch(`${POINTS_URL}?t=${Date.now()}`);
@@ -468,42 +488,40 @@
           const dotColorClass = isTraining ? "training" : (isClean ? "green" : "red");
           const iconSymbol = isTraining ? "❓" : (isClean ? "✓" : "!");
 
-          // ВСЕ МЕТКИ ДЕЛАЕМ DRAGGABLE ДЛЯ РУЧНОЙ КОРРЕКТИРОВКИ И ОБУЧЕНИЯ!
           const customIcon = L.divIcon({
             className: 'radar-pin-wrap',
             html: `<div class="radar-dot ${dotColorClass}" title="Затисніть для перетягування">${iconSymbol}</div>`,
-            iconSize: [26, 26],
-            iconAnchor: [13, 13]
+            iconSize: [28, 28],
+            iconAnchor: [14, 14]
           });
 
+          // ВСЕ МЕТКИ ДЕЛАЮТСЯ DRAGGABLE
           const marker = L.marker([item.lat, item.lng], {
             icon: customIcon,
             draggable: true
           });
 
-          // Попап с описанием
           const popupContent = `
             <div style="font-size:13px; color:#111; line-height:1.4;">
               <b>${item.address || 'Дніпро'}</b><br>
               <span>${item.text || item.raw_text || ''}</span><br>
               <small style="color:#666;">🕒 ${Math.round((now - pTime) / 60000)} хв тому</small>
               <div style="margin-top:6px; font-size:11px; color:#0066cc;">
-                ✋ Перетягніть кружок, щоб навчити радар правильній вулиці!
+                ✋ Затисніть та перетягніть, щоб навчити радар правильній вулиці!
               </div>
             </div>
           `;
           marker.bindPopup(popupContent);
 
-          // СОБЫТИЕ ПЕРЕТАСКИВАНИЯ МЕТКИ: СОХРАНЯЕМ В FIREBASE И ОБУЧАЕМ БАЗУ ЗНАНИЙ
+          // СОХРАНЕНИЕ НОВЫХ КООРДИНАТ И ОБУЧЕНИЕ БАЗЫ ЗНАНИЙ
           marker.on('dragend', async (e) => {
             const newPos = e.target.getLatLng();
             const newLat = Number(newPos.lat.toFixed(5));
             const newLng = Number(newPos.lng.toFixed(5));
 
-            showToast("⏳ Збереження нового положення...");
+            showToast("⏳ Збереження позиції...");
 
             try {
-              // 1. Обновляем текущую метку в Firebase
               await fetch(`${FIREBASE_BASE}/points/${firebaseKey}.json`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
@@ -515,7 +533,6 @@
                 })
               });
 
-              // 2. Обучаем Базу Знаний, если есть текст сообщения
               const rawText = item.raw_text || item.text || "";
               if (rawText && rawText.length >= 3) {
                 await fetch(KB_URL, {
@@ -529,15 +546,14 @@
                     updated_at: Date.now()
                   })
                 });
-                showToast("🎯 Точку перенесено! Радар навчився цієї фрази.");
+                showToast("🎯 Збережено! Радар навчився цієї вулиці.");
               } else {
-                showToast("📍 Координати успішно оновлено!");
+                showToast("📍 Точку переміщено!");
               }
 
-              // Перезагружаем точки
               loadPoints();
             } catch (err) {
-              showToast("⚠️ Не вдалося зберегти нову локацію.");
+              showToast("⚠️ Помилка збереження локації.");
             }
           });
 
@@ -550,9 +566,7 @@
       }
     }
 
-    // =========================================================================
     // ГЕОЛОКАЦИЯ
-    // =========================================================================
     function locateMe() {
       if (!navigator.geolocation) {
         showToast("Геолокація не підтримується цим браузером.");
@@ -576,9 +590,7 @@
       );
     }
 
-    // =========================================================================
     // ЧАТ С ШІ
-    // =========================================================================
     function handleInputKey(e) {
       if (e.key === 'Enter') sendAIMessage();
     }
