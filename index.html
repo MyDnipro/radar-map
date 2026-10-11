@@ -137,7 +137,7 @@
     }
     html.dash-collapsed #collapsibleBody { display: none; }
 
-    /* 2. ПРАВЫЙ ВЕРХНИЙ: ШІ (С БЕЙДЖЕМ ВЕРСИИ 2.9) */
+    /* 2. ПРАВЫЙ ВЕРХНИЙ: ШІ (С БЕЙДЖЕМ ВЕРСИИ 3.0) */
     .ai-pill-panel {
       position: absolute;
       top: 15px;
@@ -490,19 +490,21 @@
       100% { transform: scale(1); }
     }
 
+    /* ПОЛНОСТЬЮ ВИДИМАЯ ЦИФРА ПОВЕРХ ШАРА (НЕ ЗАТЕМНЯЕТ ЦВЕТ) */
     .cluster-badge {
       position: absolute;
-      top: -6px;
-      right: -8px;
-      background: #0284c7;
-      color: #fff;
-      font-size: 10px;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(15, 23, 42, 0.75);
+      color: #ffffff;
+      font-size: 9px;
       font-weight: 900;
-      padding: 1px 5px;
-      border-radius: 8px;
-      border: 1.5px solid #ffffff;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+      padding: 1px 4px;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.8);
       z-index: 10;
+      pointer-events: none;
     }
 
     .subtitle { font-size: 10px; color: #94a3b8; margin-bottom: 8px; }
@@ -912,13 +914,13 @@
     </div>
   </div>
 
-  <!-- 2. ПРАВЫЙ ВЕРХНИЙ УГОЛ: ШІ (С БЕЙДЖЕМ ВЕРСИИ 2.9) -->
+  <!-- 2. ПРАВЫЙ ВЕРХНИЙ УГОЛ: ШІ (С БЕЙДЖЕМ ВЕРСИИ 3.0) -->
   <div id="aiPillPanel" class="ai-pill-panel compact">
     <div id="aiPillHeader" class="ai-pill-compact-content">
       <div class="ai-titleBadge" onclick="toggleAiPillExpand()">
         <span style="font-size:14px;">🤖</span>
         <span id="aiPillLabel">ШІ</span>
-        <span class="ai-version-badge">v2.9</span>
+        <span class="ai-version-badge">v3.0</span>
         <span style="font-size:9px; color:#64748b; margin-left:3px;">✥</span>
       </div>
       <div style="display:flex; align-items:center; gap:4px;">
@@ -939,7 +941,7 @@
 
       <div id="aiChatBox" class="ai-chat-box">
         <div class="ai-msg bot">
-          👋 Вітаю! Я ваш ШІ-штурман (Карта v2.9). Жорсткий пріоритет безпеки у кластерах та розумний аналіз заперечень!
+          👋 Вітаю! Я ваш ШІ-штурман (Карта v3.0). Конфліктні точки розведено, цифри не перекривають колір!
         </div>
       </div>
 
@@ -1071,9 +1073,6 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
-    // ==========================================================================
-    // СИСТЕМА ЗАЩИТЫ КЛЮЧЕЙ И АВТОРИЗАЦИИ
-    // ==========================================================================
     const SECRET_KEY_HASH = "570984";
     const _VAULT_PREFIX = String.fromCharCode(65, 81, 46, 65, 98, 56, 82, 78, 54);
 
@@ -1137,9 +1136,6 @@
       return spamWords.some(w => t.includes(w));
     }
 
-    // ==========================================================================
-    // ИЗОЛИРОВАННЫЙ МОДУЛЬНЫЙ БЛОК: СЛОВАРЬ ТОПОНИМОВ И СЛЕНГА ДНЕПРА
-    // ==========================================================================
     const DNIPRO_STREETS_MAP = {
       "каштанов": { name: "вул. Каштанова (Таромське)", lat: 48.4710, lng: 34.8250 },
       "лак": { name: "Лакофарбовий завод (з/м Західний)", lat: 48.4680, lng: 34.9520 },
@@ -1210,7 +1206,6 @@
       "донецьк": { name: "Донецьке шосе", lat: 48.5200, lng: 35.0100 },
       "фрунзенськ": { name: "ж/м Ломівський (Фрунзенський)", lat: 48.5050, lng: 34.9750 }
     };
-    // ==========================================================================
 
     const LIFETIME_MS = 40 * 60 * 1000;
     const FRESH_THRESHOLD_MS = 10 * 60 * 1000;
@@ -1236,7 +1231,6 @@
       if (storedRules) learnedRules = JSON.parse(storedRules);
     } catch(e) {}
 
-    // WAKE LOCK
     let screenWakeLock = null;
     async function requestWakeLock() {
       try {
@@ -1257,7 +1251,6 @@
     }, 10000);
     requestWakeLock();
 
-    // LEAFLET КАРТА
     const isMobile = window.innerWidth < 768;
     const INITIAL_CENTER = [48.484, 34.985];
     const INITIAL_ZOOM = isMobile ? 12 : 13;
@@ -1328,7 +1321,6 @@
       loadPoints();
     }
 
-    // СЕКТОРЫ ГОРОДА И ПОДМЕНЮ «МІЙ ШЛЯХ»
     let activeSectors = ['s1'];
     try {
       const stored = localStorage.getItem("radar_active_sectors");
@@ -1459,23 +1451,17 @@
       closeRouteSubmenu();
     });
 
-    // УМНЫЙ АНАЛИЗ СТАТУСА С УЧЕТОМ ОТРИЦАНИЙ (НЕТ БП, УБРАЛИ, ЧИСТО ПО БП)
     function isCleanPoint(p) {
       const fullStr = ((p.raw_text || p.text || "") + " " + (p.address || "")).toLowerCase();
-
-      // Проверяем наличие слов-отрицаний в сообщении про БП
       const negationWords = ["нет", "немає", "убрали", "прибрали", "сняли", "зняли", "поехали", "поїхали", "уехали", "пропали", "чисто по", "немає вже", "уже чисто"];
       const hasNegation = negationWords.some(nw => fullStr.includes(nw));
 
       const dangerKeywords = ["мент", "полиц", "поліц", "бп", "блокпост", "патруль", "тормоз", "стоят", "облав", "тцк", "бусик", "мусор", "зупиня", "шмонал", "пiдор", "пидор", "куча ментов"];
-      
       const hasDanger = dangerKeywords.some(w => fullStr.includes(w));
 
       if (hasDanger) {
-        if (hasNegation) {
-          return true; // Если написано "бп нет" или "убрали" — это чисто
-        }
-        return false; // Иначе — опасно
+        if (hasNegation) return true;
+        return false;
       }
 
       if (p.is_clean === true || p.color === "green" || p.status === "чисто") return true;
@@ -1887,7 +1873,6 @@
       showToast(`⚠️ Не знайдено координат для «${q}». Спробуйте іншу назву.`);
     }
 
-    // ИСПОЛНИТЕЛЬНЫЙ ДВИЖОК ДЕЙСТВИЙ ШІ (ACTION ENGINE v2.9)
     async function executeAiActionDirective(actionType, payload) {
       if (actionType === "NAVIGATE") {
         if (payload.url) window.location.href = payload.url;
@@ -1986,7 +1971,6 @@
       }
     }
 
-    // СВЕТОФОРЫ
     let manualOverrides = {};
     try { manualOverrides = JSON.parse(localStorage.getItem("radar_tl_overrides") || "{}"); } catch(e) {}
 
@@ -2036,7 +2020,6 @@
       showToast("🗑️ Повідомлення успішно видалено!");
     };
 
-    // ДИАЛОГОВЫЙ ЧАТ ШІ
     const aiPillPanel = document.getElementById("aiPillPanel");
     const aiPillHeader = document.getElementById("aiPillHeader");
     const aiInlineInput = document.getElementById("aiInlineInput");
@@ -2224,7 +2207,6 @@
       showToast(`🎯 Статус змінено на ${statusText}!`);
     };
 
-    // НАДЁЖНЫЙ ЗАПРОС К GEMINI С ПУЛОМ КЛЮЧЕЙ
     async function executeGeminiRequestPool(promptPayload) {
       if (!verifyGeminiAuthorization()) {
         throw new Error("ШІ заблоковано. Введіть пароль (підказка: телефон батьків).");
@@ -2334,13 +2316,6 @@ ${allLiveReportsText || "Повідомлень немає"}
 
 3. ПЕРЕМІЩЕННЯ ТОЧКИ НА НОВЕ МІСЦЕ:
 <<<ACTION:MOVE:{"key":"KEY_ТОЧКИ","street":"Назва вулиці","lat":48.XXXXX,"lng":34.XXXXX}>>>
-Важливі координати:
-- Каштанова (Таромське): lat 48.4710, lng 34.8250
-- Лакофарбовий завод (Західний): lat 48.4680, lng 34.9520
-- Аеропорт: lat 48.3570, lng 35.1000
-- Старі Кодаки: lat 48.3650, lng 35.1050
-- Тьощин язик: lat 48.4140, lng 35.0510
-- Молодогвардійська: lat 48.4680, lng 35.1220
 
 4. ЗМІНА СТАТУСУ (Чисто / Блокпост):
 <<<ACTION:STATUS:{"target_text":"текст","clean":true}>>> (true - чисто, false - блокпост)
@@ -2396,7 +2371,6 @@ ${allLiveReportsText || "Повідомлень немає"}
       }
     }
 
-    // СЕКРЕТНОЕ МЕНЮ
     let secretClickCount = 0;
     let secretClickTimer = null;
     let neonLines = [];
@@ -2525,7 +2499,6 @@ ${allLiveReportsText || "Повідомлень немає"}
       });
     }
 
-    // СВЕТОФОРЫ
     function toggleTlDropdown() {
       const drop = document.getElementById("tlDropdown");
       const arrow = document.getElementById("tlDropdownArrow");
@@ -2625,7 +2598,6 @@ ${allLiveReportsText || "Повідомлень немає"}
             '<button onclick="setTrafficLightManual(\'' + cp.id + '\', \'off\')" style="background:#64748b; border:none; color:#fff; padding:6px; border-radius:5px; font-size:11px; font-weight:800; cursor:pointer;">⚪ Погасити</button>' +
             '<button onclick="setTrafficLightManual(\'' + cp.id + '\', \'auto\')" style="background:#0284c7; border:none; color:#fff; padding:6px; border-radius:5px; font-size:11px; font-weight:800; cursor:pointer;">🔄 Авто</button>' +
           '</div>' +
-          '<div style="font-size:9px; color:#94a3b8; text-align:center;">При появі нового БП режим зніметься сам</div>' +
         '</div>';
 
       marker.setPopupContent(controlContent);
@@ -2725,10 +2697,6 @@ ${allLiveReportsText || "Повідомлень немає"}
               statusTitle +
             '</div>' +
             messageBlock +
-            '<div style="display:flex; justify-content:space-between; align-items:center; font-size:9px; color:#94a3b8; margin-top:5px; border-top:1px solid #e2e8f0; padding-top:4px;">' +
-              '<span>💡 Затисніть на 0.5с</span>' +
-              '<span onclick="openAiContext(\'traffic_light\', \'' + cp.id + '\', \'' + cleanSafeCpName + '\', {raw_text:\'' + latestMsgSafe + '\', latest_fbKey:\'' + latestKeySafe + '\'})" style="color:#0284c7; font-weight:800; cursor:pointer;">🤖 Зауваження для ШІ</span>' +
-            '</div>' +
           '</div>';
 
         let marker = trafficMarkersMap[cp.id];
@@ -2807,66 +2775,6 @@ ${allLiveReportsText || "Повідомлень немає"}
       });
     }
 
-    // GITHUB ACTIONS
-    function toggleServerDropdown() {
-      const drop = document.getElementById("serverDropdown");
-      const arrow = document.getElementById("serverDropdownArrow");
-      const isVis = drop.style.display === "flex";
-      drop.style.display = isVis ? "none" : "flex";
-      arrow.innerText = isVis ? "▾" : "▴";
-    }
-
-    async function triggerGitHubActions() {
-      let token = localStorage.getItem("gh_pat_token");
-      if (!token) {
-        token = prompt("Введіть ваш GitHub Personal Access Token:");
-        if (!token) return;
-        token = token.trim();
-        localStorage.setItem("gh_pat_token", token);
-      }
-
-      showToast("⏳ Відправляю команду перезапуску в GitHub...");
-
-      try {
-        const repoOwner = "MyDnipro";
-        const repoName = "radar-map";
-        const workflowFile = "radar.yml";
-
-        const url = `https://api.github.com/repos/${repoOwner}/${repoName}/actions/workflows/${workflowFile}/dispatches`;
-        const res = await fetch(url, {
-          method: "POST",
-          headers: {
-            "Accept": "application/vnd.github+json",
-            "Authorization": `Bearer ${token}`
-          },
-          body: JSON.stringify({ ref: "main" })
-        });
-
-        if (res.status === 204) {
-          showToast("🚀 Успіх! Радар перезапущено на сервері!");
-          toggleServerDropdown();
-        } else if (res.status === 401 || res.status === 403) {
-          localStorage.removeItem("gh_pat_token");
-          alert("Помилка авторизації! Токен недійсний або не має прав 'workflow'.");
-        } else {
-          const data = await res.json().catch(() => ({}));
-          alert(`Помилка запуску: HTTP ${res.status}\n${data.message || ''}`);
-        }
-      } catch (err) {
-        alert("Помилка з'єднання: " + err.message);
-      }
-    }
-
-    function changeGitHubToken(e) {
-      e.stopPropagation();
-      const current = localStorage.getItem("gh_pat_token") || "";
-      const newToken = prompt("Введіть новий GitHub Personal Access Token:", current);
-      if (newToken !== null) {
-        localStorage.setItem("gh_pat_token", newToken.trim());
-        showToast("🔑 Токен оновлено!");
-      }
-    }
-
     const dashPanel = document.getElementById("dashPanel");
     const btnToggle = document.getElementById("btnToggle");
 
@@ -2877,7 +2785,6 @@ ${allLiveReportsText || "Повідомлень немає"}
       localStorage.setItem("radar_dash_collapsed", isNowCollapsed ? "true" : "false");
     }
 
-    // ПОИСК УЛИЦ
     const streetSearchInput = document.getElementById("streetSearchInput");
     const searchResults = document.getElementById("searchResults");
     let searchDebounceTimer = null;
@@ -2928,7 +2835,6 @@ ${allLiveReportsText || "Повідомлень немає"}
       if (!e.target.closest(".search-box")) searchResults.style.display = "none";
     });
 
-    // ЗАГРУЗКА ТОЧЕК И УМНАЯ КЛАСТЕРИЗАЦИЯ
     async function loadPoints() {
       if (pendingRelocation) return;
       try {
@@ -2951,22 +2857,6 @@ ${allLiveReportsText || "Повідомлень немає"}
             return null;
           }
 
-          if (p.needs_training) {
-            const lower = fullText.toLowerCase();
-            const matchedRule = learnedRules.find(r => r.phrase && lower.includes(r.phrase.toLowerCase()));
-            if (matchedRule) {
-              p.lat = matchedRule.lat;
-              p.lng = matchedRule.lng;
-              p.address = matchedRule.address;
-              p.needs_training = false;
-              fetch(FIREBASE_POINTS_URL.replace(".json", `/${key}.json`), {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ lat: p.lat, lng: p.lng, needs_training: false, address: p.address })
-              }).catch(() => {});
-            }
-          }
-
           return p;
         }).filter(p => p && (now - (p.time || p.timestamp || 0)) <= LIFETIME_MS);
 
@@ -2982,6 +2872,7 @@ ${allLiveReportsText || "Повідомлень немає"}
       } catch (err) {}
     }
 
+    // РАЗДЕЛЕНИЕ КЛАСТЕРОВ ПО СТАТУСУ (ЧИСТО VS БП) И ВИДИМЫЕ ЦИФРЫ ПОВЕРХ ЦВЕТА
     function renderMarkers() {
       markersLayer.clearLayers();
       const now = Date.now();
@@ -2999,37 +2890,49 @@ ${allLiveReportsText || "Повідомлень немає"}
         if (clean && !filterShowGreen) return;
         if (!clean && !filterShowRed) return;
 
-        const groupKey = `${p.lat.toFixed(4)}_${p.lng.toFixed(4)}`;
+        // Разделяем ключом координаты + статус (чтобы красные и зеленые точки не смешивались в одну кучу)
+        const statusGroup = clean ? "green" : "red";
+        const groupKey = `${p.lat.toFixed(4)}_${p.lng.toFixed(4)}_${statusGroup}`;
+
         if (!clusters[groupKey]) {
           clusters[groupKey] = {
             lat: p.lat,
             lng: p.lng,
+            isClean: clean,
             points: [],
-            hasDanger: false,
             isFresh: false,
             needsTraining: false
           };
         }
         clusters[groupKey].points.push(p);
-        
-        if (!isCleanPoint(p)) {
-          clusters[groupKey].hasDanger = true;
-        }
-
         if (diff <= FRESH_THRESHOLD_MS) clusters[groupKey].isFresh = true;
         if (p.needs_training) clusters[groupKey].needsTraining = true;
       });
 
+      // Небольшое веерное смещение, если на одной координате есть и красный, и зеленый кластер
+      const coordCounts = {};
+      Object.values(clusters).forEach(cluster => {
+        const cKey = `${cluster.lat.toFixed(4)}_${cluster.lng.toFixed(4)}`;
+        if (!coordCounts[cKey]) coordCounts[cKey] = 0;
+        coordCounts[cKey]++;
+        if (coordCounts[cKey] > 1) {
+          // Сдвигаем на несколько метров в сторону, чтобы оба шара были видны
+          const offset = 0.00012 * (coordCounts[cKey] % 2 === 0 ? 1 : -1);
+          cluster.lat += offset;
+          cluster.lng += offset;
+        }
+      });
+
       Object.values(clusters).forEach(cluster => {
         const p = cluster.points[cluster.points.length - 1];
-        const hasDanger = cluster.hasDanger;
+        const clean = cluster.isClean;
         const isFresh = cluster.isFresh;
         const trainingClass = cluster.needsTraining ? "needs-training" : "";
         
-        const colorClass = hasDanger ? "color-red" : "color-green";
+        const colorClass = clean ? "color-green" : "color-red";
         const freshClass = isFresh ? "fresh" : "";
-        const emoji = cluster.needsTraining ? "🎯" : (hasDanger ? "🔴" : "🟢");
 
+        // Цифра поверх родного цвета шара
         const countBadge = cluster.points.length > 1 ? `<div class="cluster-badge">${cluster.points.length}</div>` : "";
         const markerHtml = `<div class="radar-circle ${colorClass} ${freshClass} ${trainingClass}">${countBadge}</div>`;
         
@@ -3135,14 +3038,6 @@ ${allLiveReportsText || "Повідомлень немає"}
 
       document.getElementById('countText').innerHTML = `<span>Точок: ${visibleCount}</span>`;
     }
-
-    window.triggerTrainingFromPopup = function(fbKey) {
-      const p = allPoints.find(x => x._fbKey === fbKey);
-      if (p) {
-        let m = findMarkerByPoint(p);
-        openTrainingModal(p, m);
-      }
-    };
 
     loadCheckpointsFromCloud().then(() => {
       loadNeonLines().then(() => {
