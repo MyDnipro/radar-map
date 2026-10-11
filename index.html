@@ -87,9 +87,9 @@
     }
     html.dash-collapsed #collapsibleBody { display: none; }
 
-    /* 2. БЛОК ШІ */
+    /* 2. БЛОК ШІ (КОМПАКТНЫЙ В СВЁРНУТОМ ВИДЕ, ПРАВИЛЬНОЕ РАСКРЫТИЕ ВНУТРЬ ЭКРАНА) */
     .ai-pill-panel {
-      position: absolute; top: 15px; right: 15px; z-index: 1000;
+      position: absolute; top: 15px; right: 15px; z-index: 1500;
       background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(10px);
       border: 1.5px solid #0284c7; border-radius: 12px; color: #fff;
       box-shadow: 0 4px 18px rgba(0,0,0,0.45);
@@ -108,10 +108,13 @@
     }
 
     .ai-pill-panel.expanded {
-      width: 320px !important; height: auto !important; max-height: 82vh;
+      width: 320px !important;
+      max-width: calc(100vw - 20px) !important;
+      height: auto !important; max-height: 72vh;
       padding: 10px 12px !important; border-radius: 14px !important;
       border-color: #00f3ff !important; box-shadow: 0 6px 30px rgba(0, 243, 255, 0.4) !important;
       display: flex; flex-direction: column;
+      z-index: 2500 !important;
     }
     .ai-pill-compact-content {
       display: flex; align-items: center; justify-content: space-between; width: 100%;
@@ -126,7 +129,7 @@
     .ai-pill-body { display: flex; flex-direction: column; gap: 6px; flex: 1; min-height: 0; }
 
     .ai-chat-box {
-      max-height: 230px; min-height: 110px; overflow-y: auto;
+      max-height: 220px; min-height: 100px; overflow-y: auto;
       display: flex; flex-direction: column; gap: 6px; padding: 6px;
       background: #060913; border: 1px solid #1e293b; border-radius: 8px;
       scroll-behavior: smooth;
@@ -355,15 +358,15 @@
 
     .toast-msg {
       position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
-      z-index: 2000; background: #0f172a; border: 1px solid #38bdf8; color: #fff; padding: 8px 18px;
-      border-radius: 8px; font-size: 12px; font-weight: 600; box-shadow: 0 4px 20px rgba(0, 243, 255, 0.35); display: none; text-align: center;
+      z-index: 3000; background: #0f172a; border: 1.5px solid #38bdf8; color: #fff; padding: 8px 18px;
+      border-radius: 8px; font-size: 12px; font-weight: 700; box-shadow: 0 4px 20px rgba(0, 243, 255, 0.4); display: none; text-align: center;
     }
 
     /* МОДАЛЬНОЕ ОКНО ПРИВЯЗКИ И ОБУЧЕНИЯ ТОЧЕК */
     .train-modal-backdrop {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
       background: rgba(4, 7, 15, 0.75); backdrop-filter: blur(8px);
-      z-index: 3000; display: none; align-items: center; justify-content: center;
+      z-index: 4000; display: none; align-items: center; justify-content: center;
       padding: 16px;
     }
     .train-modal-card {
@@ -419,7 +422,6 @@
     }
     .btn-train-manual:hover { border-color: #38bdf8; color: #fff; }
 
-    /* КНОПКИ ДЕЙСТВИЙ В ОКНЕ ПРИВЯЗКИ */
     .train-modal-actions {
       display: flex; gap: 8px; margin-top: 4px; border-top: 1px solid #1e293b; padding-top: 8px;
     }
@@ -560,7 +562,6 @@
       </div>
       <button class="btn-train-manual" onclick="startManualDragFromModal()">✋ Перетягнути вручну пальцем на карті</button>
       
-      <!-- НОВЫЕ КНОПКИ: ИИ И УДАЛЕНИЕ -->
       <div class="train-modal-actions">
         <button class="btn-modal-act ai" onclick="modalOpenAI()">🤖 Запитати ШІ</button>
         <button class="btn-modal-act del" onclick="modalDeletePoint()">🗑️ Видалити мітку</button>
@@ -618,7 +619,20 @@
     const FIREBASE_NEON_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/config/neon_lines.json";
     const FIREBASE_KB_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/knowledge_base.json";
 
-    // РАСШИРЕННАЯ БАЗА УЛИЦ ДНЕПРА
+    // СПИСОК СЛОВ ДЛЯ АВТОМАТИЧЕСКОГО УДАЛЕНИЯ РЕКЛАМЫ И СПАМА
+    function isSpamMessage(text) {
+      if (!text) return false;
+      const t = text.toLowerCase();
+      const spamWords = [
+        "напоминаем", "у нас есть бот", "бот с картой", "пробный доступ",
+        "события живут", "метки появляются", "без отдельных приложений",
+        "бесплатный пробный", "подписчик", "реклама", "всё прямо в telegram",
+        "наш бот", "t.me/", "http://", "https://"
+      ];
+      return spamWords.some(w => t.includes(w));
+    }
+
+    // БАЗА УЛИЦ ДНЕПРА
     const DNIPRO_STREETS_MAP = {
       "криворізьк": { name: "вул. Криворізька", lat: 48.4385, lng: 34.9920 },
       "криворож": { name: "вул. Криворізька", lat: 48.4385, lng: 34.9920 },
@@ -716,7 +730,7 @@
     requestWakeLock();
 
     // ==========================================================================
-    // ЛОГИКА СТАТУСА «МІЙ ШЛЯХ» (ТОЛЬКО ПО СВЕТОФОРАМ)
+    // ЛОГИКА СТАТУСА «МІЙ ШЛЯХ» (СТРОГО ПО СВЕТОФОРАМ)
     // ==========================================================================
     function updateRouteStatus() {
       const bar = document.getElementById("routeStatusBar");
@@ -783,18 +797,15 @@
     }
 
     // ==========================================================================
-    // ПЛАВНАЯ АНИМАЦИЯ СКОЛЬЖЕНИЯ МЕТКИ К НОВОЙ ТОЧКЕ
+    // КИНЕМАТОГРАФИЧНОЕ ПЕРЕМЕЩЕНИЕ: КАРТА ОТДАЛЯЕТСЯ -> МЕТКА ЕДЕТ -> ПРИБЛИЖАЕТСЯ
     // ==========================================================================
-    function smoothGlideMarker(marker, startLatLng, endLatLng, duration = 900, onDone = null) {
-      if (!marker) {
-        if (onDone) onDone();
-        return;
-      }
+    function smoothGlideMarker(marker, startLatLng, endLatLng, duration = 1300, onDone = null) {
+      if (!marker) { if (onDone) onDone(); return; }
       const startTime = performance.now();
       function animateStep(currentTime) {
         const elapsed = currentTime - startTime;
         const progress = Math.min(elapsed / duration, 1);
-        // Кубическая функция замедления к концу
+        // Плавное кубическое замедление
         const ease = 1 - Math.pow(1 - progress, 3);
 
         const currentLat = startLatLng.lat + (endLatLng.lat - startLatLng.lat) * ease;
@@ -812,11 +823,20 @@
     }
 
     // ==========================================================================
-    // МОДАЛЬНОЕ ОКНО ПРИВЯЗКИ (ВЫЗЫВАЕТСЯ ТОЛЬКО ДОЛГИМ НАЖАТИЕМ)
+    // МОДАЛЬНОЕ ОКНО ПРИВЯЗКИ (ТОЛЬКО ДОЛГИЙ ТАП)
     // ==========================================================================
     function openTrainingModal(point, marker) {
       currentTrainingPoint = point;
       currentTrainingMarker = marker;
+
+      // Если маркер не передан, находим его на карте
+      if (!currentTrainingMarker) {
+        markersLayer.eachLayer(l => {
+          if (l.getLatLng && l.getLatLng().lat === point.lat && l.getLatLng().lng === point.lng) {
+            currentTrainingMarker = l;
+          }
+        });
+      }
 
       const rawTxt = point.raw_text || point.text || "";
       document.getElementById("trainTextQuote").innerText = `«${rawTxt}»`;
@@ -861,7 +881,6 @@
       document.getElementById("trainModal").style.display = "none";
     }
 
-    // ДЕЙСТВИЯ ИЗ МОДАЛЬНОГО ОКНА: ШІ И УДАЛИТЬ
     function modalOpenAI() {
       if (!currentTrainingPoint) return;
       const p = currentTrainingPoint;
@@ -876,7 +895,7 @@
       deleteSinglePoint(p._fbKey, p.text || p.raw_text || "");
     }
 
-    // ПЕРЕМЕЩЕНИЕ ТОЧКИ С АНИМАЦИЕЙ И ОБУЧЕНИЕМ БАЗЫ ЗНАНИЙ
+    // КИНЕМАТОГРАФИЧНОЕ ПЕРЕМЕЩЕНИЕ НА НОВУЮ УЛИЦУ
     async function applyPointRelocation(streetName, lat, lng) {
       if (!currentTrainingPoint) return;
       closeTrainModal();
@@ -884,9 +903,9 @@
       const p = currentTrainingPoint;
       const m = currentTrainingMarker;
       const startPos = m ? m.getLatLng() : { lat: p.lat, lng: p.lng };
-      const targetPos = { lat: Number(lat.toFixed(5)), lng: Number(lng.toFixed(5)) };
+      const targetPos = L.latLng(Number(lat.toFixed(5)), Number(lng.toFixed(5)));
 
-      // Извлекаем чистую ключевую фразу для обучения
+      // 1. Очищаем текст от мусора для надежного обучения
       let phrase = (p.raw_text || p.text || "")
         .replace(/^(?:❓|\bчисто\b|\bбп\b|\bпатруль\b|\(чисто\))/gi, "")
         .replace(/(?:чисто|спокійно|вільно|пусто)/gi, "")
@@ -894,45 +913,60 @@
 
       if (phrase.length < 3) phrase = streetName.toLowerCase();
 
-      // 1. Плавный полет камеры к целевому месту
-      map.flyTo([targetPos.lat, targetPos.lng], 16, { animate: true, duration: 1.0 });
+      // ШАГ 1: КАРТА ПЛАВНО ОТДАЛЯЕТСЯ
+      const dist = startPos.distanceTo ? startPos.distanceTo(targetPos) : 500;
+      if (dist > 350) {
+        const bounds = L.latLngBounds([startPos, targetPos]).pad(0.35);
+        map.flyToBounds(bounds, { duration: 0.8, easeLinearity: 0.25 });
+      } else {
+        map.flyTo([(startPos.lat + targetPos.lat) / 2, (startPos.lng + targetPos.lng) / 2], Math.max(12, map.getZoom() - 2), { duration: 0.65 });
+      }
 
-      // 2. Плавная анимация скольжения кружка по карте
-      smoothGlideMarker(m, startPos, targetPos, 900, async () => {
-        p.lat = targetPos.lat;
-        p.lng = targetPos.lng;
-        p.needs_training = false;
-        p.address = streetName;
+      // Подсвечиваем метку ореолом на время движения
+      const iconEl = m ? m.getElement()?.querySelector('.radar-circle') : null;
+      if (iconEl) iconEl.classList.add('active-dragging-target');
 
-        // 3. Сохранение в Firebase Points
-        if (p._fbKey) {
+      // ШАГ 2: ЧЕРЕЗ 800мс МЕТКА ПЛАВНО ПЕРЕЕЗЖАЕТ
+      setTimeout(() => {
+        smoothGlideMarker(m, startPos, targetPos, 1300, async () => {
+          if (iconEl) iconEl.classList.remove('active-dragging-target');
+
+          // ШАГ 3: КАРТА ПЛАВНО ПРИБЛИЖАЕТСЯ К МЕТКЕ НА НОВОМ МЕСТЕ
+          map.flyTo([targetPos.lat, targetPos.lng], 16, { duration: 0.85 });
+
+          p.lat = targetPos.lat;
+          p.lng = targetPos.lng;
+          p.needs_training = false;
+          p.address = streetName;
+
+          if (p._fbKey) {
+            try {
+              await fetch(FIREBASE_POINTS_URL.replace(".json", `/${p._fbKey}.json`), {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ lat: p.lat, lng: p.lng, needs_training: false, address: streetName })
+              });
+            } catch(e) {}
+          }
+
+          // Обучение базы знаний на сервере и локально
           try {
-            await fetch(FIREBASE_POINTS_URL.replace(".json", `/${p._fbKey}.json`), {
-              method: "PATCH",
+            await fetch(FIREBASE_KB_URL, {
+              method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ lat: p.lat, lng: p.lng, needs_training: false, address: streetName })
+              body: JSON.stringify({ phrase: phrase, address: streetName, lat: p.lat, lng: p.lng, updated_at: Date.now() })
             });
           } catch(e) {}
-        }
 
-        // 4. Обучение Базы Знаний (Knowledge Base)
-        try {
-          await fetch(FIREBASE_KB_URL, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ phrase: phrase, address: streetName, lat: p.lat, lng: p.lng, updated_at: Date.now() })
-          });
-        } catch(e) {}
+          learnedRules.push({ phrase: phrase, address: streetName, lat: p.lat, lng: p.lng });
+          localStorage.setItem("radar_learned_rules", JSON.stringify(learnedRules));
 
-        // Сохраняем правило локально
-        learnedRules.push({ phrase: phrase, address: streetName, lat: p.lat, lng: p.lng });
-        localStorage.setItem("radar_learned_rules", JSON.stringify(learnedRules));
-
-        showToast(`🎯 «${streetName}» збережено! Радар навчився цієї фрази.`);
-        renderMarkers();
-        renderTrafficLights();
-        updateRouteStatus();
-      });
+          showToast(`🎯 Метку переміщено на «${streetName}»!`);
+          renderMarkers();
+          renderTrafficLights();
+          updateRouteStatus();
+        });
+      }, 800);
     }
 
     async function executeCustomTrain() {
@@ -1173,7 +1207,7 @@
     };
 
     // ==========================================================================
-    // ДИАЛОГОВЫЙ ЧАТ ШІ
+    // ДИАЛОГОВЫЙ ЧАТ ШІ (АККУРАТНОЕ РАСКРЫТИЕ БЕЗ СМЕЩЕНИЯ КАРТЫ)
     // ==========================================================================
     const aiPillPanel = document.getElementById("aiPillPanel");
     const aiInlineInput = document.getElementById("aiInlineInput");
@@ -1183,14 +1217,46 @@
     let geminiChatHistory = [];
     let targetedPointContext = null;
 
+    // ЗАЩИТА: КЛИКИ И ЖЕСТЫ ВНУТРИ ПАНЕЛЕЙ НЕ ДВИГАЮТ КАРТУ LEAFLET
+    L.DomEvent.disableClickPropagation(aiPillPanel);
+    L.DomEvent.disableScrollPropagation(aiPillPanel);
+    L.DomEvent.disableClickPropagation(document.getElementById("dashPanel"));
+    L.DomEvent.disableClickPropagation(document.getElementById("routeStatusBar"));
+    L.DomEvent.disableClickPropagation(document.getElementById("btnRefresh"));
+    L.DomEvent.disableClickPropagation(document.getElementById("trainModal"));
+
     function toggleAiPillExpand(e) {
       if (e && (e.target.closest('textarea') || e.target.closest('.btn-ai-send') || e.target.closest('.ai-mini-chip') || e.target.closest('span[title]'))) return;
       const isExpanded = aiPillPanel.classList.toggle("expanded");
       aiPillPanel.classList.toggle("compact", !isExpanded);
       btnAiPillToggle.innerText = isExpanded ? "▲" : "▼";
+
       if (isExpanded) {
+        // Защита от вылетания за правый или нижний край экрана телефона
+        const winW = window.innerWidth;
+        const winH = window.innerHeight;
+        const targetW = Math.min(320, winW - 20);
+
+        let curLeft = aiPillPanel.offsetLeft;
+        let curTop = aiPillPanel.offsetTop;
+
+        if (curLeft + targetW > winW - 10) {
+          curLeft = Math.max(10, winW - targetW - 10);
+          aiPillPanel.style.left = `${curLeft}px`;
+          aiPillPanel.style.right = "auto";
+        }
+        if (curLeft < 10) {
+          aiPillPanel.style.left = "10px";
+          aiPillPanel.style.right = "auto";
+        }
+        const approxH = Math.min(380, winH * 0.7);
+        if (curTop + approxH > winH - 20) {
+          curTop = Math.max(10, winH - approxH - 20);
+          aiPillPanel.style.top = `${curTop}px`;
+          aiPillPanel.style.bottom = "auto";
+        }
+
         setTimeout(() => {
-          aiInlineInput.focus();
           aiChatBox.scrollTop = aiChatBox.scrollHeight;
         }, 150);
       }
@@ -1233,9 +1299,7 @@
 
     window.openAiContext = function(type, id, name, extraData = {}) {
       if (aiPillPanel.classList.contains("compact")) {
-        aiPillPanel.classList.remove("compact");
-        aiPillPanel.classList.add("expanded");
-        btnAiPillToggle.innerText = "▲";
+        toggleAiPillExpand();
       }
       targetedPointContext = { type: type, id: id, name: name, ...extraData };
 
@@ -2101,7 +2165,9 @@ ${allLiveReportsText || "Повідомлень немає"}
       if (!e.target.closest(".search-box")) searchResults.style.display = "none";
     });
 
-    // ЗАГРУЗКА ТОЧЕК
+    // ==========================================================================
+    // ЗАГРУЗКА ТОЧЕК И АВТОМАТИЧЕСКАЯ ОЧИСТКА СПАМА И РЕКЛАМЫ
+    // ==========================================================================
     async function loadPoints() {
       try {
         const res = await fetch(`${FIREBASE_POINTS_URL}?t=${Date.now()}`);
@@ -2109,10 +2175,47 @@ ${allLiveReportsText || "Повідомлень немає"}
         const data = await res.json();
         if (!data) { allPoints = []; renderMarkers(); renderTrafficLights(); updateRouteStatus(); return; }
         const now = Date.now();
+
+        const spamKeysToDelete = [];
+
         allPoints = Object.entries(data).map(([key, p]) => {
           if (!p || typeof p !== 'object' || !p.lat || !p.lng) return null;
-          p._fbKey = key; return p;
+          p._fbKey = key;
+
+          const fullText = (p.text || "") + " " + (p.raw_text || "");
+
+          // 1. ПРОВЕРКА НА РЕКЛАМНЫЙ МУСОР (УДАЛЯЕМ ИЗ БАЗЫ СРАЗУ)
+          if (isSpamMessage(fullText)) {
+            spamKeysToDelete.push(key);
+            return null;
+          }
+
+          // 2. АВТОПРИВЯЗКА ПО РАНЕЕ ОБУЧЕННЫМ ПРАВИЛАМ
+          if (p.needs_training) {
+            const lower = fullText.toLowerCase();
+            const matchedRule = learnedRules.find(r => r.phrase && lower.includes(r.phrase.toLowerCase()));
+            if (matchedRule) {
+              p.lat = matchedRule.lat;
+              p.lng = matchedRule.lng;
+              p.address = matchedRule.address;
+              p.needs_training = false;
+              fetch(FIREBASE_POINTS_URL.replace(".json", `/${key}.json`), {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ lat: p.lat, lng: p.lng, needs_training: false, address: p.address })
+              }).catch(() => {});
+            }
+          }
+
+          return p;
         }).filter(p => p && (now - (p.time || p.timestamp || 0)) <= LIFETIME_MS);
+
+        // Очищаем спам из Firebase
+        if (spamKeysToDelete.length > 0) {
+          spamKeysToDelete.forEach(k => {
+            fetch(FIREBASE_POINTS_URL.replace(".json", `/${k}.json`), { method: "DELETE" }).catch(() => {});
+          });
+        }
 
         renderMarkers();
         renderTrafficLights();
@@ -2121,7 +2224,7 @@ ${allLiveReportsText || "Повідомлень немає"}
     }
 
     // ==========================================================================
-    // ОТОБРАЖЕНИЕ МЕТОК (ОДИНАРНЫЙ КЛИК = ПОПАП, ДОЛГИЙ КЛИК = МОДАЛЬНОЕ ОКНО)
+    // ОТОБРАЖЕНИЕ МЕТОК (ОДИНАРНЫЙ КЛИК = ПОПАП, ДОЛГИЙ КЛИК = ОКНО ПРИВЯЗКИ)
     // ==========================================================================
     function renderMarkers() {
       markersLayer.clearLayers();
@@ -2157,7 +2260,6 @@ ${allLiveReportsText || "Повідомлень немає"}
         const cleanTextSafe = (p.text || "").replace(/'/g, "\\'");
         const fbKeySafe = p._fbKey || "";
 
-        // СТАНДАРТНЫЙ ПОПАП (В ТОЧНОСТИ КАК НА ФОТО 2)
         const popupContent = `
           <div style="padding:4px; font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif; min-width:170px;">
             <div style="font-weight:700; font-size:13px; color:#0f172a;">${emoji} ${p.text || ""}</div>
@@ -2176,12 +2278,10 @@ ${allLiveReportsText || "Повідомлень немає"}
         const marker = L.marker([p.lat, p.lng], { icon: dotIcon, draggable: false });
         marker.bindPopup(popupContent);
 
-        // ОДИНАРНЫЙ КЛИК = ТОЛЬКО ПОПАП (НЕ ОКНО!)
         marker.on('click', () => {
           marker.openPopup();
         });
 
-        // ДОЛГОЕ ЗАЖАТИЕ = МОДАЛЬНОЕ ОКНО ПРИВЯЗКИ
         let pressTimer = null;
         let isLongTap = false;
         let startX = 0, startY = 0;
