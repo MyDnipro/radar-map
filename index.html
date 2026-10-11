@@ -61,7 +61,7 @@
       background: #0b1120;
     }
 
-    /* 1. ЛЕВЫЙ ВЕРХНИЙ: ТОЧЕК XX */
+    /* 1. ЛЕВЫЙ ВЕРХНИЙ: ТОЧЕК XX (КОМПАКТНАЯ ШИРИНА БЕЗ ПЕРЕКРЫТИЯ) */
     .dashboard {
       position: absolute !important;
       top: 15px !important;
@@ -75,7 +75,8 @@
       border-radius: 14px;
       color: #fff;
       box-shadow: 0 6px 25px rgba(0,0,0,0.45);
-      width: 235px;
+      width: 210px;
+      max-width: calc(100vw - 145px);
       border: 1.5px solid #334155;
       transition: width 0.28s cubic-bezier(0.4, 0, 0.2, 1), padding 0.25s ease;
       overflow: hidden;
@@ -103,16 +104,17 @@
       background: #1e293b;
       border: 1px solid #334155;
       color: #94a3b8;
-      width: 22px;
-      height: 22px;
-      border-radius: 6px;
+      width: 26px;
+      height: 26px;
+      border-radius: 7px;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 10px;
+      font-size: 11px;
       flex-shrink: 0;
       margin-left: 6px;
+      z-index: 1005;
     }
     .collapsible-body { margin-top: 6px; }
 
@@ -135,7 +137,7 @@
     }
     html.dash-collapsed #collapsibleBody { display: none; }
 
-    /* 2. ПРАВЫЙ ВЕРХНИЙ: ШІ (С БЕЙДЖЕМ ВЕРСИИ 2.5) */
+    /* 2. ПРАВЫЙ ВЕРХНИЙ: ШІ (ВЕРСИЯ 2.6) */
     .ai-pill-panel {
       position: absolute;
       top: 15px;
@@ -841,13 +843,13 @@
 
   <div id="transferBanner" class="transfer-banner">⏳ Виконується перенесення мітки...</div>
 
-  <!-- 1. ЛЕВЫЙ ВЕРХНИЙ УГОЛ: ТОЧЕК XX -->
+  <!-- 1. ЛЕВЫЙ ВЕРХНИЙ УГОЛ: ТОЧЕК XX (ШИРИНА 210px) -->
   <div id="dashPanel" class="dashboard">
     <div id="dashHeader" class="dash-header">
       <div class="points-count" id="countText" onclick="handleSecretClick()">
         <span>Точок: 0</span>
       </div>
-      <button class="btn-toggle" id="btnToggle" onclick="togglePanelCollapse()">▲</button>
+      <button class="btn-toggle" id="btnToggle" onclick="togglePanelCollapse(event)">▲</button>
     </div>
 
     <div id="collapsibleBody" class="collapsible-body">
@@ -895,13 +897,13 @@
     </div>
   </div>
 
-  <!-- 2. ПРАВЫЙ ВЕРХНИЙ УГОЛ: ШІ (С БЕЙДЖЕМ ВЕРСИИ 2.5) -->
+  <!-- 2. ПРАВЫЙ ВЕРХНИЙ УГОЛ: ШІ (С БЕЙДЖЕМ ВЕРСИИ 2.6) -->
   <div id="aiPillPanel" class="ai-pill-panel compact">
     <div id="aiPillHeader" class="ai-pill-compact-content">
       <div class="ai-titleBadge" onclick="toggleAiPillExpand()">
         <span style="font-size:14px;">🤖</span>
         <span id="aiPillLabel">ШІ</span>
-        <span class="ai-version-badge">v2.5</span>
+        <span class="ai-version-badge">v2.6</span>
         <span style="font-size:9px; color:#64748b; margin-left:3px;">✥</span>
       </div>
       <div style="display:flex; align-items:center; gap:4px;">
@@ -922,7 +924,7 @@
 
       <div id="aiChatBox" class="ai-chat-box">
         <div class="ai-msg bot">
-          👋 Вітаю! Я ваш ШІ-штурман (Карта v2.5). Я маю прямий доступ до карти: просто напишіть «перенеси цю точку на Західний» або «познач чисто», і я одразу виконаю!
+          👋 Вітаю! Я ваш ШІ-штурман (Карта v2.6). Напишіть мені команду — я миттєво переміщу точку чи зміню її статус!
         </div>
       </div>
 
@@ -1120,7 +1122,6 @@
       return spamWords.some(w => t.includes(w));
     }
 
-    // ПОЛНЫЙ СЛОВАРЬ В JS ДЛЯ МОМЕНТАЛЬНЫХ ПОДСКАЗОК ПРИ ПЕРЕНОСЕ
     const DNIPRO_STREETS_MAP = {
       "лак": { name: "Лакофарбовий завод (початок з/м Західний)", lat: 48.4680, lng: 34.9520 },
       "лакокраск": { name: "Лакофарбовий завод (початок з/м Західний)", lat: 48.4680, lng: 34.9520 },
@@ -1859,9 +1860,7 @@
       showToast(`⚠️ Не знайдено координат для «${q}». Спробуйте іншу назву.`);
     }
 
-    // ==========================================================================
-    // ИСПОЛНИТЕЛЬНЫЙ ДВИЖОК ДЛЯ ДЕЙСТВИЙ ШІ (ACTION ENGINE)
-    // ==========================================================================
+    // ИСПОЛНИТЕЛЬНЫЙ ДВИЖОК ДЛЯ ДЕЙСТВИЙ ШІ
     async function executeAiActionDirective(actionType, payload) {
       if (actionType === "MOVE" || actionType === "RELOCATE") {
         let p = null;
@@ -1949,7 +1948,7 @@
       }
     }
 
-    // СВЕТОФОРЫ
+    // СВЕТОФОРЫ (ТОЧНЫЙ ФИЛЬТР БЕЗ СЛОВА "З'ЇЗД")
     let manualOverrides = {};
     try { manualOverrides = JSON.parse(localStorage.getItem("radar_tl_overrides") || "{}"); } catch(e) {}
 
@@ -2360,7 +2359,6 @@ ${allLiveReportsText || "Повідомлень немає"}
 
         let rawReply = resObj.data.candidates?.[0]?.content?.parts?.[0]?.text || "Готово.";
 
-        // ПЕРЕХВАТ И ВЫПОЛНЕНИЕ КОМАНД ДЕЙСТВИЯ
         const actionMatches = rawReply.match(/<<<ACTION:(.*?)>>>/g);
         if (actionMatches) {
           actionMatches.forEach(tag => {
@@ -2639,10 +2637,10 @@ ${allLiveReportsText || "Повідомлень немає"}
         }
 
         const matched = allPoints.filter(p => {
-          const text = ((p.raw_text || p.text || "") + " " + (p.address || "")).toLowerCase();
+          const t = ((p.raw_text || p.text || "") + " " + (p.address || "")).toLowerCase();
           return cp.keys.some(k => {
-            if (k === "стан") return /\bстан\b/i.test(text) && !/остановил/i.test(text);
-            return text.includes(k);
+            if (k === "стан") return /\bстан\b/i.test(t) && !/остановил/i.test(t);
+            return t.includes(k);
           });
         });
         matched.sort((a, b) => (b.time || 0) - (a.time || 0));
@@ -2752,7 +2750,7 @@ ${allLiveReportsText || "Повідомлень немає"}
             startX = clientX; startY = clientY;
             pressTimer = setTimeout(() => {
               isLongPress = true;
-              if (navigator.vibrate) navigator.vibrate(50);
+              if (navigator.vibrate) navigator.vibrate(60);
               openTrafficLightControl(cp.id);
             }, 500);
           }
