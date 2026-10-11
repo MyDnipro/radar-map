@@ -584,27 +584,27 @@
       tab5: { multi: false, selected: getSavedSet("stats_filter_tab5") }
     };
 
+    // СТРОГИЕ И УТОЧНЕННЫЕ РЕГУЛЯРКИ ДЛЯ 7 ТОЧЕК (ИЗБАВИЛИСЬ ОТ ПЕРЕСЕЧЕНИЙ С ЩЕПКИНА И Т.Д.)
     const TARGET_CHECKPOINTS = [
-      { id: "pavlova", name: "вул. Павлова", fullName: "вул. Академіка Павлова", regex: /(?:павлов|щепкин|щепкін|академика\s*павлова|академіка\s*павлова)/i, color: "#00f3ff" },
-      { id: "krasnozavodska", name: "Краснозаводська", fullName: "Краснозаводська / Белелюбського / Комбайновий", regex: /(?:белелюб|краснозавод|комбайн|дтрз|ударник|белелюбского|белелюбського|краснозаводская|краснозаводська)/i, color: "#f59e0b" },
-      { id: "vodolechebnitsa", name: "Водолікарня", fullName: "Водолікарня (пр. Свободи)", regex: /(?:водолечеб|водолікарн|водогрязелечеб|водолечебка|водолечебниц)/i, color: "#ec4899" },
-      { id: "vodokachka", name: "Водокачка", fullName: "Водокачка (Набережна Заводська)", regex: /(?:водокачк|водокачка|водокачки)/i, color: "#3b82f6" },
-      { id: "rechport", name: "Річпорт", fullName: "Річпорт (Речной вокзал / Десантники)", regex: /(?:речпорт|річпорт|речной\s*вокзал|річковий\s*вокзал|десантник|десантников|десантників)/i, color: "#10b981" },
-      { id: "naberezhna", name: "Набережна Зав.", fullName: "Набережна Заводська (Стан 550, РОВД, Кайдаки)", regex: /(?:набережн.*завод|набка.*завод|заводск.*набережн|стан\s*550|стан550|\bстан\b|кайдак|кайдаки|кайдакск|кайдацьк|ровд)/i, color: "#a855f7" },
-      { id: "svobody", name: "пр. Свободи", fullName: "проспект Свободи (пр. Свободы)", regex: /(?:проспект\s*свобод|пр\s*свобод|пр\.\s*свобод|свободы|свободи)/i, color: "#eab308" }
+      { id: "pavlova", name: "вул. Павлова", fullName: "вул. Академіка Павлова", regex: /(?:академика\s*павлова|академіка\s*павлова|\bпавлова\b)/i, color: "#00f3ff" },
+      { id: "krasnozavodska", name: "Краснозаводська", fullName: "Краснозаводська / Белелюбського / Комбайновий", regex: /(?:белелюб|краснозавод|комбайн|дтрз|ударник)/i, color: "#f59e0b" },
+      { id: "vodolechebnitsa", name: "Водолікарня", fullName: "Водолікарня (пр. Свободи)", regex: /(?:водолечеб|водолікарн|водогрязелечеб)/i, color: "#ec4899" },
+      { id: "vodokachka", name: "Водокачка", fullName: "Водокачка (Набережна Заводська)", regex: /(?:водокачк)/i, color: "#3b82f6" },
+      { id: "rechport", name: "Річпорт", fullName: "Річпорт (Речной вокзал / Десантники)", regex: /(?:речпорт|річпорт|речной\s*вокзал|річковий\s*вокзал|десантник)/i, color: "#10b981" },
+      { id: "naberezhna", name: "Набережна Зав.", fullName: "Набережна Заводська (Стан 550, РОВД, Кайдаки)", regex: /(?:кайдак|кайдацька|стан\s*550|стан550|ровд.*заводськ)/i, color: "#a855f7" },
+      { id: "svobody", name: "пр. Свободи", fullName: "проспект Свободи (пр. Свободы)", regex: /(?:проспект\s*свобод|пр\s*свобод|пр\.\s*свобод|свободи\b)/i, color: "#eab308" }
     ];
 
     const OTHER_SECTORS = [
       { name: "Центр, Нагірка, Перемога", regex: /(?:центр|міст.*сіті|мост.*сити|яворницьк|карла\s*маркса|нагірк|гагарін|науки|перемог|побед|соборн)/i },
-      { name: "Південь (12 Кв, Тополя, Аеропорт, Кодаки)", regex: /(?:хмельницк|хмельницьк|12.*квартал|квартал|топол|сокіл|сокол|мирн|корея|кротов|шинн|аеропорт|аэропорт|кодак|братськ|сурськ|краснопіл|тещин.*язик|тещин.*язык)/i },
+      { name: "Південь (12 Кв, Тополя, Аеропорт, Кодаки)", regex: /(?:хмельницк|хмельницьк|12.*квартал|квартал|топол|сокіл|сокол|мирн|корея|кротов|шинн|аеропорт|аэропорт|кодак|братськ|сурськ|краснопіл|тещин.*язик)/i },
       { name: "пр. Поля, Титова, вул. Робоча, Канатна", regex: /(?:поля|киров|кіров|титов|рудницьк|робоч|рабоч|канатн|канатная|криворож|криворізьк)/i },
-      { name: "Захід (Мазепи, Нігояна, Західний, Діївка)", regex: /(?:мазеп|петровськ|нігоян|нигоян|калинин|калінін|металург|західн|западн|діївк|чечел|трофимов|кондратюк)/i },
+      { name: "Захід (Мазепи, Нігояна, Західний, Діївка)", regex: /(?:мазеп|петровськ|нігоян|нигоян|калинин|калінін|металург|західн|западн|діївк|чечел|трофимов|кондратюк|лак)/i },
       { name: "Вокзали, Озерка, вул. Шмідта (Бандери)", regex: /(?:вокзал|старомостов|островск|островськ|курчатов|128.*бригад|озерк|озёрк|шмидт|шмідт|бандера|бандери)/i },
       { name: "Лівий берег (Калинова, ДШ, Караван, Фрунзенський)", regex: /(?:донецк.*шоссе|донецьк.*шосе|караван|левобереж|лівобереж|калинов|янтарн|клочко|березинк|фрунзенськ|ломівськ|моторн|солончаков|луговськ|петрозаводськ)/i },
       { name: "Лівий берег (Слобожанський, Сонячний, Самара)", regex: /(?:слобожанск|слобожанськ|правд|сонячн|солнечн|малиновськ|придніпров|придник|ігрень|бик|бык|золоті ключі|молодогвард|чаплі)/i }
     ];
 
-    // УНИВЕРСАЛЬНЫЙ СПАМ-ФИЛЬТР ДЛЯ СТАТИСТИКИ
     function isArchiveSpam(text) {
       if (!text) return false;
       const t = text.toLowerCase();
@@ -771,7 +771,6 @@ ${recentReports}
         const res = await fetch(`${FIREBASE_ARCHIVE_URL}?t=${Date.now()}`);
         if (res.ok) {
           const data = await res.json();
-          // Очищаем архив от рекламного спама при загрузке
           rawArchive = data ? Object.entries(data).map(([k, v]) => ({ _fbKey: k, ...v })).filter(x => x && x.time && !isArchiveSpam(x.text || x.raw_text || "")) : [];
         }
       } catch (e) { rawArchive = []; }
@@ -1140,6 +1139,7 @@ ${recentReports}
             const isClean = m.is_clean;
             const badgeClass = isClean ? "feed-badge-green" : "feed-badge-red";
             const badgeText = isClean ? "🟢 ЧИСТО" : "🔴 УВАГА";
+            const msgText = m.text || m.raw_text || "";
 
             itemsHtml += `
               <div class="feed-msg-item">
@@ -1150,7 +1150,7 @@ ${recentReports}
                     <span onclick="deleteArchiveItem('${m._fbKey}', event)" style="color:#ef4444; font-size:10px; cursor:pointer;" title="Видалити з статистики">🗑️</span>
                   </div>
                 </div>
-                <div style="color:#e2e8f0;">«${m.text || m.raw_text || ''}»</div>
+                <div style="color:#e2e8f0;">«${msgText}»</div>
               </div>
             `;
           });
@@ -1642,10 +1642,16 @@ ${recentReports}
             const dt = new Date(s.startTime).toLocaleDateString([], { day:'2-digit', month:'2-digit' });
             const st = new Date(s.startTime).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
             const et = new Date(s.endTime).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+            
+            const reportsHtml = s.reports.map(r => {
+              const txt = r.text || r.raw_text || "";
+              return `• «${txt}» <span onclick="deleteArchiveItem('${r._fbKey}', event)" class="btn-del-report">Видалити</span>`;
+            }).join("<br>");
+
             reportsBox.innerHTML += `
               <div class="modal-report-item" style="border-left: 3px solid ${t.color};">
                 <div class="modal-report-time" style="color:${t.color};">${t.fullName} (${dt}, ${st}–${et})</div>
-                <div>${s.reports.map(r => `• \${r.text || r.raw_text || ''} <span onclick="deleteArchiveItem('\${r._fbKey}', event)" style="color:#ef4444; font-size:10px; cursor:pointer; float:right;" title="Видалити">🗑️</span>`).join("<br>")}</div>
+                <div>${reportsHtml}</div>
               </div>
             `;
           });
@@ -1696,10 +1702,16 @@ ${recentReports}
           const st = new Date(s.startTime).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
           const et = new Date(s.endTime).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
           const dt = new Date(s.startTime).toLocaleDateString([], { day:'2-digit', month:'2-digit' });
+
+          const reportsHtml = s.reports.map(r => {
+            const txt = r.text || r.raw_text || "";
+            return `• «${txt}» <span onclick="deleteArchiveItem('${r._fbKey}', event)" class="btn-del-report">Видалити</span>`;
+          }).join("<br>");
+
           reportsBox.innerHTML += `
             <div class="modal-report-item">
               <div class="modal-report-time">🕒 ${dt} (${st} ➔ ${et}) | Підтверджено: ${s.count} людей</div>
-              <div style="color:#e2e8f0; margin-top:4px;">${s.reports.map(r => `• «\${r.text || r.raw_text || ''}» <span onclick="deleteArchiveItem('\${r._fbKey}', event)" style="color:#ef4444; font-size:10px; cursor:pointer; float:right;" title="Видалити">🗑️ Видалити</span>`).join("<br>")}</div>
+              <div style="color:#e2e8f0; margin-top:4px;">${reportsHtml}</div>
             </div>
           `;
         });
@@ -1723,10 +1735,11 @@ ${recentReports}
       const reportsBox = document.getElementById("modalReports");
       reportsBox.innerHTML = "";
       session.reports.forEach(r => {
+        const txt = r.text || r.raw_text || "";
         reportsBox.innerHTML += `
           <div class="modal-report-item">
             <div class="modal-report-time">🕒 ${new Date(r.time).toLocaleTimeString()}</div>
-            <div>«${r.text || r.raw_text || ''}» <span onclick="deleteArchiveItem('${r._fbKey}', event)" style="color:#ef4444; font-size:10px; cursor:pointer; float:right;" title="Видалити">🗑️ Видалити</span></div>
+            <div>«${txt}» <span onclick="deleteArchiveItem('${r._fbKey}', event)" class="btn-del-report">Видалити</span></div>
           </div>
         `;
       });
@@ -1754,10 +1767,16 @@ ${recentReports}
           foundAny = true;
           inHour.forEach(s => {
             const dt = new Date(s.startTime).toLocaleDateString([], { day:'2-digit', month:'2-digit' });
+            
+            const reportsHtml = s.reports.map(r => {
+              const txt = r.text || r.raw_text || "";
+              return `• «${txt}» <span onclick="deleteArchiveItem('${r._fbKey}', event)" class="btn-del-report">Видалити</span>`;
+            }).join("<br>");
+
             reportsBox.innerHTML += `
               <div class="modal-report-item" style="border-left: 3px solid ${t.color};">
                 <div class="modal-report-time" style="color:${t.color};">${t.fullName} (${dt})</div>
-                <div>${s.reports.map(r => `• \${r.text || r.raw_text || ''} <span onclick="deleteArchiveItem('\${r._fbKey}', event)" style="color:#ef4444; font-size:10px; cursor:pointer; float:right;" title="Видалити">🗑️</span>`).join("<br>")}</div>
+                <div>${reportsHtml}</div>
               </div>
             `;
           });
