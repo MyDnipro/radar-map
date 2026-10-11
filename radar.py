@@ -7,7 +7,6 @@ from datetime import datetime
 import requests
 
 RAW_GEMINI_KEYS = os.environ.get("GEMINI_KEY", "").strip() or os.environ.get("GEMINI_KEYS", "").strip()
-# Разбиваем строку ключей по запятым, пробелам или переводам строк
 GEMINI_KEYS = [k.strip() for k in re.split(r'[,;\s]+', RAW_GEMINI_KEYS) if len(k.strip()) > 15]
 
 current_key_index = 0
@@ -43,30 +42,55 @@ def rotate_to_next_key():
 
 PROCESSED_POST_IDS = set()
 
-# ФИЛЬТР РЕКЛАМЫ И СПАМА
+# МОЩНЫЙ ФИЛЬТР РЕКЛАМЫ, БОТОВ И СБОРОВ
 AD_FILTER_REGEX = re.compile(
     r'(?:'
     r'напоминаем.*?бот|'
     r'бот\s+с\s+картой|'
     r'бот\s+з\s+картою|'
-    r'підтримайте\s+канал|'
-    r'поддержите\s+канал|'
-    r'канал\s+без\s+тцк|'
+    r'покупка\s+бота|'
+    r'купить\s+бота|'
+    r'підтримайте\s+(?:канал|її|його)|'
+    r'поддержите\s+(?:канал|её|его)|'
+    r'группа\s+вам\s+полезна|'
+    r'канал\s+вам\s+полезен|'
+    r'сделайте\s+репост|'
+    r'зробіть\s+репост|'
+    r'пригласите\s+друзей|'
+    r'запросіть\s+друзів|'
+    r'поделитесь\s+ссылкой|'
+    r'поділіться\s+посиланням|'
+    r'ссылка\s+на\s+бота|'
+    r'посилання\s+на\s+бота|'
+    r'описании\s+группы|'
+    r'описании\s+канала|'
+    r'продолжать\s+работу|'
+    r'продовжувати\s+роботу|'
+    r'улучшать\s+функционал|'
+    r'развивать\s+проект|'
+    r'пробный\s+доступ|'
+    r'события\s+живут|'
+    r'метки\s+появляются|'
+    r'без\s+отдельных\s+приложений|'
     r'збір\s+на|'
     r'сбор\s+на|'
     r'посилання\s+в|'
     r'ссылка\s+в|'
     r'підпишіться|'
     r'подпишитесь|'
+    r't\.me/|'
+    r'https?://|'
     r'реклам[аеу]'
     r')',
     re.IGNORECASE
 )
 
 def is_ad_or_spam(text):
+    if not text:
+        return False
     return bool(AD_FILTER_REGEX.search(text))
 
-# ЭКСПРЕСС-БАЗА КЛЮЧЕВЫХ УЛИЦ ДНЕПРА
+# ЭКСПРЕСС-БАЗА КЛЮЧЕВЫХ УЛИЦ И ОРИЕНТИРОВ ДНЕПРА
 LOCAL_STREETS_DB = [
     {"keys": ["гальченк"], "addr": "вул. Василя Гальченка", "lat": 48.3980, "lng": 35.0120},
     {"keys": ["кротов"], "addr": "вул. Бориса Кротова", "lat": 48.3930, "lng": 35.0080},
@@ -106,7 +130,8 @@ LOCAL_STREETS_DB = [
     {"keys": ["калинов"], "addr": "вул. Калинова", "lat": 48.5080, "lng": 35.0600},
     {"keys": ["донецьк.*шосе", "донецк.*шоссе", "караван"], "addr": "Донецьке шосе / Караван", "lat": 48.5350, "lng": 34.9900},
     {"keys": ["сонячн", "солнечн"], "addr": "ж/м Сонячний", "lat": 48.4750, "lng": 35.0650},
-    {"keys": ["придніпров", "приднепров"], "addr": "ж/м Придніпровськ", "lat": 48.4050, "lng": 35.1300},
+    {"keys": ["придніпр", "приднепр", "придник"], "addr": "ж/м Придніпровськ", "lat": 48.3980, "lng": 35.1320},
+    {"keys": ["юж.*мост", "півден.*міст"], "addr": "Південний міст", "lat": 48.4110, "lng": 35.0980},
     {"keys": ["підгородн", "подгородн"], "addr": "м. Підгородне", "lat": 48.5750, "lng": 35.1050}
 ]
 
@@ -203,13 +228,16 @@ def cleanup_old_points():
         r = requests.get(FIREBASE_URL, timeout=8)
         if r.status_code == 200 and r.json():
             data = r.json()
-            to_delete = {
-                k: None for k, v in data.items()
-                if isinstance(v, dict) and (now_ms - (v.get("time") or v.get("timestamp") or 0)) > LIFETIME_MS
-            }
+            to_delete = {}
+            for k, v in data.items():
+                if isinstance(v, dict):
+                    full_txt = (v.get("text", "") + " " + v.get("raw_text", "")).lower()
+                    # Удаляем устаревшие метки или оставшийся рекламный спам
+                    if (now_ms - (v.get("time") or v.get("timestamp") or 0)) > LIFETIME_MS or is_ad_or_spam(full_txt):
+                        to_delete[k] = None
             if to_delete:
                 requests.patch(f"{base_url}/points.json", json=to_delete, timeout=8)
-                log(f"🧹 Видалено застарілих міток: {len(to_delete)}")
+                log(f"🧹 Видалено міток (застарілих або спам): {len(to_delete)}")
     except Exception:
         pass
 
@@ -240,18 +268,20 @@ def fetch_channel_messages():
             clean = re.sub(r'<[^>]+>', '', clean)
             clean = clean.replace('&quot;', '"').replace('&amp;', '&').replace('&lt;', '<').replace('&gt;', '>').strip()
 
+            # ФИЛЬТРАЦИЯ ЦЕЛОГО ПОСТА: если весь пост это сбор или реклама, выбрасываем его полностью
+            if is_ad_or_spam(clean):
+                continue
+
             lines = [l.strip() for l in clean.split('\n') if len(l.strip()) >= 3]
             for line in lines:
-                results.append((post_id, line))
+                if not is_ad_or_spam(line):
+                    results.append((post_id, line))
 
         return results
     except Exception as e:
         log(f"⚠️ Помилка зчитування Telegram: {e}")
         return []
 
-# ==============================================================================
-# ПАРСИНГ GEMINI С АВТОМАТИЧЕСКИМ ПЕРЕБОРОМ ПУЛА КЛЮЧЕЙ
-# ==============================================================================
 def parse_with_gemini(text):
     if not GEMINI_KEYS:
         return None
@@ -277,7 +307,7 @@ def parse_with_gemini(text):
                         "contents": [{"role": "user", "parts": [{"text": prompt}]}],
                         "generationConfig": {"temperature": 0.1, "responseMimeType": "application/json"}
                     },
-                    timeout=10
+                    timeout=8
                 )
                 if r.status_code == 200:
                     raw = r.json().get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
@@ -373,9 +403,9 @@ def sync_cycle():
                 }
                 log(f"🗺️ [OSM КАРТА]: '{msg[:45]}' ➔ {osm_addr}")
 
-        # 4. Gemini AI с ротацией ключей
+        # 4. Gemini AI
         if not parsed_result:
-            time.sleep(0.5)
+            time.sleep(0.4)
             ai_res = parse_with_gemini(msg)
             if ai_res:
                 parsed_result = {**ai_res, "needs_training": False}
