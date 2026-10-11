@@ -6,7 +6,12 @@ import random
 from datetime import datetime
 import requests
 
-GEMINI_KEY = os.environ.get("GEMINI_KEY", "").strip()
+RAW_GEMINI_KEYS = os.environ.get("GEMINI_KEY", "").strip() or os.environ.get("GEMINI_KEYS", "").strip()
+# Разбиваем строку ключей по запятым, пробелам или переводам строк
+GEMINI_KEYS = [k.strip() for k in re.split(r'[,;\s]+', RAW_GEMINI_KEYS) if len(k.strip()) > 15]
+
+current_key_index = 0
+
 FIREBASE_URL = os.environ.get("FIREBASE_URL", "").strip()
 LIFETIME_MS = 40 * 60 * 1000  # 40 минут для меток на карте
 ARCHIVE_RETENTION_MS = 400 * 24 * 60 * 60 * 1000  # 400 дней для архива аналитики
@@ -22,9 +27,23 @@ STATS_ARCHIVE_URL = FIREBASE_URL.replace("/points.json", "/stats_archive.json") 
 def log(msg):
     print(msg, flush=True)
 
+def get_active_gemini_key():
+    global current_key_index
+    if not GEMINI_KEYS:
+        return ""
+    return GEMINI_KEYS[current_key_index % len(GEMINI_KEYS)]
+
+def rotate_to_next_key():
+    global current_key_index
+    if not GEMINI_KEYS:
+        return ""
+    current_key_index = (current_key_index + 1) % len(GEMINI_KEYS)
+    log(f"🔄 Перемикання на Gemini API Key #{current_key_index + 1} з {len(GEMINI_KEYS)}")
+    return get_active_gemini_key()
+
 PROCESSED_POST_IDS = set()
 
-# ФИЛЬТР РЕКЛАМЫ И АДМИНИСТРАТИВНОГО СПАМА КАНАЛА
+# ФИЛЬТР РЕКЛАМЫ И СПАМА
 AD_FILTER_REGEX = re.compile(
     r'(?:'
     r'напоминаем.*?бот|'
@@ -47,9 +66,7 @@ AD_FILTER_REGEX = re.compile(
 def is_ad_or_spam(text):
     return bool(AD_FILTER_REGEX.search(text))
 
-# ==============================================================================
-# ШВИДКИЙ ГЕОКОДЕР ДНІПРА (ЕКСПРЕС-СПИСОК)
-# ==============================================================================
+# ЭКСПРЕСС-БАЗА КЛЮЧЕВЫХ УЛИЦ ДНЕПРА
 LOCAL_STREETS_DB = [
     {"keys": ["гальченк"], "addr": "вул. Василя Гальченка", "lat": 48.3980, "lng": 35.0120},
     {"keys": ["кротов"], "addr": "вул. Бориса Кротова", "lat": 48.3930, "lng": 35.0080},
@@ -128,32 +145,7 @@ def geocode_osm_fallback(text):
             pass
     return None, None, None
 
-# ТОЛЬКО АКТУАЛЬНЫЕ МОДЕЛИ (1.5, 2.0, 2.5 ИСКЛЮЧЕНЫ)
-def find_working_model():
-    if not GEMINI_KEY:
-        return "models/gemini-3.8-flash"
-
-    list_url = f"https://generativelanguage.googleapis.com/v1beta/models?key={GEMINI_KEY}"
-    try:
-        r = requests.get(list_url, timeout=10)
-        if r.status_code == 200:
-            models_list = r.json().get("models", [])
-            valid = [
-                m.get("name") for m in models_list
-                if "generateContent" in m.get("supportedGenerationMethods", []) and m.get("name")
-            ]
-            preferred = ["gemini-3.8-flash", "gemini-3.5-flash-lite", "gemini-3.5-flash"]
-            for pref in preferred:
-                match = next((v for v in valid if pref in v), None)
-                if match:
-                    log(f"🎯 Робоча модель Gemini: {match}")
-                    return match
-    except Exception as e:
-        log(f"⚠️ Помилка пошуку моделей: {e}")
-
-    return "models/gemini-3.8-flash"
-
-WORKING_MODEL = find_working_model()
+SUPPORTED_MODELS = ["gemini-3.8-flash", "gemini-3.5-flash-lite", "gemini-3.5-flash"]
 
 CLEAN_KEYWORDS = [
     "чисто", "чистенько", "пусто", "вільно", "спокійно", "проїзд",
@@ -257,53 +249,59 @@ def fetch_channel_messages():
         log(f"⚠️ Помилка зчитування Telegram: {e}")
         return []
 
+# ==============================================================================
+# ПАРСИНГ GEMINI С АВТОМАТИЧЕСКИМ ПЕРЕБОРОМ ПУЛА КЛЮЧЕЙ
+# ==============================================================================
 def parse_with_gemini(text):
-    if not GEMINI_KEY:
+    if not GEMINI_KEYS:
         return None
 
     prompt = f"""
 Ти — аналітик геолокації у місті Дніпро (Україна).
 Повідомлення: "{text}"
-Знайди назву вулиці або орієнтир у місті Дніпро. Зверни увагу на скорочення та прізвища (наприклад "Гальченко" = вул. Василя Гальченка).
+Знайди назву вулиці або орієнтир у місті Дніпро (враховуй прізвища без слова "вулиця").
 Відповідай ТІЛЬКИ JSON:
 {{"found": true, "address": "вул. ...", "lat": 48.45, "lng": 35.01, "status": "чисто"|"опасно"}}
 Якщо локації немає: {{"found": false}}
 """
 
-    models_to_try = [WORKING_MODEL, "models/gemini-3.5-flash-lite", "models/gemini-3.5-flash"]
-    for m in models_to_try:
-        url = f"https://generativelanguage.googleapis.com/v1beta/{m}:generateContent?key={GEMINI_KEY}"
-        try:
-            r = requests.post(
-                url,
-                json={
-                    "contents": [{"role": "user", "parts": [{"text": prompt}]}],
-                    "generationConfig": {"temperature": 0.1, "responseMimeType": "application/json"}
-                },
-                timeout=10
-            )
-            if r.status_code == 200:
-                raw = r.json().get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
-                raw = raw.replace("```json", "").replace("```", "").strip()
-                data = json.loads(raw)
-                if data.get("found") and data.get("lat") and data.get("lng"):
-                    lat = float(data["lat"])
-                    lng = float(data["lng"])
-                    if 48.25 <= lat <= 48.70 and 34.70 <= lng <= 35.40:
-                        return {
-                            "address": data.get("address", "Дніпро"),
-                            "lat": round(lat, 5),
-                            "lng": round(lng, 5),
-                            "status": data.get("status", "опасно")
-                        }
-                return None
-        except Exception:
-            continue
+    total_keys = len(GEMINI_KEYS)
+    for attempt in range(total_keys):
+        active_key = get_active_gemini_key()
+        for model in SUPPORTED_MODELS:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={active_key}"
+            try:
+                r = requests.post(
+                    url,
+                    json={
+                        "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+                        "generationConfig": {"temperature": 0.1, "responseMimeType": "application/json"}
+                    },
+                    timeout=10
+                )
+                if r.status_code == 200:
+                    raw = r.json().get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+                    raw = raw.replace("```json", "").replace("```", "").strip()
+                    data = json.loads(raw)
+                    if data.get("found") and data.get("lat") and data.get("lng"):
+                        lat = float(data["lat"])
+                        lng = float(data["lng"])
+                        if 48.25 <= lat <= 48.70 and 34.70 <= lng <= 35.40:
+                            return {
+                                "address": data.get("address", "Дніпро"),
+                                "lat": round(lat, 5),
+                                "lng": round(lng, 5),
+                                "status": data.get("status", "опасно")
+                            }
+                    return None
+                elif r.status_code in [429, 403]:
+                    rotate_to_next_key()
+                    break
+            except Exception:
+                continue
+
     return None
 
-# ==============================================================================
-# ЦИКЛ СИНХРОНИЗАЦИИ (БЕЗ ОТСЕИВАНИЯ: НЕИЗВЕСТНЫЕ ИДУТ В ЦЕНТР НА ОБУЧЕНИЕ)
-# ==============================================================================
 def sync_cycle():
     global PROCESSED_POST_IDS
     cleanup_old_points()
@@ -320,7 +318,7 @@ def sync_cycle():
         if unique_key not in PROCESSED_POST_IDS:
             new_items.append((unique_key, text))
 
-    log(f"📢 В каналі: {len(items)} | Нових: {len(new_items)} | В базі знань: {len(kb_list)}")
+    log(f"📢 В каналі: {len(items)} | Нових: {len(new_items)} | В базі знань: {len(kb_list)} | Ключів в пулі: {len(GEMINI_KEYS)}")
 
     if not new_items:
         return
@@ -330,7 +328,6 @@ def sync_cycle():
     for unique_key, msg in new_items:
         PROCESSED_POST_IDS.add(unique_key)
 
-        # 1. Отсеиваем рекламу и админ-спам
         if is_ad_or_spam(msg):
             log(f"🚫 [РЕКЛАМА/СПАМ ПРОПУЩЕНО]: '{msg[:45]}'")
             continue
@@ -338,7 +335,7 @@ def sync_cycle():
         is_clean = is_message_clean(msg)
         parsed_result = None
 
-        # 2. Проверяем базу знаний
+        # 1. База знаний
         matched_kb = match_knowledge_base(msg, kb_list)
         if matched_kb and matched_kb.get("lat") and matched_kb.get("lng"):
             parsed_result = {
@@ -350,7 +347,7 @@ def sync_cycle():
             }
             log(f"🎯 [БАЗА ЗНАНЬ]: '{matched_kb.get('phrase')}' ➔ {parsed_result['address']}")
 
-        # 3. Экспресс-геокодер Днепра
+        # 2. Локальный экспресс-геокодер
         if not parsed_result:
             addr, lat, lng = geocode_local(msg)
             if addr and lat and lng:
@@ -363,7 +360,7 @@ def sync_cycle():
                 }
                 log(f"⚡ [ЛОКАЛЬНО]: '{msg[:45]}' ➔ {addr}")
 
-        # 4. Резерв OpenStreetMap
+        # 3. Резерв OpenStreetMap
         if not parsed_result:
             osm_addr, osm_lat, osm_lng = geocode_osm_fallback(msg)
             if osm_addr and osm_lat and osm_lng:
@@ -376,15 +373,15 @@ def sync_cycle():
                 }
                 log(f"🗺️ [OSM КАРТА]: '{msg[:45]}' ➔ {osm_addr}")
 
-        # 5. Gemini AI
+        # 4. Gemini AI с ротацией ключей
         if not parsed_result:
-            time.sleep(1.0)
+            time.sleep(0.5)
             ai_res = parse_with_gemini(msg)
             if ai_res:
                 parsed_result = {**ai_res, "needs_training": False}
                 log(f"🤖 [GEMINI AI]: '{msg[:45]}' ➔ {parsed_result['address']}")
 
-        # 6. ЕСЛИ АДРЕС НЕ НАЙДЕН — НЕ ВЫБРАСЫВАЕМ! СТАВИМ В ЦЕНТР НА ОБУЧЕНИЕ
+        # 5. Если локация неизвестна — ставим в центр для ручного обучения
         if not parsed_result:
             center_lat = round(48.4645 + random.uniform(-0.0035, 0.0035), 5)
             center_lng = round(35.0465 + random.uniform(-0.0035, 0.0035), 5)
@@ -395,9 +392,8 @@ def sync_cycle():
                 "status": "чисто" if is_clean else "опасно",
                 "needs_training": True
             }
-            log(f"📍 [НАВЧАННЯ]: Невідому точку розміщено в центрі для вас: '{msg[:45]}'")
+            log(f"📍 [НАВЧАННЯ]: Невідому точку розміщено в центрі: '{msg[:45]}'")
 
-        # 7. Сохранение точки в Firebase
         status_clean = (parsed_result["status"] == "чисто" or is_clean)
         color = "green" if status_clean else "red"
         display_text = msg
@@ -438,7 +434,7 @@ def sync_cycle():
                 pass
 
 if __name__ == "__main__":
-    log("🚀 Запуск безперервної зміни радара 24/7...")
+    log(f"🚀 Запуск безперервної зміни радара 24/7 (Завантажено {len(GEMINI_KEYS)} API ключів)...")
     start_time = time.time()
     MAX_RUNTIME_SEC = 5 * 3600 + 40 * 60
 
