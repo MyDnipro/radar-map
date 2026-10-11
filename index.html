@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Радар Дніпро — Карта та ШІ</title>
+  <title>Радар Дніпро</title>
   
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -20,7 +20,7 @@
       height: 100%;
       overflow: hidden;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      background: #121212;
+      background: #111622;
       color: #fff;
     }
     #map {
@@ -29,200 +29,245 @@
       z-index: 1;
     }
 
-    /* ВЕРХНЯЯ ПАНЕЛЬ СТАТУСА */
-    .top-bar {
+    /* 1. ВЕРХНИЙ ПРЯМОУГОЛЬНИК СТАТИСТИКИ И СЕРВИСОВ (КАК НА ФОТО 2 И 3) */
+    .top-panel-wrap {
       position: absolute;
-      top: 12px;
-      left: 12px;
-      right: 12px;
+      top: 14px;
+      left: 14px;
       z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .stats-card {
+      background: rgba(19, 26, 43, 0.92);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 12px;
+      padding: 8px 14px;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.45);
+      backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .stats-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #8bb2ff;
+      letter-spacing: 0.3px;
+    }
+    .stats-arrow {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 6px;
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      color: #aaa;
+      transition: transform 0.2s ease;
+    }
+    .stats-arrow.open {
+      transform: rotate(180deg);
+    }
+
+    /* ВЫПАДАЮЩЕЕ МЕНЮ СЕРВИСОВ И ФИЛЬТРОВ */
+    .services-dropdown {
+      display: none;
+      background: rgba(19, 26, 43, 0.96);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 12px;
+      padding: 10px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.6);
+      backdrop-filter: blur(10px);
+      width: 220px;
+      flex-direction: column;
+      gap: 8px;
+      animation: fadeIn 0.2s ease;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .menu-item {
+      font-size: 13px;
+      padding: 7px 10px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.05);
+      cursor: pointer;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      pointer-events: none;
+      color: #ddd;
     }
-    .status-badge {
-      pointer-events: auto;
-      background: rgba(20, 20, 25, 0.85);
-      backdrop-filter: blur(10px);
+    .menu-item:hover, .menu-item.active {
+      background: rgba(50, 100, 200, 0.35);
+      color: #fff;
+    }
+
+    /* 2. НИЖНЯЯ КНОПКА "ОНОВИТИ" (КАК НА ФОТО 2 И 3) */
+    .bottom-refresh-btn {
+      position: absolute;
+      bottom: 22px;
+      right: 14px;
+      z-index: 1000;
+      background: rgba(19, 26, 43, 0.94);
       border: 1px solid rgba(255, 255, 255, 0.15);
-      padding: 8px 14px;
-      border-radius: 20px;
-      font-size: 13px;
+      border-radius: 12px;
+      padding: 10px 18px;
+      color: #fff;
+      font-size: 14px;
       font-weight: 600;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.4);
       display: flex;
       align-items: center;
       gap: 8px;
+      cursor: pointer;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.5);
+      backdrop-filter: blur(8px);
+      transition: all 0.15s ease;
     }
-    .pulse-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: #00ff88;
-      box-shadow: 0 0 8px #00ff88;
-      animation: pulse-ring 2s infinite;
-    }
-    @keyframes pulse-ring {
-      0% { transform: scale(0.95); opacity: 0.8; }
-      50% { transform: scale(1.3); opacity: 1; }
-      100% { transform: scale(0.95); opacity: 0.8; }
+    .bottom-refresh-btn:active {
+      transform: scale(0.95);
+      background: rgba(30, 42, 68, 0.95);
     }
 
-    /* КНОПКИ УПРАВЛЕНИЯ СПРАВА */
-    .map-controls {
+    /* 3. КНОПКИ УПРАВЛЕНИЯ СПРАВА (ГЕО И СМЕНА КАРТЫ) */
+    .side-controls {
       position: absolute;
+      top: 80px;
       right: 14px;
-      top: 70px;
       z-index: 1000;
       display: flex;
       flex-direction: column;
       gap: 10px;
     }
-    .control-btn {
+    .round-btn {
       width: 44px;
       height: 44px;
       border-radius: 50%;
-      background: rgba(25, 25, 30, 0.9);
-      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: rgba(24, 30, 46, 0.92);
+      border: 1px solid rgba(255, 255, 255, 0.18);
       color: #fff;
       display: flex;
       align-items: center;
       justify-content: center;
       font-size: 19px;
       cursor: pointer;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+      box-shadow: 0 4px 14px rgba(0,0,0,0.45);
       backdrop-filter: blur(8px);
-      transition: all 0.2s ease;
+      transition: all 0.15s ease;
     }
-    .control-btn:active {
+    .round-btn:active {
       transform: scale(0.92);
     }
 
-    /* БЛОК ШІ СЛЕВА ВНИЗУ */
-    .ai-wrapper {
+    /* 4. КОМПАКТНАЯ КНОПКА ШІ СНИЗУ СЛЕВА (ОДНОГО РАЗМЕРА - 44x44) */
+    .ai-container {
       position: absolute;
-      bottom: 20px;
+      bottom: 22px;
       left: 14px;
       z-index: 1000;
       display: flex;
       flex-direction: column;
       align-items: flex-start;
     }
-    
-    /* Свернутая кнопка ШІ — компактная круглая 44x44 */
-    .ai-fab-btn {
+    .ai-btn-compact {
       width: 44px;
       height: 44px;
       border-radius: 50%;
-      background: linear-gradient(135deg, #1e3c72, #2a5298);
-      border: 1px solid rgba(255, 255, 255, 0.3);
+      background: linear-gradient(135deg, #1b3868, #2a5298);
+      border: 1px solid rgba(255, 255, 255, 0.28);
       color: #fff;
       display: flex;
       align-items: center;
       justify-content: center;
       font-size: 20px;
       cursor: pointer;
-      box-shadow: 0 4px 15px rgba(0, 110, 255, 0.4);
-      transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      box-shadow: 0 4px 15px rgba(0, 100, 255, 0.4);
+      transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     }
-    .ai-fab-btn:active {
-      transform: scale(0.9);
+    .ai-btn-compact:active {
+      transform: scale(0.92);
     }
 
-    /* Развернутое окно чата ШІ */
-    .ai-chat-card {
+    /* ОКНО ЧАТА ШІ */
+    .ai-chat-popup {
       display: none;
       width: calc(100vw - 28px);
-      max-width: 420px;
-      background: rgba(18, 18, 24, 0.96);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      border-radius: 18px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.6);
-      backdrop-filter: blur(16px);
-      overflow: hidden;
+      max-width: 400px;
+      background: rgba(18, 24, 38, 0.97);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.7);
+      backdrop-filter: blur(14px);
       flex-direction: column;
-      animation: slideUp 0.25s ease-out;
+      overflow: hidden;
+      animation: slideUp 0.2s ease;
     }
     @keyframes slideUp {
-      from { opacity: 0; transform: translateY(20px); }
+      from { opacity: 0; transform: translateY(15px); }
       to { opacity: 1; transform: translateY(0); }
     }
-    .ai-header {
-      padding: 12px 14px;
+    .ai-card-header {
+      padding: 10px 14px;
       background: rgba(255, 255, 255, 0.05);
       display: flex;
       justify-content: space-between;
       align-items: center;
       border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    }
-    .ai-header-title {
       font-size: 14px;
-      font-weight: 700;
-      display: flex;
-      align-items: center;
-      gap: 6px;
+      font-weight: 600;
     }
-    .ai-header-actions {
-      display: flex;
-      gap: 8px;
-    }
-    .icon-action-btn {
-      background: none;
-      border: none;
-      color: #bbb;
-      font-size: 16px;
-      cursor: pointer;
-      padding: 4px;
-    }
-    .ai-messages {
-      max-height: 220px;
+    .ai-chat-log {
+      max-height: 200px;
       overflow-y: auto;
       padding: 12px;
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 8px;
       font-size: 13px;
     }
-    .ai-msg {
+    .chat-bubble {
       padding: 8px 12px;
       border-radius: 12px;
       line-height: 1.4;
       max-width: 88%;
       word-break: break-word;
     }
-    .ai-msg.user {
+    .chat-bubble.user {
       align-self: flex-end;
       background: #2a5298;
       color: #fff;
-      border-bottom-right-radius: 2px;
     }
-    .ai-msg.bot {
+    .chat-bubble.bot {
       align-self: flex-start;
       background: rgba(255, 255, 255, 0.1);
       color: #eee;
-      border-bottom-left-radius: 2px;
     }
-    .ai-input-area {
+    .ai-chat-controls {
       display: flex;
-      padding: 10px;
-      gap: 8px;
-      background: rgba(0,0,0,0.2);
+      padding: 8px 10px;
+      gap: 6px;
+      background: rgba(0,0,0,0.25);
       border-top: 1px solid rgba(255, 255, 255, 0.08);
     }
-    .ai-input {
+    .ai-input-field {
       flex: 1;
       background: rgba(255, 255, 255, 0.08);
-      border: 1px solid rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.14);
       border-radius: 20px;
-      padding: 8px 14px;
+      padding: 7px 12px;
       color: #fff;
       font-size: 13px;
       outline: none;
     }
-    .ai-send-btn {
-      width: 36px;
-      height: 36px;
+    .ai-submit-btn {
+      width: 34px;
+      height: 34px;
       border-radius: 50%;
       background: #00ff88;
       border: none;
@@ -234,65 +279,63 @@
       cursor: pointer;
     }
 
-    /* РАДАРНЫЕ ТОЧКИ */
-    .radar-pin-wrap {
+    /* МЕТКИ НА КАРТЕ: КРУГИ С БЕЛЫМ ОБОДКОМ И ИМПУЛЬСНЫМИ КОЛЬЦАМИ */
+    .radar-marker-container {
+      position: relative;
+      width: 32px;
+      height: 32px;
       display: flex;
       align-items: center;
       justify-content: center;
       cursor: grab;
     }
-    .radar-pin-wrap:active {
+    .radar-marker-container:active {
       cursor: grabbing;
     }
-    .radar-dot {
-      width: 24px;
-      height: 24px;
+    .radar-halo {
+      position: absolute;
+      width: 32px;
+      height: 32px;
       border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 12px;
-      color: #fff;
-      font-weight: bold;
-      border: 2px solid #fff;
-      box-shadow: 0 0 10px rgba(0,0,0,0.6);
-      transition: transform 0.15s ease;
+      opacity: 0.45;
+      animation: radar-wave 2.2s infinite ease-out;
     }
-    .radar-dot.red {
-      background: #ff3344;
-      box-shadow: 0 0 12px #ff3344;
+    .radar-halo.red { border: 2px solid #ff3344; }
+    .radar-halo.green { border: 2px solid #00dd66; }
+    .radar-halo.yellow { border: 2px solid #ffaa00; }
+    @keyframes radar-wave {
+      0% { transform: scale(0.6); opacity: 0.9; }
+      100% { transform: scale(1.6); opacity: 0; }
     }
-    .radar-dot.green {
-      background: #00dd66;
-      box-shadow: 0 0 12px #00dd66;
+    .radar-core {
+      position: relative;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      border: 2px solid #ffffff;
+      box-shadow: 0 0 8px rgba(0,0,0,0.7);
+      z-index: 2;
     }
-    .radar-dot.training {
-      background: #ffaa00 !important;
-      box-shadow: 0 0 16px #ffaa00 !important;
-      animation: pulse-training 1.5s infinite;
-    }
-    @keyframes pulse-training {
-      0% { transform: scale(1); }
-      50% { transform: scale(1.3); }
-      100% { transform: scale(1); }
-    }
+    .radar-core.red { background: #ff3344; }
+    .radar-core.green { background: #00dd66; }
+    .radar-core.yellow { background: #ffaa00; }
 
-    /* ВСПЛЫВАЮЩИЕ УВЕДОМЛЕНИЯ */
-    .toast {
+    /* ВСПЛЫВАЮЩИЙ TOAST */
+    .toast-popup {
       position: absolute;
       top: 65px;
       left: 50%;
       transform: translateX(-50%);
       z-index: 2000;
-      background: rgba(0, 0, 0, 0.88);
+      background: rgba(10, 14, 22, 0.94);
       border: 1px solid rgba(255, 255, 255, 0.2);
-      padding: 8px 16px;
+      padding: 7px 16px;
       border-radius: 20px;
       font-size: 13px;
       box-shadow: 0 4px 15px rgba(0,0,0,0.5);
       pointer-events: none;
       opacity: 0;
-      transition: opacity 0.3s ease;
+      transition: opacity 0.25s ease;
       text-align: center;
     }
   </style>
@@ -301,341 +344,368 @@
 
   <div id="map"></div>
 
-  <!-- ВЕРХНИЙ СТАТУС -->
-  <div class="top-bar">
-    <div class="status-badge">
-      <div class="pulse-dot"></div>
-      <span id="activeCount">Завантаження...</span>
+  <!-- 1. ВЕРХНИЙ ПРЯМОУГОЛЬНИК СТАТИСТИКИ (ТОЧЕК: XX) -->
+  <div class="top-panel-wrap">
+    <div class="stats-card" onclick="toggleDropdown()">
+      <span class="stats-title" id="pointsSummary">Точок: 0</span>
+      <div class="stats-arrow" id="dropdownArrow">▼</div>
+    </div>
+    <div class="services-dropdown" id="servicesDropdown">
+      <div class="menu-item active" onclick="setFilter('all')">Всі повідомлення <span id="cntAll">0</span></div>
+      <div class="menu-item" onclick="setFilter('danger')">🔴 Загрози <span id="cntDanger">0</span></div>
+      <div class="menu-item" onclick="setFilter('clean')">🟢 Чисто <span id="cntClean">0</span></div>
+      <div class="menu-item" onclick="setFilter('training')">🟡 Навчання ШІ <span id="cntTrain">0</span></div>
     </div>
   </div>
 
-  <!-- БОКОВЫЕ КНОПКИ УПРАВЛЕНИЯ -->
-  <div class="map-controls">
-    <div class="control-btn" title="Змінити карту (Кольорова / Біла)" onclick="toggleMapTheme()">🗺️</div>
-    <div class="control-btn" title="Моя геолокація" onclick="locateMe()">🎯</div>
-    <div class="control-btn" title="Оновити точки" onclick="loadPoints()">🔄</div>
+  <!-- 2. КНОПКИ УПРАВЛЕНИЯ СПРАВА (КАРТА И GPS) -->
+  <div class="side-controls">
+    <div class="round-btn" title="Змінити карту (Google / OpenStreetMap)" onclick="switchMapLayer()">🗺️</div>
+    <div class="round-btn" title="Моя геолокація" onclick="locateUser()">🎯</div>
   </div>
 
-  <!-- КОМПАКТНЫЙ ШІ -->
-  <div class="ai-wrapper">
-    <div class="ai-fab-btn" id="aiToggleBtn" onclick="toggleAIChat()" title="ШІ Асистент">🤖</div>
+  <!-- 3. НИЖНЯЯ КНОПКА "ОНОВИТИ" СПРАВА -->
+  <div class="bottom-refresh-btn" onclick="fetchRadarData()">
+    <span>🔄</span>
+    <span>Оновити</span>
+  </div>
 
-    <div class="ai-chat-card" id="aiChatCard">
-      <div class="ai-header">
-        <div class="ai-header-title">🤖 ШІ Асистент радара</div>
-        <div class="ai-header-actions">
-          <button class="icon-action-btn" onclick="configureGeminiKey(event)" title="Налаштувати ключі Gemini">🔑</button>
-          <button class="icon-action-btn" onclick="toggleAIChat()" title="Згорнути">✕</button>
+  <!-- 4. КОМПАКТНАЯ КНОПКА ШІ СЛЕВА ВНИЗУ (44x44) -->
+  <div class="ai-container">
+    <div class="ai-btn-compact" id="aiOpenBtn" onclick="toggleAICard()" title="ШІ Асистент">🤖</div>
+
+    <div class="ai-chat-popup" id="aiChatCard">
+      <div class="ai-card-header">
+        <span>🤖 ШІ Асистент Дніпра</span>
+        <div style="display:flex; gap:10px;">
+          <span style="cursor:pointer;" onclick="setApiKeys(event)" title="Ввести API ключі">🔑</span>
+          <span style="cursor:pointer;" onclick="toggleAICard()" title="Закрити">✕</span>
         </div>
       </div>
-      <div class="ai-messages" id="aiMessages">
-        <div class="ai-msg bot">Привіт! Можете перетягнути будь-який кружок на карті, щоб навчити радар правильній вулиці.</div>
+      <div class="ai-chat-log" id="chatLog">
+        <div class="chat-bubble bot">Привіт! Можете перетягнути будь-яку точку на карті для навчання або запитати обстановку.</div>
       </div>
-      <div class="ai-input-area">
-        <input type="text" class="ai-input" id="aiInput" placeholder="Запитати про обстановку..." onkeydown="handleInputKey(event)" />
-        <button class="ai-send-btn" onclick="sendAIMessage()">➤</button>
+      <div class="ai-chat-controls">
+        <input type="text" class="ai-input-field" id="userQueryInput" placeholder="Запитати про вулицю..." onkeydown="onEnterQuery(event)" />
+        <button class="ai-submit-btn" onclick="askAI()">➤</button>
       </div>
     </div>
   </div>
 
-  <div class="toast" id="toastMsg"></div>
+  <div class="toast-popup" id="toastNotice"></div>
 
   <!-- Leaflet JS -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <script>
-    const FIREBASE_BASE = "https://dnepr-radar-default-rtdb.firebaseio.com";
-    const POINTS_URL = `${FIREBASE_BASE}/points.json`;
-    const KB_URL = `${FIREBASE_BASE}/knowledge_base.json`;
+    const FIREBASE_HOST = "https://dnepr-radar-default-rtdb.firebaseio.com";
+    const DB_POINTS = `${FIREBASE_HOST}/points.json`;
+    const DB_KB = `${FIREBASE_HOST}/knowledge_base.json`;
 
-    // 1. ДВЕ БЕСПЛАТНЫЕ ПОДЛОЖКИ (БЕЗ ВСЯКИХ КЛЮЧЕЙ И ВОДЯНЫХ ЗНАКОВ)
-    const colorLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    // 1. ДВЕ КАРТЫ В ТОЧНОСТИ КАК НА ФОТО 2 И ФОТО 3:
+    // Фото 2: Google Maps (чистая, светлая, с POI, Варусом, метро)
+    const googleRoads = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&hl=uk&x={x}&y={y}&z={z}', {
+      subdomains: ['0', '1', '2', '3'],
+      maxZoom: 20,
+      attribution: 'Leaflet | Google Maps'
+    });
+
+    // Фото 3: OpenStreetMap (детальная городская топографическая)
+    const osmStandard = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
-      attribution: '© OpenStreetMap contributors'
+      attribution: 'Leaflet | © OpenStreetMap contributors'
     });
 
-    const lightLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
-      maxZoom: 16,
-      attribution: '© Esri Light Canvas'
-    });
-
-    // Инициализация карты Дніпра
-    const map = L.map('map', { 
+    // Инициализация карты (по умолчанию Google Maps, как на фото 2)
+    const map = L.map('map', {
       zoomControl: false,
-      layers: [colorLayer] // По умолчанию цветная
+      layers: [googleRoads]
     }).setView([48.4647, 35.0462], 12);
 
-    let activeTheme = 'color';
+    let activeMapType = 'google';
 
-    function toggleMapTheme() {
-      if (activeTheme === 'color') {
-        map.removeLayer(colorLayer);
-        map.addLayer(lightLayer);
-        activeTheme = 'light';
-        showToast("🗺️ Увімкнено світлу (білу) карту");
+    function switchMapLayer() {
+      if (activeMapType === 'google') {
+        map.removeLayer(googleRoads);
+        map.addLayer(osmStandard);
+        activeMapType = 'osm';
+        showToastNotice("🗺️ Увімкнено OpenStreetMap (Детальна)");
       } else {
-        map.removeLayer(lightLayer);
-        map.addLayer(colorLayer);
-        activeTheme = 'color';
-        showToast("🗺️ Увімкнено детальну кольорову карту");
+        map.removeLayer(osmStandard);
+        map.addLayer(googleRoads);
+        activeMapType = 'google';
+        showToastNotice("🗺️ Увімкнено Google Maps (Світла)");
       }
     }
 
-    let markersLayer = L.layerGroup().addTo(map);
-    let myLocMarker = null;
+    let pointsGroup = L.layerGroup().addTo(map);
+    let myPositionMarker = null;
+    let allPointsData = [];
+    let currentFilter = 'all';
 
-    function showToast(text, duration = 3000) {
-      const t = document.getElementById("toastMsg");
-      t.innerText = text;
-      t.style.opacity = "1";
-      setTimeout(() => { t.style.opacity = "0"; }, duration);
+    function showToastNotice(text, time = 2800) {
+      const el = document.getElementById("toastNotice");
+      el.innerText = text;
+      el.style.opacity = "1";
+      setTimeout(() => { el.style.opacity = "0"; }, time);
     }
 
-    // СВЕРНУТЬ / РАЗВЕРНУТЬ ЧАТ
-    function toggleAIChat() {
+    // ДРОПДАУН СЕРВИСОВ
+    function toggleDropdown() {
+      const dd = document.getElementById("servicesDropdown");
+      const arrow = document.getElementById("dropdownArrow");
+      const isOpen = dd.style.display === "flex";
+      dd.style.display = isOpen ? "none" : "flex";
+      arrow.classList.toggle("open", !isOpen);
+    }
+
+    function setFilter(f) {
+      currentFilter = f;
+      toggleDropdown();
+      renderPoints();
+    }
+
+    // ШІ ВИДЖЕТ
+    function toggleAICard() {
       const card = document.getElementById("aiChatCard");
-      const btn = document.getElementById("aiToggleBtn");
+      const btn = document.getElementById("aiOpenBtn");
       if (card.style.display === "flex") {
         card.style.display = "none";
         btn.style.display = "flex";
       } else {
         card.style.display = "flex";
         btn.style.display = "none";
-        setTimeout(() => document.getElementById("aiInput").focus(), 100);
+        setTimeout(() => document.getElementById("userQueryInput").focus(), 80);
       }
     }
 
-    // ВВОД ПУЛА КЛЮЧЕЙ
-    function configureGeminiKey(e) {
+    function setApiKeys(e) {
       if (e) e.stopPropagation();
       const current = localStorage.getItem("gemini_api_key") || "";
-      const input = prompt(
-        "Вставте ваші Gemini API Keys через кому (10 ключів):",
-        current
-      );
+      const input = prompt("Введіть ваші Gemini API Keys через кому (до 10 шт):", current);
       if (input !== null) {
         localStorage.setItem("gemini_api_key", input.trim());
         const count = input.split(/[,;\s]+/).filter(k => k.trim().length > 15).length;
-        showToast(`🔑 У пул збережено ${count} API-ключів!`);
+        showToastNotice(`🔑 Збережено ${count} ключів у пул!`);
       }
     }
 
-    async function executeGeminiRequest(promptPayload) {
-      const rawKeys = localStorage.getItem("gemini_api_key") || "";
-      const apiKeys = rawKeys.split(/[,;\s]+/).map(k => k.trim()).filter(k => k.length > 15);
-
-      if (apiKeys.length === 0) {
-        throw new Error("Не вказано Gemini API Key. Натисніть 🔑 та введіть ключі!");
-      }
-
-      const models = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-2.0-flash'];
-      let lastErr = null;
-
-      for (let kIdx = 0; kIdx < apiKeys.length; kIdx++) {
-        const key = apiKeys[kIdx];
-        for (const m of models) {
-          try {
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${key}`;
-            const res = await fetch(url, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(promptPayload)
-            });
-
-            if (res.ok) {
-              const data = await res.json();
-              return { model: m, data: data, keyIndex: kIdx + 1 };
-            } else {
-              const errJson = await res.json().catch(() => ({}));
-              lastErr = errJson.error?.message || `HTTP ${res.status}`;
-              if (res.status === 429 || res.status === 403 || lastErr.includes("quota")) {
-                break;
-              }
-            }
-          } catch (e) {
-            lastErr = e.message;
-          }
-        }
-      }
-      throw new Error(lastErr || "Всі ключі з пулу вичерпали квоту.");
-    }
-
-    // ЗАГРУЗКА ТОЧЕК И РУЧНОЕ ПЕРЕТАСКИВАНИЕ ДЛЯ ОБУЧЕНИЯ
-    async function loadPoints() {
+    // ЗАГРУЗКА И ОТОБРАЖЕНИЕ ТОЧЕК
+    async function fetchRadarData() {
       try {
-        const res = await fetch(`${POINTS_URL}?t=${Date.now()}`);
-        if (!res.ok) return;
-        const data = await res.json();
-        markersLayer.clearLayers();
+        const r = await fetch(`${DB_POINTS}?t=${Date.now()}`);
+        if (!r.ok) return;
+        const raw = await r.json();
 
-        if (!data) {
-          document.getElementById("activeCount").innerText = "Активних міток: 0";
-          return;
-        }
-
-        const now = Date.now();
-        const lifetime = 40 * 60 * 1000;
-        let count = 0;
-
-        Object.entries(data).forEach(([firebaseKey, item]) => {
-          if (!item || !item.lat || !item.lng) return;
-          const pTime = item.time || item.timestamp || 0;
-          if (now - pTime > lifetime) return;
-
-          count++;
-          const isTraining = item.needs_training === true;
-          const isClean = item.is_clean === true || item.color === "green";
-          const dotColorClass = isTraining ? "training" : (isClean ? "green" : "red");
-          const iconSymbol = isTraining ? "❓" : (isClean ? "✓" : "!");
-
-          const customIcon = L.divIcon({
-            className: 'radar-pin-wrap',
-            html: `<div class="radar-dot ${dotColorClass}" title="Затисніть для перетягування">${iconSymbol}</div>`,
-            iconSize: [28, 28],
-            iconAnchor: [14, 14]
-          });
-
-          // ВСЕ МЕТКИ ДЕЛАЮТСЯ DRAGGABLE
-          const marker = L.marker([item.lat, item.lng], {
-            icon: customIcon,
-            draggable: true
-          });
-
-          const popupContent = `
-            <div style="font-size:13px; color:#111; line-height:1.4;">
-              <b>${item.address || 'Дніпро'}</b><br>
-              <span>${item.text || item.raw_text || ''}</span><br>
-              <small style="color:#666;">🕒 ${Math.round((now - pTime) / 60000)} хв тому</small>
-              <div style="margin-top:6px; font-size:11px; color:#0066cc;">
-                ✋ Затисніть та перетягніть, щоб навчити радар правильній вулиці!
-              </div>
-            </div>
-          `;
-          marker.bindPopup(popupContent);
-
-          // СОХРАНЕНИЕ НОВЫХ КООРДИНАТ И ОБУЧЕНИЕ БАЗЫ ЗНАНИЙ
-          marker.on('dragend', async (e) => {
-            const newPos = e.target.getLatLng();
-            const newLat = Number(newPos.lat.toFixed(5));
-            const newLng = Number(newPos.lng.toFixed(5));
-
-            showToast("⏳ Збереження позиції...");
-
-            try {
-              await fetch(`${FIREBASE_BASE}/points/${firebaseKey}.json`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  lat: newLat,
-                  lng: newLng,
-                  needs_training: false,
-                  address: "Встановлено вручну"
-                })
-              });
-
-              const rawText = item.raw_text || item.text || "";
-              if (rawText && rawText.length >= 3) {
-                await fetch(KB_URL, {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    phrase: rawText.trim().toLowerCase(),
-                    lat: newLat,
-                    lng: newLng,
-                    address: "Користувацька прив'язка",
-                    updated_at: Date.now()
-                  })
-                });
-                showToast("🎯 Збережено! Радар навчився цієї вулиці.");
-              } else {
-                showToast("📍 Точку переміщено!");
+        allPointsData = [];
+        if (raw) {
+          const now = Date.now();
+          const expireLimit = 40 * 60 * 1000;
+          Object.entries(raw).forEach(([key, val]) => {
+            if (val && val.lat && val.lng) {
+              const pTime = val.time || val.timestamp || 0;
+              if (now - pTime <= expireLimit) {
+                allPointsData.push({ id: key, ...val });
               }
-
-              loadPoints();
-            } catch (err) {
-              showToast("⚠️ Помилка збереження локації.");
             }
           });
+        }
+        renderPoints();
+      } catch (err) {
+        console.error(err);
+      }
+    }
 
-          marker.addTo(markersLayer);
+    function renderPoints() {
+      pointsGroup.clearLayers();
+      const now = Date.now();
+
+      let dCount = 0, cCount = 0, tCount = 0;
+      allPointsData.forEach(p => {
+        if (p.needs_training) tCount++;
+        else if (p.is_clean || p.color === 'green') cCount++;
+        else dCount++;
+      });
+
+      document.getElementById("cntAll").innerText = allPointsData.length;
+      document.getElementById("cntDanger").innerText = dCount;
+      document.getElementById("cntClean").innerText = cCount;
+      document.getElementById("cntTrain").innerText = tCount;
+      document.getElementById("pointsSummary").innerText = `Точок: ${allPointsData.length}`;
+
+      const filtered = allPointsData.filter(p => {
+        if (currentFilter === 'danger') return !p.is_clean && !p.needs_training && p.color !== 'green';
+        if (currentFilter === 'clean') return p.is_clean || p.color === 'green';
+        if (currentFilter === 'training') return p.needs_training;
+        return true;
+      });
+
+      filtered.forEach(p => {
+        const isTrain = p.needs_training === true;
+        const isClean = p.is_clean === true || p.color === 'green';
+        const tone = isTrain ? 'yellow' : (isClean ? 'green' : 'red');
+
+        // Создаём кастомную Leaflet иконку с пульсирующим кольцом
+        const pinHtml = `
+          <div class="radar-marker-container">
+            <div class="radar-halo ${tone}"></div>
+            <div class="radar-core ${tone}"></div>
+          </div>
+        `;
+
+        const icon = L.divIcon({
+          className: '',
+          html: pinHtml,
+          iconSize: [32, 32],
+          iconAnchor: [16, 16]
         });
 
-        document.getElementById("activeCount").innerText = `Активних міток: ${count}`;
-      } catch (e) {
-        console.error(e);
-      }
+        // ДЕЛАЕМ МЕТКУ ПОДВИЖНОЙ (DRAGGABLE)
+        const marker = L.marker([p.lat, p.lng], {
+          icon: icon,
+          draggable: true
+        });
+
+        const pTime = p.time || p.timestamp || now;
+        const minsAgo = Math.max(0, Math.round((now - pTime) / 60000));
+
+        marker.bindPopup(`
+          <div style="color:#111; font-size:13px; line-height:1.4;">
+            <b>${p.address || 'Дніпро'}</b><br>
+            <span>${p.text || p.raw_text || ''}</span><br>
+            <small style="color:#666;">🕒 ${minsAgo} хв тому</small>
+            <div style="margin-top:6px; font-size:11px; color:#0055cc; font-weight:600;">
+              ✋ Перетягніть кружок, щоб перевчити радар на потрібну вулицю!
+            </div>
+          </div>
+        `);
+
+        // ПРИ ОТПУСКАНИИ МЕТКИ — ОБНОВЛЯЕМ FIREBASE И ОБУЧАЕМ СИСТЕМУ
+        marker.on('dragend', async (ev) => {
+          const pos = ev.target.getLatLng();
+          const newLat = Number(pos.lat.toFixed(5));
+          const newLng = Number(pos.lng.toFixed(5));
+
+          showToastNotice("⏳ Навчання радара новому місцю...");
+
+          try {
+            await fetch(`${FIREBASE_HOST}/points/${p.id}.json`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                lat: newLat,
+                lng: newLng,
+                needs_training: false,
+                address: "Встановлено користувачем"
+              })
+            });
+
+            const txt = p.raw_text || p.text || "";
+            if (txt && txt.length >= 3) {
+              await fetch(DB_KB, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  phrase: txt.trim().toLowerCase(),
+                  lat: newLat,
+                  lng: newLng,
+                  address: "Ручне навчання",
+                  updated_at: Date.now()
+                })
+              });
+              showToastNotice("🎯 Радар успішно навчився цієї вулиці!");
+            } else {
+              showToastNotice("📍 Позицію точки збережено!");
+            }
+
+            fetchRadarData();
+          } catch (e) {
+            showToastNotice("⚠️ Помилка збереження.");
+          }
+        });
+
+        marker.addTo(pointsGroup);
+      });
     }
 
-    // ГЕОЛОКАЦИЯ
-    function locateMe() {
+    // ГЕОЛОКАЦИЯ ПОЛЬЗОВАТЕЛЯ
+    function locateUser() {
       if (!navigator.geolocation) {
-        showToast("Геолокація не підтримується цим браузером.");
+        showToastNotice("Геолокація недоступна.");
         return;
       }
-      showToast("Визначаємо розташування...");
+      showToastNotice("Пошук супутників...");
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           const lat = pos.coords.latitude;
           const lng = pos.coords.longitude;
           map.setView([lat, lng], 15);
-          if (myLocMarker) map.removeLayer(myLocMarker);
-          myLocMarker = L.circleMarker([lat, lng], {
+          if (myPositionMarker) map.removeLayer(myPositionMarker);
+          myPositionMarker = L.circleMarker([lat, lng], {
             radius: 8,
-            color: '#00ffff',
-            fillColor: '#00ffff',
-            fillOpacity: 0.9
+            color: '#00ddff',
+            fillColor: '#00ddff',
+            fillOpacity: 0.95
           }).addTo(map).bindPopup("Ви тут").openPopup();
         },
-        () => showToast("Не вдалося отримати доступ до GPS.")
+        () => showToastNotice("Не вдалося визначити координати.")
       );
     }
 
-    // ЧАТ С ШІ
-    function handleInputKey(e) {
-      if (e.key === 'Enter') sendAIMessage();
+    // GEMINI ЧАТ
+    function onEnterQuery(e) {
+      if (e.key === 'Enter') askAI();
     }
 
-    async function sendAIMessage() {
-      const input = document.getElementById("aiInput");
-      const text = input.value.trim();
-      if (!text) return;
+    async function askAI() {
+      const field = document.getElementById("userQueryInput");
+      const q = field.value.trim();
+      if (!q) return;
 
-      appendMessage(text, 'user');
-      input.value = "";
+      addChatMessage(q, 'user');
+      field.value = "";
+      const botEl = addChatMessage("Обмірковую...", 'bot');
 
-      const botMsgDiv = appendMessage("Думаю...", 'bot');
+      const raw = localStorage.getItem("gemini_api_key") || "";
+      const keys = raw.split(/[,;\s]+/).map(k => k.trim()).filter(k => k.length > 15);
 
-      try {
-        const payload = {
-          contents: [{
-            role: "user",
-            parts: [{
-              text: `Користувач запитує: "${text}". Відповідай коротко і конкретно по обстановці в Дніпрі.`
-            }]
-          }]
-        };
-
-        const result = await executeGeminiRequest(payload);
-        const reply = result.data?.candidates?.[0]?.content?.parts?.[0]?.text || "Не вдалося отримати відповідь.";
-        botMsgDiv.innerText = reply;
-      } catch (err) {
-        botMsgDiv.innerText = `Помилка: ${err.message}`;
+      if (keys.length === 0) {
+        botEl.innerText = "Вкажіть ваші Gemini ключі через значок 🔑 вгорі.";
+        return;
       }
+
+      for (let k of keys) {
+        try {
+          const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${k}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [{ role: "user", parts: [{ text: `Запит: "${q}". Відповідай коротко про ситуацію в Дніпрі.` }] }]
+            })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            botEl.innerText = data.candidates?.[0]?.content?.parts?.[0]?.text || "Немає відповіді.";
+            return;
+          }
+        } catch (err) {}
+      }
+      botEl.innerText = "Не вдалося отримати відповідь від ШІ.";
     }
 
-    function appendMessage(text, type) {
-      const container = document.getElementById("aiMessages");
-      const div = document.createElement("div");
-      div.className = `ai-msg ${type}`;
-      div.innerText = text;
-      container.appendChild(div);
+    function addChatMessage(msg, type) {
+      const container = document.getElementById("chatLog");
+      const d = document.createElement("div");
+      d.className = `chat-bubble ${type}`;
+      d.innerText = msg;
+      container.appendChild(d);
       container.scrollTop = container.scrollHeight;
-      return div;
+      return d;
     }
 
-    // Старт
-    loadPoints();
-    setInterval(loadPoints, 25000);
+    // СТАРТ
+    fetchRadarData();
+    setInterval(fetchRadarData, 25000);
   </script>
 </body>
 </html>
