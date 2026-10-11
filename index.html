@@ -63,9 +63,9 @@
     }
 
     /* ==========================================================================
-       4 ЖЕСТКО ЗАФИКСИРОВАННЫХ УГЛА (НИКОГДА НЕ НАЕЗЖАЮТ ДРУГ НА ДРУГА)
+       4 ЖЕСТКО ЗАФИКСИРОВАННЫХ УГЛА (НЕ НАЕЗЖАЮТ ДРУГ НА ДРУГА)
        ========================================================================== */
-    /* 1. ЛЕВЫЙ ВЕРХНИЙ УГОЛ: ТОЧЕК XX */
+    /* 1. ЛЕВЫЙ ВЕРХНИЙ: ТОЧЕК XX */
     .dashboard {
       position: absolute !important;
       top: 15px !important;
@@ -139,7 +139,7 @@
     }
     html.dash-collapsed #collapsibleBody { display: none; }
 
-    /* 2. ПРАВЫЙ ВЕРХНИЙ УГОЛ: ШІ */
+    /* 2. ПРАВЫЙ ВЕРХНИЙ: ШІ (ВСЕГДА ЗАКРЕПЛЕН СПРАВА) */
     .ai-pill-panel {
       position: absolute !important;
       top: 15px !important;
@@ -294,7 +294,7 @@
       justify-content: center;
     }
 
-    /* 3. ЛЕВЫЙ НИЖНИЙ УГОЛ: МІЙ ШЛЯХ */
+    /* 3. ЛЕВЫЙ НИЖНИЙ: МІЙ ШЛЯХ */
     .route-status-bar {
       position: absolute !important;
       bottom: 25px !important;
@@ -325,7 +325,7 @@
       box-shadow: 0 0 18px rgba(255, 51, 75, 0.45) !important;
     }
 
-    /* 4. ПРАВЫЙ НИЖНИЙ УГОЛ: ОНОВИТИ */
+    /* 4. ПРАВЫЙ НИЖНИЙ: ОНОВИТИ */
     .btn-refresh {
       position: absolute !important;
       bottom: 25px !important;
@@ -353,7 +353,7 @@
       white-space: nowrap;
     }
 
-    /* АНИМАЦИЯ: МЕТКА УВЕЛИЧИВАЕТСЯ И ПУЛЬСИРУЕТ ЖЕЛТЫМ ПРИ ПЕРЕМЕЩЕНИИ */
+    /* ПУЛЬСАЦИЯ ПРИ ПЕРЕМЕЩЕНИИ */
     .moving-super-marker {
       transform: scale(2.6) !important;
       background: #f59e0b !important;
@@ -367,7 +367,6 @@
       to { transform: scale(2.8); }
     }
 
-    /* ОРАНЖЕВЫЙ ОРЕОЛ ОБУЧЕНИЯ */
     .radar-circle.needs-training {
       background: #f59e0b !important;
       border-color: #ffffff !important;
@@ -599,7 +598,7 @@
       white-space: nowrap;
     }
 
-    /* БАННЕР ПЕРЕМЕЩЕНИЯ ВВЕРХУ ЭКРАНА */
+    /* БАННЕР ПЕРЕМЕЩЕНИЯ */
     .transfer-banner {
       position: absolute; top: 15px; left: 50%; transform: translateX(-50%);
       background: rgba(15, 23, 42, 0.96); border: 1.5px solid #00f3ff;
@@ -702,6 +701,40 @@
     .btn-modal-act.del {
       background: #7f1d1d; border: 1px solid #ef4444; color: #fca5a5;
     }
+
+    /* МЕНЮ ПОДТВЕРЖДЕНИЯ ПЕРЕНОСА */
+    .confirm-modal-backdrop {
+      position: fixed;
+      bottom: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 9999;
+      display: none;
+      width: 90%;
+      max-width: 340px;
+    }
+    .confirm-modal-card {
+      background: rgba(15, 23, 42, 0.96);
+      border: 1.5px solid #00f3ff;
+      border-radius: 14px;
+      padding: 12px;
+      color: #fff;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.7);
+      backdrop-filter: blur(8px);
+    }
+    .btn-confirm-act {
+      flex: 1;
+      padding: 8px 6px;
+      border-radius: 8px;
+      font-size: 11px;
+      font-weight: 800;
+      cursor: pointer;
+      border: none;
+      text-align: center;
+    }
+    .btn-confirm-act.ok { background: #059669; color: #fff; }
+    .btn-confirm-act.cancel { background: #dc2626; color: #fff; }
+    .btn-confirm-act.manual { background: #0284c7; color: #fff; }
   </style>
 </head>
 <body>
@@ -764,7 +797,7 @@
     </div>
   </div>
 
-  <!-- 2. ПРАВЫЙ ВЕРХНИЙ УГОЛ: ШІ (ВСЕГДА ЗАКРЕПЛЕН СПРАВА) -->
+  <!-- 2. ПРАВЫЙ ВЕРХНИЙ УГОЛ: ШІ -->
   <div id="aiPillPanel" class="ai-pill-panel compact">
     <div id="aiPillHeader" class="ai-pill-compact-content" onclick="toggleAiPillExpand()">
       <div class="ai-titleBadge">
@@ -831,6 +864,19 @@
       <div class="train-modal-actions">
         <button class="btn-modal-act ai" onclick="modalOpenAI()">🤖 Запитати ШІ</button>
         <button class="btn-modal-act del" onclick="modalDeletePoint()">🗑️ Видалити мітку</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ОКНО ПОДТВЕРЖДЕНИЯ ПЕРЕНОСА МЕТКИ -->
+  <div id="confirmMoveModal" class="confirm-modal-backdrop">
+    <div class="confirm-modal-card">
+      <div style="font-size:13px; font-weight:800; color:#38bdf8; margin-bottom:4px;">📍 Перевірте нове місце:</div>
+      <div id="confirmStreetName" style="font-size:12px; color:#e2e8f0; margin-bottom:10px; background:#1e293b; padding:6px 10px; border-radius:8px;">вул. ...</div>
+      <div style="display:flex; gap:6px;">
+        <button class="btn-confirm-act ok" onclick="finalizeMoveConfirm(true)">✅ Підтвердити</button>
+        <button class="btn-confirm-act cancel" onclick="finalizeMoveConfirm(false)">↩️ Скасувати</button>
+        <button class="btn-confirm-act manual" onclick="finalizeMoveManual()">✋ Вручну</button>
       </div>
     </div>
   </div>
@@ -939,15 +985,9 @@
       "слобожанськ": { name: "просп. Слобожанський", lat: 48.5000, lng: 35.0680 },
       "12.*квартал": { name: "12-й Квартал", lat: 48.4120, lng: 35.0150 },
       "топол": { name: "ж/м Тополя", lat: 48.3950, lng: 35.0350 },
+      "придніпр": { name: "ж/м Придніпровськ", lat: 48.3980, lng: 35.1320 },
+      "придник": { name: "ж/м Придніпровськ", lat: 48.3980, lng: 35.1320 },
       "б4": { name: "Б4 / пр. Богдана Хмельницького", lat: 48.4200, lng: 35.0180 }
-    };
-
-    const PRESET_STREETS = {
-      "парус": [[48.484, 34.915], [48.486, 34.928]],
-      "набережн": [[48.490, 34.950], [48.480, 35.030]],
-      "робоч": [[48.435, 35.005], [48.460, 35.012]],
-      "поля": [[48.432, 35.025], [48.460, 35.025]],
-      "яворницьк": [[48.472, 35.020], [48.455, 35.065]]
     };
 
     const LIFETIME_MS = 40 * 60 * 1000;
@@ -966,6 +1006,9 @@
 
     let currentTrainingPoint = null;
     let currentTrainingMarker = null;
+
+    // ПЕРЕМЕННЫЕ ДЛЯ ПОДТВЕРЖДЕНИЯ ПЕРЕНОСА
+    let pendingRelocation = null;
 
     let learnedRules = [];
     try {
@@ -996,7 +1039,9 @@
 
     // LEAFLET КАРТА
     const isMobile = window.innerWidth < 768;
-    const map = L.map('map', { zoomControl: false }).setView([48.484, 34.985], isMobile ? 12 : 13);
+    const INITIAL_CENTER = [48.484, 34.985];
+    const INITIAL_ZOOM = isMobile ? 12 : 13;
+    const map = L.map('map', { zoomControl: false }).setView(INITIAL_CENTER, INITIAL_ZOOM);
 
     const googleLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', { subdomains: ['0', '1', '2', '3'], maxZoom: 20, attribution: 'Google Maps' });
     const esriLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: 'Esri World Street Map' });
@@ -1058,10 +1103,10 @@
       setTimeout(() => { toast.style.display = "none"; }, 3000);
     }
 
-    function hardReload() { window.location.href = window.location.origin + window.location.pathname + '?v=' + Date.now(); }
-
+    // КНОПКА ОНОВИТИ: ОБНОВЛЯЕТ ДАННЫЕ И СБРАСЫВАЕТ ЭКРАН НА НАЧАЛЬНЫЙ
     function refreshRadarClick() {
-      showToast("🔄 Оновлення даних...");
+      showToast("🔄 Оновлення та повернення додому...");
+      map.flyTo(INITIAL_CENTER, INITIAL_ZOOM, { duration: 0.7 });
       loadPoints();
     }
 
@@ -1164,9 +1209,6 @@
       updateRouteStatus();
     }
 
-    // ==========================================================================
-    // ПЛАВНАЯ АНИМАЦИЯ ПОЛЕТА МЕТКИ
-    // ==========================================================================
     function smoothGlideMarker(marker, startLatLng, endLatLng, duration = 1200, onDone = null) {
       if (!marker) { if (onDone) onDone(); return; }
       const startTime = performance.now();
@@ -1265,7 +1307,7 @@
     }
 
     // ==========================================================================
-    // ПОШАГОВАЯ АНИМАЦИЯ ПЕРЕНОСА МЕТКИ
+    // НОВАЯ ТОЧНАЯ АНИМАЦИЯ: ПРИБЫТИЕ -> МЕНЮ ВЫБОРА -> ПРИНЯТИЕ
     // ==========================================================================
     async function applyPointRelocation(streetName, lat, lng) {
       if (!currentTrainingPoint) return;
@@ -1282,76 +1324,133 @@
       const startPos = m ? m.getLatLng() : { lat: p.lat, lng: p.lng };
       const targetPos = L.latLng(Number(lat.toFixed(5)), Number(lng.toFixed(5)));
 
-      // Запоминаем исходное положение и зум карты
-      const originalCenter = map.getCenter();
-      const originalZoom = map.getZoom();
+      // Сохраняем состояние для отмены/подтверждения
+      pendingRelocation = {
+        point: p,
+        marker: m,
+        startPos: startPos,
+        targetPos: targetPos,
+        streetName: streetName,
+        originalCenter: map.getCenter(),
+        originalZoom: map.getZoom()
+      };
 
-      // Очищаем фразу для обучения
-      let phrase = (p.raw_text || p.text || "")
-        .replace(/^(?:❓|\bчисто\b|\bбп\b|\bпатруль\b|\(чисто\))/gi, "")
-        .replace(/(?:чисто|спокійно|вільно|пусто)/gi, "")
-        .trim().toLowerCase();
-      if (phrase.length < 3) phrase = streetName.toLowerCase();
-
-      // 1. Показываем баннер вверху
+      // 1. Баннер вверху
       const banner = document.getElementById("transferBanner");
       if (banner) {
         banner.innerText = "⏳ Виконується перенесення мітки...";
         banner.style.display = "block";
       }
 
-      // 2. КАРТА ОТДАЛЯЕТСЯ НА ВЕСЬ ГОРОД (ZOOM 11)
-      map.flyTo([48.465, 35.045], 11, { duration: 0.8 });
+      // 2. Карта отдаляется на обзор всего города
+      map.flyTo([48.465, 35.045], 11, { duration: 0.75 });
 
-      // 3. МЕТКА УВЕЛИЧИВАЕТСЯ И ПУЛЬСИРУЕТ ЖЕЛТЫМ
+      // 3. Метка становится большой и пульсирует желтым
       const circleEl = m ? m.getElement()?.querySelector('.radar-circle') : null;
       if (circleEl) circleEl.classList.add('moving-super-marker');
 
-      // 4. МЕТКА ПЛАВНО ПЕРЕМЕЩАЕТСЯ НА НОВОЕ МЕСТО
+      // 4. Метка скользит к новому месту
       setTimeout(() => {
-        smoothGlideMarker(m, startPos, targetPos, 1200, async () => {
-          // 5. ЗАГОРАЕТСЯ СВОИМ ЦВЕТОМ
+        smoothGlideMarker(m, startPos, targetPos, 1200, () => {
+          // 5. Загорается своим цветом и приближается к цели
           if (circleEl) circleEl.classList.remove('moving-super-marker');
+          if (banner) banner.style.display = "none";
 
-          p.lat = targetPos.lat;
-          p.lng = targetPos.lng;
-          p.needs_training = false;
-          p.address = streetName;
-
-          // 6. ПРИБЛИЖАЕТСЯ В УПОР, ЧТОБЫ БЫЛО ВИДНО КУДА ПОПАЛИ (ZOOM 16)
           map.flyTo([targetPos.lat, targetPos.lng], 16, { duration: 0.85 });
 
-          if (banner) banner.style.display = "none";
-          showToast(`🎯 «${streetName}» зафіксовано!`);
-
-          // Сохраняем в Firebase и Базу Знаний
-          if (p._fbKey) {
-            fetch(FIREBASE_POINTS_URL.replace(".json", `/${p._fbKey}.json`), {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ lat: p.lat, lng: p.lng, needs_training: false, address: streetName })
-            }).catch(() => {});
-          }
-
-          fetch(FIREBASE_KB_URL, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ phrase: phrase, address: streetName, lat: p.lat, lng: p.lng, updated_at: Date.now() })
-          }).catch(() => {});
-
-          learnedRules.push({ phrase: phrase, address: streetName, lat: p.lat, lng: p.lng });
-          localStorage.setItem("radar_learned_rules", JSON.stringify(learnedRules));
-
-          renderMarkers();
-          renderTrafficLights();
-          updateRouteStatus();
-
-          // 7. ЧЕРЕЗ 2 СЕКУНДЫ ВОЗВРАЩАЕТСЯ НА НАЧАЛЬНОЕ ПОЛОЖЕНИЕ КАРТЫ
+          // 6. Показываем меню подтверждения переноса
           setTimeout(() => {
-            map.flyTo(originalCenter, originalZoom, { duration: 0.9 });
-          }, 2000);
+            const confirmBox = document.getElementById("confirmMoveModal");
+            document.getElementById("confirmStreetName").innerText = `📍 ${streetName}`;
+            confirmBox.style.display = "block";
+          }, 850);
         });
-      }, 750);
+      }, 700);
+    }
+
+    // ПОДТВЕРЖДЕНИЕ ИЛИ ОТМЕНА ПЕРЕНОСА
+    function finalizeMoveConfirm(isConfirmed) {
+      const confirmBox = document.getElementById("confirmMoveModal");
+      confirmBox.style.display = "none";
+
+      if (!pendingRelocation) return;
+      const { point, marker, startPos, targetPos, streetName, originalCenter, originalZoom } = pendingRelocation;
+
+      if (isConfirmed) {
+        // Подтверждено: сохраняем в базу
+        point.lat = targetPos.lat;
+        point.lng = targetPos.lng;
+        point.needs_training = false;
+        point.address = streetName;
+
+        let phrase = (point.raw_text || point.text || "")
+          .replace(/^(?:❓|\bчисто\b|\bбп\b|\bпатруль\b|\(чисто\))/gi, "")
+          .replace(/(?:чисто|спокійно|вільно|пусто)/gi, "")
+          .trim().toLowerCase();
+        if (phrase.length < 3) phrase = streetName.toLowerCase();
+
+        if (point._fbKey) {
+          fetch(FIREBASE_POINTS_URL.replace(".json", `/${point._fbKey}.json`), {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ lat: point.lat, lng: point.lng, needs_training: false, address: streetName })
+          }).catch(() => {});
+        }
+
+        fetch(FIREBASE_KB_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phrase: phrase, address: streetName, lat: point.lat, lng: point.lng, updated_at: Date.now() })
+        }).catch(() => {});
+
+        learnedRules.push({ phrase: phrase, address: streetName, lat: point.lat, lng: point.lng });
+        localStorage.setItem("radar_learned_rules", JSON.stringify(learnedRules));
+
+        showToast(`✅ «${streetName}» зафіксовано!`);
+        renderMarkers();
+        renderTrafficLights();
+        updateRouteStatus();
+
+        // Ровно через 2 секунды плавно возвращаемся на исходный экран
+        setTimeout(() => {
+          map.flyTo(originalCenter, originalZoom, { duration: 0.9 });
+          pendingRelocation = null;
+        }, 2000);
+
+      } else {
+        // Отмена: возвращаем метку на старое место и летим назад
+        if (marker) marker.setLatLng(startPos);
+        map.flyTo(originalCenter, originalZoom, { duration: 0.8 });
+        showToast("↩️ Перенесення скасовано");
+        renderMarkers();
+        pendingRelocation = null;
+      }
+    }
+
+    // РУЧНОЕ УТОЧНЕНИЕ ПОСЛЕ ПРИБЫТИЯ
+    function finalizeMoveManual() {
+      const confirmBox = document.getElementById("confirmMoveModal");
+      confirmBox.style.display = "none";
+
+      if (!pendingRelocation || !pendingRelocation.marker) return;
+      const { point, marker } = pendingRelocation;
+
+      marker.dragging.enable();
+      const circleEl = marker.getElement()?.querySelector('.radar-circle');
+      if (circleEl) circleEl.classList.add('moving-super-marker');
+
+      showToast("✋ Підтягніть мітку пальцем точно на перехрестя!");
+
+      marker.once('dragend', (e) => {
+        marker.dragging.disable();
+        if (circleEl) circleEl.classList.remove('moving-super-marker');
+        const pos = e.target.getLatLng();
+        pendingRelocation.targetPos = pos;
+        pendingRelocation.streetName = "Встановлено користувачем";
+
+        document.getElementById("confirmStreetName").innerText = "📍 Встановлено користувачем (ручне)";
+        confirmBox.style.display = "block";
+      });
     }
 
     async function executeCustomTrain() {
@@ -1381,7 +1480,6 @@
       showToast(`⚠️ Не знайдено координат для «${q}». Спробуйте іншу назву.`);
     }
 
-    // РУЧНОЙ ПЕРЕНОС БЕЗ СЛОЖНОЙ АНИМАЦИИ
     function startManualDragFromModal() {
       if (!currentTrainingMarker || !currentTrainingPoint) return;
       closeTrainModal();
@@ -1525,6 +1623,7 @@
     L.DomEvent.disableClickPropagation(document.getElementById("routeStatusBar"));
     L.DomEvent.disableClickPropagation(document.getElementById("btnRefresh"));
     L.DomEvent.disableClickPropagation(document.getElementById("trainModal"));
+    L.DomEvent.disableClickPropagation(document.getElementById("confirmMoveModal"));
 
     function toggleAiPillExpand(e) {
       if (e && (e.target.closest('textarea') || e.target.closest('.btn-ai-send') || e.target.closest('.ai-mini-chip') || e.target.closest('span[title]'))) return;
@@ -2339,7 +2438,7 @@ ${allLiveReportsText || "Повідомлень немає"}
       if (!e.target.closest(".search-box")) searchResults.style.display = "none";
     });
 
-    // ЗАГРУЗКА ТОЧЕК
+    // ЗАГРУЗКА ТОЧЕК И ОЧИСТКА СПАМА
     async function loadPoints() {
       try {
         const res = await fetch(`${FIREBASE_POINTS_URL}?t=${Date.now()}`);
