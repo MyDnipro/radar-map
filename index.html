@@ -137,7 +137,7 @@
     }
     html.dash-collapsed #collapsibleBody { display: none; }
 
-    /* 2. ПРАВЫЙ ВЕРХНИЙ: ШІ (С БЕЙДЖЕМ ВЕРСИИ 3.0) */
+    /* 2. ПРАВЫЙ ВЕРХНИЙ: ШІ (С БЕЙДЖЕМ ВЕРСИИ 3.1) */
     .ai-pill-panel {
       position: absolute;
       top: 15px;
@@ -490,23 +490,6 @@
       100% { transform: scale(1); }
     }
 
-    /* ПОЛНОСТЬЮ ВИДИМАЯ ЦИФРА ПОВЕРХ ШАРА (НЕ ЗАТЕМНЯЕТ ЦВЕТ) */
-    .cluster-badge {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: rgba(15, 23, 42, 0.75);
-      color: #ffffff;
-      font-size: 9px;
-      font-weight: 900;
-      padding: 1px 4px;
-      border-radius: 6px;
-      border: 1px solid rgba(255, 255, 255, 0.8);
-      z-index: 10;
-      pointer-events: none;
-    }
-
     .subtitle { font-size: 10px; color: #94a3b8; margin-bottom: 8px; }
     .search-box { position: relative; margin-bottom: 8px; }
     .search-input {
@@ -657,6 +640,15 @@
     .dot-red { background: var(--color-red); }
 
     .custom-dot-marker { background: transparent !important; border: none !important; }
+    
+    /* Укрупненные шарики для скоплений (на 3 пикселя крупнее: 21px вместо 18px) */
+    .radar-circle.clustered {
+      width: 22px !important;
+      height: 22px !important;
+      margin-top: -2px;
+      margin-left: -2px;
+    }
+
     .radar-circle { width: 18px; height: 18px; border-radius: 50%; cursor: pointer; position: relative; touch-action: none; transition: transform 0.2s ease; }
     .radar-circle.color-green { background: var(--color-green) !important; border: var(--border-green-size) solid var(--border-green-color) !important; }
     .radar-circle.color-red { background: var(--color-red) !important; border: var(--border-red-size) solid var(--border-red-color) !important; }
@@ -734,7 +726,6 @@
       display: none; white-space: nowrap; pointer-events: none;
     }
 
-    /* МОДАЛЬНОЕ ОКНО ПРИВЯЗКИ ЗА АДРЕСОЮ */
     .train-modal-backdrop {
       position: fixed;
       inset: 0;
@@ -820,7 +811,6 @@
       background: #7f1d1d; border: 1px solid #ef4444; color: #fca5a5;
     }
 
-    /* ОКНО ПОДТВЕРЖДЕНИЯ */
     .confirm-modal-backdrop {
       position: fixed;
       bottom: 80px;
@@ -914,13 +904,13 @@
     </div>
   </div>
 
-  <!-- 2. ПРАВЫЙ ВЕРХНИЙ УГОЛ: ШІ (С БЕЙДЖЕМ ВЕРСИИ 3.0) -->
+  <!-- 2. ПРАВЫЙ ВЕРХНИЙ УГОЛ: ШІ (ВЕРСИЯ 3.1) -->
   <div id="aiPillPanel" class="ai-pill-panel compact">
     <div id="aiPillHeader" class="ai-pill-compact-content">
       <div class="ai-titleBadge" onclick="toggleAiPillExpand()">
         <span style="font-size:14px;">🤖</span>
         <span id="aiPillLabel">ШІ</span>
-        <span class="ai-version-badge">v3.0</span>
+        <span class="ai-version-badge">v3.1</span>
         <span style="font-size:9px; color:#64748b; margin-left:3px;">✥</span>
       </div>
       <div style="display:flex; align-items:center; gap:4px;">
@@ -941,7 +931,7 @@
 
       <div id="aiChatBox" class="ai-chat-box">
         <div class="ai-msg bot">
-          👋 Вітаю! Я ваш ШІ-штурман (Карта v3.0). Конфліктні точки розведено, цифри не перекривають колір!
+          👋 Вітаю! Я ваш ШІ-штурман (Карта v3.1). Шарики чисті, на 3px крупніше, без цифр-плашок!
         </div>
       </div>
 
@@ -2872,7 +2862,7 @@ ${allLiveReportsText || "Повідомлень немає"}
       } catch (err) {}
     }
 
-    // РАЗДЕЛЕНИЕ КЛАСТЕРОВ ПО СТАТУСУ (ЧИСТО VS БП) И ВИДИМЫЕ ЦИФРЫ ПОВЕРХ ЦВЕТА
+    // РЕНДЕР МАРКЕРОВ: ЧИСТЫЕ ШАРИКИ НА 3PX КРУПНЕЕ БЕЗ ЦИФРОВЫХ ПЛАШЕК
     function renderMarkers() {
       markersLayer.clearLayers();
       const now = Date.now();
@@ -2890,7 +2880,6 @@ ${allLiveReportsText || "Повідомлень немає"}
         if (clean && !filterShowGreen) return;
         if (!clean && !filterShowRed) return;
 
-        // Разделяем ключом координаты + статус (чтобы красные и зеленые точки не смешивались в одну кучу)
         const statusGroup = clean ? "green" : "red";
         const groupKey = `${p.lat.toFixed(4)}_${p.lng.toFixed(4)}_${statusGroup}`;
 
@@ -2909,14 +2898,12 @@ ${allLiveReportsText || "Повідомлень немає"}
         if (p.needs_training) clusters[groupKey].needsTraining = true;
       });
 
-      // Небольшое веерное смещение, если на одной координате есть и красный, и зеленый кластер
       const coordCounts = {};
       Object.values(clusters).forEach(cluster => {
         const cKey = `${cluster.lat.toFixed(4)}_${cluster.lng.toFixed(4)}`;
         if (!coordCounts[cKey]) coordCounts[cKey] = 0;
         coordCounts[cKey]++;
         if (coordCounts[cKey] > 1) {
-          // Сдвигаем на несколько метров в сторону, чтобы оба шара были видны
           const offset = 0.00012 * (coordCounts[cKey] % 2 === 0 ? 1 : -1);
           cluster.lat += offset;
           cluster.lng += offset;
@@ -2931,10 +2918,11 @@ ${allLiveReportsText || "Повідомлень немає"}
         
         const colorClass = clean ? "color-green" : "color-red";
         const freshClass = isFresh ? "fresh" : "";
+        
+        // Если скопление > 1, добавляем класс .clustered (делает шарик на 3px крупнее)
+        const sizeClass = cluster.points.length > 1 ? "clustered" : "";
 
-        // Цифра поверх родного цвета шара
-        const countBadge = cluster.points.length > 1 ? `<div class="cluster-badge">${cluster.points.length}</div>` : "";
-        const markerHtml = `<div class="radar-circle ${colorClass} ${freshClass} ${trainingClass}">${countBadge}</div>`;
+        const markerHtml = `<div class="radar-circle ${colorClass} ${freshClass} ${trainingClass} ${sizeClass}"></div>`;
         
         const dotIcon = L.divIcon({
           className: 'custom-dot-marker',
