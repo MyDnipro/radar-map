@@ -135,7 +135,7 @@
     }
     html.dash-collapsed #collapsibleBody { display: none; }
 
-    /* 2. ПРАВЫЙ ВЕРХНИЙ: ШІ */
+    /* 2. ПРАВЫЙ ВЕРХНИЙ: ШІ (С БЕЙДЖЕМ ВЕРСИИ) */
     .ai-pill-panel {
       position: absolute;
       top: 15px;
@@ -204,6 +204,16 @@
       gap: 4px;
       white-space: nowrap;
     }
+    .ai-version-badge {
+      font-size: 9px;
+      font-weight: 800;
+      background: #0284c7;
+      color: #ffffff;
+      padding: 1px 5px;
+      border-radius: 4px;
+      border: 1px solid #38bdf8;
+      letter-spacing: 0.5px;
+    }
     .ai-pill-body {
       display: flex;
       flex-direction: column;
@@ -212,6 +222,7 @@
       min-height: 0;
     }
 
+    /* БЛОК ДЛЯ ТОЧЕК И СВЕТОФОРОВ */
     .ai-target-box {
       background: #0f172a;
       border: 1.5px solid #00f3ff;
@@ -777,13 +788,6 @@
     }
     .btn-train-search:active { transform: scale(0.95); background: #00f3ff; color: #00f3ff; }
 
-    .btn-train-manual {
-      background: transparent; border: 1px dashed #64748b; color: #cbd5e1;
-      padding: 7px 10px; border-radius: 8px; font-size: 11px; font-weight: 600;
-      cursor: pointer; text-align: center; margin-top: 2px;
-    }
-    .btn-train-manual:hover { border-color: #38bdf8; color: #fff; }
-
     .train-modal-actions {
       display: flex; gap: 8px; margin-top: 4px; border-top: 1px solid #1e293b; padding-top: 8px;
     }
@@ -892,12 +896,13 @@
     </div>
   </div>
 
-  <!-- 2. ПРАВЫЙ ВЕРХНИЙ УГОЛ: ШІ -->
+  <!-- 2. ПРАВЫЙ ВЕРХНИЙ УГОЛ: ШІ (С БЕЙДЖЕМ ВЕРСИИ 2.0) -->
   <div id="aiPillPanel" class="ai-pill-panel compact">
     <div id="aiPillHeader" class="ai-pill-compact-content">
       <div class="ai-titleBadge" onclick="toggleAiPillExpand()">
         <span style="font-size:14px;">🤖</span>
         <span id="aiPillLabel">ШІ</span>
+        <span class="ai-version-badge">v2.0</span>
         <span style="font-size:9px; color:#64748b; margin-left:3px;">✥</span>
       </div>
       <div style="display:flex; align-items:center; gap:4px;">
@@ -918,7 +923,7 @@
 
       <div id="aiChatBox" class="ai-chat-box">
         <div class="ai-msg bot">
-          👋 Вітаю! Я ваш ШІ-штурман. Всі повідомлення з каналу на карті. Одинарний клік показує деталі, а довге затискання точки дозволяє прив'язати її до вулиці!
+          👋 Вітаю! Я ваш ШІ-штурман (Карта v2.0). Всі повідомлення на карті. Одинарний клік — деталі, довге затискання — вибір варіанту переміщення!
         </div>
       </div>
 
@@ -969,11 +974,11 @@
     <span>🔄</span><span>Оновити</span>
   </div>
 
-  <!-- МОДАЛЬНОЕ ОКНО ПРИВЯЗКИ -->
+  <!-- МОДАЛЬНОЕ ОКНО ПРИВЯЗКИ ЗА АДРЕСОЮ -->
   <div id="trainModal" class="train-modal-backdrop" onclick="closeTrainModal(event)">
     <div class="train-modal-card" onclick="event.stopPropagation()">
       <div class="train-header">
-        <span>🎯 Прив'язка повідомлення</span>
+        <span>📍 Переміщення за адресою</span>
         <span style="cursor:pointer; font-size:16px; padding:0 4px;" onclick="closeTrainModal()">✕</span>
       </div>
       <div class="train-text-quote" id="trainTextQuote">...</div>
@@ -984,7 +989,6 @@
         <input type="text" id="trainCustomInput" class="train-input" placeholder="Вулиця чи орієнтир..." onkeydown="if(event.key==='Enter') executeCustomTrain();">
         <button class="btn-train-search" onclick="executeCustomTrain()">Перемістити</button>
       </div>
-      <button class="btn-train-manual" onclick="startManualDragFromModal()">✋ Перетягнути вручну пальцем на карті</button>
       
       <div class="train-modal-actions">
         <button class="btn-modal-act ai" onclick="modalOpenAI()">🤖 Запитати ШІ</button>
@@ -1101,7 +1105,6 @@
     const FIREBASE_NEON_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/config/neon_lines.json";
     const FIREBASE_KB_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/knowledge_base.json";
 
-    // УНИВЕРСАЛЬНЫЙ СПАМ-ФИЛЬТР ДЛЯ РЕКЛАМЫ И БОТОВ
     function isSpamMessage(text) {
       if (!text) return false;
       const t = text.toLowerCase();
@@ -1163,14 +1166,6 @@
       "придніпр": { name: "ж/м Придніпровськ", lat: 48.3980, lng: 35.1320 },
       "придник": { name: "ж/м Придніпровськ", lat: 48.3980, lng: 35.1320 },
       "б4": { name: "Б4 / пр. Богдана Хмельницького", lat: 48.4200, lng: 35.0180 }
-    };
-
-    const PRESET_STREETS = {
-      "парус": [[48.484, 34.915], [48.486, 34.928]],
-      "набережн": [[48.490, 34.950], [48.480, 35.030]],
-      "робоч": [[48.435, 35.005], [48.460, 35.012]],
-      "поля": [[48.432, 35.025], [48.460, 35.025]],
-      "яворницьк": [[48.472, 35.020], [48.455, 35.065]]
     };
 
     const LIFETIME_MS = 40 * 60 * 1000;
@@ -1538,17 +1533,87 @@
       requestAnimationFrame(animateStep);
     }
 
+    function findMarkerByPoint(p) {
+      let found = null;
+      markersLayer.eachLayer(l => {
+        if (l.getLatLng && Math.abs(l.getLatLng().lat - p.lat) < 0.0001 && Math.abs(l.getLatLng().lng - p.lng) < 0.0001) {
+          found = l;
+        }
+      });
+      return found;
+    }
+
+    // ==========================================================================
+    // МЕНЮ ВЫБОРА ДЕЙСТВИЯ ПРИ ДОЛГОМ НАЖАТИИ
+    // ==========================================================================
+    function showMarkerActionChoice(p, marker) {
+      const choiceHtml = `
+        <div style="padding:4px; min-width:180px; text-align:center; font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;">
+          <div style="font-size:11px; font-weight:800; color:#0f172a; margin-bottom:6px;">🎯 Як перемістити мітку?</div>
+          <div style="display:flex; flex-direction:column; gap:5px;">
+            <button onclick="startDirectManualDrag('${p._fbKey}')" style="background:#0284c7; color:#fff; border:none; padding:7px 10px; border-radius:7px; font-size:11px; font-weight:800; cursor:pointer;">✋ Перемістити вручну</button>
+            <button onclick="startAddressRelocationForPoint('${p._fbKey}')" style="background:#1e293b; color:#38bdf8; border:1px solid #0284c7; padding:7px 10px; border-radius:7px; font-size:11px; font-weight:800; cursor:pointer;">📍 Перемістити за адресою</button>
+          </div>
+        </div>
+      `;
+      marker.bindPopup(choiceHtml, { closeButton: true, autoClose: true }).openPopup();
+    }
+
+    // 1. ПЕРЕМЕЩЕНИЕ ВРУЧНУЮ (БЕЗ ЗУМА И СДВИГА КАРТЫ, С АВТОПАНОМ ПО КРАЯМ)
+    window.startDirectManualDrag = function(fbKey) {
+      const p = allPoints.find(x => x._fbKey === fbKey);
+      if (!p) return;
+      let m = findMarkerByPoint(p);
+      if (!m) return;
+      m.closePopup();
+
+      m.options.autoPan = true;
+      m.options.autoPanPadding = [60, 60];
+      m.options.autoPanSpeed = 15;
+      m.dragging.enable();
+
+      const iconEl = m.getElement()?.querySelector('.radar-circle');
+      if (iconEl) iconEl.classList.add('moving-super-marker');
+
+      showToast("✋ Тягніть мітку пальцем на потрібне місце!");
+
+      m.once('dragend', async (e) => {
+        m.dragging.disable();
+        if (iconEl) iconEl.classList.remove('moving-super-marker');
+        const pos = e.target.getLatLng();
+
+        p.lat = Number(pos.lat.toFixed(5));
+        p.lng = Number(pos.lng.toFixed(5));
+        p.needs_training = false;
+        p.address = "Встановлено користувачем";
+
+        if (p._fbKey) {
+          fetch(FIREBASE_POINTS_URL.replace(".json", `/${p._fbKey}.json`), {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ lat: p.lat, lng: p.lng, needs_training: false, address: p.address })
+          }).catch(() => {});
+        }
+
+        showToast("✅ Мітку зафіксовано на новому місці!");
+        renderMarkers();
+        renderTrafficLights();
+        updateRouteStatus();
+      });
+    };
+
+    // 2. ПЕРЕМЕЩЕНИЕ ЗА АДРЕСОЮ (ОТКРЫВАЕТ ОКНО ПОИСКА)
+    window.startAddressRelocationForPoint = function(fbKey) {
+      const p = allPoints.find(x => x._fbKey === fbKey);
+      if (!p) return;
+      let m = findMarkerByPoint(p);
+      if (m) m.closePopup();
+      openTrainingModal(p, m);
+    };
+
     function openTrainingModal(point, marker) {
       currentTrainingPoint = point;
-      currentTrainingMarker = marker;
-
-      if (!currentTrainingMarker) {
-        markersLayer.eachLayer(l => {
-          if (l.getLatLng && l.getLatLng().lat === point.lat && l.getLatLng().lng === point.lng) {
-            currentTrainingMarker = l;
-          }
-        });
-      }
+      currentTrainingMarker = marker || findMarkerByPoint(point);
 
       const rawTxt = point.raw_text || point.text || "";
       document.getElementById("trainTextQuote").innerText = `«${rawTxt}»`;
@@ -1615,12 +1680,7 @@
       closeTrainModal();
 
       const p = currentTrainingPoint;
-      let m = currentTrainingMarker;
-      if (!m) {
-        markersLayer.eachLayer(l => {
-          if (l.getLatLng && l.getLatLng().lat === p.lat && l.getLatLng().lng === p.lng) m = l;
-        });
-      }
+      let m = currentTrainingMarker || findMarkerByPoint(p);
 
       const startPos = L.latLng(p.lat, p.lng);
       const targetPos = L.latLng(Number(lat.toFixed(5)), Number(lng.toFixed(5)));
@@ -1718,7 +1778,11 @@
       if (!pendingRelocation || !pendingRelocation.marker) return;
       const { point, marker } = pendingRelocation;
 
+      marker.options.autoPan = true;
+      marker.options.autoPanPadding = [60, 60];
+      marker.options.autoPanSpeed = 15;
       marker.dragging.enable();
+
       const circleEl = marker.getElement()?.querySelector('.radar-circle');
       if (circleEl) circleEl.classList.add('moving-super-marker');
 
@@ -1761,45 +1825,6 @@
       } catch(e) {}
 
       showToast(`⚠️ Не знайдено координат для «${q}». Спробуйте іншу назву.`);
-    }
-
-    function startManualDragFromModal() {
-      if (!currentTrainingMarker || !currentTrainingPoint) return;
-      closeTrainModal();
-
-      const m = currentTrainingMarker;
-      const p = currentTrainingPoint;
-
-      m.dragging.enable();
-      map.setView([p.lat, p.lng], 16);
-
-      const iconEl = m.getElement()?.querySelector('.radar-circle');
-      if (iconEl) iconEl.classList.add('moving-super-marker');
-
-      showToast("✋ Затисніть та перетягніть мітку пальцем!");
-
-      m.once('dragend', async (e) => {
-        const pos = e.target.getLatLng();
-        m.dragging.disable();
-        if (iconEl) iconEl.classList.remove('moving-super-marker');
-
-        p.lat = Number(pos.lat.toFixed(5));
-        p.lng = Number(pos.lng.toFixed(5));
-        p.needs_training = false;
-        p.address = "Встановлено користувачем";
-
-        if (p._fbKey) {
-          fetch(FIREBASE_POINTS_URL.replace(".json", `/${p._fbKey}.json`), {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ lat: p.lat, lng: p.lng, needs_training: false, address: p.address })
-          }).catch(() => {});
-        }
-        showToast("📍 Позицію точки збережено!");
-        renderMarkers();
-        renderTrafficLights();
-        updateRouteStatus();
-      });
     }
 
     // СВЕТОФОРЫ
@@ -2073,6 +2098,7 @@
       }
     }
 
+    // ЗАПРОС К GEMINI (МОДЕЛИ 3.8 И 3.5, ТАЙМАУТ 8 СЕК)
     async function executeGeminiRequestPool(promptPayload) {
       if (!verifyGeminiAuthorization()) {
         throw new Error("ШІ заблоковано. Введіть пароль (підказка: телефон батьків).");
@@ -2737,7 +2763,7 @@ ${allLiveReportsText || "Повідомлень немає"}
       if (!e.target.closest(".search-box")) searchResults.style.display = "none";
     });
 
-    // ЗАГРУЗКА ТОЧЕК И АВТОМАТИЧЕСКАЯ ОЧИСТКА СПАМА
+    // ЗАГРУЗКА ТОЧЕК
     async function loadPoints() {
       if (pendingRelocation) return;
       try {
@@ -2755,7 +2781,6 @@ ${allLiveReportsText || "Повідомлень немає"}
 
           const fullText = (p.text || "") + " " + (p.raw_text || "");
 
-          // ПРОВЕРКА НА СПАМ: ЕСЛИ ЭТО РЕКЛАМА — ПОМЕЧАЕМ НА УДАЛЕНИЕ ИЗ FIREBASE
           if (isSpamMessage(fullText)) {
             spamKeysToDelete.push(key);
             return null;
@@ -2780,7 +2805,6 @@ ${allLiveReportsText || "Повідомлень немає"}
           return p;
         }).filter(p => p && (now - (p.time || p.timestamp || 0)) <= LIFETIME_MS);
 
-        // УДАЛЯЕМ НАЙДЕННЫЙ СПАМ ИЗ БАЗЫ FIREBASE
         if (spamKeysToDelete.length > 0) {
           spamKeysToDelete.forEach(k => {
             fetch(FIREBASE_POINTS_URL.replace(".json", `/${k}.json`), { method: "DELETE" }).catch(() => {});
@@ -2842,11 +2866,12 @@ ${allLiveReportsText || "Повідомлень немає"}
           </div>
         `;
 
-        const marker = L.marker([p.lat, p.lng], { icon: dotIcon, draggable: false });
-        marker.bindPopup(popupContent);
-
-        marker.on('click', () => {
-          marker.openPopup();
+        const marker = L.marker([p.lat, p.lng], {
+          icon: dotIcon,
+          draggable: false,
+          autoPan: true,
+          autoPanPadding: [60, 60],
+          autoPanSpeed: 15
         });
 
         let pressTimer = null;
@@ -2861,8 +2886,7 @@ ${allLiveReportsText || "Повідомлень немає"}
             isLongTap = true;
             pressTimer = null;
             if (navigator.vibrate) navigator.vibrate(50);
-            marker.closePopup();
-            openTrainingModal(p, marker);
+            showMarkerActionChoice(p, marker);
           }, 350);
         }
 
@@ -2871,6 +2895,12 @@ ${allLiveReportsText || "Повідомлень немає"}
             clearTimeout(pressTimer); pressTimer = null;
           }
         }
+
+        marker.on('click', () => {
+          if (!isLongTap) {
+            marker.bindPopup(popupContent).openPopup();
+          }
+        });
 
         marker.on('add', () => {
           const el = marker.getElement();
@@ -2906,10 +2936,7 @@ ${allLiveReportsText || "Повідомлень немає"}
     window.triggerTrainingFromPopup = function(fbKey) {
       const p = allPoints.find(x => x._fbKey === fbKey);
       if (p) {
-        let m = null;
-        markersLayer.eachLayer(l => {
-          if (l.getLatLng && l.getLatLng().lat === p.lat && l.getLatLng().lng === p.lng) m = l;
-        });
+        let m = findMarkerByPoint(p);
         openTrainingModal(p, m);
       }
     };
