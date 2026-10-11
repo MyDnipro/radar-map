@@ -135,7 +135,7 @@
     }
     html.dash-collapsed #collapsibleBody { display: none; }
 
-    /* 2. ПРАВЫЙ ВЕРХНИЙ: ШІ (ПЛАВАЮЩИЙ ПРИ РАСКРЫТИИ) */
+    /* 2. ПРАВЫЙ ВЕРХНИЙ: ШІ */
     .ai-pill-panel {
       position: absolute;
       top: 15px;
@@ -212,7 +212,6 @@
       min-height: 0;
     }
 
-    /* БЛОК ПРЯМОГО ВЫБОРА ДЛЯ ТОЧЕК И СВЕТОФОРОВ */
     .ai-target-box {
       background: #0f172a;
       border: 1.5px solid #00f3ff;
@@ -362,7 +361,6 @@
       box-shadow: 0 0 18px rgba(255, 51, 75, 0.45) !important;
     }
 
-    /* ПОДМЕНЮ МАРШРУТА */
     .route-submenu {
       position: absolute;
       bottom: 70px;
@@ -777,7 +775,7 @@
       background: #0284c7; border: none; color: #fff; border-radius: 8px;
       padding: 0 12px; font-size: 11px; font-weight: 800; cursor: pointer;
     }
-    .btn-train-search:active { transform: scale(0.95); background: #00f3ff; color: #000; }
+    .btn-train-search:active { transform: scale(0.95); background: #00f3ff; color: #00f3ff; }
 
     .btn-train-manual {
       background: transparent; border: 1px dashed #64748b; color: #cbd5e1;
@@ -910,7 +908,6 @@
     </div>
 
     <div class="ai-pill-body" id="aiPillBody">
-      <!-- БЛОК ПРЯМОГО ДЕЙСТВИЯ ПО КЛИКУ НА ТОЧКУ/СВЕТОФОР -->
       <div id="aiTargetBox" class="ai-target-box">
         <div id="aiTargetTitle" class="ai-target-header">Об'єкт: ...</div>
         <div class="ai-target-buttons">
@@ -940,7 +937,7 @@
     </div>
   </div>
 
-  <!-- 3. ЛЕВЫЙ НИЖНИЙ УГОЛ: МІЙ ШЛЯХ (КЛИК ОТКРЫВАЕТ ПОДМЕНЮ) -->
+  <!-- 3. ЛЕВЫЙ НИЖНИЙ УГОЛ: МІЙ ШЛЯХ -->
   <div id="routeStatusBar" class="route-status-bar" onclick="toggleRouteSubmenu(event)">
     <span id="routeStatusIcon">🟢</span>
     <span id="routeStatusText">Мій шлях: Чисто</span>
@@ -1104,10 +1101,15 @@
     const FIREBASE_NEON_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/config/neon_lines.json";
     const FIREBASE_KB_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/knowledge_base.json";
 
+    // УНИВЕРСАЛЬНЫЙ СПАМ-ФИЛЬТР ДЛЯ РЕКЛАМЫ И БОТОВ
     function isSpamMessage(text) {
       if (!text) return false;
       const t = text.toLowerCase();
       const spamWords = [
+        "поддержите", "поддержка", "покупка бота", "покупка", "репост",
+        "сделайте репост", "пригласите друзей", "поделитесь ссылкой",
+        "продолжать работу", "улучшать функционал", "развивать проект",
+        "ссылка на бота", "описании группы", "описании канала", "группа вам полезна",
         "напоминаем", "у нас есть бот", "бот с картой", "пробный доступ",
         "события живут", "метки появляются", "без отдельных приложений",
         "бесплатный пробный", "подписчик", "всё прямо в telegram",
@@ -1161,6 +1163,14 @@
       "придніпр": { name: "ж/м Придніпровськ", lat: 48.3980, lng: 35.1320 },
       "придник": { name: "ж/м Придніпровськ", lat: 48.3980, lng: 35.1320 },
       "б4": { name: "Б4 / пр. Богдана Хмельницького", lat: 48.4200, lng: 35.0180 }
+    };
+
+    const PRESET_STREETS = {
+      "парус": [[48.484, 34.915], [48.486, 34.928]],
+      "набережн": [[48.490, 34.950], [48.480, 35.030]],
+      "робоч": [[48.435, 35.005], [48.460, 35.012]],
+      "поля": [[48.432, 35.025], [48.460, 35.025]],
+      "яворницьк": [[48.472, 35.020], [48.455, 35.065]]
     };
 
     const LIFETIME_MS = 40 * 60 * 1000;
@@ -1842,9 +1852,7 @@
       showToast("🗑️ Повідомлення успішно видалено!");
     };
 
-    // ==========================================================================
-    // ДИАЛОГОВЫЙ ЧАТ ШІ + ПЕРЕМЕЩЕНИЕ И АКТИВНЫЕ ДЕЙСТВИЯ
-    // ==========================================================================
+    // ДИАЛОГОВЫЙ ЧАТ ШІ
     const aiPillPanel = document.getElementById("aiPillPanel");
     const aiPillHeader = document.getElementById("aiPillHeader");
     const aiInlineInput = document.getElementById("aiInlineInput");
@@ -1865,7 +1873,6 @@
     L.DomEvent.disableClickPropagation(document.getElementById("trainModal"));
     L.DomEvent.disableClickPropagation(document.getElementById("confirmMoveModal"));
 
-    // ПЕРЕМЕЩЕНИЕ ОКНА ШІ В РАСКРЫТОМ СОСТОЯНИИ
     let aiDragActive = false;
     let aiStartX = 0, aiStartY = 0, aiInitLeft = 0, aiInitTop = 0;
 
@@ -1929,7 +1936,6 @@
           if (map) map.invalidateSize();
         }, 150);
       } else {
-        // СВОРАЧИВАНИЕ: СТРОГО ВОЗВРАЩАЕМ В ПРАВЫЙ ВЕРХНИЙ УГОЛ
         aiPillPanel.style.top = "15px";
         aiPillPanel.style.right = "15px";
         aiPillPanel.style.left = "auto";
@@ -1969,7 +1975,6 @@
       verifyGeminiAuthorization(true);
     }
 
-    // ОТКРЫТИЕ РЕЖИМА ИИ ДЛЯ ОБЪЕКТА С ВЫБОРОМ ЧИСТО / БЛОКПОСТ
     window.openAiContext = function(type, id, name, extraData = {}) {
       if (!aiPillPanel.classList.contains("expanded")) {
         toggleAiPillExpand();
@@ -1986,14 +1991,12 @@
       }, 120);
     };
 
-    // МГНОВЕННОЕ ПРИМЕНЕНИЕ ВЕРДИКТА ЧИСТО / БЛОКПОСТ ДЛЯ ТОЧКИ ИЛИ СВЕТОФОРА
     window.applyTargetVerdict = function(isClean) {
       if (!targetedPointContext) return;
       const ctx = targetedPointContext;
       const statusText = isClean ? "ЧИСТО (зелена)" : "БЛОКПОСТ (червона)";
       const rawText = ctx.raw_text || ctx.name || "";
 
-      // 1. Если это конкретная точка на карте
       if (ctx.type === 'point') {
         const p = allPoints.find(x => x._fbKey === ctx.id || x.text === rawText || x.raw_text === rawText);
         if (p) {
@@ -2009,7 +2012,6 @@
           }
         }
 
-        // Сохраняем в Базу Знаний
         let phrase = rawText.replace(/^(?:❓|\bчисто\b|\bбп\b|\bпатруль\b|\(чисто\))/gi, "").trim().toLowerCase();
         if (phrase.length >= 3) {
           learnedRules.push({ phrase: phrase, is_clean: isClean });
@@ -2020,18 +2022,14 @@
             body: JSON.stringify({ phrase: phrase, is_clean: isClean, updated_at: Date.now() })
           }).catch(() => {});
         }
-      } 
-      // 2. Если это светофор
-      else if (ctx.type === 'traffic_light') {
+      } else if (ctx.type === 'traffic_light') {
         window.setTrafficLightManual(ctx.id, isClean ? 'green' : 'red');
       }
 
-      // Немедленное обновление UI без задержек
       renderMarkers();
       renderTrafficLights();
       updateRouteStatus();
 
-      // Добавляем сообщение в чат
       const msg = document.createElement("div");
       msg.className = "ai-msg bot";
       msg.innerHTML = `<b>✅ Прийнято!</b> Об'єкт «${rawText}» миттєво переведено у статус <b>${statusText}</b>. Карту та маршрут оновлено!`;
@@ -2075,7 +2073,6 @@
       }
     }
 
-    // БЫСТРЫЙ ЗАПРОС К GEMINI (ТАЙМАУТ 8 СЕК НА ПОПЫТКУ)
     async function executeGeminiRequestPool(promptPayload) {
       if (!verifyGeminiAuthorization()) {
         throw new Error("ШІ заблоковано. Введіть пароль (підказка: телефон батьків).");
@@ -2093,7 +2090,7 @@
         for (const m of models) {
           try {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 8000); // Предел 8 секунд
+            const timeoutId = setTimeout(() => controller.abort(), 8000);
 
             const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${k}`;
             const res = await fetch(url, {
@@ -2740,7 +2737,7 @@ ${allLiveReportsText || "Повідомлень немає"}
       if (!e.target.closest(".search-box")) searchResults.style.display = "none";
     });
 
-    // ЗАГРУЗКА ТОЧЕК
+    // ЗАГРУЗКА ТОЧЕК И АВТОМАТИЧЕСКАЯ ОЧИСТКА СПАМА
     async function loadPoints() {
       if (pendingRelocation) return;
       try {
@@ -2758,6 +2755,7 @@ ${allLiveReportsText || "Повідомлень немає"}
 
           const fullText = (p.text || "") + " " + (p.raw_text || "");
 
+          // ПРОВЕРКА НА СПАМ: ЕСЛИ ЭТО РЕКЛАМА — ПОМЕЧАЕМ НА УДАЛЕНИЕ ИЗ FIREBASE
           if (isSpamMessage(fullText)) {
             spamKeysToDelete.push(key);
             return null;
@@ -2782,6 +2780,7 @@ ${allLiveReportsText || "Повідомлень немає"}
           return p;
         }).filter(p => p && (now - (p.time || p.timestamp || 0)) <= LIFETIME_MS);
 
+        // УДАЛЯЕМ НАЙДЕННЫЙ СПАМ ИЗ БАЗЫ FIREBASE
         if (spamKeysToDelete.length > 0) {
           spamKeysToDelete.forEach(k => {
             fetch(FIREBASE_POINTS_URL.replace(".json", `/${k}.json`), { method: "DELETE" }).catch(() => {});
