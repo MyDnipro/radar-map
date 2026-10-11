@@ -135,7 +135,7 @@
     }
     html.dash-collapsed #collapsibleBody { display: none; }
 
-    /* 2. ПРАВЫЙ ВЕРХНИЙ: ШІ (С БЕЙДЖЕМ ВЕРСИИ 2.3) */
+    /* 2. ПРАВЫЙ ВЕРХНИЙ: ШІ (С БЕЙДЖЕМ ВЕРСИИ 2.4) */
     .ai-pill-panel {
       position: absolute;
       top: 15px;
@@ -222,7 +222,6 @@
       min-height: 0;
     }
 
-    /* БЛОК ДЛЯ ТОЧЕК И СВЕТОФОРОВ */
     .ai-target-box {
       background: #0f172a;
       border: 1.5px solid #00f3ff;
@@ -819,7 +818,7 @@
       border-radius: 14px;
       padding: 12px;
       color: #fff;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.7);
       backdrop-filter: blur(8px);
     }
     .btn-confirm-act {
@@ -896,13 +895,13 @@
     </div>
   </div>
 
-  <!-- 2. ПРАВЫЙ ВЕРХНИЙ УГОЛ: ШІ (С БЕЙДЖЕМ ВЕРСИИ 2.3) -->
+  <!-- 2. ПРАВЫЙ ВЕРХНИЙ УГОЛ: ШІ (С БЕЙДЖЕМ ВЕРСИИ 2.4) -->
   <div id="aiPillPanel" class="ai-pill-panel compact">
     <div id="aiPillHeader" class="ai-pill-compact-content">
       <div class="ai-titleBadge" onclick="toggleAiPillExpand()">
         <span style="font-size:14px;">🤖</span>
         <span id="aiPillLabel">ШІ</span>
-        <span class="ai-version-badge">v2.3</span>
+        <span class="ai-version-badge">v2.4</span>
         <span style="font-size:9px; color:#64748b; margin-left:3px;">✥</span>
       </div>
       <div style="display:flex; align-items:center; gap:4px;">
@@ -923,7 +922,7 @@
 
       <div id="aiChatBox" class="ai-chat-box">
         <div class="ai-msg bot">
-          👋 Вітаю! Я ваш ШІ-штурман (Карта v2.3). Всі повідомлення на карті. Одинарний клік — деталі, довге затискання — вибір варіанту переміщення!
+          👋 Вітаю! Я ваш ШІ-штурман (Карта v2.4). Всі повідомлення на карті. Одинарний клік — деталі, довге затискання — переміщення!
         </div>
       </div>
 
@@ -2129,7 +2128,7 @@
       }
     }
 
-    // ЗАПРОС К GEMINI (МОДЕЛИ 3.8 И 3.5, ТАЙМАУТ 8 СЕК)
+    // НАДЁЖНЫЙ ЗАПРОС К GEMINI: 3.5-FLASH И 3.5-LITE ПЕРВЫМИ, БЕЗ СЛЁТА ЦИКЛА
     async function executeGeminiRequestPool(promptPayload) {
       if (!verifyGeminiAuthorization()) {
         throw new Error("ШІ заблоковано. Введіть пароль (підказка: телефон батьків).");
@@ -2140,7 +2139,8 @@
         throw new Error("Немає доступних ключів Gemini.");
       }
 
-      const models = ['gemini-3.8-flash', 'gemini-3.5-flash-lite', 'gemini-3.5-flash'];
+      // 3.5-flash-lite и 3.5-flash имеют лимит 1500 запросов/сутки
+      const models = ['gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-3.8-flash'];
       let lastErr = null;
 
       for (const k of apiKeys) {
@@ -2164,12 +2164,12 @@
             } else {
               const errJson = await res.json().catch(() => ({}));
               lastErr = errJson.error?.message || `HTTP ${res.status}`;
-              if (res.status === 429 || res.status === 403 || lastErr.includes("quota")) {
-                break;
-              }
+              // Если конкретная модель исчерпала лимит, пробуем следующую модель на этом же ключе!
+              continue;
             }
           } catch (e) {
             lastErr = e.name === 'AbortError' ? 'Таймаут відповіді (8с)' : e.message;
+            continue;
           }
         }
       }
@@ -2623,7 +2623,7 @@ ${allLiveReportsText || "Повідомлень немає"}
             startX = clientX; startY = clientY;
             pressTimer = setTimeout(() => {
               isLongPress = true;
-              if (navigator.vibrate) navigator.vibrate(60);
+              if (navigator.vibrate) navigator.vibrate(50);
               openTrafficLightControl(cp.id);
             }, 500);
           }
