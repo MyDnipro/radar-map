@@ -503,6 +503,50 @@
   </div>
 
   <script>
+    // ==========================================================================
+    // СИСТЕМА ЗАЩИТЫ КЛЮЧЕЙ И АВТОРИЗАЦИИ (КАК В ОСНОВНОЙ КАРТЕ)
+    // ==========================================================================
+    const SECRET_KEY_HASH = "570984";
+    const _VAULT_PREFIX = String.fromCharCode(65, 81, 46, 65, 98, 56, 82, 78, 54);
+
+    const _VAULT_SHARDS = [
+      ["I7GflB4phTHSa5jvsW", "72AcfGr11sjs1_hoz2-cwWvPvg"],
+      ["JwJ0Vv6CzHDVFUo7BE", "ScSuZXXQ8nFcYU8_oyv5iMm5tg"],
+      ["LV4FxthvBzZ3jap4gw", "ZRxUMdBofAY_ubrTUC3dsdQQWQ"],
+      ["I02tModc-D4lUWmEOQ", "2V1aPe3gzgN9gVMepbaPTc32cg"],
+      ["KlNja949szwleDzx6R", "vIVPxDxF4KhzayCXniYITnzf2Q"],
+      ["KBaApbKgeUAX1lkLe9", "T9pg3squvGcd3Uy3xIZUeJ3O0Q"],
+      ["LzCqOOJsr3_hlGuSSE", "ubUqSguaqoCKNibeZBYG2o_Z1Q"],
+      ["Iacer5GOxzeOfSc5H_", "SFPmB7y6xz-HXGE_aP8fBnipUw"],
+      ["LV84HLeL7c8CXmqSXl", "vyDa4M-1uqkQT-LlJpDgJ3sfqA"],
+      ["I2d17d2VpDXpzxEPKh", "tzBWtRt4bN62lifvrufLg3dptg"]
+    ];
+
+    function verifyGeminiAuthorization(forcePrompt = false) {
+      const savedAuth = localStorage.getItem("radar_gemini_unlocked");
+      if (savedAuth === SECRET_KEY_HASH && !forcePrompt) {
+        return true;
+      }
+      const entered = prompt("🔐 Введіть пароль для активації ШІ-штурмана:\n(Підказка: телефон батьків)");
+      if (entered === SECRET_KEY_HASH) {
+        localStorage.setItem("radar_gemini_unlocked", SECRET_KEY_HASH);
+        return true;
+      } else if (entered !== null) {
+        alert("❌ Невірний пароль! Доступ до ШІ заблоковано.");
+      }
+      return false;
+    }
+
+    function getDecryptedGeminiPool() {
+      if (localStorage.getItem("radar_gemini_unlocked") !== SECRET_KEY_HASH) {
+        return [];
+      }
+      const builtins = _VAULT_SHARDS.map(shard => _VAULT_PREFIX + shard.join(''));
+      const rawStored = localStorage.getItem("gemini_api_key") || "";
+      const customKeys = rawStored.split(/[,;\s]+/).map(k => k.trim()).filter(k => k.length > 20);
+      return [...new Set([...builtins, ...customKeys])];
+    }
+
     const FIREBASE_ARCHIVE_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/stats_archive.json";
     let rawArchive = [];
     
@@ -596,8 +640,17 @@
       askAiStatsQuestion("Зроби глибокий та корисний військово-дорожній аналіз поточної вкладки для водія");
     }
 
-    // НАДЕЖНЫЙ ЗАПРОС К GEMINI (ТОЛЬКО РАБОЧИЕ МОДЕЛИ)
-    async function executeStatsGemini(promptText, apiKey) {
+    // НАДЕЖНЫЙ ЗАПРОС К GEMINI (ТОЛЬКО МОДЕЛИ 3.8 И 3.5 С ПУЛОМ И ТАЙМАУТОМ 8 СЕК)
+    async function executeStatsGemini(promptText) {
+      if (!verifyGeminiAuthorization()) {
+        throw new Error("ШІ заблоковано. Введіть пароль (підказка: телефон батьків).");
+      }
+
+      const apiKeys = getDecryptedGeminiPool();
+      if (apiKeys.length === 0) {
+        throw new Error("Немає доступних ключів Gemini.");
+      }
+
       const candidateModels = [
         'gemini-3.8-flash',
         'gemini-3.5-flash-lite',
@@ -605,18 +658,23 @@
       ];
       let lastErr = null;
 
-      for (let attempt = 0; attempt < 2; attempt++) {
+      for (const k of apiKeys) {
         for (const m of candidateModels) {
           try {
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${apiKey}`;
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${k}`;
             const res = await fetch(url, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 contents: [{ role: "user", parts: [{ text: promptText }] }],
                 generationConfig: { temperature: 0.2 }
-              })
+              }),
+              signal: controller.signal
             });
+            clearTimeout(timeoutId);
 
             if (res.ok) {
               const data = await res.json();
@@ -625,14 +683,16 @@
             } else {
               const errObj = await res.json().catch(() => ({}));
               lastErr = errObj.error?.message || `HTTP ${res.status}`;
+              if (res.status === 429 || res.status === 403 || lastErr.includes("quota")) {
+                break;
+              }
             }
           } catch(e) {
-            lastErr = e.message;
+            lastErr = e.name === 'AbortError' ? 'Таймаут відповіді (8с)' : e.message;
           }
         }
-        await new Promise(r => setTimeout(r, 1000));
       }
-      throw new Error(lastErr || "Сервери Google тимчасово перевантажені, спробуйте ще раз через кілька секунд.");
+      throw new Error(lastErr || "Всі ключі з пулу вичерпали квоту.");
     }
 
     async function askAiStatsQuestion(userQuestion) {
@@ -640,12 +700,9 @@
       output.style.display = "block";
       output.innerHTML = "🧠 Gemini аналізує дані...";
 
-      let apiKey = localStorage.getItem("gemini_api_key");
-      if (!apiKey) {
-        apiKey = prompt("Введіть ваш Google Gemini API Key:");
-        if (!apiKey) return;
-        apiKey = apiKey.trim();
-        localStorage.setItem("gemini_api_key", apiKey);
+      if (!verifyGeminiAuthorization()) {
+        output.innerHTML = `<span style="color:#ef4444;">⚠️ ШІ заблоковано. Введіть пароль (підказка: телефон батьків).</span>`;
+        return;
       }
 
       let streetSummary = "";
@@ -682,7 +739,7 @@ ${recentReports}
 `;
 
       try {
-        const result = await executeStatsGemini(fullPrompt, apiKey);
+        const result = await executeStatsGemini(fullPrompt);
         output.innerHTML = `<b>🤖 Gemini (${result.model}):</b>\n\n${result.reply}`;
       } catch(err) {
         output.innerHTML = `<span style="color:#ef4444;">⚠️ ${err.message}</span>`;
@@ -1547,7 +1604,7 @@ ${recentReports}
             reportsBox.innerHTML += `
               <div class="modal-report-item" style="border-left: 3px solid ${t.color};">
                 <div class="modal-report-time" style="color:${t.color};">${t.fullName} (${dt}, ${st}–${et})</div>
-                <div>${s.reports.map(r => `• ${r.text}`).join("<br>")}</div>
+                <div>${s.reports.map(r => `• \${r.text}`).join("<br>")}</div>
               </div>
             `;
           });
@@ -1601,7 +1658,7 @@ ${recentReports}
           reportsBox.innerHTML += `
             <div class="modal-report-item">
               <div class="modal-report-time">🕒 ${dt} (${st} ➔ ${et}) | Підтверджено: ${s.count} людей</div>
-              <div style="color:#e2e8f0; margin-top:4px;">${s.reports.map(r => `• «${r.text}»`).join("<br>")}</div>
+              <div style="color:#e2e8f0; margin-top:4px;">${s.reports.map(r => `• «\${r.text}»`).join("<br>")}</div>
             </div>
           `;
         });
