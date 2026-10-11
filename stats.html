@@ -286,9 +286,14 @@
     .modal-reports-list { display: flex; flex-direction: column; gap: 8px; }
     .modal-report-item {
       background: #060913; border: 1px solid #1e293b; border-radius: 8px;
-      padding: 8px 10px; font-size: 11px; line-height: 1.45;
+      padding: 8px 10px; font-size: 11px; line-height: 1.45; position: relative;
     }
     .modal-report-time { font-size: 10px; font-weight: 800; color: #f59e0b; margin-bottom: 3px; }
+    .btn-del-report {
+      position: absolute; top: 8px; right: 8px; background: #7f1d1d; border: 1px solid #ef4444;
+      color: #fca5a5; padding: 2px 6px; border-radius: 4px; font-size: 9px; font-weight: 800; cursor: pointer;
+    }
+    .btn-del-report:hover { background: #ef4444; color: #fff; }
 
     @media (max-width: 650px) {
       .kpi-row { grid-template-columns: 1fr 1fr; }
@@ -486,7 +491,7 @@
       <div class="street-time-cards" id="monthlyBreakdownCards"></div>
     </div>
 
-    <!-- ТАБ 6: ДРУГИЕ МЕСТА ДНЕПРА (РАСШИРЕННАЯ СВОДКА) -->
+    <!-- ТАБ 6: ДРУГИЕ МЕСТА ДНЕПРА -->
     <div id="tabContent6" class="hud-card" style="display:none;">
       <div class="hud-card-title">🌐 Активність в інших місцях Дніпра (фоново):</div>
       <div id="otherSectorsList"></div>
@@ -504,7 +509,7 @@
 
   <script>
     // ==========================================================================
-    // СИСТЕМА ЗАЩИТЫ КЛЮЧЕЙ И АВТОРИЗАЦИИ (10 КЛЮЧЕЙ + ПАРОЛЬ 570984)
+    // СИСТЕМА ЗАЩИТЫ КЛЮЧЕЙ И АВТОРИЗАЦИИ
     // ==========================================================================
     const SECRET_KEY_HASH = "570984";
     const _VAULT_PREFIX = String.fromCharCode(65, 81, 46, 65, 98, 56, 82, 78, 54);
@@ -589,16 +594,32 @@
       { id: "svobody", name: "пр. Свободи", fullName: "проспект Свободи (пр. Свободы)", regex: /(?:проспект\s*свобод|пр\s*свобод|пр\.\s*свобод|свободы|свободи)/i, color: "#eab308" }
     ];
 
-    // РАСШИРЕННЫЕ СЕКТОРЫ (ВКЛЮЧАЯ АЭРОПОРТ, СТАРЫЕ КОДАКИ И ПРИГОРОД)
     const OTHER_SECTORS = [
       { name: "Центр, Нагірка, Перемога", regex: /(?:центр|міст.*сіті|мост.*сити|яворницьк|карла\s*маркса|нагірк|гагарін|науки|перемог|побед|соборн)/i },
       { name: "Південь (12 Кв, Тополя, Аеропорт, Кодаки)", regex: /(?:хмельницк|хмельницьк|12.*квартал|квартал|топол|сокіл|сокол|мирн|корея|кротов|шинн|аеропорт|аэропорт|кодак|братськ|сурськ|краснопіл|тещин.*язик|тещин.*язык)/i },
       { name: "пр. Поля, Титова, вул. Робоча, Канатна", regex: /(?:поля|киров|кіров|титов|рудницьк|робоч|рабоч|канатн|канатная|криворож|криворізьк)/i },
-      { name: "Захід (Мазепи, Нігояна, Західний, Діївка)", regex: /(?:мазеп|петровск|петровськ|нігоян|нигоян|калинин|калінін|металург|західн|западн|діївк|чечел|трофимов|кондратюк)/i },
+      { name: "Захід (Мазепи, Нігояна, Західний, Діївка)", regex: /(?:мазеп|петровськ|нігоян|нигоян|калинин|калінін|металург|західн|западн|діївк|чечел|трофимов|кондратюк)/i },
       { name: "Вокзали, Озерка, вул. Шмідта (Бандери)", regex: /(?:вокзал|старомостов|островск|островськ|курчатов|128.*бригад|озерк|озёрк|шмидт|шмідт|бандера|бандери)/i },
       { name: "Лівий берег (Калинова, ДШ, Караван, Фрунзенський)", regex: /(?:донецк.*шоссе|донецьк.*шосе|караван|левобереж|лівобереж|калинов|янтарн|клочко|березинк|фрунзенськ|ломівськ|моторн|солончаков|луговськ|петрозаводськ)/i },
       { name: "Лівий берег (Слобожанський, Сонячний, Самара)", regex: /(?:слобожанск|слобожанськ|правд|сонячн|солнечн|малиновськ|придніпров|придник|ігрень|бик|бык|золоті ключі|молодогвард|чаплі)/i }
     ];
+
+    // УНИВЕРСАЛЬНЫЙ СПАМ-ФИЛЬТР ДЛЯ СТАТИСТИКИ
+    function isArchiveSpam(text) {
+      if (!text) return false;
+      const t = text.toLowerCase();
+      const spamWords = [
+        "поддержите", "поддержка", "покупка бота", "покупка", "репост",
+        "сделайте репост", "пригласите друзей", "поделитесь ссылкой",
+        "продолжать работу", "улучшать функционал", "развивать проект",
+        "ссылка на бота", "описании группы", "описании канала", "группа вам полезна",
+        "напоминаем", "у нас есть бот", "бот с картой", "пробный доступ",
+        "события живут", "метки появляются", "без отдельных приложений",
+        "бесплатный пробный", "подписчик", "всё прямо в telegram",
+        "наш бот", "t.me/", "http://", "https://"
+      ];
+      return spamWords.some(w => t.includes(w));
+    }
 
     function updateAiStatsSuggestedChips() {
       const container = document.getElementById("aiStatsSuggestedChips");
@@ -641,7 +662,6 @@
       askAiStatsQuestion("Зроби глибокий та корисний військово-дорожній аналіз поточної вкладки для водія");
     }
 
-    // БЫСТРЫЙ И НАДЕЖНЫЙ ЗАПРОС К GEMINI (БЕЗ ОБРЫВА ЦИКЛА)
     async function executeStatsGemini(promptText) {
       if (!verifyGeminiAuthorization()) {
         throw new Error("ШІ заблоковано. Введіть пароль (підказка: телефон батьків).");
@@ -684,7 +704,7 @@
             } else {
               const errObj = await res.json().catch(() => ({}));
               lastErr = errObj.error?.message || `HTTP ${res.status}`;
-              continue; // Переходим к следующей модели/ключу без падения!
+              continue;
             }
           } catch(e) {
             lastErr = e.name === 'AbortError' ? 'Таймаут відповіді (8с)' : e.message;
@@ -751,7 +771,8 @@ ${recentReports}
         const res = await fetch(`${FIREBASE_ARCHIVE_URL}?t=${Date.now()}`);
         if (res.ok) {
           const data = await res.json();
-          rawArchive = data ? Object.values(data).filter(x => x && x.time) : [];
+          // Очищаем архив от рекламного спама при загрузке
+          rawArchive = data ? Object.entries(data).map(([k, v]) => ({ _fbKey: k, ...v })).filter(x => x && x.time && !isArchiveSpam(x.text || x.raw_text || "")) : [];
         }
       } catch (e) { rawArchive = []; }
 
@@ -782,6 +803,23 @@ ${recentReports}
       setTab(activeTabNum);
       renderAll();
     }
+
+    // РУЧНОЕ УДАЛЕНИЕ ЗАПИСИ ИЗ АРХИВА СТАТИСТИКИ
+    window.deleteArchiveItem = async function(fbKey, event) {
+      if (event) event.stopPropagation();
+      if (!confirm("Видалити цей звіт зі статистики назавжди?")) return;
+      
+      try {
+        await fetch(`https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/stats_archive/${fbKey}.json`, {
+          method: "DELETE"
+        });
+        rawArchive = rawArchive.filter(x => x._fbKey !== fbKey);
+        renderAll();
+        alert("🗑️ Звіт успішно видалено зі статистики!");
+      } catch(e) {
+        alert("Помилка видалення: " + e.message);
+      }
+    };
 
     function toggleConfirmedOnly() {
       onlyConfirmedMode = !onlyConfirmedMode;
@@ -1107,7 +1145,10 @@ ${recentReports}
               <div class="feed-msg-item">
                 <div class="feed-msg-top">
                   <span class="feed-msg-time">🕒 ${feedPeriod === 'week' ? dateStr + ' ' : ''}${timeStr}</span>
-                  <span class="feed-msg-badge ${badgeClass}">${badgeText}</span>
+                  <div style="display:flex; gap:6px; align-items:center;">
+                    <span class="feed-msg-badge ${badgeClass}">${badgeText}</span>
+                    <span onclick="deleteArchiveItem('${m._fbKey}', event)" style="color:#ef4444; font-size:10px; cursor:pointer;" title="Видалити з статистики">🗑️</span>
+                  </div>
                 </div>
                 <div style="color:#e2e8f0;">«${m.text || m.raw_text || ''}»</div>
               </div>
@@ -1604,7 +1645,7 @@ ${recentReports}
             reportsBox.innerHTML += `
               <div class="modal-report-item" style="border-left: 3px solid ${t.color};">
                 <div class="modal-report-time" style="color:${t.color};">${t.fullName} (${dt}, ${st}–${et})</div>
-                <div>${s.reports.map(r => `• \${r.text}`).join("<br>")}</div>
+                <div>${s.reports.map(r => `• \${r.text || r.raw_text || ''} <span onclick="deleteArchiveItem('\${r._fbKey}', event)" style="color:#ef4444; font-size:10px; cursor:pointer; float:right;" title="Видалити">🗑️</span>`).join("<br>")}</div>
               </div>
             `;
           });
@@ -1658,7 +1699,7 @@ ${recentReports}
           reportsBox.innerHTML += `
             <div class="modal-report-item">
               <div class="modal-report-time">🕒 ${dt} (${st} ➔ ${et}) | Підтверджено: ${s.count} людей</div>
-              <div style="color:#e2e8f0; margin-top:4px;">${s.reports.map(r => `• «\${r.text}»`).join("<br>")}</div>
+              <div style="color:#e2e8f0; margin-top:4px;">${s.reports.map(r => `• «\${r.text || r.raw_text || ''}» <span onclick="deleteArchiveItem('\${r._fbKey}', event)" style="color:#ef4444; font-size:10px; cursor:pointer; float:right;" title="Видалити">🗑️ Видалити</span>`).join("<br>")}</div>
             </div>
           `;
         });
@@ -1685,7 +1726,7 @@ ${recentReports}
         reportsBox.innerHTML += `
           <div class="modal-report-item">
             <div class="modal-report-time">🕒 ${new Date(r.time).toLocaleTimeString()}</div>
-            <div>«${r.text}»</div>
+            <div>«${r.text || r.raw_text || ''}» <span onclick="deleteArchiveItem('${r._fbKey}', event)" style="color:#ef4444; font-size:10px; cursor:pointer; float:right;" title="Видалити">🗑️ Видалити</span></div>
           </div>
         `;
       });
@@ -1716,7 +1757,7 @@ ${recentReports}
             reportsBox.innerHTML += `
               <div class="modal-report-item" style="border-left: 3px solid ${t.color};">
                 <div class="modal-report-time" style="color:${t.color};">${t.fullName} (${dt})</div>
-                <div>${s.reports.map(r => `• \${r.text}`).join("<br>")}</div>
+                <div>${s.reports.map(r => `• \${r.text || r.raw_text || ''} <span onclick="deleteArchiveItem('\${r._fbKey}', event)" style="color:#ef4444; font-size:10px; cursor:pointer; float:right;" title="Видалити">🗑️</span>`).join("<br>")}</div>
               </div>
             `;
           });
