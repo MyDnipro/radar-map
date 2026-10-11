@@ -90,7 +90,7 @@ def is_ad_or_spam(text):
 
 # ГЕНЕРАЛЬНАЯ БАЗА ТОПОНИМОВ И НАРОДНЫХ ОРИЕНТИРОВ ДНЕПРА
 LOCAL_STREETS_DB = [
-    # Народные сленговые названия
+    # Народный сленг и специфические места
     {"keys": ["тещин.*язик", "тещин.*язык", "тёщин.*язык"], "addr": "Тьощин язик (вул. Космічна)", "lat": 48.4140, "lng": 35.0510},
     {"keys": ["молодогвард"], "addr": "вул. Молодогвардійська (під мостами)", "lat": 48.4680, "lng": 35.1220},
     {"keys": ["луговськ", "луговск"], "addr": "вул. Луговська (АНД)", "lat": 48.4890, "lng": 35.0480},
@@ -211,7 +211,8 @@ def geocode_osm_fallback(text):
             pass
     return None, None, None
 
-SUPPORTED_MODELS = ["gemini-3.8-flash", "gemini-3.5-flash-lite", "gemini-3.5-flash"]
+# МОДЕЛИ 3.5 С БОЛЬШИМИ ЛИМИТАМИ СТОЯТ ПЕРВЫМИ
+SUPPORTED_MODELS = ["gemini-3.5-flash-lite", "gemini-3.5-flash", "gemini-3.8-flash"]
 
 CLEAN_KEYWORDS = [
     "чисто", "чистенько", "пусто", "вільно", "спокійно", "проїзд",
@@ -364,8 +365,8 @@ def parse_with_gemini(text):
                             }
                     return None
                 elif r.status_code in [429, 403]:
-                    rotate_to_next_key()
-                    break
+                    # Пробуем следующую модель или ключ без падения
+                    continue
             except Exception:
                 continue
 
@@ -450,9 +451,8 @@ def sync_cycle():
                 parsed_result = {**ai_res, "needs_training": False}
                 log(f"🤖 [GEMINI AI]: '{msg[:45]}' ➔ {parsed_result['address']}")
 
-        # 5. ЕСЛИ ТОЧКА НЕ ОПОЗНАНА — БРОСАЕМ В РЕКУ В ОБВЕДЁННУЮ ЗОНУ НА ВОДУ!
+        # 5. ЕСЛИ ТОЧКА НЕ ОПОЗНАНА — БРОСАЕМ В РЕКУ В ЗАЛИВ ВОЗЛЕ КАЙДАКСКОГО МОСТА!
         if not parsed_result:
-            # Акватория Днепра западнее Кайдакского моста напротив Ломовки
             water_lat = round(48.5020 + random.uniform(-0.0040, 0.0040), 5)
             water_lng = round(34.9280 + random.uniform(-0.0060, 0.0060), 5)
             parsed_result = {
