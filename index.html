@@ -61,7 +61,7 @@
       background: #0b1120;
     }
 
-    /* 1. ЛЕВЫЙ ВЕРХНИЙ УГОЛ: ТОЧЕК XX */
+    /* 1. ЛЕВЫЙ ВЕРХНИЙ: ТОЧЕК XX */
     .dashboard {
       position: absolute !important;
       top: 15px !important;
@@ -135,13 +135,11 @@
     }
     html.dash-collapsed #collapsibleBody { display: none; }
 
-    /* 2. ПРАВЫЙ ВЕРХНИЙ УГОЛ: ШІ */
+    /* 2. ПРАВЫЙ ВЕРХНИЙ: ШІ (ПЛАВАЮЩИЙ ПРИ РАСКРЫТИИ) */
     .ai-pill-panel {
-      position: absolute !important;
-      top: 15px !important;
-      right: 15px !important;
-      left: auto !important;
-      bottom: auto !important;
+      position: absolute;
+      top: 15px;
+      right: 15px;
       z-index: 2000;
       background: rgba(15, 23, 42, 0.95);
       backdrop-filter: blur(10px);
@@ -153,6 +151,10 @@
       overflow: hidden;
     }
     .ai-pill-panel.compact {
+      top: 15px !important;
+      right: 15px !important;
+      left: auto !important;
+      bottom: auto !important;
       width: auto !important;
       height: 38px !important;
       padding: 0 10px !important;
@@ -170,10 +172,10 @@
     }
 
     .ai-pill-panel.expanded {
-      width: 310px !important;
-      max-width: calc(100vw - 30px) !important;
+      width: 320px !important;
+      max-width: calc(100vw - 20px) !important;
       height: auto !important;
-      max-height: 72vh;
+      max-height: 75vh;
       padding: 10px 12px !important;
       border-radius: 14px !important;
       border-color: #00f3ff !important;
@@ -191,6 +193,7 @@
       padding-bottom: 6px;
       margin-bottom: 8px;
       gap: 6px;
+      cursor: move;
     }
     .ai-titleBadge {
       font-size: 12px;
@@ -199,7 +202,6 @@
       display: flex;
       align-items: center;
       gap: 4px;
-      cursor: pointer;
       white-space: nowrap;
     }
     .ai-pill-body {
@@ -209,9 +211,47 @@
       flex: 1;
       min-height: 0;
     }
+
+    /* БЛОК ПРЯМОГО ВЫБОРА ДЛЯ ТОЧЕК И СВЕТОФОРОВ */
+    .ai-target-box {
+      background: #0f172a;
+      border: 1.5px solid #00f3ff;
+      border-radius: 9px;
+      padding: 7px 9px;
+      margin-bottom: 4px;
+      display: none;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .ai-target-header {
+      font-size: 11px;
+      font-weight: 700;
+      color: #38bdf8;
+      line-height: 1.3;
+      word-break: break-word;
+    }
+    .ai-target-buttons {
+      display: flex;
+      gap: 6px;
+    }
+    .btn-target-verdict {
+      flex: 1;
+      padding: 7px 4px;
+      border-radius: 6px;
+      border: none;
+      font-size: 10px;
+      font-weight: 800;
+      cursor: pointer;
+      text-align: center;
+      transition: transform 0.1s ease;
+    }
+    .btn-target-verdict:active { transform: scale(0.96); }
+    .btn-target-verdict.clean { background: #059669; color: #fff; }
+    .btn-target-verdict.danger { background: #dc2626; color: #fff; }
+
     .ai-chat-box {
-      max-height: 200px;
-      min-height: 90px;
+      max-height: 180px;
+      min-height: 80px;
       overflow-y: auto;
       display: flex;
       flex-direction: column;
@@ -290,7 +330,7 @@
       justify-content: center;
     }
 
-    /* 3. ЛЕВЫЙ НИЖНИЙ УГОЛ: МІЙ ШЛЯХ */
+    /* 3. ЛЕВЫЙ НИЖНИЙ: МІЙ ШЛЯХ */
     .route-status-bar {
       position: absolute !important;
       bottom: 25px !important;
@@ -386,7 +426,7 @@
       cursor: pointer;
     }
 
-    /* 4. ПРАВЫЙ НИЖНИЙ УГОЛ: ОНОВИТИ */
+    /* 4. ПРАВЫЙ НИЖНИЙ: ОНОВИТИ */
     .btn-refresh {
       position: absolute !important;
       bottom: 25px !important;
@@ -856,19 +896,29 @@
 
   <!-- 2. ПРАВЫЙ ВЕРХНИЙ УГОЛ: ШІ -->
   <div id="aiPillPanel" class="ai-pill-panel compact">
-    <div id="aiPillHeader" class="ai-pill-compact-content" onclick="toggleAiPillExpand()">
-      <div class="ai-titleBadge">
+    <div id="aiPillHeader" class="ai-pill-compact-content">
+      <div class="ai-titleBadge" onclick="toggleAiPillExpand()">
         <span style="font-size:14px;">🤖</span>
         <span id="aiPillLabel">ШІ</span>
+        <span style="font-size:9px; color:#64748b; margin-left:3px;">✥</span>
       </div>
       <div style="display:flex; align-items:center; gap:4px;">
         <span class="ai-pill-tools" style="font-size:10px; color:#64748b; cursor:pointer; padding:2px;" title="Очистити історію діалогу" onclick="clearAiChatHistory(event)">🗑️</span>
         <span class="ai-pill-tools" style="font-size:10px; color:#64748b; cursor:pointer; padding:2px;" title="Налаштування API Key" onclick="configureGeminiKey(event)">🔑</span>
-        <button class="btn-toggle" id="btnAiPillToggle">▼</button>
+        <button class="btn-toggle" id="btnAiPillToggle" onclick="toggleAiPillExpand(event)">▼</button>
       </div>
     </div>
 
     <div class="ai-pill-body" id="aiPillBody">
+      <!-- БЛОК ПРЯМОГО ДЕЙСТВИЯ ПО КЛИКУ НА ТОЧКУ/СВЕТОФОР -->
+      <div id="aiTargetBox" class="ai-target-box">
+        <div id="aiTargetTitle" class="ai-target-header">Об'єкт: ...</div>
+        <div class="ai-target-buttons">
+          <button class="btn-target-verdict clean" onclick="applyTargetVerdict(true)">🟢 Це означає: ЧИСТО</button>
+          <button class="btn-target-verdict danger" onclick="applyTargetVerdict(false)">🔴 Це означає: БЛОКПОСТ</button>
+        </div>
+      </div>
+
       <div id="aiChatBox" class="ai-chat-box">
         <div class="ai-msg bot">
           👋 Вітаю! Я ваш ШІ-штурман. Всі повідомлення з каналу на карті. Одинарний клік показує деталі, а довге затискання точки дозволяє прив'язати її до вулиці!
@@ -890,7 +940,7 @@
     </div>
   </div>
 
-  <!-- 3. ЛЕВЫЙ НИЖНИЙ УГОЛ: МІЙ ШЛЯХ -->
+  <!-- 3. ЛЕВЫЙ НИЖНИЙ УГОЛ: МІЙ ШЛЯХ (КЛИК ОТКРЫВАЕТ ПОДМЕНЮ) -->
   <div id="routeStatusBar" class="route-status-bar" onclick="toggleRouteSubmenu(event)">
     <span id="routeStatusIcon">🟢</span>
     <span id="routeStatusText">Мій шлях: Чисто</span>
@@ -1111,14 +1161,6 @@
       "придніпр": { name: "ж/м Придніпровськ", lat: 48.3980, lng: 35.1320 },
       "придник": { name: "ж/м Придніпровськ", lat: 48.3980, lng: 35.1320 },
       "б4": { name: "Б4 / пр. Богдана Хмельницького", lat: 48.4200, lng: 35.0180 }
-    };
-
-    const PRESET_STREETS = {
-      "парус": [[48.484, 34.915], [48.486, 34.928]],
-      "набережн": [[48.490, 34.950], [48.480, 35.030]],
-      "робоч": [[48.435, 35.005], [48.460, 35.012]],
-      "поля": [[48.432, 35.025], [48.460, 35.025]],
-      "яворницьк": [[48.472, 35.020], [48.455, 35.065]]
     };
 
     const LIFETIME_MS = 40 * 60 * 1000;
@@ -1400,9 +1442,6 @@
       });
     }
 
-    // ==========================================================================
-    // ЛОГИКА СТАТУСА «МІЙ ШЛЯХ» (ТОЛЬКО ПО СВЕТОФОРАМ)
-    // ==========================================================================
     function updateRouteStatus() {
       const bar = document.getElementById("routeStatusBar");
       const icon = document.getElementById("routeStatusIcon");
@@ -1489,9 +1528,6 @@
       requestAnimationFrame(animateStep);
     }
 
-    // ==========================================================================
-    // МОДАЛЬНОЕ ОКНО ПРИВЯЗКИ
-    // ==========================================================================
     function openTrainingModal(point, marker) {
       currentTrainingPoint = point;
       currentTrainingMarker = marker;
@@ -1554,7 +1590,7 @@
       if (!currentTrainingPoint) return;
       const p = currentTrainingPoint;
       closeTrainModal();
-      openAiContext('point', p._fbKey || "", p.text || p.raw_text || "Повідомлення");
+      openAiContext('point', p._fbKey || "", p.text || p.raw_text || "Повідомлення", { raw_text: p.text || p.raw_text, lat: p.lat, lng: p.lng });
     }
 
     function modalDeletePoint() {
@@ -1564,9 +1600,6 @@
       deleteSinglePoint(p._fbKey, p.text || p.raw_text || "");
     }
 
-    // ==========================================================================
-    // ПЕРЕНОС: ТОЧКА СРАЗУ НА МЕСТЕ, КАМЕРА ОСТАЕТСЯ РЯДОМ
-    // ==========================================================================
     async function applyPointRelocation(streetName, lat, lng) {
       if (!currentTrainingPoint) return;
       closeTrainModal();
@@ -1809,11 +1842,16 @@
       showToast("🗑️ Повідомлення успішно видалено!");
     };
 
-    // ДИАЛОГОВЫЙ ЧАТ ШІ
+    // ==========================================================================
+    // ДИАЛОГОВЫЙ ЧАТ ШІ + ПЕРЕМЕЩЕНИЕ И АКТИВНЫЕ ДЕЙСТВИЯ
+    // ==========================================================================
     const aiPillPanel = document.getElementById("aiPillPanel");
+    const aiPillHeader = document.getElementById("aiPillHeader");
     const aiInlineInput = document.getElementById("aiInlineInput");
     const aiChatBox = document.getElementById("aiChatBox");
     const btnAiPillToggle = document.getElementById("btnAiPillToggle");
+    const aiTargetBox = document.getElementById("aiTargetBox");
+    const aiTargetTitle = document.getElementById("aiTargetTitle");
 
     let geminiChatHistory = [];
     let targetedPointContext = null;
@@ -1826,6 +1864,56 @@
     L.DomEvent.disableClickPropagation(document.getElementById("btnRefresh"));
     L.DomEvent.disableClickPropagation(document.getElementById("trainModal"));
     L.DomEvent.disableClickPropagation(document.getElementById("confirmMoveModal"));
+
+    // ПЕРЕМЕЩЕНИЕ ОКНА ШІ В РАСКРЫТОМ СОСТОЯНИИ
+    let aiDragActive = false;
+    let aiStartX = 0, aiStartY = 0, aiInitLeft = 0, aiInitTop = 0;
+
+    function onAiDragStart(e) {
+      if (!aiPillPanel.classList.contains("expanded")) return;
+      if (e.target.closest('button') || e.target.closest('.ai-pill-tools')) return;
+      aiDragActive = true;
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      aiStartX = clientX;
+      aiStartY = clientY;
+      const rect = aiPillPanel.getBoundingClientRect();
+      aiInitLeft = rect.left;
+      aiInitTop = rect.top;
+
+      document.addEventListener('mousemove', onAiDragMove, { passive: false });
+      document.addEventListener('mouseup', onAiDragEnd);
+      document.addEventListener('touchmove', onAiDragMove, { passive: false });
+      document.addEventListener('touchend', onAiDragEnd);
+    }
+
+    function onAiDragMove(e) {
+      if (!aiDragActive) return;
+      if (e.cancelable) e.preventDefault();
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      const dx = clientX - aiStartX;
+      const dy = clientY - aiStartY;
+
+      let newLeft = Math.max(10, Math.min(window.innerWidth - aiPillPanel.offsetWidth - 10, aiInitLeft + dx));
+      let newTop = Math.max(10, Math.min(window.innerHeight - 80, aiInitTop + dy));
+
+      aiPillPanel.style.left = `${newLeft}px`;
+      aiPillPanel.style.top = `${newTop}px`;
+      aiPillPanel.style.right = 'auto';
+      aiPillPanel.style.bottom = 'auto';
+    }
+
+    function onAiDragEnd() {
+      aiDragActive = false;
+      document.removeEventListener('mousemove', onAiDragMove);
+      document.removeEventListener('mouseup', onAiDragEnd);
+      document.removeEventListener('touchmove', onAiDragMove);
+      document.removeEventListener('touchend', onAiDragEnd);
+    }
+
+    aiPillHeader.addEventListener('mousedown', onAiDragStart);
+    aiPillHeader.addEventListener('touchstart', onAiDragStart, { passive: false });
 
     function toggleAiPillExpand(e) {
       if (e && (e.target.closest('textarea') || e.target.closest('.btn-ai-send') || e.target.closest('.ai-mini-chip') || e.target.closest('span[title]'))) return;
@@ -1841,6 +1929,12 @@
           if (map) map.invalidateSize();
         }, 150);
       } else {
+        // СВОРАЧИВАНИЕ: СТРОГО ВОЗВРАЩАЕМ В ПРАВЫЙ ВЕРХНИЙ УГОЛ
+        aiPillPanel.style.top = "15px";
+        aiPillPanel.style.right = "15px";
+        aiPillPanel.style.left = "auto";
+        aiPillPanel.style.bottom = "auto";
+        aiTargetBox.style.display = "none";
         setTimeout(() => { if (map) map.invalidateSize(); }, 150);
       }
     }
@@ -1849,6 +1943,7 @@
       if (e) e.stopPropagation();
       geminiChatHistory = [];
       targetedPointContext = null;
+      aiTargetBox.style.display = "none";
       aiChatBox.innerHTML = `
         <div class="ai-msg bot">
           🧹 Діалог очищено. Готовий до нових запитань!
@@ -1874,25 +1969,77 @@
       verifyGeminiAuthorization(true);
     }
 
+    // ОТКРЫТИЕ РЕЖИМА ИИ ДЛЯ ОБЪЕКТА С ВЫБОРОМ ЧИСТО / БЛОКПОСТ
     window.openAiContext = function(type, id, name, extraData = {}) {
-      if (aiPillPanel.classList.contains("compact")) {
+      if (!aiPillPanel.classList.contains("expanded")) {
         toggleAiPillExpand();
       }
       targetedPointContext = { type: type, id: id, name: name, ...extraData };
 
-      if (type === 'traffic_light') {
-        aiInlineInput.value = `Світлофор "${name}": `;
-      } else if (type === 'point') {
-        aiInlineInput.value = `Точка "${name}": `;
-      } else {
-        aiInlineInput.value = "";
+      const displayName = extraData.raw_text || name;
+      aiTargetTitle.innerText = `🎯 Об'єкт: «${displayName}»\nВиберіть, що насправді означає повідомлення:`;
+      aiTargetBox.style.display = "flex";
+
+      aiInlineInput.value = "";
+      setTimeout(() => {
+        aiChatBox.scrollTop = aiChatBox.scrollHeight;
+      }, 120);
+    };
+
+    // МГНОВЕННОЕ ПРИМЕНЕНИЕ ВЕРДИКТА ЧИСТО / БЛОКПОСТ ДЛЯ ТОЧКИ ИЛИ СВЕТОФОРА
+    window.applyTargetVerdict = function(isClean) {
+      if (!targetedPointContext) return;
+      const ctx = targetedPointContext;
+      const statusText = isClean ? "ЧИСТО (зелена)" : "БЛОКПОСТ (червона)";
+      const rawText = ctx.raw_text || ctx.name || "";
+
+      // 1. Если это конкретная точка на карте
+      if (ctx.type === 'point') {
+        const p = allPoints.find(x => x._fbKey === ctx.id || x.text === rawText || x.raw_text === rawText);
+        if (p) {
+          p.is_clean = isClean;
+          p.color = isClean ? "green" : "red";
+          p.status = isClean ? "чисто" : "опасно";
+          if (p._fbKey) {
+            fetch(FIREBASE_POINTS_URL.replace(".json", `/${p._fbKey}.json`), {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ is_clean: isClean, color: p.color, status: p.status })
+            }).catch(() => {});
+          }
+        }
+
+        // Сохраняем в Базу Знаний
+        let phrase = rawText.replace(/^(?:❓|\bчисто\b|\bбп\b|\bпатруль\b|\(чисто\))/gi, "").trim().toLowerCase();
+        if (phrase.length >= 3) {
+          learnedRules.push({ phrase: phrase, is_clean: isClean });
+          localStorage.setItem("radar_learned_rules", JSON.stringify(learnedRules));
+          fetch(FIREBASE_KB_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ phrase: phrase, is_clean: isClean, updated_at: Date.now() })
+          }).catch(() => {});
+        }
+      } 
+      // 2. Если это светофор
+      else if (ctx.type === 'traffic_light') {
+        window.setTrafficLightManual(ctx.id, isClean ? 'green' : 'red');
       }
 
-      setTimeout(() => {
-        aiInlineInput.focus();
-        aiChatBox.scrollTop = aiChatBox.scrollHeight;
-      }, 150);
-      showToast("🤖 Введіть запитання чи зауваження для ШІ!");
+      // Немедленное обновление UI без задержек
+      renderMarkers();
+      renderTrafficLights();
+      updateRouteStatus();
+
+      // Добавляем сообщение в чат
+      const msg = document.createElement("div");
+      msg.className = "ai-msg bot";
+      msg.innerHTML = `<b>✅ Прийнято!</b> Об'єкт «${rawText}» миттєво переведено у статус <b>${statusText}</b>. Карту та маршрут оновлено!`;
+      aiChatBox.appendChild(msg);
+      aiChatBox.scrollTop = aiChatBox.scrollHeight;
+
+      aiTargetBox.style.display = "none";
+      showToast(`🎯 Статус змінено на ${statusText}!`);
     };
 
     function setSectorState(sectorKey, enable) {
@@ -1928,9 +2075,7 @@
       }
     }
 
-    // ==========================================================================
-    // ЗАПРОС К GEMINI (ТОЛЬКО МОДЕЛИ 3.8 И 3.5)
-    // ==========================================================================
+    // БЫСТРЫЙ ЗАПРОС К GEMINI (ТАЙМАУТ 8 СЕК НА ПОПЫТКУ)
     async function executeGeminiRequestPool(promptPayload) {
       if (!verifyGeminiAuthorization()) {
         throw new Error("ШІ заблоковано. Введіть пароль (підказка: телефон батьків).");
@@ -1947,12 +2092,17 @@
       for (const k of apiKeys) {
         for (const m of models) {
           try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 8000); // Предел 8 секунд
+
             const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${k}`;
             const res = await fetch(url, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(promptPayload)
+              body: JSON.stringify(promptPayload),
+              signal: controller.signal
             });
+            clearTimeout(timeoutId);
 
             if (res.ok) {
               const data = await res.json();
@@ -1965,7 +2115,7 @@
               }
             }
           } catch (e) {
-            lastErr = e.message;
+            lastErr = e.name === 'AbortError' ? 'Таймаут відповіді (8с)' : e.message;
           }
         }
       }
@@ -2016,20 +2166,14 @@
 
       const systemInstructionText = `
 Ти — високоінтелектуальний військово-дорожній ШІ-штурман у місті Дніпро для водія.
-Ти ведеш ЖИВИЙ ДІАЛОГ з водієм і МАЄШ ПОВНИЙ КОНТРОЛЬ НАД КАРТОЮ.
+Ти відповідаєш КОРОТКО і чітко по дорожній обстановці.
 
 ПОТОЧНИЙ СТАН:
-- Зелені точки: ${filterShowGreen ? "Показуються" : "Приховані"}
-- Червоні точки: ${filterShowRed ? "Показуються" : "Приховані"}
-- Активні райони: ${activeSectors.join(', ')}
-- Світлофори: ${showTrafficLights ? "Увімкнено" : "Приховано"}
-- Неон ліній: ${showNeonLines ? "Увімкнено" : "Приховано"}
+- Стан світлофорів:
+${tlStatusText}
 - Рядок 'Мій шлях': "${currentRouteText}"
 
-СТАН 8 СВІТЛОФОРІВ:
-${tlStatusText}
-
-ТОЧКИ НА КАРТІ (${allPoints.length} шт.):
+ОСТАННІ ПОВІДОМЛЕННЯ (${allPoints.length} шт.):
 ${allLiveReportsText || "Повідомлень немає"}
 `;
 
@@ -2050,7 +2194,7 @@ ${allLiveReportsText || "Повідомлень немає"}
         });
 
         let reply = resObj.data.candidates?.[0]?.content?.parts?.[0]?.text || "Готово.";
-        const cleanReply = reply.replace(/<<<ACTION:.*?>>>/g, '').trim();
+        const cleanReply = reply.trim();
         geminiChatHistory.push({ role: "model", parts: [{ text: cleanReply }] });
 
         loadingBubble.className = "ai-msg bot";
@@ -2395,7 +2539,7 @@ ${allLiveReportsText || "Повідомлень немає"}
             messageBlock +
             '<div style="display:flex; justify-content:space-between; align-items:center; font-size:9px; color:#94a3b8; margin-top:5px; border-top:1px solid #e2e8f0; padding-top:4px;">' +
               '<span>💡 Затисніть на 0.5с</span>' +
-              '<span onclick="openAiContext(\'traffic_light\', \'' + cp.id + '\', \'' + cleanSafeCpName + '\', {latest_msg:\'' + latestMsgSafe + '\', latest_fbKey:\'' + latestKeySafe + '\'})" style="color:#0284c7; font-weight:800; cursor:pointer;">🤖 Зауваження для ШІ</span>' +
+              '<span onclick="openAiContext(\'traffic_light\', \'' + cp.id + '\', \'' + cleanSafeCpName + '\', {raw_text:\'' + latestMsgSafe + '\', latest_fbKey:\'' + latestKeySafe + '\'})" style="color:#0284c7; font-weight:800; cursor:pointer;">🤖 Зауваження для ШІ</span>' +
             '</div>' +
           '</div>';
 
@@ -2694,7 +2838,7 @@ ${allLiveReportsText || "Повідомлень немає"}
             <div style="font-size:11px; color:#64748b;">🕒 Додано: ${dateStr}</div>
             <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px; border-top:1px solid #e2e8f0; padding-top:4px;">
               <span onclick="deleteSinglePoint('${fbKeySafe}', '${cleanTextSafe}')" style="color:#ef4444; font-weight:800; font-size:10px; cursor:pointer;" title="Видалити помилкову мітку">🗑️ Видалити</span>
-              <span onclick="openAiContext('point', '${fbKeySafe}', '${cleanTextSafe}')" style="color:#0284c7; font-weight:800; font-size:10px; cursor:pointer;">🤖 Повідомити ШІ</span>
+              <span onclick="openAiContext('point', '${fbKeySafe}', '${cleanTextSafe}', {raw_text:'${cleanTextSafe}', lat:${p.lat}, lng:${p.lng}})" style="color:#0284c7; font-weight:800; font-size:10px; cursor:pointer;">🤖 Повідомити ШІ</span>
             </div>
           </div>
         `;
