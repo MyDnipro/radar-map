@@ -61,7 +61,7 @@
       background: #0b1120;
     }
 
-    /* 1. ЛЕВЫЙ ВЕРХНИЙ: ТОЧЕК XX (КОМПАКТНАЯ ШИРИНА БЕЗ ПЕРЕКРЫТИЯ) */
+    /* 1. ЛЕВЫЙ ВЕРХНИЙ: ТОЧЕК XX */
     .dashboard {
       position: absolute !important;
       top: 15px !important;
@@ -137,7 +137,7 @@
     }
     html.dash-collapsed #collapsibleBody { display: none; }
 
-    /* 2. ПРАВЫЙ ВЕРХНИЙ: ШІ (С БЕЙДЖЕМ ВЕРСИИ 2.7) */
+    /* 2. ПРАВЫЙ ВЕРХНИЙ: ШІ (С БЕЙДЖЕМ ВЕРСИИ 2.8) */
     .ai-pill-panel {
       position: absolute;
       top: 15px;
@@ -488,6 +488,22 @@
       0% { transform: scale(1); }
       50% { transform: scale(1.35); }
       100% { transform: scale(1); }
+    }
+
+    /* СТИЛИ КЛАСТЕРИЗАЦИИ (БЕЙДЖИ СЧЁТЧИКА) */
+    .cluster-badge {
+      position: absolute;
+      top: -6px;
+      right: -8px;
+      background: #0284c7;
+      color: #fff;
+      font-size: 10px;
+      font-weight: 900;
+      padding: 1px 5px;
+      border-radius: 8px;
+      border: 1.5px solid #ffffff;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+      z-index: 10;
     }
 
     .subtitle { font-size: 10px; color: #94a3b8; margin-bottom: 8px; }
@@ -897,13 +913,13 @@
     </div>
   </div>
 
-  <!-- 2. ПРАВЫЙ ВЕРХНИЙ УГОЛ: ШІ (С БЕЙДЖЕМ ВЕРСИИ 2.7) -->
+  <!-- 2. ПРАВЫЙ ВЕРХНИЙ УГОЛ: ШІ (С БЕЙДЖЕМ ВЕРСИИ 2.8) -->
   <div id="aiPillPanel" class="ai-pill-panel compact">
     <div id="aiPillHeader" class="ai-pill-compact-content">
       <div class="ai-titleBadge" onclick="toggleAiPillExpand()">
         <span style="font-size:14px;">🤖</span>
         <span id="aiPillLabel">ШІ</span>
-        <span class="ai-version-badge">v2.7</span>
+        <span class="ai-version-badge">v2.8</span>
         <span style="font-size:9px; color:#64748b; margin-left:3px;">✥</span>
       </div>
       <div style="display:flex; align-items:center; gap:4px;">
@@ -924,7 +940,7 @@
 
       <div id="aiChatBox" class="ai-chat-box">
         <div class="ai-msg bot">
-          👋 Вітаю! Я ваш ШІ-штурман (Карта v2.7). Я керую точками на карті в один клік!
+          👋 Вітаю! Я ваш ШІ-штурман (Карта v2.8). Точки згруповані, команди виконуються миттєво!
         </div>
       </div>
 
@@ -1856,12 +1872,10 @@
       showToast(`⚠️ Не знайдено координат для «${q}». Спробуйте іншу назву.`);
     }
 
-    // ИСПОЛНИТЕЛЬНЫЙ ДВИЖОК ДЕЙСТВИЙ ШІ (ACTION ENGINE v2.7 с поддержкой NAVIGATE, FLYTO, MOVE, STATUS)
+    // ИСПОЛНИТЕЛЬНЫЙ ДВИЖОК ДЕЙСТВИЙ ШІ (ACTION ENGINE v2.8)
     async function executeAiActionDirective(actionType, payload) {
       if (actionType === "NAVIGATE") {
-        if (payload.url) {
-          window.location.href = payload.url;
-        }
+        if (payload.url) window.location.href = payload.url;
       } else if (actionType === "FLYTO") {
         let lat = Number(payload.lat);
         let lng = Number(payload.lng);
@@ -2899,7 +2913,7 @@ ${allLiveReportsText || "Повідомлень немає"}
       if (!e.target.closest(".search-box")) searchResults.style.display = "none";
     });
 
-    // ЗАГРУЗКА ТОЧЕК
+    // ЗАГРУЗКА ТОЧЕК И КЛАСТЕРИЗАЦИЯ МАРКЕРОВ
     async function loadPoints() {
       if (pendingRelocation) return;
       try {
@@ -2958,6 +2972,9 @@ ${allLiveReportsText || "Повідомлень немає"}
       const now = Date.now();
       let visibleCount = 0;
 
+      // КЛАСТЕРИЗАЦИЯ ТОЧЕК С БЛИЗКИМИ КООРДИНАТАМИ (~15 метров)
+      const clusters = {};
+
       allPoints.forEach(p => {
         const time = p.time || p.timestamp || 0;
         const diff = now - time;
@@ -2965,44 +2982,75 @@ ${allLiveReportsText || "Повідомлень немає"}
         if (!isPointInActiveSectors(p)) return;
 
         const clean = isCleanPoint(p);
-
         if (clean && !filterShowGreen) return;
         if (!clean && !filterShowRed) return;
 
-        const isFresh = diff <= FRESH_THRESHOLD_MS;
+        const groupKey = `${p.lat.toFixed(4)}_${p.lng.toFixed(4)}`;
+        if (!clusters[groupKey]) {
+          clusters[groupKey] = {
+            lat: p.lat,
+            lng: p.lng,
+            points: [],
+            isClean: true,
+            isFresh: false,
+            needsTraining: false
+          };
+        }
+        clusters[groupKey].points.push(p);
+        if (!isCleanPoint(p)) clusters[groupKey].isClean = false;
+        if (diff <= FRESH_THRESHOLD_MS) clusters[groupKey].isFresh = true;
+        if (p.needs_training) clusters[groupKey].needsTraining = true;
+      });
+
+      Object.values(clusters).forEach(cluster => {
+        const p = cluster.points[cluster.points.length - 1]; // Главная точка для попапа
+        const clean = cluster.isClean;
+        const isFresh = cluster.isFresh;
+        const trainingClass = cluster.needsTraining ? "needs-training" : "";
         const colorClass = clean ? "color-green" : "color-red";
         const freshClass = isFresh ? "fresh" : "";
-        const trainingClass = p.needs_training ? "needs-training" : "";
-        const emoji = p.needs_training ? "🎯" : (clean ? "🟢" : "🔴");
+        const emoji = cluster.needsTraining ? "🎯" : (clean ? "🟢" : "🔴");
 
-        const markerHtml = `<div class="radar-circle ${colorClass} ${freshClass} ${trainingClass}"></div>`;
+        const countBadge = cluster.points.length > 1 ? `<div class="cluster-badge">${cluster.points.length}</div>` : "";
+        const markerHtml = `<div class="radar-circle ${colorClass} ${freshClass} ${trainingClass}">${countBadge}</div>`;
+        
         const dotIcon = L.divIcon({
           className: 'custom-dot-marker',
           html: markerHtml,
           iconSize: [18, 18], iconAnchor: [9, 9]
         });
 
-        const remMinutes = Math.floor(Math.max(0, LIFETIME_MS - diff) / 60000);
-        const dateStr = new Date(time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        const cleanTextSafe = (p.text || "").replace(/'/g, "\\'");
-        const fbKeySafe = p._fbKey || "";
+        // Сборка списка сообщений для кластера
+        let listHtml = "";
+        cluster.points.sort((a,b) => (b.time||b.timestamp||0) - (a.time||a.timestamp||0)).forEach(pt => {
+          const ptTime = pt.time || pt.timestamp || 0;
+          const timeStr = ptTime ? new Date(ptTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "";
+          const remMin = Math.floor(Math.max(0, LIFETIME_MS - (now - ptTime)) / 60000);
+          const cleanTextSafe = (pt.text || "").replace(/'/g, "\\'");
+          const fbKeySafe = pt._fbKey || "";
+
+          listHtml += `
+            <div style="border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; margin-bottom: 6px;">
+              <div style="font-weight:700; font-size:12px; color:#0f172a;">${isCleanPoint(pt) ? "🟢" : "🔴"} ${pt.text || ""}</div>
+              <div style="font-size:10px; color:#64748b;">🕒 ${timeStr} | Зникне через: ${remMin} хв</div>
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-top:3px;">
+                <span onclick="deleteSinglePoint('${fbKeySafe}', '${cleanTextSafe}')" style="color:#ef4444; font-weight:800; font-size:9px; cursor:pointer;">🗑️ Видалити</span>
+                <span onclick="openAiContext('point', '${fbKeySafe}', '${cleanTextSafe}', {raw_text:'${cleanTextSafe}', lat:${pt.lat}, lng:${pt.lng}})" style="color:#0284c7; font-weight:800; font-size:9px; cursor:pointer;">🤖 ШІ</span>
+              </div>
+            </div>
+          `;
+        });
 
         const popupContent = `
-          <div style="padding:4px; font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif; min-width:170px;">
-            <div style="font-weight:700; font-size:13px; color:#0f172a;">${emoji} ${p.text || ""}</div>
-            <div style="font-size:10px; color:#f59e0b; margin-top:4px; font-weight:600; cursor:pointer;" onclick="window.triggerTrainingFromPopup('${fbKeySafe}')">
-              💡 Затисніть на 0.35с для зміни місця
+          <div style="padding:4px; font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif; min-width:190px; max-height:220px; overflow-y:auto;">
+            <div style="font-weight:800; font-size:11px; color:#0284c7; margin-bottom:6px; border-bottom:1px solid #cbd5e1; padding-bottom:3px;">
+              📍 Повідомлень у цій точці: ${cluster.points.length}
             </div>
-            <div style="font-size:11px; color:#64748b; margin-top:3px;">⏳ Зникне через: ${remMinutes} хв</div>
-            <div style="font-size:11px; color:#64748b;">🕒 Додано: ${dateStr}</div>
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px; border-top:1px solid #e2e8f0; padding-top:4px;">
-              <span onclick="deleteSinglePoint('${fbKeySafe}', '${cleanTextSafe}')" style="color:#ef4444; font-weight:800; font-size:10px; cursor:pointer;" title="Видалити помилкову мітку">🗑️ Видалити</span>
-              <span onclick="openAiContext('point', '${fbKeySafe}', '${cleanTextSafe}', {raw_text:'${cleanTextSafe}', lat:${p.lat}, lng:${p.lng}})" style="color:#0284c7; font-weight:800; font-size:10px; cursor:pointer;">🤖 Повідомити ШІ</span>
-            </div>
+            ${listHtml}
           </div>
         `;
 
-        const marker = L.marker([p.lat, p.lng], {
+        const marker = L.marker([cluster.lat, cluster.lng], {
           icon: dotIcon,
           draggable: false,
           autoPan: true,
@@ -3064,8 +3112,9 @@ ${allLiveReportsText || "Повідомлень немає"}
         });
 
         markersLayer.addLayer(marker);
-        visibleCount++;
+        visibleCount += cluster.points.length;
       });
+
       document.getElementById('countText').innerHTML = `<span>Точок: ${visibleCount}</span>`;
     }
 
