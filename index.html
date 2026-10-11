@@ -87,9 +87,9 @@
     }
     html.dash-collapsed #collapsibleBody { display: none; }
 
-    /* 2. БЛОК ШІ (КОМПАКТНЫЙ В СВЁРНУТОМ ВИДЕ, ПРАВИЛЬНОЕ РАСКРЫТИЕ ВНУТРЬ ЭКРАНА) */
+    /* 2. БЛОК ШІ */
     .ai-pill-panel {
-      position: absolute; top: 15px; right: 15px; z-index: 1500;
+      position: absolute; top: 15px; right: 15px; z-index: 2000;
       background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(10px);
       border: 1.5px solid #0284c7; border-radius: 12px; color: #fff;
       box-shadow: 0 4px 18px rgba(0,0,0,0.45);
@@ -114,7 +114,6 @@
       padding: 10px 12px !important; border-radius: 14px !important;
       border-color: #00f3ff !important; box-shadow: 0 6px 30px rgba(0, 243, 255, 0.4) !important;
       display: flex; flex-direction: column;
-      z-index: 2500 !important;
     }
     .ai-pill-compact-content {
       display: flex; align-items: center; justify-content: space-between; width: 100%;
@@ -129,7 +128,7 @@
     .ai-pill-body { display: flex; flex-direction: column; gap: 6px; flex: 1; min-height: 0; }
 
     .ai-chat-box {
-      max-height: 220px; min-height: 100px; overflow-y: auto;
+      max-height: 210px; min-height: 95px; overflow-y: auto;
       display: flex; flex-direction: column; gap: 6px; padding: 6px;
       background: #060913; border: 1px solid #1e293b; border-radius: 8px;
       scroll-behavior: smooth;
@@ -167,6 +166,19 @@
       background: linear-gradient(135deg, #0284c7 0%, #00f3ff 100%);
       border: none; color: #0f172a; border-radius: 8px; font-size: 14px; font-weight: 900;
       cursor: pointer; display: flex; align-items: center; justify-content: center;
+    }
+
+    /* АНИМАЦИЯ ПРИВЯЗКИ: ДВОЙНОЙ БОЛЬШОЙ ПУЛЬС */
+    @keyframes success-pulse-big {
+      0% { transform: scale(1); filter: drop-shadow(0 0 0px #00f3ff); }
+      25% { transform: scale(2.8); filter: drop-shadow(0 0 22px #00f3ff); }
+      50% { transform: scale(1.1); filter: drop-shadow(0 0 4px #00f3ff); }
+      75% { transform: scale(2.5); filter: drop-shadow(0 0 18px #00f3ff); }
+      100% { transform: scale(1); filter: none; }
+    }
+    .pulse-big-twice {
+      animation: success-pulse-big 1.35s ease-in-out !important;
+      z-index: 9999 !important;
     }
 
     /* АНИМАЦИЯ МЕТОК ОБУЧЕНИЯ (ОРАНЖЕВЫЙ ОРЕОЛ) */
@@ -357,12 +369,28 @@
     .sector-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #cbd5e1; margin-bottom: 4px; cursor: pointer; }
 
     .toast-msg {
-      position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
-      z-index: 3000; background: #0f172a; border: 1.5px solid #38bdf8; color: #fff; padding: 8px 18px;
-      border-radius: 8px; font-size: 12px; font-weight: 700; box-shadow: 0 4px 20px rgba(0, 243, 255, 0.4); display: none; text-align: center;
+      position: absolute; top: 65px; left: 50%; transform: translateX(-50%);
+      z-index: 3500; background: #0f172a; border: 1.5px solid #38bdf8; color: #fff; padding: 8px 18px;
+      border-radius: 20px; font-size: 12px; font-weight: 700; box-shadow: 0 4px 20px rgba(0, 243, 255, 0.4); display: none; text-align: center;
+      white-space: nowrap;
     }
 
-    /* МОДАЛЬНОЕ ОКНО ПРИВЯЗКИ И ОБУЧЕНИЯ ТОЧЕК */
+    /* БАННЕР ПЕРЕМЕЩЕНИЯ ВВЕРХУ ЭКРАНА */
+    .transfer-banner {
+      position: absolute; top: 15px; left: 50%; transform: translateX(-50%);
+      background: rgba(15, 23, 42, 0.96); border: 1.5px solid #00f3ff;
+      color: #00f3ff; padding: 8px 20px; border-radius: 22px;
+      font-size: 13px; font-weight: 800; z-index: 5000;
+      box-shadow: 0 4px 25px rgba(0, 243, 255, 0.45);
+      display: none; white-space: nowrap; pointer-events: none;
+      animation: bannerGlow 1.2s infinite alternate;
+    }
+    @keyframes bannerGlow {
+      from { box-shadow: 0 0 10px rgba(0, 243, 255, 0.3); }
+      to { box-shadow: 0 0 25px rgba(0, 243, 255, 0.7); }
+    }
+
+    /* МОДАЛЬНОЕ ОКНО ПРИВЯЗКИ */
     .train-modal-backdrop {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
       background: rgba(4, 7, 15, 0.75); backdrop-filter: blur(8px);
@@ -440,6 +468,9 @@
 <body>
   <div id="map"></div>
 
+  <!-- БАННЕР ПЕРЕМЕЩЕНИЯ ВВЕРХУ ЭКРАНА -->
+  <div id="transferBanner" class="transfer-banner">⏳ Виконується перенесення мітки...</div>
+
   <!-- 1. ШАПКА КАРТЫ -->
   <div id="dashPanel" class="dashboard">
     <div id="dashHeader" class="dash-header">
@@ -495,7 +526,7 @@
     </div>
   </div>
 
-  <!-- 2. БЛОК ШІ GEMINI -->
+  <!-- 2. БЛОК ШІ GEMINI (РАСКРЫТИЕ СТРОГО ВНУТРЬ ЭКРАНА) -->
   <div id="aiPillPanel" class="ai-pill-panel compact">
     <div id="aiPillHeader" class="ai-pill-compact-content" onclick="toggleAiPillExpand()">
       <div class="ai-titleBadge">
@@ -545,7 +576,7 @@
     <span class="status-drag-hint">✥</span>
   </div>
 
-  <!-- МОДАЛЬНОЕ ОКНО ПРИВЯЗКИ И ОБУЧЕНИЯ ТОЧЕК -->
+  <!-- МОДАЛЬНОЕ ОКНО ПРИВЯЗКИ -->
   <div id="trainModal" class="train-modal-backdrop" onclick="closeTrainModal(event)">
     <div class="train-modal-card" onclick="event.stopPropagation()">
       <div class="train-header">
@@ -619,20 +650,20 @@
     const FIREBASE_NEON_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/config/neon_lines.json";
     const FIREBASE_KB_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/knowledge_base.json";
 
-    // СПИСОК СЛОВ ДЛЯ АВТОМАТИЧЕСКОГО УДАЛЕНИЯ РЕКЛАМЫ И СПАМА
+    // АВТОМАТИЧЕСКАЯ ФИЛЬТРАЦИЯ И ОЧИСТКА СПАМА
     function isSpamMessage(text) {
       if (!text) return false;
       const t = text.toLowerCase();
       const spamWords = [
         "напоминаем", "у нас есть бот", "бот с картой", "пробный доступ",
         "события живут", "метки появляются", "без отдельных приложений",
-        "бесплатный пробный", "подписчик", "реклама", "всё прямо в telegram",
+        "бесплатный пробный", "подписчик", "всё прямо в telegram",
         "наш бот", "t.me/", "http://", "https://"
       ];
       return spamWords.some(w => t.includes(w));
     }
 
-    // БАЗА УЛИЦ ДНЕПРА
+    // БАЗА УЛИЦ ДНЕПРА ДЛЯ ПОДСКАЗОК
     const DNIPRO_STREETS_MAP = {
       "криворізьк": { name: "вул. Криворізька", lat: 48.4385, lng: 34.9920 },
       "криворож": { name: "вул. Криворізька", lat: 48.4385, lng: 34.9920 },
@@ -675,14 +706,6 @@
       "12.*квартал": { name: "12-й Квартал", lat: 48.4120, lng: 35.0150 },
       "топол": { name: "ж/м Тополя", lat: 48.3950, lng: 35.0350 },
       "б4": { name: "Б4 / пр. Богдана Хмельницького", lat: 48.4200, lng: 35.0180 }
-    };
-
-    const PRESET_STREETS = {
-      "парус": [[48.484, 34.915], [48.486, 34.928]],
-      "набережн": [[48.490, 34.950], [48.480, 35.030]],
-      "робоч": [[48.435, 35.005], [48.460, 35.012]],
-      "поля": [[48.432, 35.025], [48.460, 35.025]],
-      "яворницьк": [[48.472, 35.020], [48.455, 35.065]]
     };
 
     const LIFETIME_MS = 40 * 60 * 1000;
@@ -797,39 +820,12 @@
     }
 
     // ==========================================================================
-    // КИНЕМАТОГРАФИЧНОЕ ПЕРЕМЕЩЕНИЕ: КАРТА ОТДАЛЯЕТСЯ -> МЕТКА ЕДЕТ -> ПРИБЛИЖАЕТСЯ
-    // ==========================================================================
-    function smoothGlideMarker(marker, startLatLng, endLatLng, duration = 1300, onDone = null) {
-      if (!marker) { if (onDone) onDone(); return; }
-      const startTime = performance.now();
-      function animateStep(currentTime) {
-        const elapsed = currentTime - startTime;
-        const progress = Math.min(elapsed / duration, 1);
-        // Плавное кубическое замедление
-        const ease = 1 - Math.pow(1 - progress, 3);
-
-        const currentLat = startLatLng.lat + (endLatLng.lat - startLatLng.lat) * ease;
-        const currentLng = startLatLng.lng + (endLatLng.lng - startLatLng.lng) * ease;
-        marker.setLatLng([currentLat, currentLng]);
-
-        if (progress < 1) {
-          requestAnimationFrame(animateStep);
-        } else {
-          marker.setLatLng(endLatLng);
-          if (onDone) onDone();
-        }
-      }
-      requestAnimationFrame(animateStep);
-    }
-
-    // ==========================================================================
-    // МОДАЛЬНОЕ ОКНО ПРИВЯЗКИ (ТОЛЬКО ДОЛГИЙ ТАП)
+    // МОДАЛЬНОЕ ОКНО ПРИВЯЗКИ
     // ==========================================================================
     function openTrainingModal(point, marker) {
       currentTrainingPoint = point;
       currentTrainingMarker = marker;
 
-      // Если маркер не передан, находим его на карте
       if (!currentTrainingMarker) {
         markersLayer.eachLayer(l => {
           if (l.getLatLng && l.getLatLng().lat === point.lat && l.getLatLng().lng === point.lng) {
@@ -895,78 +891,82 @@
       deleteSinglePoint(p._fbKey, p.text || p.raw_text || "");
     }
 
-    // КИНЕМАТОГРАФИЧНОЕ ПЕРЕМЕЩЕНИЕ НА НОВУЮ УЛИЦУ
+    // ПЕРЕНОС МЕТКИ: БАННЕР ВВЕРХУ + 2 ПУЛЬСАЦИИ
     async function applyPointRelocation(streetName, lat, lng) {
       if (!currentTrainingPoint) return;
       closeTrainModal();
 
       const p = currentTrainingPoint;
-      const m = currentTrainingMarker;
-      const startPos = m ? m.getLatLng() : { lat: p.lat, lng: p.lng };
-      const targetPos = L.latLng(Number(lat.toFixed(5)), Number(lng.toFixed(5)));
+      let m = currentTrainingMarker;
+      if (!m) {
+        markersLayer.eachLayer(l => {
+          if (l.getLatLng && l.getLatLng().lat === p.lat && l.getLatLng().lng === p.lng) m = l;
+        });
+      }
 
-      // 1. Очищаем текст от мусора для надежного обучения
+      const targetPos = { lat: Number(lat.toFixed(5)), lng: Number(lng.toFixed(5)) };
+
+      // 1. Показываем надпись вверху экрана
+      const banner = document.getElementById("transferBanner");
+      if (banner) {
+        banner.innerText = "⏳ Виконується перенесення мітки...";
+        banner.style.display = "block";
+      }
+
+      // 2. Очищаем текст от мусора для обучения
       let phrase = (p.raw_text || p.text || "")
         .replace(/^(?:❓|\bчисто\b|\bбп\b|\bпатруль\b|\(чисто\))/gi, "")
         .replace(/(?:чисто|спокійно|вільно|пусто)/gi, "")
         .trim().toLowerCase();
-
       if (phrase.length < 3) phrase = streetName.toLowerCase();
 
-      // ШАГ 1: КАРТА ПЛАВНО ОТДАЛЯЕТСЯ
-      const dist = startPos.distanceTo ? startPos.distanceTo(targetPos) : 500;
-      if (dist > 350) {
-        const bounds = L.latLngBounds([startPos, targetPos]).pad(0.35);
-        map.flyToBounds(bounds, { duration: 0.8, easeLinearity: 0.25 });
-      } else {
-        map.flyTo([(startPos.lat + targetPos.lat) / 2, (startPos.lng + targetPos.lng) / 2], Math.max(12, map.getZoom() - 2), { duration: 0.65 });
+      // 3. Перемещаем карту и маркер
+      map.flyTo([targetPos.lat, targetPos.lng], 16, { animate: true, duration: 0.8 });
+      if (m) m.setLatLng([targetPos.lat, targetPos.lng]);
+
+      p.lat = targetPos.lat;
+      p.lng = targetPos.lng;
+      p.needs_training = false;
+      p.address = streetName;
+
+      // Сохраняем в Firebase
+      if (p._fbKey) {
+        fetch(FIREBASE_POINTS_URL.replace(".json", `/${p._fbKey}.json`), {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ lat: p.lat, lng: p.lng, needs_training: false, address: streetName })
+        }).catch(() => {});
       }
 
-      // Подсвечиваем метку ореолом на время движения
-      const iconEl = m ? m.getElement()?.querySelector('.radar-circle') : null;
-      if (iconEl) iconEl.classList.add('active-dragging-target');
+      // Обучаем базу знаний
+      fetch(FIREBASE_KB_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phrase: phrase, address: streetName, lat: p.lat, lng: p.lng, updated_at: Date.now() })
+      }).catch(() => {});
 
-      // ШАГ 2: ЧЕРЕЗ 800мс МЕТКА ПЛАВНО ПЕРЕЕЗЖАЕТ
+      learnedRules.push({ phrase: phrase, address: streetName, lat: p.lat, lng: p.lng });
+      localStorage.setItem("radar_learned_rules", JSON.stringify(learnedRules));
+
+      // Через 850мс (когда прилетели на место): скрываем надпись и пульсируем 1-2 раза
       setTimeout(() => {
-        smoothGlideMarker(m, startPos, targetPos, 1300, async () => {
-          if (iconEl) iconEl.classList.remove('active-dragging-target');
+        if (banner) banner.style.display = "none";
 
-          // ШАГ 3: КАРТА ПЛАВНО ПРИБЛИЖАЕТСЯ К МЕТКЕ НА НОВОМ МЕСТЕ
-          map.flyTo([targetPos.lat, targetPos.lng], 16, { duration: 0.85 });
-
-          p.lat = targetPos.lat;
-          p.lng = targetPos.lng;
-          p.needs_training = false;
-          p.address = streetName;
-
-          if (p._fbKey) {
-            try {
-              await fetch(FIREBASE_POINTS_URL.replace(".json", `/${p._fbKey}.json`), {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ lat: p.lat, lng: p.lng, needs_training: false, address: streetName })
-              });
-            } catch(e) {}
-          }
-
-          // Обучение базы знаний на сервере и локально
-          try {
-            await fetch(FIREBASE_KB_URL, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ phrase: phrase, address: streetName, lat: p.lat, lng: p.lng, updated_at: Date.now() })
-            });
-          } catch(e) {}
-
-          learnedRules.push({ phrase: phrase, address: streetName, lat: p.lat, lng: p.lng });
-          localStorage.setItem("radar_learned_rules", JSON.stringify(learnedRules));
-
-          showToast(`🎯 Метку переміщено на «${streetName}»!`);
+        const circleEl = m ? m.getElement()?.querySelector('.radar-circle') : null;
+        if (circleEl) {
+          circleEl.classList.add('pulse-big-twice');
+          setTimeout(() => {
+            circleEl.classList.remove('pulse-big-twice');
+            renderMarkers();
+          }, 1450);
+        } else {
           renderMarkers();
-          renderTrafficLights();
-          updateRouteStatus();
-        });
-      }, 800);
+        }
+
+        showToast(`🎯 «${streetName}» збережено!`);
+        renderTrafficLights();
+        updateRouteStatus();
+      }, 850);
     }
 
     async function executeCustomTrain() {
@@ -996,6 +996,7 @@
       showToast(`⚠️ Не знайдено координат для «${q}». Спробуйте іншу назву.`);
     }
 
+    // РУЧНОЙ ПЕРЕНОС БЕЗ БАННЕРА И БЕЗ ПУЛЬСАЦИИ
     function startManualDragFromModal() {
       if (!currentTrainingMarker || !currentTrainingPoint) return;
       closeTrainModal();
@@ -1015,7 +1016,23 @@
         const pos = e.target.getLatLng();
         m.dragging.disable();
         if (iconEl) iconEl.classList.remove('active-dragging-target');
-        applyPointRelocation("Встановлено користувачем", pos.lat, pos.lng);
+
+        p.lat = Number(pos.lat.toFixed(5));
+        p.lng = Number(pos.lng.toFixed(5));
+        p.needs_training = false;
+        p.address = "Встановлено користувачем";
+
+        if (p._fbKey) {
+          fetch(FIREBASE_POINTS_URL.replace(".json", `/${p._fbKey}.json`), {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ lat: p.lat, lng: p.lng, needs_training: false, address: p.address })
+          }).catch(() => {});
+        }
+        showToast("📍 Позицію точки збережено!");
+        renderMarkers();
+        renderTrafficLights();
+        updateRouteStatus();
       });
     }
 
@@ -1207,7 +1224,7 @@
     };
 
     // ==========================================================================
-    // ДИАЛОГОВЫЙ ЧАТ ШІ (АККУРАТНОЕ РАСКРЫТИЕ БЕЗ СМЕЩЕНИЯ КАРТЫ)
+    // ДИАЛОГОВЫЙ ЧАТ ШІ (АККУРАТНОЕ РАСКРЫТИЕ ВНУТРЬ ЭКРАНА)
     // ==========================================================================
     const aiPillPanel = document.getElementById("aiPillPanel");
     const aiInlineInput = document.getElementById("aiInlineInput");
@@ -1217,7 +1234,6 @@
     let geminiChatHistory = [];
     let targetedPointContext = null;
 
-    // ЗАЩИТА: КЛИКИ И ЖЕСТЫ ВНУТРИ ПАНЕЛЕЙ НЕ ДВИГАЮТ КАРТУ LEAFLET
     L.DomEvent.disableClickPropagation(aiPillPanel);
     L.DomEvent.disableScrollPropagation(aiPillPanel);
     L.DomEvent.disableClickPropagation(document.getElementById("dashPanel"));
@@ -1232,33 +1248,37 @@
       btnAiPillToggle.innerText = isExpanded ? "▲" : "▼";
 
       if (isExpanded) {
-        // Защита от вылетания за правый или нижний край экрана телефона
         const winW = window.innerWidth;
         const winH = window.innerHeight;
-        const targetW = Math.min(320, winW - 20);
+        const panelW = Math.min(320, winW - 20);
+        aiPillPanel.style.width = panelW + "px";
 
         let curLeft = aiPillPanel.offsetLeft;
         let curTop = aiPillPanel.offsetTop;
 
-        if (curLeft + targetW > winW - 10) {
-          curLeft = Math.max(10, winW - targetW - 10);
-          aiPillPanel.style.left = `${curLeft}px`;
+        // Если вылезает за правый край — аккуратно смещаем влево
+        if (curLeft + panelW > winW - 10) {
+          curLeft = Math.max(10, winW - panelW - 10);
+          aiPillPanel.style.left = curLeft + "px";
           aiPillPanel.style.right = "auto";
         }
         if (curLeft < 10) {
           aiPillPanel.style.left = "10px";
           aiPillPanel.style.right = "auto";
         }
-        const approxH = Math.min(380, winH * 0.7);
+
+        // Если вылезает за нижний край
+        const approxH = 360;
         if (curTop + approxH > winH - 20) {
-          curTop = Math.max(10, winH - approxH - 20);
-          aiPillPanel.style.top = `${curTop}px`;
+          aiPillPanel.style.top = Math.max(10, winH - approxH - 20) + "px";
           aiPillPanel.style.bottom = "auto";
         }
 
         setTimeout(() => {
           aiChatBox.scrollTop = aiChatBox.scrollHeight;
         }, 150);
+      } else {
+        aiPillPanel.style.width = "auto";
       }
     }
 
@@ -2165,9 +2185,7 @@ ${allLiveReportsText || "Повідомлень немає"}
       if (!e.target.closest(".search-box")) searchResults.style.display = "none";
     });
 
-    // ==========================================================================
-    // ЗАГРУЗКА ТОЧЕК И АВТОМАТИЧЕСКАЯ ОЧИСТКА СПАМА И РЕКЛАМЫ
-    // ==========================================================================
+    // ЗАГРУЗКА ТОЧЕК И ОЧИСТКА СПАМА
     async function loadPoints() {
       try {
         const res = await fetch(`${FIREBASE_POINTS_URL}?t=${Date.now()}`);
@@ -2184,13 +2202,11 @@ ${allLiveReportsText || "Повідомлень немає"}
 
           const fullText = (p.text || "") + " " + (p.raw_text || "");
 
-          // 1. ПРОВЕРКА НА РЕКЛАМНЫЙ МУСОР (УДАЛЯЕМ ИЗ БАЗЫ СРАЗУ)
           if (isSpamMessage(fullText)) {
             spamKeysToDelete.push(key);
             return null;
           }
 
-          // 2. АВТОПРИВЯЗКА ПО РАНЕЕ ОБУЧЕННЫМ ПРАВИЛАМ
           if (p.needs_training) {
             const lower = fullText.toLowerCase();
             const matchedRule = learnedRules.find(r => r.phrase && lower.includes(r.phrase.toLowerCase()));
@@ -2210,7 +2226,6 @@ ${allLiveReportsText || "Повідомлень немає"}
           return p;
         }).filter(p => p && (now - (p.time || p.timestamp || 0)) <= LIFETIME_MS);
 
-        // Очищаем спам из Firebase
         if (spamKeysToDelete.length > 0) {
           spamKeysToDelete.forEach(k => {
             fetch(FIREBASE_POINTS_URL.replace(".json", `/${k}.json`), { method: "DELETE" }).catch(() => {});
@@ -2223,9 +2238,7 @@ ${allLiveReportsText || "Повідомлень немає"}
       } catch (err) {}
     }
 
-    // ==========================================================================
     // ОТОБРАЖЕНИЕ МЕТОК (ОДИНАРНЫЙ КЛИК = ПОПАП, ДОЛГИЙ КЛИК = ОКНО ПРИВЯЗКИ)
-    // ==========================================================================
     function renderMarkers() {
       markersLayer.clearLayers();
       const now = Date.now();
