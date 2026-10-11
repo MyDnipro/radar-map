@@ -158,7 +158,7 @@
     .feed-badge-red { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid #ef4444; }
     .feed-badge-green { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid #10b981; }
 
-    /* ХРОНОМЕТРАЖ */
+    /* ХРОНОМЕТРАЖ И ГРАФИК */
     .timeline-day-switch { display: flex; gap: 6px; align-items: center; }
     .timeline-day-btn {
       background: #1e293b; border: 1px solid #334155; color: #94a3b8;
@@ -195,10 +195,6 @@
     .session-pill:hover { background: #1e293b; border-color: #38bdf8; }
     .session-time { font-weight: 800; color: #38bdf8; }
     .session-duration { color: #f59e0b; font-weight: 700; }
-    .night-tag {
-      background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid #a855f7;
-      padding: 2px 5px; border-radius: 4px; font-size: 9px; font-weight: 800; margin-left: 6px;
-    }
 
     /* СТОЛБИКИ ПО ДНЯМ */
     .street-control-toolbar {
@@ -241,7 +237,6 @@
     .st-badge.before { border-color: #a855f7; color: #a855f7; }
     .st-badge.week { border-color: #ec4899; color: #ec4899; }
 
-    /* ПЕРЕКЛЮЧАТЕЛИ НЕДЕЛЬ */
     .week-nav-bar {
       display: flex; justify-content: space-between; align-items: center;
       background: #0f172a; border: 1px solid #1e293b; border-radius: 8px;
@@ -276,7 +271,7 @@
       z-index: 3000; display: none; align-items: center; justify-content: center; padding: 14px;
     }
     .detail-modal-card {
-      background: #0f172a; border: 1px solid #00f3ff; border-radius: 14px;
+      background: #0f172a; border: 1.5px solid #00f3ff; border-radius: 14px;
       padding: 18px; width: 100%; max-width: 480px; max-height: 85vh; overflow-y: auto;
       box-shadow: 0 0 30px rgba(0, 243, 255, 0.35); position: relative;
     }
@@ -358,7 +353,7 @@
     <!-- НАВИГАЦИОННЫЕ ВКЛАДКИ -->
     <div class="tabs-nav">
       <button id="tabBtn1" class="tab-btn active" onclick="setTab(1)">💬 Тексти з каналу</button>
-      <button id="tabBtn2" class="tab-btn" onclick="setTab(2)">⏱️ Хронометраж</button>
+      <button id="tabBtn2" class="tab-btn" onclick="setTab(2)">⏱️ Хронометраж (Графік)</button>
       <button id="tabBtn3" class="tab-btn" onclick="setTab(3)">📊 Стовпчики по днях</button>
       <button id="tabBtn4" class="tab-btn" onclick="setTab(4)">🕒 Години та дні</button>
       <button id="tabBtn5" class="tab-btn" onclick="setTab(5)">📅 По місяцях (Рік)</button>
@@ -382,16 +377,22 @@
       <div id="streetFeedContainer"></div>
     </div>
 
-    <!-- ТАБ 2: ХРОНОМЕТРАЖ -->
+    <!-- ТАБ 2: ХРОНОМЕТРАЖ И ГРАФИК-ПРЯМОУГОЛЬНИКИ -->
     <div id="tabContent2" class="hud-card" style="display:none;">
       <div class="hud-card-title">
-        <span>⏱️ Інтервали дій блокпостів на ваших 7 точках:</span>
+        <span>⏱️ Добова хронограма (Інтервали засад):</span>
         <div class="timeline-day-switch">
-          <span style="font-size:11px; color:#94a3b8; font-weight:700;">Шкала доби:</span>
+          <span style="font-size:11px; color:#94a3b8; font-weight:700;">День:</span>
           <button id="btnDayToday" class="timeline-day-btn active" onclick="setTimelineDay(0)">Сьогодні</button>
           <button id="btnDayYesterday" class="timeline-day-btn" onclick="setTimelineDay(1)">Вчора</button>
         </div>
       </div>
+
+      <!-- ГРАФИК С ИНТЕРВАЛЬНЫМИ ПОЛОСАМИ -->
+      <div class="chart-canvas-wrap" style="height: 260px; margin-bottom: 16px;">
+        <canvas id="canvasTimelineIntervals"></canvas>
+      </div>
+
       <div id="timelineList"></div>
     </div>
 
@@ -508,9 +509,6 @@
   </div>
 
   <script>
-    // ==========================================================================
-    // СИСТЕМА ЗАЩИТЫ КЛЮЧЕЙ И АВТОРИЗАЦИИ
-    // ==========================================================================
     const SECRET_KEY_HASH = "570984";
     const _VAULT_PREFIX = String.fromCharCode(65, 81, 46, 65, 98, 56, 82, 78, 54);
 
@@ -568,6 +566,7 @@
     let routeHourlyChartInstance = null;
     let routeWeeklyChartInstance = null;
     let yearlyMonthsChartInstance = null;
+    let timelineIntervalsChartInstance = null;
     let targetSessionsGlobal = {};
 
     function getSavedSet(key) {
@@ -584,7 +583,6 @@
       tab5: { multi: false, selected: getSavedSet("stats_filter_tab5") }
     };
 
-    // СТРОГИЕ И УТОЧНЕННЫЕ РЕГУЛЯРКИ ДЛЯ 7 ТОЧЕК
     const TARGET_CHECKPOINTS = [
       { id: "pavlova", name: "вул. Павлова", fullName: "вул. Академіка Павлова", regex: /(?:академика\s*павлова|академіка\s*павлова|\bпавлова\b)/i, color: "#00f3ff" },
       { id: "krasnozavodska", name: "Краснозаводська", fullName: "Краснозаводська / Белелюбського / Комбайновий", regex: /(?:белелюб|краснозавод|комбайн|дтрз|ударник)/i, color: "#f59e0b" },
@@ -672,11 +670,7 @@
         throw new Error("Немає доступних ключів Gemini.");
       }
 
-      const candidateModels = [
-        'gemini-3.5-flash-lite',
-        'gemini-3.5-flash',
-        'gemini-3.8-flash'
-      ];
+      const candidateModels = ['gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-3.8-flash'];
       let lastErr = null;
 
       for (const k of apiKeys) {
@@ -754,8 +748,7 @@ ${recentReports}
 "${userQuestion}"
 
 ІНСТРУКЦІЯ:
-Дай розумну, живу, аналітичну відповідь людською мовою (українською або російською).
-Спирайся на точні цифри, вкажи конкретні години, дні або вулиці, дай водієві чітку практичну пораду.
+Дай розумну, живу, аналітичну відповідь людською мовою. Спирайся на точні цифри, вкажи конкретні години або вулиці.
 `;
 
       try {
@@ -803,7 +796,6 @@ ${recentReports}
       renderAll();
     }
 
-    // РУЧНОЕ УДАЛЕНИЕ ЗАПИСИ ИЗ АРХИВА СТАТИСТИКИ
     window.deleteArchiveItem = async function(fbKey, event) {
       if (event) event.stopPropagation();
       if (!confirm("Видалити цей звіт зі статистики назавжди?")) return;
@@ -1053,6 +1045,9 @@ ${recentReports}
       document.getElementById("aiStatsOutput").style.display = "none";
 
       if (num === 1) renderFeedTab();
+      if (num === 2) {
+        renderTimelineChart(targetSessionsGlobal, timelineDayOffset);
+      }
       if (num === 3 && streetDaysChartInstance) streetDaysChartInstance.resize();
       if (num === 4) {
         if (routeHourlyChartInstance) routeHourlyChartInstance.resize();
@@ -1096,11 +1091,86 @@ ${recentReports}
       document.getElementById("kpiRouteWeek").innerText = totalRouteWeek;
 
       renderFeedTab();
+      if (activeTabNum === 2) renderTimelineChart(targetSessionsGlobal, timelineDayOffset);
       renderTimeline(targetSessionsGlobal, now, todayStart, yesterdayStart, ACTIVE_THRESHOLD_MS);
       renderStreetDaysChart(targetSessionsGlobal, todayStart, yesterdayStart, beforeYesterdayStart, weekStart);
       renderRouteTimeCharts(targetSessionsGlobal, todayStart);
       renderYearlyTab();
       renderOtherSectors();
+    }
+
+    // НОВЫЙ ИНТЕРАКТИВНЫЙ ГРАФИК-ХРОНОГРАМА (ПРЯМОУГОЛЬНИКИ ИНТЕРВАЛОВ)
+    function renderTimelineChart(targetSessionsMap, dayOffset) {
+      const nowDate = new Date();
+      const dayStart = new Date(nowDate.getFullYear(), nowDate.getMonth(), nowDate.getDate()).getTime() - (dayOffset * 86400000);
+      const dayEnd = dayStart + 86400000;
+
+      const datasets = [];
+      TARGET_CHECKPOINTS.forEach((target, index) => {
+        const sessions = targetSessionsMap[target.id] || [];
+        const dataPoints = [];
+
+        sessions.forEach(s => {
+          if (s.startTime < dayEnd && s.endTime > dayStart) {
+            const startHour = Math.max(0, (Math.max(s.startTime, dayStart) - dayStart) / 3600000);
+            const endHour = Math.min(24, (Math.min(s.endTime, dayEnd) - dayStart) / 3600000);
+            if (endHour > startHour) {
+              dataPoints.push({ x: [startHour, endHour], y: target.name });
+            }
+          }
+        });
+
+        if (dataPoints.length > 0) {
+          datasets.push({
+            label: target.name,
+            data: dataPoints,
+            backgroundColor: target.color,
+            borderColor: target.color,
+            borderWidth: 1,
+            borderRadius: 4,
+            barPercentage: 0.5
+          });
+        }
+      });
+
+      const ctx = document.getElementById('canvasTimelineIntervals').getContext('2d');
+      if (timelineIntervalsChartInstance) timelineIntervalsChartInstance.destroy();
+
+      timelineIntervalsChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: { datasets: datasets },
+        options: {
+          indexAxis: 'y',
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                title: (items) => items[0].dataset.label,
+                label: (item) => {
+                  const raw = item.raw.x;
+                  const stH = Math.floor(raw[0]);
+                  const stM = Math.floor((raw[0] - stH) * 60);
+                  const etH = Math.floor(raw[1]);
+                  const etM = Math.floor((raw[1] - etH) * 60);
+                  return ` Час засади: ${String(stH).padStart(2,'0')}:${String(stM).padStart(2,'0')} – ${String(etH).padStart(2,'0')}:${String(etM).padStart(2,'0')}`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              type: 'linear', min: 0, max: 24,
+              grid: { color: '#1e293b' },
+              ticks: { color: '#94a3b8', callback: (val) => `${val}:00`, stepSize: 3 }
+            },
+            y: {
+              grid: { color: '#1e293b' },
+              ticks: { color: '#f1f5f9', font: { size: 10, weight: 'bold' } }
+            }
+          }
+        }
+      });
     }
 
     function renderFeedTab() {
@@ -1228,28 +1298,6 @@ ${recentReports}
           });
         }
 
-        let segmentsHtml = "";
-        sessions.forEach(s => {
-          const effectiveEnd = (!s.closedByClean && (now - s.endTime <= ACTIVE_THRESHOLD_MS)) ? now : s.endTime;
-
-          if (s.startTime < viewDayEnd && effectiveEnd > viewDayStart) {
-            const segStart = Math.max(s.startTime, viewDayStart);
-            const segEnd = Math.min(effectiveEnd, viewDayEnd);
-            const startMinutes = (segStart - viewDayStart) / 60000;
-            const endMinutes = (segEnd - viewDayStart) / 60000;
-            const leftPercent = (startMinutes / 1440) * 100;
-            const widthPercent = Math.max(2.0, ((endMinutes - startMinutes) / 1440) * 100);
-            const isCarryoverStart = (s.startTime < viewDayStart);
-
-            segmentsHtml += `
-              <div class="strip-segment ${isCarryoverStart ? 'night-carryover' : ''}" 
-                   style="left:${leftPercent}%; width:${widthPercent}%; background:${target.color}; color:${target.color};" 
-                   onclick="showSessionModal('${target.id}', ${s.startTime})" 
-                   title="${isCarryoverStart ? 'Перейшов з ночі' : 'Активність'}"></div>
-            `;
-          }
-        });
-
         timelineListEl.innerHTML += `
           <div class="timeline-node ${isActiveNow ? 'status-active' : ''}" style="border-left-color:${target.color};">
             <div class="timeline-head">
@@ -1257,12 +1305,6 @@ ${recentReports}
               <span class="node-badge ${isActiveNow ? 'badge-active' : 'badge-closed'}">
                 ${isActiveNow ? '🔴 АКТИВНИЙ ЗАРАЗ' : '⚪ ЗНЯТИЙ'}
               </span>
-            </div>
-            <div class="day-strip-wrap">
-              <div class="day-strip-labels">
-                <span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>24:00</span>
-              </div>
-              <div class="day-strip-bar">${segmentsHtml}</div>
             </div>
             <div class="session-list">${sessionsHtml}</div>
           </div>
