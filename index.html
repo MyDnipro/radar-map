@@ -61,7 +61,6 @@
       background: #0b1120;
     }
 
-    /* 1. ЛЕВЫЙ ВЕРХНИЙ: ТОЧЕК XX */
     .dashboard {
       position: absolute !important;
       top: 15px !important;
@@ -137,7 +136,7 @@
     }
     html.dash-collapsed #collapsibleBody { display: none; }
 
-    /* 2. ПРАВЫЙ ВЕРХНИЙ: ШІ (С БЕЙДЖЕМ ВЕРСИИ 3.1) */
+    /* ШІ ПАНЕЛЬ (ВЕРСИЯ 3.2 С КНОПКАМИ НАВЕРХУ) */
     .ai-pill-panel {
       position: absolute;
       top: 15px;
@@ -224,15 +223,17 @@
       min-height: 0;
     }
 
+    /* КНОПКИ ВЕРДИКТА ТЕПЕРЬ СВЕРХУ */
     .ai-target-box {
       background: #0f172a;
       border: 1.5px solid #00f3ff;
       border-radius: 9px;
       padding: 7px 9px;
-      margin-bottom: 4px;
+      margin-bottom: 6px;
       display: none;
       flex-direction: column;
       gap: 5px;
+      order: -1; /* Выше чата */
     }
     .ai-target-header {
       font-size: 11px;
@@ -641,7 +642,7 @@
 
     .custom-dot-marker { background: transparent !important; border: none !important; }
     
-    /* Укрупненные шарики для скоплений (на 3 пикселя крупнее: 21px вместо 18px) */
+    /* Укрупненные шарики (на 3px больше: 22px) БЕЗ ЦИФРОВЫХ ПЛАШЕК */
     .radar-circle.clustered {
       width: 22px !important;
       height: 22px !important;
@@ -904,7 +905,7 @@
     </div>
   </div>
 
-  <!-- 2. ПРАВЫЙ ВЕРХНИЙ УГОЛ: ШІ (ВЕРСИЯ 3.1) -->
+  <!-- 2. ПРАВЫЙ ВЕРХНИЙ УГОЛ: ШІ (ВЕРСИЯ 3.1 С КНОПКАМИ ВВЕРХУ) -->
   <div id="aiPillPanel" class="ai-pill-panel compact">
     <div id="aiPillHeader" class="ai-pill-compact-content">
       <div class="ai-titleBadge" onclick="toggleAiPillExpand()">
@@ -921,6 +922,7 @@
     </div>
 
     <div class="ai-pill-body" id="aiPillBody">
+      <!-- КНОПКИ ВЕРДИКТА ТЕПЕРЬ СВЕРХУ -->
       <div id="aiTargetBox" class="ai-target-box">
         <div id="aiTargetTitle" class="ai-target-header">Об'єкт: ...</div>
         <div class="ai-target-buttons">
@@ -931,7 +933,7 @@
 
       <div id="aiChatBox" class="ai-chat-box">
         <div class="ai-msg bot">
-          👋 Вітаю! Я ваш ШІ-штурман (Карта v3.1). Шарики чисті, на 3px крупніше, без цифр-плашок!
+          👋 Вітаю! Я ваш ШІ-штурман (Карта v3.1). Шарики чисті, без цифр, на 3px крупніше!
         </div>
       </div>
 
@@ -1126,7 +1128,10 @@
       return spamWords.some(w => t.includes(w));
     }
 
+    // СЛОВАРЬ ТОПОНИМОВ С УЧЕТОМ СТАРЫХ И НОВЫХ НАЗВАНИЙ
     const DNIPRO_STREETS_MAP = {
+      "камчатськ": { name: "вул. Калдирська (колишня Камчатська)", lat: 48.4650, lng: 34.9800, note: "Колишня Камчатська" },
+      "калд": { name: "вул. Калдирська", lat: 48.4650, lng: 34.9800 },
       "каштанов": { name: "вул. Каштанова (Таромське)", lat: 48.4710, lng: 34.8250 },
       "лак": { name: "Лакофарбовий завод (з/м Західний)", lat: 48.4680, lng: 34.9520 },
       "лакокраск": { name: "Лакофарбовий завод (з/м Західний)", lat: 48.4680, lng: 34.9520 },
@@ -1680,7 +1685,7 @@
       matchedStreets.forEach(st => {
         const chip = document.createElement("div");
         chip.className = "train-chip";
-        chip.innerText = `📍 ${st.name}`;
+        chip.innerText = `📍 ${st.name}` + (st.note ? ` (${st.note})` : "");
         chip.onclick = () => applyPointRelocation(st.name, st.lat, st.lng);
         box.appendChild(chip);
       });
@@ -2862,7 +2867,7 @@ ${allLiveReportsText || "Повідомлень немає"}
       } catch (err) {}
     }
 
-    // РЕНДЕР МАРКЕРОВ: ЧИСТЫЕ ШАРИКИ НА 3PX КРУПНЕЕ БЕЗ ЦИФРОВЫХ ПЛАШЕК
+    // РЕНДЕР МАРКЕРОВ: БЕЗ ЦИФР, ТОЛЬКО ЧИСТЫЕ ШАРИКИ НА 3PX КРУПНЕЕ С СПИСКОМ ПО КЛИКУ
     function renderMarkers() {
       markersLayer.clearLayers();
       const now = Date.now();
@@ -2919,7 +2924,7 @@ ${allLiveReportsText || "Повідомлень немає"}
         const colorClass = clean ? "color-green" : "color-red";
         const freshClass = isFresh ? "fresh" : "";
         
-        // Если скопление > 1, добавляем класс .clustered (делает шарик на 3px крупнее)
+        // Укрупненный чистый шарик на 3px больше (22px) без цифр внутри
         const sizeClass = cluster.points.length > 1 ? "clustered" : "";
 
         const markerHtml = `<div class="radar-circle ${colorClass} ${freshClass} ${trainingClass} ${sizeClass}"></div>`;
