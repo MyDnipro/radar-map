@@ -17,6 +17,7 @@
     .hud-header {
       display: flex; justify-content: space-between; align-items: center;
       margin-bottom: 16px; border-bottom: 1px solid #1e293b; padding-bottom: 12px;
+      flex-wrap: wrap; gap: 8px;
     }
     .hud-title {
       font-size: 20px; font-weight: 900; color: #00f3ff;
@@ -27,6 +28,7 @@
       background: #0f172a; color: #38bdf8; border: 1px solid #0284c7;
       padding: 7px 14px; border-radius: 8px; text-decoration: none;
       font-size: 11px; font-weight: 700; box-shadow: 0 0 10px rgba(2, 132, 199, 0.3);
+      transition: all 0.2s;
     }
     .btn-back:hover { background: #0284c7; color: #fff; }
 
@@ -212,7 +214,7 @@
     .session-time { font-weight: 800; color: #38bdf8; }
     .session-duration { color: #f59e0b; font-weight: 700; }
 
-    /* СТОЛБИКИ ПО ДНЯХ */
+    /* СТОВПЧИКИ ПО ДНЯХ */
     .street-control-toolbar {
       background: #070d1d; border: 1px solid #1e293b; border-radius: 10px;
       padding: 10px; margin-bottom: 14px; display: flex; flex-direction: column; gap: 8px;
@@ -317,7 +319,10 @@
   <div class="container">
     <div class="hud-header">
       <div class="hud-title">⚡ РАДАР: ВАШ МАРШРУТ (7 ВУЛИЦЬ)</div>
-      <a href="index.html" class="btn-back">← До карти</a>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <a href="dossier.html" class="btn-back" style="background:#3b0764; border-color:#a855f7; color:#c084fc; box-shadow: 0 0 12px rgba(168, 85, 247, 0.4);">🧠 ШІ-Досьє</a>
+        <a href="index.html" class="btn-back">← До карти</a>
+      </div>
     </div>
 
     <!-- БЛОК ШІ-АНАЛІТИКА -->
@@ -1206,7 +1211,6 @@ ${recentReports}
       const titleEl = document.getElementById("clockTitleLabel");
       if (titleEl) titleEl.innerText = `🕒 Циферблат засад (${dayTitle}):`;
 
-      // Підрахунок засад по годинах доби з урахуванням вибраного дня
       const allHourCounts = new Array(24).fill(0);
       let totalCount = 0;
 
@@ -1222,7 +1226,6 @@ ${recentReports}
         });
       });
 
-      // Визначаємо пік для поточної вибірки
       let peakHour = 0, peakVal = 0;
       allHourCounts.forEach((cnt, h) => {
         if (cnt > peakVal) { peakVal = cnt; peakHour = h; }
@@ -1230,6 +1233,7 @@ ${recentReports}
 
       const peakHourDisplay = peakVal > 0 ? `${String(peakHour).padStart(2,'0')}:00` : "--:00";
       document.getElementById("clockCenterPeak").innerText = peakHourDisplay;
+      document.getElementById("kpiPeakHour").innerText = peakHourDisplay;
       document.getElementById("clockCenterTotal").innerText = `${totalCount} засад`;
 
       const numSectors = clockMode === '24h' ? 24 : 12;
@@ -1242,7 +1246,6 @@ ${recentReports}
       }
       const maxCount = Math.max(1, ...activeSectorCounts);
 
-      // Отрисовка секторів циферблата
       for (let i = 0; i < numSectors; i++) {
         const actualHour = i + hourOffset;
         const anglePerSector = (2 * Math.PI) / numSectors;
@@ -1270,14 +1273,12 @@ ${recentReports}
         ctx.lineWidth = 1.5;
         ctx.stroke();
 
-        // Підсвітка поточної години (тільки якщо вибрано режим "Сьогодні")
         if (actualHour === currentHour && timelineDayOffset === 0) {
           ctx.strokeStyle = "#00f3ff";
           ctx.lineWidth = 2.5;
           ctx.stroke();
         }
 
-        // Мітки годин
         const midAngle = startAngle + (anglePerSector / 2);
         const labelRadius = radius - 14;
         const textX = centerX + labelRadius * Math.cos(midAngle);
@@ -1296,7 +1297,6 @@ ${recentReports}
         ctx.fillText(labelText, textX, textY);
       }
 
-      // Клік по сектору циферблата
       canvas.onclick = function(e) {
         const rect = canvas.getBoundingClientRect();
         const clickX = e.clientX - rect.left - centerX;
@@ -1982,32 +1982,28 @@ ${recentReports}
     }
 
     function openHourlyDetailModal(hour) {
-      const nowDate = new Date();
-      const todayStart = new Date(nowDate.getFullYear(), nowDate.getMonth(), nowDate.getDate()).getTime();
-      let viewDayStart = 0;
-      let viewDayEnd = Infinity;
-      let dayTitle = "Сьогодні";
-
-      if (timelineDayOffset === 0) {
-        viewDayStart = todayStart;
-        viewDayEnd = todayStart + 86400000;
-        dayTitle = "Сьогодні";
-      } else if (timelineDayOffset === 1) {
-        viewDayStart = todayStart - 86400000;
-        viewDayEnd = todayStart;
-        dayTitle = "Вчора";
-      } else {
-        viewDayStart = todayStart - (86400000 * 6);
-        viewDayEnd = Date.now() + 86400000;
-        dayTitle = "За 7 днів";
-      }
-
-      document.getElementById("modalTitle").innerText = `Година: ${String(hour).padStart(2,'0')}:00 – ${String(hour).padStart(2,'0')}:59 (${dayTitle})`;
+      document.getElementById("modalTitle").innerText = `Година: ${String(hour).padStart(2,'0')}:00 – ${String(hour).padStart(2,'0')}:59`;
       document.getElementById("modalSub").innerText = selectedClockStreet === 'all' ? "Активність по всіх 7 точках маршруту" : `Активність: ${TARGET_CHECKPOINTS.find(t => t.id === selectedClockStreet)?.fullName || ''}`;
 
       const reportsBox = document.getElementById("modalReports");
       reportsBox.innerHTML = "";
       let foundAny = false;
+
+      const nowDate = new Date();
+      const todayStart = new Date(nowDate.getFullYear(), nowDate.getMonth(), nowDate.getDate()).getTime();
+      let viewDayStart = 0;
+      let viewDayEnd = Infinity;
+
+      if (timelineDayOffset === 0) {
+        viewDayStart = todayStart;
+        viewDayEnd = todayStart + 86400000;
+      } else if (timelineDayOffset === 1) {
+        viewDayStart = todayStart - 86400000;
+        viewDayEnd = todayStart;
+      } else {
+        viewDayStart = todayStart - (86400000 * 6);
+        viewDayEnd = Date.now() + 86400000;
+      }
 
       TARGET_CHECKPOINTS.forEach(t => {
         if (selectedClockStreet !== 'all' && t.id !== selectedClockStreet) return;
