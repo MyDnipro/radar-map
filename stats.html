@@ -30,15 +30,13 @@
     }
     .btn-back:hover { background: #0284c7; color: #fff; }
 
-    /* БЛОК ШІ-АНАЛІТИКА */
+    /* ШІ-АНАЛІТИКА */
     .ai-stats-card {
       background: rgba(15, 23, 42, 0.95); border: 1.5px solid #00f3ff;
       border-radius: 12px; padding: 12px 14px; margin-bottom: 16px;
       box-shadow: 0 0 25px rgba(0, 243, 255, 0.25);
     }
-    .ai-stats-header {
-      display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;
-    }
+    .ai-stats-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
     .ai-stats-title { font-size: 13px; font-weight: 900; color: #00f3ff; display: flex; align-items: center; gap: 6px; }
     .ai-stats-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
     .btn-ai-stats-chip {
@@ -46,7 +44,6 @@
       padding: 5px 10px; border-radius: 6px; font-size: 10px; font-weight: 800; cursor: pointer;
     }
     .btn-ai-stats-chip:hover { background: #0284c7; color: #fff; }
-    
     .ai-stats-input-row { display: flex; gap: 6px; margin-bottom: 8px; }
     .ai-stats-input {
       flex: 1; background: #060913; border: 1px solid #334155; border-radius: 6px;
@@ -58,14 +55,13 @@
       border: none; color: #0f172a; padding: 6px 14px; border-radius: 6px;
       font-size: 11px; font-weight: 900; cursor: pointer;
     }
-
     .ai-stats-output {
       background: #060913; border: 1px solid #1e293b; border-radius: 8px;
       padding: 10px 12px; font-size: 11px; line-height: 1.5; color: #f1f5f9; display: none;
       white-space: pre-wrap;
     }
 
-    /* ФИЛЬТР */
+    /* ФІЛЬТР */
     .filter-bar {
       display: flex; justify-content: space-between; align-items: center;
       background: #0b1120; border: 1px solid #1e293b; border-radius: 10px;
@@ -81,10 +77,8 @@
       background: #0284c7; color: #fff; box-shadow: 0 0 10px rgba(2, 132, 199, 0.6);
     }
 
-    /* KPI */
-    .kpi-row {
-      display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 16px;
-    }
+    /* KPI КАРТКИ */
+    .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 16px; }
     .kpi-card {
       background: #0b1120; border: 1px solid #1e293b; border-radius: 10px;
       padding: 12px 6px; text-align: center; position: relative; overflow: hidden;
@@ -100,7 +94,7 @@
     @keyframes pulseGlow { 0% { text-shadow: 0 0 4px #ff334b; } 50% { text-shadow: 0 0 16px #ff334b; } 100% { text-shadow: 0 0 4px #ff334b; } }
     .kpi-lbl { font-size: 9px; font-weight: 700; color: #94a3b8; margin-top: 3px; text-transform: uppercase; }
 
-    /* НАВИГАЦИОННЫЕ ВКЛАДКИ */
+    /* ВКЛАДКИ */
     .tabs-nav {
       display: flex; gap: 6px; margin-bottom: 16px; background: #0b1120; padding: 4px; border-radius: 10px; border: 1px solid #1e293b;
       overflow-x: auto;
@@ -111,21 +105,16 @@
     }
     .tab-btn.active { background: #0284c7; color: #fff; box-shadow: 0 0 14px rgba(2, 132, 199, 0.6); }
 
-    .hud-card {
-      background: #0b1120; border: 1px solid #1e293b; border-radius: 12px;
-      padding: 16px; margin-bottom: 16px;
-    }
+    .hud-card { background: #0b1120; border: 1px solid #1e293b; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
     .hud-card-title {
       font-size: 14px; font-weight: 900; color: #38bdf8; margin-bottom: 14px;
       display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;
     }
 
-    /* ПЕРЕКЛЮЧАТЕЛЬ ПЕРИОДОВ */
     .period-switch-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
     .btn-period-pill {
       background: #0f172a; border: 1px solid #334155; color: #94a3b8;
-      padding: 6px 14px; border-radius: 8px; font-size: 11px; font-weight: 800; cursor: pointer;
-      transition: all 0.2s;
+      padding: 6px 14px; border-radius: 8px; font-size: 11px; font-weight: 800; cursor: pointer; transition: all 0.2s;
     }
     .btn-period-pill.active { background: #0284c7; border-color: #00f3ff; color: #fff; box-shadow: 0 0 10px rgba(0, 243, 255, 0.4); }
 
@@ -135,8 +124,7 @@
     }
     .btn-feed-street {
       padding: 5px 11px; border-radius: 6px; font-size: 11px; font-weight: 800;
-      cursor: pointer; background: #0f172a; border: 1px solid #334155; color: #94a3b8;
-      transition: all 0.2s;
+      cursor: pointer; background: #0f172a; border: 1px solid #334155; color: #94a3b8; transition: all 0.2s;
     }
     .btn-feed-street.active { color: #fff !important; box-shadow: 0 0 10px currentColor; border-color: currentColor; }
 
@@ -159,12 +147,12 @@
     .feed-badge-green { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid #10b981; }
 
     /* ХРОНОМЕТРАЖ І ЦИФЕРБЛАТ */
-    .timeline-day-switch { display: flex; gap: 6px; align-items: center; }
+    .timeline-day-switch { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
     .timeline-day-btn {
       background: #1e293b; border: 1px solid #334155; color: #94a3b8;
-      padding: 4px 10px; border-radius: 6px; font-size: 10px; font-weight: 700; cursor: pointer;
+      padding: 5px 12px; border-radius: 6px; font-size: 10px; font-weight: 800; cursor: pointer; transition: all 0.2s;
     }
-    .timeline-day-btn.active { background: #0284c7; border-color: #00f3ff; color: #fff; }
+    .timeline-day-btn.active { background: #0284c7; border-color: #00f3ff; color: #fff; box-shadow: 0 0 10px rgba(0, 243, 255, 0.4); }
 
     .clock-radar-container {
       background: #070d1d; border: 1px solid #1e293b; border-radius: 12px;
@@ -351,7 +339,7 @@
       <div id="aiStatsOutput" class="ai-stats-output"></div>
     </div>
 
-    <!-- ФИЛЬТР -->
+    <!-- ФІЛЬТР -->
     <div class="filter-bar">
       <div class="filter-label">РЕЖИМ ПЕРЕВІРКИ:</div>
       <button id="btnFilterConfirmed" class="filter-btn-toggle active" onclick="toggleConfirmedOnly()">
@@ -359,7 +347,7 @@
       </button>
     </div>
 
-    <!-- KPI -->
+    <!-- KPI КАРТКИ -->
     <div class="kpi-row">
       <div class="kpi-card">
         <div id="kpiActiveNow" class="kpi-val active-pulse">0</div>
@@ -379,7 +367,7 @@
       </div>
     </div>
 
-    <!-- НАВИГАЦИОННЫЕ ВКЛАДКИ -->
+    <!-- НАВІГАЦІЯ -->
     <div class="tabs-nav">
       <button id="tabBtn1" class="tab-btn active" onclick="setTab(1)">💬 Тексти з каналу</button>
       <button id="tabBtn2" class="tab-btn" onclick="setTab(2)">⏱️ Хронометраж (Графік)</button>
@@ -389,7 +377,7 @@
       <button id="tabBtn6" class="tab-btn" onclick="setTab(6)">🌐 Інші місця Дніпра</button>
     </div>
 
-    <!-- ТАБ 1: ТЕКСТЫ СООБЩЕНИЙ -->
+    <!-- ТАБ 1: ТЕКСТИ ПОВІДОМЛЕНЬ -->
     <div id="tabContent1" class="hud-card">
       <div class="hud-card-title">
         <span>💬 Повідомлення з Telegram-каналу:</span>
@@ -406,21 +394,22 @@
       <div id="streetFeedContainer"></div>
     </div>
 
-    <!-- ТАБ 2: ХРОНОМЕТРАЖ + ЦИФЕРБЛАТ ГОДИН (24H / 12H AM / 12H PM) -->
+    <!-- ТАБ 2: ХРОНОМЕТРАЖ + ЦИФЕРБЛАТ ГОДИН (СЬОГОДНІ / ВЧОРА / 7 ДНІВ) -->
     <div id="tabContent2" class="hud-card" style="display:none;">
       <div class="hud-card-title">
         <span>⏱️ Добовий хронометраж маршруту:</span>
         <div class="timeline-day-switch">
-          <span style="font-size:11px; color:#94a3b8; font-weight:700;">День:</span>
-          <button id="btnDayToday" class="timeline-day-btn active" onclick="setTimelineDay(0)">Сьогодні</button>
-          <button id="btnDayYesterday" class="timeline-day-btn" onclick="setTimelineDay(1)">Вчора</button>
+          <span style="font-size:11px; color:#94a3b8; font-weight:700;">Період:</span>
+          <button id="btnDayToday" class="timeline-day-btn active" onclick="setTimelineDay(0)">⚡ Сьогодні</button>
+          <button id="btnDayYesterday" class="timeline-day-btn" onclick="setTimelineDay(1)">☀️ Вчора</button>
+          <button id="btnDayWeek" class="timeline-day-btn" onclick="setTimelineDay(7)">🗓️ За 7 днів (Теплова)</button>
         </div>
       </div>
 
       <!-- КРУГОВИЙ ЦИФЕРБЛАТ-РАДАР -->
       <div class="clock-radar-container">
         <div class="clock-top-bar">
-          <span style="font-size:12px; font-weight:800; color:#38bdf8;">🕒 Добовий циферблат засад:</span>
+          <span style="font-size:12px; font-weight:800; color:#38bdf8;" id="clockTitleLabel">🕒 Циферблат засад (Сьогодні):</span>
           <div class="clock-mode-group">
             <button id="btnClockMode24" class="btn-clock-mode active" onclick="setClockMode('24h')">24 години</button>
             <button id="btnClockModeAM" class="btn-clock-mode" onclick="setClockMode('12h_am')">12г AM (Ранок)</button>
@@ -443,7 +432,7 @@
         </div>
       </div>
 
-      <!-- ГРАФИК С ИНТЕРВАЛЬНЫМИ ПОЛОСАМИ -->
+      <!-- ГРАФІК З ІНТЕРВАЛАМИ -->
       <div class="chart-canvas-wrap" style="height: 250px; margin-bottom: 16px;">
         <canvas id="canvasTimelineIntervals"></canvas>
       </div>
@@ -451,7 +440,7 @@
       <div id="timelineList"></div>
     </div>
 
-    <!-- ТАБ 3: СТОЛБИКИ ПО ДНЯМ -->
+    <!-- ТАБ 3: СТОВПЧИКИ ПО ДНЯХ -->
     <div id="tabContent3" class="hud-card" style="display:none;">
       <div class="hud-card-title">
         <span>📊 Блокпости: Сьогодні / Вчора / Позавчора / 7 днів:</span>
@@ -478,7 +467,7 @@
       <div class="street-time-cards" id="streetTimeCards"></div>
     </div>
 
-    <!-- ТАБ 4: ЧАСЫ И ДНИ -->
+    <!-- ТАБ 4: ГОДИНИ ТА ДНІ -->
     <div id="tabContent4" class="hud-card" style="display:none;">
       <div class="week-nav-bar">
         <button class="btn-nav-week" onclick="changeWeekOffset(-1)">◀ Попередній тиждень</button>
@@ -515,7 +504,7 @@
       </div>
     </div>
 
-    <!-- ТАБ 5: ПО МЕСЯЦАМ -->
+    <!-- ТАБ 5: ПО МІСЯЦЯХ -->
     <div id="tabContent5" class="hud-card" style="display:none;">
       <div class="hud-card-title">
         <span>📅 Статистика по ваших 7 місцях по місяцях:</span>
@@ -547,7 +536,7 @@
       <div class="street-time-cards" id="monthlyBreakdownCards"></div>
     </div>
 
-    <!-- ТАБ 6: ДРУГИЕ МЕСТА ДНЕПРА -->
+    <!-- ТАБ 6: ІНШІ МІСЦЯ ДНІПРА -->
     <div id="tabContent6" class="hud-card" style="display:none;">
       <div class="hud-card-title">🌐 Активність в інших місцях Дніпра (фоново):</div>
       <div id="otherSectorsList"></div>
@@ -827,6 +816,7 @@ ${recentReports}
 
       document.getElementById("btnDayToday").classList.toggle("active", timelineDayOffset === 0);
       document.getElementById("btnDayYesterday").classList.toggle("active", timelineDayOffset === 1);
+      document.getElementById("btnDayWeek").classList.toggle("active", timelineDayOffset === 7);
 
       document.getElementById("btnYear2026").classList.toggle("active", selectedStatsYear === 2026);
       document.getElementById("btnYear2027").classList.toggle("active", selectedStatsYear === 2027);
@@ -909,6 +899,7 @@ ${recentReports}
       localStorage.setItem("stats_timeline_day_offset", offset);
       document.getElementById("btnDayToday").classList.toggle("active", offset === 0);
       document.getElementById("btnDayYesterday").classList.toggle("active", offset === 1);
+      document.getElementById("btnDayWeek").classList.toggle("active", offset === 7);
       renderAll();
     }
 
@@ -1134,7 +1125,7 @@ ${recentReports}
     }
 
     // =========================================================================
-    // 🕒 КРУГОВИЙ ЦИФЕРБЛАТ-РАДАР (24H / 12H AM / 12H PM)
+    // 🕒 КРУГОВИЙ ЦИФЕРБЛАТ-РАДАР (З ТОЧНОЮ ФІЛЬТРАЦІЄЮ ПО ДНЯХ)
     // =========================================================================
     function setClockMode(mode) {
       clockMode = mode;
@@ -1192,7 +1183,30 @@ ${recentReports}
 
       ctx.clearRect(0, 0, width, height);
 
-      // Підрахунок засад по годинах доби (0 - 23)
+      const nowDate = new Date();
+      const todayStart = new Date(nowDate.getFullYear(), nowDate.getMonth(), nowDate.getDate()).getTime();
+      let viewDayStart = 0;
+      let viewDayEnd = Infinity;
+      let dayTitle = "Сьогодні";
+
+      if (timelineDayOffset === 0) {
+        viewDayStart = todayStart;
+        viewDayEnd = todayStart + 86400000;
+        dayTitle = "Сьогодні";
+      } else if (timelineDayOffset === 1) {
+        viewDayStart = todayStart - 86400000;
+        viewDayEnd = todayStart;
+        dayTitle = "Вчора";
+      } else {
+        viewDayStart = todayStart - (86400000 * 6);
+        viewDayEnd = Date.now() + 86400000;
+        dayTitle = "За 7 днів (Теплова карта)";
+      }
+
+      const titleEl = document.getElementById("clockTitleLabel");
+      if (titleEl) titleEl.innerText = `🕒 Циферблат засад (${dayTitle}):`;
+
+      // Підрахунок засад по годинах доби з урахуванням вибраного дня
       const allHourCounts = new Array(24).fill(0);
       let totalCount = 0;
 
@@ -1200,9 +1214,11 @@ ${recentReports}
         if (selectedClockStreet !== 'all' && t.id !== selectedClockStreet) return;
         const sessions = targetSessionsGlobal[t.id] || [];
         sessions.forEach(s => {
-          const h = new Date(s.startTime).getHours();
-          allHourCounts[h]++;
-          totalCount++;
+          if (s.startTime >= viewDayStart && s.startTime < viewDayEnd) {
+            const h = new Date(s.startTime).getHours();
+            allHourCounts[h]++;
+            totalCount++;
+          }
         });
       });
 
@@ -1214,7 +1230,6 @@ ${recentReports}
 
       const peakHourDisplay = peakVal > 0 ? `${String(peakHour).padStart(2,'0')}:00` : "--:00";
       document.getElementById("clockCenterPeak").innerText = peakHourDisplay;
-      document.getElementById("kpiPeakHour").innerText = peakHourDisplay;
       document.getElementById("clockCenterTotal").innerText = `${totalCount} засад`;
 
       const numSectors = clockMode === '24h' ? 24 : 12;
@@ -1227,7 +1242,7 @@ ${recentReports}
       }
       const maxCount = Math.max(1, ...activeSectorCounts);
 
-      // Отрисовка секторов циферблата
+      // Отрисовка секторів циферблата
       for (let i = 0; i < numSectors; i++) {
         const actualHour = i + hourOffset;
         const anglePerSector = (2 * Math.PI) / numSectors;
@@ -1255,8 +1270,8 @@ ${recentReports}
         ctx.lineWidth = 1.5;
         ctx.stroke();
 
-        // Підсвітка поточного часу
-        if (actualHour === currentHour) {
+        // Підсвітка поточної години (тільки якщо вибрано режим "Сьогодні")
+        if (actualHour === currentHour && timelineDayOffset === 0) {
           ctx.strokeStyle = "#00f3ff";
           ctx.lineWidth = 2.5;
           ctx.stroke();
@@ -1301,8 +1316,17 @@ ${recentReports}
 
     function renderTimelineChart(targetSessionsMap, dayOffset) {
       const nowDate = new Date();
-      const dayStart = new Date(nowDate.getFullYear(), nowDate.getMonth(), nowDate.getDate()).getTime() - (dayOffset * 86400000);
-      const dayEnd = dayStart + 86400000;
+      const todayStart = new Date(nowDate.getFullYear(), nowDate.getMonth(), nowDate.getDate()).getTime();
+      let dayStart = todayStart;
+      let dayEnd = todayStart + 86400000;
+
+      if (dayOffset === 1) {
+        dayStart = todayStart - 86400000;
+        dayEnd = todayStart;
+      } else if (dayOffset === 7) {
+        dayStart = todayStart - (86400000 * 6);
+        dayEnd = Date.now() + 86400000;
+      }
 
       const datasets = [];
       TARGET_CHECKPOINTS.forEach(target => {
@@ -1958,7 +1982,27 @@ ${recentReports}
     }
 
     function openHourlyDetailModal(hour) {
-      document.getElementById("modalTitle").innerText = `Година: ${String(hour).padStart(2,'0')}:00 – ${String(hour).padStart(2,'0')}:59`;
+      const nowDate = new Date();
+      const todayStart = new Date(nowDate.getFullYear(), nowDate.getMonth(), nowDate.getDate()).getTime();
+      let viewDayStart = 0;
+      let viewDayEnd = Infinity;
+      let dayTitle = "Сьогодні";
+
+      if (timelineDayOffset === 0) {
+        viewDayStart = todayStart;
+        viewDayEnd = todayStart + 86400000;
+        dayTitle = "Сьогодні";
+      } else if (timelineDayOffset === 1) {
+        viewDayStart = todayStart - 86400000;
+        viewDayEnd = todayStart;
+        dayTitle = "Вчора";
+      } else {
+        viewDayStart = todayStart - (86400000 * 6);
+        viewDayEnd = Date.now() + 86400000;
+        dayTitle = "За 7 днів";
+      }
+
+      document.getElementById("modalTitle").innerText = `Година: ${String(hour).padStart(2,'0')}:00 – ${String(hour).padStart(2,'0')}:59 (${dayTitle})`;
       document.getElementById("modalSub").innerText = selectedClockStreet === 'all' ? "Активність по всіх 7 точках маршруту" : `Активність: ${TARGET_CHECKPOINTS.find(t => t.id === selectedClockStreet)?.fullName || ''}`;
 
       const reportsBox = document.getElementById("modalReports");
@@ -1968,7 +2012,10 @@ ${recentReports}
       TARGET_CHECKPOINTS.forEach(t => {
         if (selectedClockStreet !== 'all' && t.id !== selectedClockStreet) return;
         const sessions = targetSessionsGlobal[t.id] || [];
-        const inHour = sessions.filter(s => new Date(s.startTime).getHours() === hour);
+        const inHour = sessions.filter(s => {
+          if (s.startTime < viewDayStart || s.startTime >= viewDayEnd) return false;
+          return new Date(s.startTime).getHours() === hour;
+        });
 
         if (inHour.length > 0) {
           foundAny = true;
@@ -1994,7 +2041,6 @@ ${recentReports}
       document.getElementById("detailModal").style.display = "none";
     }
 
-    // Запуск після завантаження
     loadStats();
   </script>
 </body>
