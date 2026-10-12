@@ -12,7 +12,7 @@
     #memWidget {
       position: absolute !important;
       bottom: 25px !important;
-      left: calc(50% - 25px) !important;
+      left: calc(50% - 10px) !important;
       transform: translateX(-50%) !important;
       z-index: 2200 !important;
       user-select: none;
