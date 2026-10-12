@@ -1,18 +1,18 @@
 /**
  * Radar Dnipro — Модуль пам'яті топонімів ("А = Б")
- * Автономний віджет із повноекранним журналом прив'язок за датами
+ * Автономний віджет нижньої панелі [ 🧠 ]
  */
 (function() {
   const FB_CUSTOM_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/custom_streets.json";
   let cloudRules = {};
 
-  // 1. Стилі для віджета і повноекранного вікна
+  // 1. Стилі для кнопки мозку та вікон налаштування
   const style = document.createElement("style");
   style.textContent = `
     #memWidget {
       position: absolute !important;
       bottom: 25px !important;
-      left: 50% !important;
+      left: calc(50% - 25px) !important;
       transform: translateX(-50%) !important;
       z-index: 2200 !important;
       user-select: none;
@@ -37,6 +37,7 @@
       transition: transform 0.15s ease;
     }
     #memBtn:active { transform: scale(0.92); }
+
     #memCard {
       display: none;
       position: fixed !important;
@@ -110,7 +111,7 @@
     }
     .btn-mem-view-all:hover { border-color: #c084fc; color: #c084fc; }
 
-    /* Повноекранне вікно журналу прив'язок */
+    /* Повноекранний журнал */
     #memFullModal {
       display: none;
       position: fixed !important;
@@ -154,27 +155,9 @@
       align-items: center;
       gap: 8px;
     }
-    .mem-full-info {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      min-width: 0;
-    }
-    .mem-full-rule {
-      font-size: 12px;
-      color: #f8fafc;
-      font-weight: 700;
-      word-break: break-word;
-      line-height: 1.35;
-    }
-    .mem-full-time {
-      font-size: 10px;
-      color: #94a3b8;
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      font-weight: 600;
-    }
+    .mem-full-info { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+    .mem-full-rule { font-size: 12px; color: #f8fafc; font-weight: 700; word-break: break-word; line-height: 1.35; }
+    .mem-full-time { font-size: 10px; color: #94a3b8; display: flex; align-items: center; gap: 5px; font-weight: 600; }
     .btn-mem-del {
       background: #7f1d1d;
       border: 1px solid #ef4444;
@@ -190,11 +173,12 @@
   `;
   document.head.appendChild(style);
 
-  // 2. Розмітка маленького віджета та повноекранного вікна
+  // 2. Розмітка блоку: Кнопка мозку [🧠] та картка
   const widget = document.createElement("div");
   widget.id = "memWidget";
   widget.innerHTML = `
     <div id="memBtn" title="Пам'ять топонімів (А = Б)">🧠</div>
+
     <div id="memCard">
       <div class="mem-header">
         <span>🧠 Пам'ять топонімів ("А = Б")</span>
@@ -227,7 +211,7 @@
   `;
   document.body.appendChild(fullModal);
 
-  // 3. Захист від передачі кліків на карту
+  // 3. Захист від передачі кліків на карту Leaflet
   if (window.L && L.DomEvent) {
     L.DomEvent.disableClickPropagation(widget);
     L.DomEvent.disableScrollPropagation(widget);
@@ -245,12 +229,10 @@
   function toggleCard() {
     const isOpen = card.style.display === "flex";
     card.style.display = isOpen ? "none" : "flex";
-    btn.style.display = isOpen ? "flex" : "none";
   }
 
   function openFullModal() {
     card.style.display = "none";
-    btn.style.display = "flex";
     renderFullList();
     fullModal.style.display = "flex";
   }
@@ -299,7 +281,7 @@
     if (badge) badge.innerText = Object.keys(cloudRules).length;
   }
 
-  // 5. Відображення повного списку за датами
+  // 5. Відображення повного списку
   function renderFullList() {
     const box = document.getElementById("memFullList");
     if (!box) return;
@@ -313,7 +295,6 @@
       return;
     }
 
-    // Сортуємо: свіжі зверху
     entries.sort((a, b) => (b[1].time || 0) - (a[1].time || 0));
 
     entries.forEach(([rawKey, item]) => {
