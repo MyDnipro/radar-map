@@ -7,16 +7,22 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <meta name="color-scheme" content="light only">
-  <title>Радар Дніпро v3.2</title>
+  <title>Радар Дніпро v3.4</title>
   <link rel="icon" type="image/png" href="icon.png">
   <link rel="apple-touch-icon" href="icon.png">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script>
-    // Принудительное удаление устаревших Service Worker и сброс кэша позиций
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.getRegistrations().then(function(registrations) {
         for (let registration of registrations) {
           registration.unregister();
+        }
+      });
+    }
+    if ('caches' in window) {
+      caches.keys().then(function(names) {
+        for (let name of names) {
+          caches.delete(name);
         }
       });
     }
@@ -68,6 +74,7 @@
       background: #0b1120;
     }
 
+    /* ЛЕВАЯ ПАНЕЛЬ */
     .dashboard {
       position: absolute !important;
       top: 15px !important;
@@ -81,11 +88,12 @@
       border-radius: 14px;
       color: #fff;
       box-shadow: 0 6px 25px rgba(0,0,0,0.45);
-      width: 225px;
+      width: 230px;
       max-width: calc(100vw - 145px);
       border: 1.5px solid #334155;
       transition: width 0.28s cubic-bezier(0.4, 0, 0.2, 1), padding 0.25s ease;
-      overflow: hidden;
+      overflow-y: auto;
+      max-height: calc(100vh - 80px);
     }
     .dash-header { 
       display: flex;
@@ -134,6 +142,7 @@
       padding: 0 12px !important;
       border-radius: 12px !important;
       box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45) !important;
+      overflow: hidden !important;
     }
     html.dash-collapsed .dash-header {
       margin-bottom: 0 !important;
@@ -166,10 +175,11 @@
       background: transparent;
       border: none;
       color: #94a3b8;
-      font-size: 11px;
+      font-size: 12px;
       cursor: pointer;
       display: none;
       padding: 2px 4px;
+      line-height: 1;
     }
     .search-clear-btn:hover { color: #fff; }
     .search-results {
@@ -222,8 +232,8 @@
     .name-converter-result {
       font-size: 10px;
       color: #f59e0b;
-      margin-top: 4px;
-      line-height: 1.3;
+      margin-top: 5px;
+      line-height: 1.35;
       display: none;
     }
 
@@ -394,6 +404,7 @@
       justify-content: center;
     }
 
+    /* МІЙ ШЛЯХ */
     .route-status-bar {
       position: absolute !important;
       bottom: 25px !important;
@@ -673,38 +684,6 @@
       box-shadow: 0 4px 25px rgba(0, 243, 255, 0.45);
       display: none; white-space: nowrap; pointer-events: none;
     }
-
-    .confirm-modal-backdrop {
-      position: fixed;
-      bottom: 80px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 9999;
-      display: none;
-      width: 90%;
-      max-width: 340px;
-    }
-    .confirm-modal-card {
-      background: rgba(15, 23, 42, 0.96);
-      border: 1.5px solid #00f3ff;
-      border-radius: 14px;
-      padding: 12px;
-      color: #fff;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
-      backdrop-filter: blur(8px);
-    }
-    .btn-confirm-act {
-      flex: 1;
-      padding: 8px 6px;
-      border-radius: 8px;
-      font-size: 11px;
-      font-weight: 800;
-      cursor: pointer;
-      border: none;
-      text-align: center;
-    }
-    .btn-confirm-act.ok { background: #059669; color: #fff; }
-    .btn-confirm-act.cancel { background: #dc2626; color: #fff; }
   </style>
 </head>
 <body>
@@ -736,7 +715,7 @@
       <!-- ОКОШКО СТАРЫХ / НОВЫХ НАЗВАНИЙ -->
       <div class="name-converter-box">
         <div class="name-converter-title">🏛️ Старі ➔ Нові назви:</div>
-        <input type="text" id="nameConverterInput" class="name-converter-input" placeholder="Введіть стару назву..." autocomplete="off" oninput="handleNameConvert(this.value)">
+        <input type="text" id="nameConverterInput" class="name-converter-input" placeholder="Введіть стару назву (напр. Савченка)..." autocomplete="off" oninput="handleNameConvert(this.value)">
         <div id="nameConverterResult" class="name-converter-result"></div>
       </div>
 
@@ -779,13 +758,13 @@
     </div>
   </div>
 
-  <!-- 2. ШІ (ВЕРСИЯ v3.2) -->
+  <!-- 2. ШІ (ВЕРСИЯ v3.4) -->
   <div id="aiPillPanel" class="ai-pill-panel compact">
     <div id="aiPillHeader" class="ai-pill-compact-content">
       <div class="ai-titleBadge" onclick="toggleAiPillExpand()">
         <span style="font-size:14px;">🤖</span>
         <span id="aiPillLabel">ШІ</span>
-        <span class="ai-version-badge">v3.2</span>
+        <span class="ai-version-badge">v3.4</span>
         <span style="font-size:9px; color:#64748b; margin-left:3px;">✥</span>
       </div>
       <div style="display:flex; align-items:center; gap:4px;">
@@ -798,7 +777,7 @@
     <div class="ai-pill-body" id="aiPillBody">
       <div id="aiChatBox" class="ai-chat-box">
         <div class="ai-msg bot">
-          👋 Вітаю! Я ваш ШІ-штурман (Карта v3.2). Повні повноваження агента над мітками та перехрестями!
+          👋 Вітаю! Я ваш ШІ-штурман (Карта v3.4). Компактні кнопки вердиктів та зв'язок з мітками налаштовано!
         </div>
       </div>
 
@@ -847,18 +826,6 @@
   <!-- 4. ОНОВИТИ -->
   <div id="btnRefresh" class="btn-refresh" onclick="refreshRadarClick()">
     <span>🔄</span><span>Оновити</span>
-  </div>
-
-  <!-- ОКНО ПОДТВЕРЖДЕНИЯ ПЕРЕНОСА МЕТКИ -->
-  <div id="confirmMoveModal" class="confirm-modal-backdrop">
-    <div class="confirm-modal-card">
-      <div style="font-size:13px; font-weight:800; color:#38bdf8; margin-bottom:4px;">📍 Перевірте нове місце:</div>
-      <div id="confirmStreetName" style="font-size:12px; color:#e2e8f0; margin-bottom:10px; background:#1e293b; padding:6px 10px; border-radius:8px;">вул. ...</div>
-      <div style="display:flex; gap:6px;">
-        <button class="btn-confirm-act ok" onclick="finalizeMoveConfirm(true)">✅ Підтвердити</button>
-        <button class="btn-confirm-act cancel" onclick="finalizeMoveConfirm(false)">↩️ Скасувати</button>
-      </div>
-    </div>
   </div>
 
   <div id="toast" class="toast-msg">✅ Збережено!</div>
@@ -927,8 +894,14 @@
       return spamWords.some(w => t.includes(w));
     }
 
-    // РАСШИРЕННЫЙ СЛОВАРЬ ТОПОНИМОВ И ИСТОРИЧЕСКИХ НАЗВАНИЙ ДНЕПРА
+    // ПОЛНЫЙ СЛОВАРЬ ТОПОНИМОВ И ИСТОРИЧЕСКИХ НАЗВАНИЙ (С САВЧЕНКО И ГАВРИЛЕНКО)
     const DNIPRO_STREETS_MAP = {
+      "савченк": { name: "вул. В'ячеслава Чорновола", old: "вул. Савченка", lat: 48.4550, lng: 35.0180 },
+      "чорновол": { name: "вул. В'ячеслава Чорновола", old: "вул. Савченка", lat: 48.4550, lng: 35.0180 },
+      "черновол": { name: "вул. В'ячеслава Чорновола", old: "вул. Савченка", lat: 48.4550, lng: 35.0180 },
+      "гавриленк": { name: "вул. Лікаря Ребініна", old: "вул. Гавриленка", lat: 48.4380, lng: 35.0210 },
+      "ребінін": { name: "вул. Лікаря Ребініна", old: "вул. Гавриленка", lat: 48.4380, lng: 35.0210 },
+      "ребинин": { name: "вул. Лікаря Ребініна", old: "вул. Гавриленка", lat: 48.4380, lng: 35.0210 },
       "інгульськ": { name: "вул. Інгульська", lat: 48.5120, lng: 35.0420 },
       "ингульск": { name: "вул. Інгульська", lat: 48.5120, lng: 35.0420 },
       "барвінківськ": { name: "вул. Барвінківська", lat: 48.4493, lng: 35.0286 },
@@ -1011,6 +984,7 @@
       "правд": { name: "просп. Слобожанський", old: "просп. Газети Правда", lat: 48.5000, lng: 35.0680 },
       "слобожанськ": { name: "просп. Слобожанський", old: "просп. Газети Правда", lat: 48.5000, lng: 35.0680 },
       "мануйлівськ": { name: "просп. Мануйлівський", old: "просп. Воронцова", lat: 48.4850, lng: 35.0500 },
+      "воронцов": { name: "просп. Мануйлівський", old: "просп. Воронцова", lat: 48.4850, lng: 35.0500 },
       "сонячн": { name: "ж/м Сонячний", lat: 48.4750, lng: 35.0650 },
       "малиновськ": { name: "Набережна Сонячна", old: "вул. Малиновського", lat: 48.4750, lng: 35.0650 },
       "калинов": { name: "вул. Калинова", lat: 48.5080, lng: 35.0550 },
@@ -1019,7 +993,7 @@
       "фрунзенськ": { name: "ж/м Ломівський", old: "ж/м Фрунзенський", lat: 48.5050, lng: 34.9750 }
     };
 
-    // ФУНКЦИЯ ДЕТЕКЦИИ ПЕРЕКРЕСТКОВ И ПРИВЯЗКИ
+    // ДЕТЕКЦИЯ ПЕРЕКРЕСТКОВ
     function resolveLocationFromText(rawText) {
       const lower = (rawText || "").toLowerCase();
       const isIntersection = /(?:на\s+перехрест|на\s+перетині|перетин|перехрестя|угол|на\s+углу|кут\s+вулиць)/i.test(lower);
@@ -1062,14 +1036,14 @@
           if (val.old) {
             return `💡 ${val.old} ➔ по-новому: <b>${val.name}</b>`;
           } else {
-            return `💡 <b>${val.name}</b>: Назва не змінювалась`;
+            return `💡 <b>${val.name}</b> (назва не змінювалась)`;
           }
         }
       }
       return `💡 Назва не змінювалась`;
     }
 
-    // КОНВЕРТЕР СТАРЫХ НАЗВАНИЙ В ДАШБОРДЕ
+    // КОНВЕРТЕР СТАРЫХ НАЗВАНИЙ
     function handleNameConvert(val) {
       const q = val.trim().toLowerCase();
       const resEl = document.getElementById("nameConverterResult");
@@ -1216,7 +1190,7 @@
     const SECTOR_DEFS = {
       s1: {
         name: "Парус — Вокзал — Робоча",
-        keys: ["парус", "покровськ", "комунар", "трофимов", "червон.*кам", "набережн.*завод", "речпорт", "річпорт", "водокачк", "стан.*550", "водолікарн", "свобод", "кайдак", "павлов", "белелюб", "краснозавод", "комбайн", "вокзал", "старомостов", "озерк", "курчатов", "шмідт", "бандер", "робоч", "канатн", "криворізьк", "каштанов"],
+        keys: ["парус", "покровськ", "комунар", "трофимов", "червон.*кам", "набережн.*завод", "речпорт", "річпорт", "водокачк", "стан.*550", "водолікарн", "свобод", "кайдак", "павлов", "белелюб", "краснозавод", "комбайн", "вокзал", "старомостов", "озерк", "курчатов", "шмідт", "бандер", "робоч", "канатн", "криворізьк", "каштанов", "савченк", "чорновол"],
         bounds: { minLat: 48.435, maxLat: 48.510, minLng: 34.800, maxLng: 35.038 }
       },
       s2: {
@@ -1226,7 +1200,7 @@
       },
       s3: {
         name: "Тополя — 12 Квартал — Поля",
-        keys: ["12.*квартал", "топол", "сокіл", "шинн", "хмельницьк", "поля", "кіров", "титов", "аеропорт", "барвінківськ", "переїзд.*мирн", "тещин.*язик"],
+        keys: ["12.*квартал", "топол", "сокіл", "шинн", "хмельницьк", "поля", "кіров", "титов", "аеропорт", "барвінківськ", "переїзд.*мирн", "тещин.*язик", "гавриленк", "ребінін"],
         bounds: { minLat: 48.320, maxLat: 48.445, minLng: 34.920, maxLng: 35.130 }
       },
       s4: {
@@ -1444,8 +1418,8 @@
       return found;
     }
 
-    // УСТАНОВКА ВЕРДИКТА ИЗ КАРТОЧКИ СООБЩЕНИЯ
-    window.setPointVerdictDirect = async function(fbKey, isClean, rawText) {
+    // УСТАНОВКА ВЕРДИКТА ИЗ КАРТОЧКИ
+    window.setPointVerdictDirect = async function(fbKey, isClean) {
       const p = allPoints.find(x => x._fbKey === fbKey);
       if (p) {
         p.is_clean = isClean;
@@ -1460,7 +1434,8 @@
           }).catch(() => {});
         }
 
-        let phrase = (rawText || p.text || "").replace(/^(?:❓|\bчисто\b|\bбп\b|\bпатруль\b|\(чисто\))/gi, "").trim().toLowerCase();
+        const rawText = p.text || p.raw_text || "";
+        let phrase = rawText.replace(/^(?:❓|\bчисто\b|\bбп\b|\bпатруль\b|\(чисто\))/gi, "").trim().toLowerCase();
         if (phrase.length >= 3) {
           learnedRules.push({ phrase: phrase, is_clean: isClean });
           localStorage.setItem("radar_learned_rules", JSON.stringify(learnedRules));
@@ -1476,6 +1451,22 @@
         renderTrafficLights();
         updateRouteStatus();
       }
+    };
+
+    // ФУНКЦИЯ «ПОВІДОМИТИ ШІ» ИЗ КАРТОЧКИ МЕТКИ
+    window.notifyAiAboutPoint = function(fbKey) {
+      const p = allPoints.find(x => x._fbKey === fbKey);
+      if (!p) return;
+      
+      const isExpanded = aiPillPanel.classList.contains("expanded");
+      if (!isExpanded) {
+        toggleAiPillExpand();
+      }
+      
+      const rawText = p.text || p.raw_text || "";
+      aiInlineInput.value = `Зверни увагу на мітку [KEY:${fbKey}]: "${rawText}".`;
+      aiInlineInput.focus();
+      showToast("🤖 Мітку передано ШІ-штурману!");
     };
 
     // ДВИЖОК ДЕЙСТВИЙ ШІ
@@ -1597,7 +1588,7 @@
       { id: "stan_550", name: "Стан 550", fullName: "Стан 550 (Набережна Заводська)", lat: 48.4865, lng: 34.9850, keys: ["стан 550", "стан550"] }
     ];
 
-    window.deleteSinglePoint = async function(fbKey, pointText) {
+    window.deleteSinglePoint = async function(fbKey) {
       if (!confirm("Видалити це повідомлення як невідповідне/хибне?")) return;
       showToast("⏳ Видаляю повідомлення з сервера...");
 
@@ -1607,7 +1598,7 @@
         } catch(e) {}
       }
 
-      allPoints = allPoints.filter(p => p._fbKey !== fbKey && p.text !== pointText && p.raw_text !== pointText);
+      allPoints = allPoints.filter(p => p._fbKey !== fbKey);
       renderMarkers();
       renderTrafficLights();
       updateRouteStatus();
@@ -1628,7 +1619,6 @@
     L.DomEvent.disableClickPropagation(document.getElementById("routeStatusBar"));
     L.DomEvent.disableClickPropagation(document.getElementById("routeSubmenu"));
     L.DomEvent.disableClickPropagation(document.getElementById("btnRefresh"));
-    L.DomEvent.disableClickPropagation(document.getElementById("confirmMoveModal"));
 
     let aiDragActive = false;
     let aiStartX = 0, aiStartY = 0, aiInitLeft = 0, aiInitTop = 0;
@@ -1804,7 +1794,7 @@
       }).join('\n');
 
       const systemInstructionText = `
-Ти — високоінтелектуальний військово-дорожній ШІ-штурман у місті Дніпро для водія.
+Ти — високоінтелектуальний військово-дорожній ШІ-штурман у місті Дніпро для водія (v3.4).
 Ти маєш ПОВНУ ВЛАДУ над картою. Якщо користувач просить перенести точку, змінити статус чи відкрити аналітику, ти ОБОВ'ЯЗКОВО в кінці своєї відповіді додаєш директиву дії:
 
 ТОЧКИ НА КАРТІ:
@@ -2036,10 +2026,9 @@ ${allLiveReportsText || "Повідомлень немає"}
             const d = new Date(timeVal);
             timeStr = String(d.getHours()).padStart(2, '0') + ":" + String(d.getMinutes()).padStart(2, '0');
           }
-          const cleanEscapedText = rawText.replace(/'/g, "\\'").replace(/"/g, '&quot;');
           const fbKeySafe = latest._fbKey || "";
 
-          deleteBtnHtml = `<div style="text-align:right; margin-top:3px;"><span onclick="deleteSinglePoint('${fbKeySafe}', '${cleanEscapedText}')" style="color:#ef4444; font-size:10px; font-weight:800; cursor:pointer;" title="Видалити помилкове повідомлення">🗑️ Видалити це повідомлення</span></div>`;
+          deleteBtnHtml = `<div style="text-align:right; margin-top:3px;"><span onclick="deleteSinglePoint('${fbKeySafe}')" style="color:#ef4444; font-size:10px; font-weight:800; cursor:pointer;" title="Видалити помилкове повідомлення">🗑️ Видалити це повідомлення</span></div>`;
 
           if (rawText) {
             messageBlock = '<div style="font-size:11px; color:#0f172a; margin:5px 0 3px; line-height:1.35; background:#f8fafc; padding:6px 8px; border-radius:7px; border:1px solid #cbd5e1; word-break:break-word;">'
@@ -2080,10 +2069,6 @@ ${allLiveReportsText || "Повідомлень немає"}
             await syncCheckpointsToCloud();
           });
 
-          marker.on('click', () => {
-            marker.openPopup();
-          });
-
           trafficLightLayer.addLayer(marker);
           trafficMarkersMap[cp.id] = marker;
         }
@@ -2099,7 +2084,6 @@ ${allLiveReportsText || "Повідомлень немає"}
       btnToggle.innerText = isNowCollapsed ? "▼" : "▲";
       localStorage.setItem("radar_dash_collapsed", isNowCollapsed ? "true" : "false");
       
-      // Автоматическая очистка строки поиска при сворачивании панели
       if (isNowCollapsed) {
         clearStreetSearch();
         const conv = document.getElementById("nameConverterInput");
@@ -2194,7 +2178,6 @@ ${allLiveReportsText || "Повідомлень немає"}
             return null;
           }
 
-          // Автоматическая корректировка перекрестков и новых локаций
           if (p.needs_training) {
             const resolved = resolveLocationFromText(fullText);
             if (resolved) {
@@ -2225,7 +2208,7 @@ ${allLiveReportsText || "Повідомлень немає"}
       } catch (err) {}
     }
 
-    // РЕНДЕР МАРКЕРОВ: С КНОПКАМИ ВЕРДИКТА ВНУТРИ ПОПАПА И СТРОКОЙ СТАРОГО/НОВОГО НАЗВАНИЯ
+    // РЕНДЕР МАРКЕРОВ: КОМПАКТНЫЕ КНОПКИ ВЕРДИКТОВ ВНИЗУ + КНОПКА «🤖 ПОВІДОМИТИ ШІ»
     function renderMarkers() {
       markersLayer.clearLayers();
       const now = Date.now();
@@ -2296,37 +2279,36 @@ ${allLiveReportsText || "Повідомлень немає"}
           const ptTime = pt.time || pt.timestamp || 0;
           const timeStr = ptTime ? new Date(ptTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "";
           const remMin = Math.floor(Math.max(0, LIFETIME_MS - (now - ptTime)) / 60000);
-          const cleanTextSafe = (pt.text || "").replace(/'/g, "\\'").replace(/"/g, '&quot;');
           const fbKeySafe = pt._fbKey || "";
-
-          // Строка переименования топонима
           const renameNote = getStreetRenameNote(pt.text || pt.raw_text || pt.address || "");
 
           listHtml += `
-            <div style="border-bottom: 1px solid #334155; padding-bottom: 8px; margin-bottom: 8px;">
-              <!-- КНОПКИ ВЕРДИКТА ПРЯМО НАД КАЖДЫМ СООБЩЕНИЕМ -->
-              <div style="display:flex; gap:5px; margin-bottom:5px;">
-                <button onclick="setPointVerdictDirect('${fbKeySafe}', true, '${cleanTextSafe}')" style="flex:1; background:#059669; border:none; color:#fff; padding:5px 4px; border-radius:5px; font-size:10px; font-weight:800; cursor:pointer;">🟢 Це означає: ЧИСТО</button>
-                <button onclick="setPointVerdictDirect('${fbKeySafe}', false, '${cleanTextSafe}')" style="flex:1; background:#dc2626; border:none; color:#fff; padding:5px 4px; border-radius:5px; font-size:10px; font-weight:800; cursor:pointer;">🔴 Це означає: БЛОКПОСТ</button>
-              </div>
-
+            <div style="border-bottom: 1px solid #334155; padding-bottom: 7px; margin-bottom: 7px;">
               <div style="font-weight:700; font-size:12px; color:#0f172a; line-height:1.35;">${isCleanPoint(pt) ? "🟢" : "🔴"} ${pt.text || ""}</div>
               <div style="font-size:10px; color:#64748b; margin-top:2px;">🕒 ${timeStr} | Зникне через: ${remMin} хв</div>
               
-              <!-- ИНФОРМЕР СТАРОГО / НОВОГО НАЗВАНИЯ ВНИЗУ -->
+              <!-- ИНФОРМЕР СТАРОГО / НОВОГО НАЗВАНИЯ -->
               <div style="font-size:10px; color:#0284c7; margin-top:4px; background:#f0f9ff; padding:3px 6px; border-radius:4px; border:1px solid #bae6fd;">
                 ${renameNote}
               </div>
 
-              <div style="display:flex; justify-content:flex-end; margin-top:4px;">
-                <span onclick="deleteSinglePoint('${fbKeySafe}', '${cleanTextSafe}')" style="color:#ef4444; font-weight:800; font-size:9px; cursor:pointer;">🗑️ Видалити повідомлення</span>
+              <!-- АККУРАТНЫЕ МИНИ-КНОПКИ ВЕРДИКТОВ ВНИЗУ -->
+              <div style="display:flex; gap:4px; margin-top:6px;">
+                <button onclick="setPointVerdictDirect('${fbKeySafe}', true)" style="flex:1; background:#059669; border:none; color:#fff; padding:4px 3px; border-radius:4px; font-size:9.5px; font-weight:800; cursor:pointer;">🟢 Чисто</button>
+                <button onclick="setPointVerdictDirect('${fbKeySafe}', false)" style="flex:1; background:#dc2626; border:none; color:#fff; padding:4px 3px; border-radius:4px; font-size:9.5px; font-weight:800; cursor:pointer;">🔴 Блокпост</button>
+              </div>
+
+              <!-- ПОВІДОМИТИ ШІ И УДАЛИТЬ -->
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-top:5px;">
+                <span onclick="notifyAiAboutPoint('${fbKeySafe}')" style="color:#0284c7; font-weight:800; font-size:9.5px; cursor:pointer;" title="Передати мітку ШІ">🤖 Повідомити ШІ</span>
+                <span onclick="deleteSinglePoint('${fbKeySafe}')" style="color:#ef4444; font-weight:800; font-size:9.5px; cursor:pointer;" title="Видалити повідомлення">🗑️ Видалити</span>
               </div>
             </div>
           `;
         });
 
         const popupContent = `
-          <div style="padding:4px; font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif; min-width:215px; max-height:240px; overflow-y:auto;">
+          <div style="padding:4px; font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif; min-width:215px; max-height:245px; overflow-y:auto;">
             <div style="font-weight:800; font-size:11px; color:#0284c7; margin-bottom:6px; border-bottom:1px solid #cbd5e1; padding-bottom:3px;">
               📍 Повідомлень у точці: ${cluster.points.length}
             </div>
@@ -2340,11 +2322,6 @@ ${allLiveReportsText || "Повідомлень немає"}
         });
 
         marker.bindPopup(popupContent, { autoClose: true, closeOnClick: true });
-
-        // Устранение зависания: открытие и закрытие работает по клику без задержек
-        marker.on('click', () => {
-          marker.openPopup();
-        });
 
         markersLayer.addLayer(marker);
         visibleCount += cluster.points.length;
