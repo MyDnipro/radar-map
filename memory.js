@@ -1,12 +1,12 @@
 /**
- * Radar Dnipro — Модуль пам'яті топонімів ("А = Б") + Кнопка швидкої аналітики
- * Автономний віджет нижньої панелі [ 🧠 ] [ 📊 ]
+ * Radar Dnipro — Модуль пам'яті топонімів ("А = Б")
+ * Автономний віджет із повноекранним журналом прив'язок за датами
  */
 (function() {
   const FB_CUSTOM_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/custom_streets.json";
   let cloudRules = {};
 
-  // 1. Стилі для кнопок, карток та неонових стовпчиків
+  // 1. Стилі для віджета і повноекранного вікна
   const style = document.createElement("style");
   style.textContent = `
     #memWidget {
@@ -19,11 +19,6 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-    }
-    .hud-center-cluster {
-      display: flex;
-      align-items: center;
-      gap: 8px;
     }
     #memBtn {
       width: 38px;
@@ -42,25 +37,6 @@
       transition: transform 0.15s ease;
     }
     #memBtn:active { transform: scale(0.92); }
-
-    /* Кнопка швидкої аналітики (неонові стовпчики) */
-    #memStatsBtn {
-      width: 38px;
-      height: 38px;
-      border-radius: 12px;
-      background: rgba(15, 23, 42, 0.94);
-      backdrop-filter: blur(10px);
-      border: 1.5px solid #00f3ff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 4px 18px rgba(0, 243, 255, 0.45);
-      cursor: pointer;
-      text-decoration: none;
-      transition: transform 0.15s ease;
-    }
-    #memStatsBtn:active { transform: scale(0.92); }
-
     #memCard {
       display: none;
       position: fixed !important;
@@ -134,7 +110,7 @@
     }
     .btn-mem-view-all:hover { border-color: #c084fc; color: #c084fc; }
 
-    /* Повноекранний журнал */
+    /* Повноекранне вікно журналу прив'язок */
     #memFullModal {
       display: none;
       position: fixed !important;
@@ -178,9 +154,27 @@
       align-items: center;
       gap: 8px;
     }
-    .mem-full-info { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-    .mem-full-rule { font-size: 12px; color: #f8fafc; font-weight: 700; word-break: break-word; line-height: 1.35; }
-    .mem-full-time { font-size: 10px; color: #94a3b8; display: flex; align-items: center; gap: 5px; font-weight: 600; }
+    .mem-full-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+    }
+    .mem-full-rule {
+      font-size: 12px;
+      color: #f8fafc;
+      font-weight: 700;
+      word-break: break-word;
+      line-height: 1.35;
+    }
+    .mem-full-time {
+      font-size: 10px;
+      color: #94a3b8;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-weight: 600;
+    }
     .btn-mem-del {
       background: #7f1d1d;
       border: 1px solid #ef4444;
@@ -196,21 +190,11 @@
   `;
   document.head.appendChild(style);
 
-  // 2. Розмітка блоку: Кнопка мозку [🧠] та кнопка стовпчиків [📊]
+  // 2. Розмітка маленького віджета та повноекранного вікна
   const widget = document.createElement("div");
   widget.id = "memWidget";
   widget.innerHTML = `
-    <div class="hud-center-cluster">
-      <div id="memBtn" title="Пам'ять топонімів (А = Б)">🧠</div>
-      <a href="stats.html" id="memStatsBtn" title="Аналітика блокпостів">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-          <rect x="3" y="12" width="4.5" height="9" rx="2" fill="#00f3ff" />
-          <rect x="9.75" y="7" width="4.5" height="14" rx="2" fill="#00f3ff" />
-          <rect x="16.5" y="3" width="4.5" height="18" rx="2" fill="#00f3ff" />
-        </svg>
-      </a>
-    </div>
-
+    <div id="memBtn" title="Пам'ять топонімів (А = Б)">🧠</div>
     <div id="memCard">
       <div class="mem-header">
         <span>🧠 Пам'ять топонімів ("А = Б")</span>
@@ -243,7 +227,7 @@
   `;
   document.body.appendChild(fullModal);
 
-  // 3. Захист від передачі кліків на карту Leaflet
+  // 3. Захист від передачі кліків на карту
   if (window.L && L.DomEvent) {
     L.DomEvent.disableClickPropagation(widget);
     L.DomEvent.disableScrollPropagation(widget);
@@ -252,28 +236,21 @@
   }
 
   const btn = document.getElementById("memBtn");
-  const statsBtn = document.getElementById("memStatsBtn");
   const card = document.getElementById("memCard");
   const closeBtn = document.getElementById("memCloseBtn");
   const saveBtn = document.getElementById("memSaveBtn");
   const viewAllBtn = document.getElementById("memViewAllBtn");
   const fullCloseBtn = document.getElementById("memFullCloseBtn");
 
-  // Гарантований перехід на сторінку аналітики
-  if (statsBtn) {
-    statsBtn.addEventListener("click", function(e) {
-      e.stopPropagation();
-      window.location.href = "stats.html";
-    });
-  }
-
   function toggleCard() {
     const isOpen = card.style.display === "flex";
     card.style.display = isOpen ? "none" : "flex";
+    btn.style.display = isOpen ? "flex" : "none";
   }
 
   function openFullModal() {
     card.style.display = "none";
+    btn.style.display = "flex";
     renderFullList();
     fullModal.style.display = "flex";
   }
@@ -322,7 +299,7 @@
     if (badge) badge.innerText = Object.keys(cloudRules).length;
   }
 
-  // 5. Відображення повного списку
+  // 5. Відображення повного списку за датами
   function renderFullList() {
     const box = document.getElementById("memFullList");
     if (!box) return;
@@ -336,6 +313,7 @@
       return;
     }
 
+    // Сортуємо: свіжі зверху
     entries.sort((a, b) => (b[1].time || 0) - (a[1].time || 0));
 
     entries.forEach(([rawKey, item]) => {
@@ -442,16 +420,5 @@
     if (typeof window.showToast === "function") window.showToast("🗑️ Прив'язку видалено!");
   }
 
-  // 8. Автоприховування старої кнопки в меню
-  function hideOldMenuStats() {
-    const allLinksAndButtons = document.querySelectorAll("a, button, div");
-    allLinksAndButtons.forEach(el => {
-      if (el.id !== "memStatsBtn" && el.textContent && el.textContent.includes("Аналітика блокпостів")) {
-        el.style.display = "none";
-      }
-    });
-  }
-
   setTimeout(loadCloudRules, 1000);
-  setTimeout(hideOldMenuStats, 800);
 })();
