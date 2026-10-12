@@ -7,26 +7,18 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <meta name="color-scheme" content="light only">
-  <title>Радар Дніпро v3.8</title>
+  <title>Радар Дніпро v3.9</title>
   <link rel="icon" type="image/png" href="icon.png">
   <link rel="apple-touch-icon" href="icon.png">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script>
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then(function(registrations) {
-        for (let registration of registrations) registration.unregister();
-      });
+      navigator.serviceWorker.getRegistrations().then(r => r.forEach(reg => reg.unregister()));
     }
     if ('caches' in window) {
-      caches.keys().then(function(names) {
-        for (let name of names) caches.delete(name);
-      });
+      caches.keys().then(names => names.forEach(name => caches.delete(name)));
     }
-    localStorage.removeItem("dash_pos_top"); localStorage.removeItem("dash_pos_left");
-    localStorage.removeItem("ai_pos_top"); localStorage.removeItem("ai_pos_left");
-    localStorage.removeItem("route_status_pos_top"); localStorage.removeItem("route_status_pos_left");
-    localStorage.removeItem("refresh_pos_top"); localStorage.removeItem("refresh_pos_left");
-
+    ['dash_pos_top','dash_pos_left','ai_pos_top','ai_pos_left','route_status_pos_top','route_status_pos_left','refresh_pos_top','refresh_pos_left'].forEach(k => localStorage.removeItem(k));
     if (localStorage.getItem("radar_dash_collapsed") === "true") {
       document.documentElement.classList.add("dash-collapsed");
     }
@@ -34,610 +26,123 @@
   <style>
     :root {
       color-scheme: light only;
-      supported-color-schemes: light;
       --color-green: #25d366;
-      --border-green-color: #ffffff;
-      --border-green-size: 2.5px;
       --color-red: #ff334b;
-      --border-red-color: #ffffff;
-      --border-red-size: 2.5px;
     }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    html, body { width: 100%; height: 100%; overflow: hidden !important; position: fixed; inset: 0; background: #0b1120; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; touch-action: none; }
+    #map { position: absolute; inset: 0; width: 100% !important; height: 100% !important; z-index: 1; background: #0b1120; }
 
-    *, *::before, *::after {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      -webkit-tap-highlight-color: transparent;
-    }
-    
-    html, body {
-      width: 100%;
-      height: 100%;
-      overflow: hidden !important;
-      position: fixed;
-      inset: 0;
-      background: #0b1120;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      touch-action: none;
-    }
-
-    #map {
-      position: absolute;
-      inset: 0;
-      width: 100% !important;
-      height: 100% !important;
-      z-index: 1;
-      background: #0b1120;
-    }
-
+    /* Панель дашборда */
     .dashboard {
-      position: absolute !important;
-      top: 15px !important;
-      left: 15px !important;
-      right: auto !important;
-      bottom: auto !important;
-      z-index: 1000;
-      background: rgba(15, 23, 42, 0.94);
-      backdrop-filter: blur(10px);
-      padding: 10px 12px;
-      border-radius: 14px;
-      color: #fff;
-      box-shadow: 0 6px 25px rgba(0,0,0,0.45);
-      width: 200px;
-      max-width: calc(100vw - 150px);
-      border: 1.5px solid #334155;
-      transition: width 0.28s cubic-bezier(0.4, 0, 0.2, 1), padding 0.25s ease;
-      overflow-y: auto;
-      max-height: calc(100vh - 80px);
+      position: absolute !important; top: 15px !important; left: 15px !important; z-index: 1000;
+      background: rgba(15, 23, 42, 0.94); backdrop-filter: blur(10px); padding: 10px 12px; border-radius: 14px;
+      color: #fff; box-shadow: 0 6px 25px rgba(0,0,0,0.45); width: 190px; max-width: calc(100vw - 165px);
+      border: 1.5px solid #334155; transition: width 0.25s ease; overflow-y: auto; max-height: calc(100vh - 80px);
     }
-    .dash-header { 
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 8px;
-      user-select: none;
-      padding-bottom: 4px;
-      border-bottom: 1px solid #1e293b;
-    }
-    .points-count { 
-      font-size: 12px;
-      font-weight: 800;
-      color: #38bdf8;
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      cursor: pointer;
-      white-space: nowrap;
-    }
-    .btn-toggle {
-      background: #1e293b;
-      border: 1px solid #334155;
-      color: #94a3b8;
-      width: 26px;
-      height: 26px;
-      border-radius: 7px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 11px;
-      flex-shrink: 0;
-      margin-left: 6px;
-      z-index: 1005;
-    }
+    .dash-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; user-select: none; padding-bottom: 4px; border-bottom: 1px solid #1e293b; }
+    .points-count { font-size: 12px; font-weight: 800; color: #38bdf8; display: flex; align-items: center; gap: 5px; cursor: pointer; white-space: nowrap; }
+    .btn-toggle { background: #1e293b; border: 1px solid #334155; color: #94a3b8; width: 26px; height: 26px; border-radius: 7px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 11px; flex-shrink: 0; margin-left: 6px; }
     .collapsible-body { margin-top: 6px; }
-
-    html.dash-collapsed .dashboard {
-      width: auto !important;
-      height: 38px !important;
-      display: inline-flex !important;
-      flex-direction: row !important;
-      align-items: center !important;
-      justify-content: center !important;
-      padding: 0 12px !important;
-      border-radius: 12px !important;
-      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45) !important;
-      overflow: hidden !important;
-    }
-    html.dash-collapsed .dash-header {
-      margin-bottom: 0 !important;
-      padding-bottom: 0 !important;
-      border-bottom: none !important;
-      gap: 6px !important;
-    }
+    html.dash-collapsed .dashboard { width: auto !important; height: 38px !important; display: inline-flex !important; align-items: center; padding: 0 12px !important; border-radius: 12px !important; overflow: hidden !important; }
+    html.dash-collapsed .dash-header { margin-bottom: 0 !important; padding-bottom: 0 !important; border-bottom: none !important; }
     html.dash-collapsed #collapsibleBody { display: none; }
 
+    /* Поиск */
     .search-box { position: relative; margin-bottom: 8px; }
-    .search-input-wrap {
-      position: relative;
-      display: flex;
-      align-items: center;
-    }
-    .search-input {
-      width: 100%;
-      background: #0b1120;
-      border: 1px solid #334155;
-      color: #fff;
-      padding: 7px 24px 7px 8px;
-      border-radius: 8px;
-      font-size: 11px;
-      outline: none;
-    }
+    .search-input-wrap { position: relative; display: flex; align-items: center; }
+    .search-input { width: 100%; background: #0b1120; border: 1px solid #334155; color: #fff; padding: 7px 24px 7px 8px; border-radius: 8px; font-size: 11px; outline: none; }
     .search-input:focus { border-color: #38bdf8; }
-    .search-clear-btn {
-      position: absolute;
-      right: 6px;
-      background: transparent;
-      border: none;
-      color: #94a3b8;
-      font-size: 12px;
-      cursor: pointer;
-      display: none;
-      padding: 2px 4px;
-      line-height: 1;
-    }
-    .search-clear-btn:hover { color: #fff; }
-    .search-results {
-      position: absolute;
-      top: 100%;
-      left: 0;
-      width: 100%;
-      background: #0f172a;
-      border: 1px solid #38bdf8;
-      border-radius: 8px;
-      max-height: 180px;
-      overflow-y: auto;
-      z-index: 2000;
-      display: none;
-      margin-top: 4px;
-      box-shadow: 0 6px 20px rgba(0,0,0,0.6);
-    }
-    .search-item {
-      padding: 6px 8px;
-      font-size: 11px;
-      color: #cbd5e1;
-      cursor: pointer;
-      border-bottom: 1px solid #1e293b;
-      line-height: 1.3;
-    }
+    .search-clear-btn { position: absolute; right: 6px; background: transparent; border: none; color: #94a3b8; font-size: 12px; cursor: pointer; display: none; padding: 2px 4px; }
+    .search-results { position: absolute; top: 100%; left: 0; width: 100%; background: #0f172a; border: 1px solid #38bdf8; border-radius: 8px; max-height: 180px; overflow-y: auto; z-index: 2000; display: none; margin-top: 4px; box-shadow: 0 6px 20px rgba(0,0,0,0.6); }
+    .search-item { padding: 6px 8px; font-size: 11px; color: #cbd5e1; cursor: pointer; border-bottom: 1px solid #1e293b; line-height: 1.3; }
     .search-item:hover { background: #1e293b; color: #38bdf8; }
 
+    /* Панель ШІ */
     .ai-pill-panel {
-      position: absolute;
-      top: 15px;
-      right: 15px;
-      z-index: 2000;
-      background: rgba(15, 23, 42, 0.95);
-      backdrop-filter: blur(10px);
-      border: 1.5px solid #0284c7;
-      border-radius: 12px;
-      color: #fff;
-      box-shadow: 0 4px 18px rgba(0,0,0,0.45);
-      transition: width 0.25s ease, height 0.25s ease, padding 0.2s ease;
-      overflow: hidden;
+      position: absolute; top: 15px; right: 15px; z-index: 2000; background: rgba(15, 23, 42, 0.95);
+      backdrop-filter: blur(10px); border: 1.5px solid #0284c7; border-radius: 12px; color: #fff;
+      box-shadow: 0 4px 18px rgba(0,0,0,0.45); transition: width 0.25s ease, height 0.25s ease; overflow: hidden;
     }
-    .ai-pill-panel.compact {
-      top: 15px !important;
-      right: 15px !important;
-      left: auto !important;
-      bottom: auto !important;
-      width: auto !important;
-      height: 38px !important;
-      padding: 0 10px !important;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      cursor: pointer;
-    }
-    .ai-pill-panel.compact .ai-pill-tools { display: none !important; }
-    .ai-pill-panel.compact .ai-pill-body { display: none !important; }
-    .ai-pill-compact-content {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      width: 100%;
-      user-select: none;
-      border-bottom: 1px solid #1e293b;
-      padding-bottom: 6px;
-      margin-bottom: 8px;
-      gap: 6px;
-      cursor: move;
-    }
-    .ai-pill-panel.compact .ai-pill-compact-content {
-      border-bottom: none !important;
-      margin-bottom: 0 !important;
-      padding-bottom: 0 !important;
-    }
-
-    .ai-pill-panel.expanded {
-      width: 320px !important;
-      max-width: calc(100vw - 20px) !important;
-      height: auto !important;
-      max-height: 75vh;
-      padding: 10px 12px !important;
-      border-radius: 14px !important;
-      border-color: #00f3ff !important;
-      box-shadow: 0 6px 30px rgba(0, 243, 255, 0.4) !important;
-      display: flex;
-      flex-direction: column;
-    }
-    .ai-titleBadge {
-      font-size: 12px;
-      font-weight: 800;
-      color: #00f3ff;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      white-space: nowrap;
-    }
-    .ai-version-badge {
-      font-size: 9px;
-      font-weight: 800;
-      background: #0284c7;
-      color: #ffffff;
-      padding: 1px 5px;
-      border-radius: 4px;
-      border: 1px solid #38bdf8;
-      letter-spacing: 0.5px;
-    }
-    .ai-pill-body {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      flex: 1;
-      min-height: 0;
-    }
-
-    .ai-chat-box {
-      max-height: 180px;
-      min-height: 80px;
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      padding: 6px;
-      background: #060913;
-      border: 1px solid #1e293b;
-      border-radius: 8px;
-      scroll-behavior: smooth;
-    }
-    .ai-msg {
-      padding: 6px 10px;
-      border-radius: 8px;
-      font-size: 11px;
-      line-height: 1.4;
-      word-break: break-word;
-      max-width: 92%;
-      white-space: pre-wrap;
-    }
-    .ai-msg.user {
-      align-self: flex-end;
-      background: #0284c7;
-      color: #ffffff;
-      border-bottom-right-radius: 2px;
-    }
-    .ai-msg.bot {
-      align-self: flex-start;
-      background: #0f172a;
-      color: #e2e8f0;
-      border: 1px solid #334155;
-      border-bottom-left-radius: 2px;
-    }
+    .ai-pill-panel.compact { width: auto !important; height: 38px !important; padding: 0 10px !important; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+    .ai-pill-panel.compact .ai-pill-tools, .ai-pill-panel.compact .ai-pill-body { display: none !important; }
+    .ai-pill-panel.compact .ai-pill-compact-content { border-bottom: none !important; margin-bottom: 0 !important; padding-bottom: 0 !important; }
+    .ai-pill-panel.expanded { width: 320px !important; max-width: calc(100vw - 20px) !important; height: auto !important; max-height: 82vh; padding: 10px 12px !important; border-radius: 14px !important; border-color: #00f3ff !important; box-shadow: 0 6px 30px rgba(0, 243, 255, 0.4) !important; display: flex; flex-direction: column; }
+    .ai-pill-compact-content { display: flex; align-items: center; justify-content: space-between; width: 100%; user-select: none; border-bottom: 1px solid #1e293b; padding-bottom: 6px; margin-bottom: 8px; gap: 6px; cursor: move; }
+    .ai-titleBadge { font-size: 12px; font-weight: 800; color: #00f3ff; display: flex; align-items: center; gap: 4px; white-space: nowrap; }
+    .ai-version-badge { font-size: 9px; font-weight: 800; background: #0284c7; color: #fff; padding: 1px 5px; border-radius: 4px; border: 1px solid #38bdf8; }
+    .ai-pill-body { display: flex; flex-direction: column; gap: 6px; flex: 1; min-height: 0; }
+    .ai-chat-box { max-height: 150px; min-height: 70px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding: 6px; background: #060913; border: 1px solid #1e293b; border-radius: 8px; }
+    .ai-msg { padding: 6px 10px; border-radius: 8px; font-size: 11px; line-height: 1.4; word-break: break-word; max-width: 92%; }
+    .ai-msg.user { align-self: flex-end; background: #0284c7; color: #fff; }
+    .ai-msg.bot { align-self: flex-start; background: #0f172a; color: #e2e8f0; border: 1px solid #334155; }
     .ai-msg.bot.loading { color: #38bdf8; font-style: italic; }
 
+    /* Обучение А = Б */
+    .ai-learn-box { background: #0b1120; border: 1px dashed #0284c7; border-radius: 8px; padding: 6px 8px; display: flex; flex-direction: column; gap: 5px; }
+    .ai-learn-header { font-size: 10px; font-weight: 800; color: #38bdf8; display: flex; justify-content: space-between; align-items: center; }
+    .ai-learn-row { display: flex; align-items: center; gap: 4px; }
+    .ai-learn-input { flex: 1; background: #070d1d; border: 1px solid #334155; color: #fff; padding: 4px 6px; border-radius: 6px; font-size: 10px; outline: none; }
+    .ai-learn-input:focus { border-color: #00f3ff; }
+    .btn-save-learn { background: #0284c7; border: none; color: #fff; font-size: 10px; font-weight: 800; padding: 5px 8px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
+
     .ai-chips-compact { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
-    .ai-mini-chip {
-      background: #1e293b;
-      border: 1px solid #475569;
-      color: #cbd5e1;
-      padding: 3px 6px;
-      border-radius: 5px;
-      font-size: 9px;
-      font-weight: 700;
-      cursor: pointer;
-    }
-    .ai-mini-chip:hover { border-color: #00f3ff; color: #00f3ff; }
-
+    .ai-mini-chip { background: #1e293b; border: 1px solid #475569; color: #cbd5e1; padding: 3px 6px; border-radius: 5px; font-size: 9px; font-weight: 700; cursor: pointer; }
     .ai-chat-input-row { display: flex; gap: 6px; align-items: center; margin-top: 2px; }
-    .ai-inline-textarea {
-      flex: 1;
-      height: 36px;
-      background: #0b1120;
-      border: 1px solid #334155;
-      border-radius: 8px;
-      color: #fff;
-      padding: 8px;
-      font-size: 11px;
-      resize: none;
-      outline: none;
-      line-height: 1.3;
-    }
-    .ai-inline-textarea:focus { border-color: #00f3ff; }
-    .btn-ai-send {
-      width: 38px;
-      height: 36px;
-      flex-shrink: 0;
-      background: linear-gradient(135deg, #0284c7 0%, #00f3ff 100%);
-      border: none;
-      color: #0f172a;
-      border-radius: 8px;
-      font-size: 14px;
-      font-weight: 900;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
+    .ai-inline-textarea { flex: 1; height: 34px; background: #0b1120; border: 1px solid #334155; border-radius: 8px; color: #fff; padding: 7px 8px; font-size: 11px; resize: none; outline: none; line-height: 1.3; }
+    .btn-ai-send { width: 36px; height: 34px; flex-shrink: 0; background: linear-gradient(135deg, #0284c7 0%, #00f3ff 100%); border: none; color: #0f172a; border-radius: 8px; font-size: 14px; font-weight: 900; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 
+    /* Нижние кнопки статуса и обновления */
     .route-status-bar {
-      position: absolute !important;
-      bottom: 25px !important;
-      left: 15px !important;
-      right: auto !important;
-      top: auto !important;
-      z-index: 1000;
-      height: 38px;
-      box-sizing: border-box;
-      background: rgba(15, 23, 42, 0.94);
-      backdrop-filter: blur(10px);
-      border: 1.5px solid #10b981;
-      border-radius: 12px;
-      color: #f8fafc;
-      padding: 0 12px;
-      font-size: 12px;
-      font-weight: 800;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
-      user-select: none;
-      white-space: nowrap;
-      cursor: pointer !important;
-      transition: border-color 0.3s ease, box-shadow 0.3s ease;
+      position: absolute !important; bottom: 25px !important; left: 15px !important; z-index: 1000; height: 38px;
+      background: rgba(15, 23, 42, 0.94); backdrop-filter: blur(10px); border: 1.5px solid #10b981; border-radius: 12px;
+      color: #f8fafc; padding: 0 12px; font-size: 12px; font-weight: 800; display: inline-flex; align-items: center;
+      gap: 6px; box-shadow: 0 4px 18px rgba(0,0,0,0.45); cursor: pointer !important; white-space: nowrap;
     }
-    .route-status-bar.danger {
-      border-color: #ff334b !important;
-      box-shadow: 0 0 18px rgba(255, 51, 75, 0.45) !important;
-    }
-
-    .route-submenu {
-      position: absolute;
-      bottom: 70px;
-      left: 15px;
-      z-index: 2500;
-      width: 280px;
-      max-width: calc(100vw - 30px);
-      background: rgba(15, 23, 42, 0.97);
-      backdrop-filter: blur(12px);
-      border: 1.5px solid #10b981;
-      border-radius: 14px;
-      padding: 12px;
-      color: #fff;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
-      display: none;
-      flex-direction: column;
-      gap: 8px;
-    }
-    .route-submenu-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 12px;
-      font-weight: 800;
-      color: #38bdf8;
-      border-bottom: 1px solid #1e293b;
-      padding-bottom: 6px;
-    }
+    .route-status-bar.danger { border-color: #ff334b !important; box-shadow: 0 0 18px rgba(255,51,75,0.45) !important; }
+    .route-submenu { position: absolute; bottom: 70px; left: 15px; z-index: 2500; width: 280px; max-width: calc(100vw - 30px); background: rgba(15, 23, 42, 0.97); backdrop-filter: blur(12px); border: 1.5px solid #10b981; border-radius: 14px; padding: 12px; color: #fff; box-shadow: 0 10px 30px rgba(0,0,0,0.7); display: none; flex-direction: column; gap: 8px; }
+    .route-submenu-header { display: flex; justify-content: space-between; align-items: center; font-size: 12px; font-weight: 800; color: #38bdf8; border-bottom: 1px solid #1e293b; padding-bottom: 6px; }
     .route-submenu-quick { display: flex; gap: 6px; }
-    .btn-submenu-quick {
-      flex: 1;
-      padding: 6px 4px;
-      border-radius: 7px;
-      font-size: 10px;
-      font-weight: 800;
-      cursor: pointer;
-      background: #1e293b;
-      border: 1px solid #334155;
-      color: #cbd5e1;
-      text-align: center;
-    }
-    .btn-submenu-quick.active {
-      background: #0284c7;
-      border-color: #38bdf8;
-      color: #fff;
-    }
+    .btn-submenu-quick { flex: 1; padding: 6px 4px; border-radius: 7px; font-size: 10px; font-weight: 800; cursor: pointer; background: #1e293b; border: 1px solid #334155; color: #cbd5e1; text-align: center; }
+    .btn-submenu-quick.active { background: #0284c7; border-color: #38bdf8; color: #fff; }
     .route-submenu-list { display: flex; flex-direction: column; gap: 4px; }
-    .sector-sub-item {
-      display: flex;
-      align-items: center;
-      gap: 7px;
-      font-size: 11px;
-      color: #cbd5e1;
-      cursor: pointer;
-    }
+    .sector-sub-item { display: flex; align-items: center; gap: 7px; font-size: 11px; color: #cbd5e1; cursor: pointer; }
 
     .btn-refresh {
-      position: absolute !important;
-      bottom: 25px !important;
-      right: 15px !important;
-      left: auto !important;
-      top: auto !important;
-      z-index: 1000;
-      height: 38px;
-      box-sizing: border-box;
-      background: rgba(15, 23, 42, 0.94);
-      backdrop-filter: blur(10px);
-      color: #f8fafc;
-      border: 1.5px solid #334155;
-      padding: 0 12px;
-      border-radius: 12px;
-      cursor: pointer;
-      font-size: 12px;
-      font-weight: 800;
-      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      user-select: none;
-      white-space: nowrap;
+      position: absolute !important; bottom: 25px !important; right: 15px !important; z-index: 1000; height: 38px;
+      background: rgba(15, 23, 42, 0.94); backdrop-filter: blur(10px); color: #f8fafc; border: 1.5px solid #334155;
+      padding: 0 12px; border-radius: 12px; cursor: pointer; font-size: 12px; font-weight: 800; box-shadow: 0 4px 18px rgba(0,0,0,0.45);
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap;
     }
-
     .subtitle { font-size: 10px; color: #94a3b8; margin-bottom: 8px; }
-    .btn-secondary {
-      width: 100%;
-      background: #1e293b;
-      border: 1px solid #475569;
-      color: #cbd5e1;
-      padding: 6px 8px;
-      border-radius: 7px;
-      font-size: 11px;
-      cursor: pointer;
-      font-weight: 600;
-      margin-bottom: 6px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      text-decoration: none;
-    }
-    .btn-secondary:hover { background: #334155; color: #fff; }
-
-    .btn-stats-link {
-      background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
-      border: 1px solid #6366f1;
-      color: #a5b4fc;
-      font-weight: 700;
-    }
-
-    .tl-menu-container { position: relative; margin-bottom: 6px; }
-    .btn-tl-main {
-      width: 100%;
-      background: #1e293b;
-      border: 1px solid #0284c7;
-      color: #38bdf8;
-      padding: 6px 8px;
-      border-radius: 7px;
-      font-size: 11px;
-      font-weight: 700;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .tl-dropdown {
-      background: #0f172a;
-      border: 1px solid #0284c7;
-      border-radius: 8px;
-      padding: 6px;
-      margin-top: 4px;
-      display: none;
-      flex-direction: column;
-      gap: 4px;
-    }
-    .tl-dropdown-btn {
-      background: #1e293b;
-      border: 1px solid #334155;
-      color: #cbd5e1;
-      padding: 5px 8px;
-      border-radius: 6px;
-      font-size: 10px;
-      font-weight: 600;
-      cursor: pointer;
-      text-align: left;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .tl-dropdown-btn:hover { background: #334155; color: #fff; }
-
-    .server-menu-container { position: relative; margin-bottom: 8px; }
-    .btn-server-main {
-      width: 100%;
-      background: #131d31;
-      border: 1px solid #334155;
-      color: #94a3b8;
-      padding: 5px 8px;
-      border-radius: 7px;
-      font-size: 10px;
-      font-weight: 700;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .server-dropdown {
-      background: #0b1120;
-      border: 1px solid #334155;
-      border-radius: 8px;
-      padding: 6px;
-      margin-top: 4px;
-      display: none;
-      flex-direction: column;
-      gap: 4px;
-    }
-    .btn-trigger-action {
-      width: 100%;
-      background: linear-gradient(135deg, #065f46 0%, #047857 100%);
-      border: 1px solid #10b981;
-      color: #fff;
-      padding: 6px 8px;
-      border-radius: 6px;
-      font-size: 11px;
-      font-weight: 800;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
+    .btn-secondary { width: 100%; background: #1e293b; border: 1px solid #475569; color: #cbd5e1; padding: 6px 8px; border-radius: 7px; font-size: 11px; cursor: pointer; font-weight: 600; margin-bottom: 6px; display: flex; align-items: center; justify-content: center; gap: 6px; text-decoration: none; }
+    .btn-stats-link { background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%); border: 1px solid #6366f1; color: #a5b4fc; font-weight: 700; }
+    .tl-menu-container, .server-menu-container { position: relative; margin-bottom: 6px; }
+    .btn-tl-main, .btn-server-main { width: 100%; background: #1e293b; border: 1px solid #0284c7; color: #38bdf8; padding: 6px 8px; border-radius: 7px; font-size: 11px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: space-between; }
+    .btn-server-main { border-color: #334155; color: #94a3b8; }
+    .tl-dropdown, .server-dropdown { background: #0f172a; border: 1px solid #0284c7; border-radius: 8px; padding: 6px; margin-top: 4px; display: none; flex-direction: column; gap: 4px; }
+    .server-dropdown { border-color: #334155; }
+    .tl-dropdown-btn { background: #1e293b; border: 1px solid #334155; color: #cbd5e1; padding: 5px 8px; border-radius: 6px; font-size: 10px; font-weight: 600; cursor: pointer; text-align: left; }
+    .btn-trigger-action { width: 100%; background: linear-gradient(135deg, #065f46 0%, #047857 100%); border: 1px solid #10b981; color: #fff; padding: 6px 8px; border-radius: 6px; font-size: 11px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: space-between; }
     .legend { display: flex; flex-direction: column; gap: 5px; font-size: 10px; color: #94a3b8; border-top: 1px solid #334155; padding-top: 6px; }
     .legend-row { display: flex; align-items: center; gap: 7px; }
-    .shape { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex-shrink: 0; border: 1.5px solid #fff; }
+    .shape { width: 10px; height: 10px; border-radius: 50%; display: inline-block; border: 1.5px solid #fff; }
     .dot-green { background: var(--color-green); }
     .dot-red { background: var(--color-red); }
 
+    /* Маркеры карты */
     .custom-dot-marker { background: transparent !important; border: none !important; }
-    
     .radar-circle { width: 18px; height: 18px; border-radius: 50%; cursor: pointer; position: relative; touch-action: none; transition: transform 0.2s ease; }
-    .radar-circle.clustered {
-      width: 22px !important;
-      height: 22px !important;
-      margin-top: -2px;
-      margin-left: -2px;
-    }
-    .radar-circle.color-green { background: var(--color-green) !important; border: var(--border-green-size) solid var(--border-green-color) !important; }
-    .radar-circle.color-red { background: var(--color-red) !important; border: var(--border-red-size) solid var(--border-red-color) !important; }
-    .radar-circle.fresh.color-green::after {
-      content: ''; position: absolute; top: -3px; left: -3px; right: -3px; bottom: -3px;
-      border-radius: 50%; border: 2px solid var(--color-green); animation: ripple-ring 1.8s infinite ease-out; pointer-events: none;
-    }
-    .radar-circle.fresh.color-red::after {
-      content: ''; position: absolute; top: -3px; left: -3px; right: -3px; bottom: -3px;
-      border-radius: 50%; border: 2px solid var(--color-red); animation: ripple-ring 1.8s infinite ease-out; pointer-events: none;
-    }
+    .radar-circle.clustered { width: 22px !important; height: 22px !important; margin-top: -2px; margin-left: -2px; }
+    .radar-circle.color-green { background: var(--color-green) !important; border: 2.5px solid #fff !important; }
+    .radar-circle.color-red { background: var(--color-red) !important; border: 2.5px solid #fff !important; }
+    .radar-circle.fresh.color-green::after { content: ''; position: absolute; inset: -3px; border-radius: 50%; border: 2px solid var(--color-green); animation: ripple-ring 1.8s infinite ease-out; }
+    .radar-circle.fresh.color-red::after { content: ''; position: absolute; inset: -3px; border-radius: 50%; border: 2px solid var(--color-red); animation: ripple-ring 1.8s infinite ease-out; }
     @keyframes ripple-ring { 0% { transform: scale(1); opacity: 1; } 100% { transform: scale(2.4); opacity: 0; } }
+    .moving-super-marker { transform: scale(2.5) !important; background: #f59e0b !important; border: 3px solid #fff !important; box-shadow: 0 0 25px 6px #f59e0b !important; z-index: 99999 !important; }
 
-    .moving-super-marker {
-      transform: scale(2.6) !important;
-      background: #f59e0b !important;
-      border: 3px solid #ffffff !important;
-      box-shadow: 0 0 0 5px #f59e0b, 0 0 28px 8px #f59e0b !important;
-      z-index: 99999 !important;
-      animation: superPulseYellow 0.45s infinite alternate !important;
-    }
-    @keyframes superPulseYellow {
-      from { transform: scale(2.2); }
-      to { transform: scale(2.8); }
-    }
-
-    .traffic-pill {
-      background: #0f172a !important; border: 1.5px solid #ffffff !important;
-      border-radius: 13px !important; padding: 3px 2px !important;
-      display: flex !important; flex-direction: column !important; align-items: center !important; gap: 3px !important;
-      box-shadow: 0 3px 12px rgba(0,0,0,0.45) !important; width: 20px !important; height: 36px !important;
-      cursor: pointer;
-    }
+    /* Светофоры */
+    .traffic-pill { background: #0f172a !important; border: 1.5px solid #fff !important; border-radius: 13px !important; padding: 3px 2px !important; display: flex !important; flex-direction: column !important; align-items: center !important; gap: 3px !important; box-shadow: 0 3px 12px rgba(0,0,0,0.45) !important; width: 20px !important; height: 36px !important; cursor: pointer; }
     .traffic-pill.draggable-mode { cursor: grab; border-color: #38bdf8 !important; box-shadow: 0 0 14px 4px #38bdf8 !important; }
     .tl-lamp { width: 11px; height: 11px; border-radius: 50%; }
     .tl-lamp.red-active { background: var(--color-red) !important; box-shadow: 0 0 10px 3px var(--color-red) !important; }
@@ -647,76 +152,24 @@
     .tl-lamp.off { background: #334155 !important; opacity: 0.4; }
     .traffic-marker-icon { background: transparent !important; border: none !important; }
 
-    .toast-msg {
-      position: absolute; top: 65px; left: 50%; transform: translateX(-50%);
-      z-index: 3500; background: #0f172a; border: 1.5px solid #38bdf8; color: #fff; padding: 8px 18px;
-      border-radius: 20px; font-size: 12px; font-weight: 700; box-shadow: 0 4px 20px rgba(0, 243, 255, 0.4); display: none; text-align: center;
-      white-space: nowrap;
-    }
-
-    .transfer-banner {
-      position: absolute; top: 15px; left: 50%; transform: translateX(-50%);
-      background: rgba(15, 23, 42, 0.96); border: 1.5px solid #00f3ff;
-      color: #00f3ff; padding: 8px 20px; border-radius: 22px;
-      font-size: 13px; font-weight: 800; z-index: 5000;
-      box-shadow: 0 4px 25px rgba(0, 243, 255, 0.45);
-      display: none; white-space: nowrap; pointer-events: none;
-    }
-
-    .action-sheet-backdrop {
-      position: fixed; inset: 0; width: 100%; height: 100%;
-      background: rgba(4, 7, 15, 0.75); backdrop-filter: blur(5px);
-      z-index: 9998; display: none; align-items: center; justify-content: center;
-      padding: 15px;
-    }
-    .action-sheet-card {
-      background: #0f172a; border: 1.5px solid #0284c7; border-radius: 16px;
-      width: 100%; max-width: 320px; padding: 14px; color: #fff;
-      box-shadow: 0 10px 35px rgba(0, 243, 255, 0.35); display: flex; flex-direction: column;
-      gap: 10px;
-    }
-    .action-sheet-title {
-      font-size: 13px; font-weight: 800; color: #38bdf8;
-      display: flex; justify-content: space-between; align-items: center;
-      border-bottom: 1px solid #1e293b; padding-bottom: 6px;
-    }
-    .btn-sheet-act {
-      width: 100%; padding: 10px; border-radius: 8px; font-size: 12px; font-weight: 800;
-      cursor: pointer; border: none; text-align: center;
-    }
-
-    .train-modal-backdrop {
-      position: fixed; inset: 0; width: 100%; height: 100%;
-      background: rgba(4, 7, 15, 0.82); backdrop-filter: blur(6px);
-      z-index: 9999; display: none; align-items: flex-start; justify-content: center;
-      padding: 10px; overflow-y: auto; -webkit-overflow-scrolling: touch;
-    }
-    .train-modal-card {
-      background: #0f172a; border: 1.5px solid #0284c7; border-radius: 16px;
-      width: 100%; max-width: 360px; padding: 14px; color: #fff;
-      box-shadow: 0 10px 35px rgba(0, 243, 255, 0.3); display: flex; flex-direction: column;
-      gap: 9px; margin: auto 0; max-height: calc(100vh - 20px); overflow-y: auto;
-    }
+    /* Модалки и тосты */
+    .toast-msg { position: absolute; top: 65px; left: 50%; transform: translateX(-50%); z-index: 3500; background: #0f172a; border: 1.5px solid #38bdf8; color: #fff; padding: 8px 18px; border-radius: 20px; font-size: 12px; font-weight: 700; box-shadow: 0 4px 20px rgba(0,243,255,0.4); display: none; white-space: nowrap; }
+    .transfer-banner { position: absolute; top: 15px; left: 50%; transform: translateX(-50%); background: rgba(15,23,42,0.96); border: 1.5px solid #00f3ff; color: #00f3ff; padding: 8px 20px; border-radius: 22px; font-size: 13px; font-weight: 800; z-index: 5000; display: none; white-space: nowrap; pointer-events: none; }
+    .action-sheet-backdrop { position: fixed; inset: 0; width: 100%; height: 100%; background: rgba(4,7,15,0.75); backdrop-filter: blur(5px); z-index: 9998; display: none; align-items: center; justify-content: center; padding: 15px; }
+    .action-sheet-card { background: #0f172a; border: 1.5px solid #0284c7; border-radius: 16px; width: 100%; max-width: 330px; padding: 14px; color: #fff; box-shadow: 0 10px 35px rgba(0,243,255,0.35); display: flex; flex-direction: column; gap: 10px; }
+    .action-sheet-title { font-size: 13px; font-weight: 800; color: #38bdf8; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1e293b; padding-bottom: 6px; }
+    .btn-sheet-act { width: 100%; padding: 10px; border-radius: 8px; font-size: 12px; font-weight: 800; cursor: pointer; border: none; text-align: center; }
+    .train-modal-backdrop { position: fixed; inset: 0; width: 100%; height: 100%; background: rgba(4,7,15,0.82); backdrop-filter: blur(6px); z-index: 9999; display: none; align-items: flex-start; justify-content: center; padding: 10px; overflow-y: auto; }
+    .train-modal-card { background: #0f172a; border: 1.5px solid #0284c7; border-radius: 16px; width: 100%; max-width: 360px; padding: 14px; color: #fff; box-shadow: 0 10px 35px rgba(0,243,255,0.3); display: flex; flex-direction: column; gap: 9px; margin: auto 0; max-height: calc(100vh - 20px); overflow-y: auto; }
     .train-header { display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: 800; color: #38bdf8; border-bottom: 1px solid #1e293b; padding-bottom: 6px; }
     .train-text-quote { background: #1e293b; border-radius: 8px; padding: 8px 10px; font-size: 12px; color: #e2e8f0; line-height: 1.35; word-break: break-word; border-left: 3px solid #f59e0b; }
-    .train-suggestions-title { font-size: 11px; font-weight: 700; color: #94a3b8; margin-top: 2px; }
     .train-suggestions-box { display: flex; flex-wrap: wrap; gap: 6px; max-height: 120px; overflow-y: auto; }
     .train-chip { background: #1e293b; border: 1px solid #0284c7; color: #38bdf8; padding: 6px 10px; border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer; }
-    .train-chip:active { transform: scale(0.95); background: #0284c7; color: #fff; }
     .train-input-row { display: flex; gap: 6px; margin-top: 4px; }
     .train-input { flex: 1; background: #0b1120; border: 1px solid #334155; border-radius: 8px; color: #fff; padding: 7px 10px; font-size: 11px; outline: none; }
-    .train-input:focus { border-color: #38bdf8; }
     .btn-train-search { background: #0284c7; border: none; color: #fff; border-radius: 8px; padding: 0 12px; font-size: 11px; font-weight: 800; cursor: pointer; }
-
-    .confirm-modal-backdrop {
-      position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
-      z-index: 9999; display: none; width: 90%; max-width: 340px;
-    }
-    .confirm-modal-card {
-      background: rgba(15, 23, 42, 0.96); border: 1.5px solid #00f3ff;
-      border-radius: 14px; padding: 12px; color: #fff; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
-      backdrop-filter: blur(8px);
-    }
+    .confirm-modal-backdrop { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); z-index: 9999; display: none; width: 90%; max-width: 340px; }
+    .confirm-modal-card { background: rgba(15,23,42,0.96); border: 1.5px solid #00f3ff; border-radius: 14px; padding: 12px; color: #fff; box-shadow: 0 10px 30px rgba(0,0,0,0.7); backdrop-filter: blur(8px); }
     .btn-confirm-act { flex: 1; padding: 8px 6px; border-radius: 8px; font-size: 11px; font-weight: 800; cursor: pointer; border: none; text-align: center; }
     .btn-confirm-act.ok { background: #059669; color: #fff; }
     .btn-confirm-act.cancel { background: #dc2626; color: #fff; }
@@ -725,21 +178,16 @@
 </head>
 <body>
   <div id="map"></div>
-
   <div id="transferBanner" class="transfer-banner">⏳ Виконується перенесення мітки...</div>
 
-  <!-- 1. ДАШБОРД -->
+  <!-- ДАШБОРД -->
   <div id="dashPanel" class="dashboard">
     <div id="dashHeader" class="dash-header">
-      <div class="points-count" id="countText">
-        <span>Точок: 0</span>
-      </div>
+      <div class="points-count" id="countText"><span>Точок: 0</span></div>
       <button class="btn-toggle" id="btnToggle" onclick="togglePanelCollapse(event)">▲</button>
     </div>
-
     <div id="collapsibleBody" class="collapsible-body">
       <div class="subtitle" id="sectorSubtitle">📍 Режим: Мій маршрут</div>
-      
       <div class="search-box">
         <div class="search-input-wrap">
           <input type="text" id="streetSearchInput" class="search-input" placeholder="🔍 Вулиця, ділянка або стара назва..." autocomplete="off">
@@ -747,7 +195,6 @@
         </div>
         <div id="searchResults" class="search-results"></div>
       </div>
-
       <button id="btnMapLayer" class="btn-secondary" onclick="toggleMapLayer()">
         <span id="btnMapLayerIcon">🗺️</span><span id="btnMapLayerText">Карта: Google (з вулицями)</span>
       </button>
@@ -756,8 +203,7 @@
       </a>
       <div class="tl-menu-container">
         <button class="btn-tl-main" onclick="toggleTlDropdown()">
-          <span>🚦 Мої світлофори</span>
-          <span id="tlDropdownArrow">▾</span>
+          <span>🚦 Мої світлофори</span><span id="tlDropdownArrow">▾</span>
         </button>
         <div id="tlDropdown" class="tl-dropdown">
           <button id="btnToggleTl" class="tl-dropdown-btn" onclick="toggleTrafficLights()">
@@ -770,8 +216,7 @@
       </div>
       <div class="server-menu-container">
         <button class="btn-server-main" onclick="toggleServerDropdown()">
-          <span>⚙️ Керування сервером</span>
-          <span id="serverDropdownArrow">▾</span>
+          <span>⚙️ Керування сервером</span><span id="serverDropdownArrow">▾</span>
         </button>
         <div id="serverDropdown" class="server-dropdown">
           <button class="btn-trigger-action" onclick="triggerGitHubActions()">
@@ -787,37 +232,43 @@
     </div>
   </div>
 
-  <!-- 2. ШІ (ВЕРСИЯ v3.8) -->
+  <!-- ШІ ПАНЕЛЬ -->
   <div id="aiPillPanel" class="ai-pill-panel compact">
     <div id="aiPillHeader" class="ai-pill-compact-content">
       <div class="ai-titleBadge" onclick="toggleAiPillExpand()">
-        <span style="font-size:14px;">🤖</span>
-        <span id="aiPillLabel">ШІ</span>
-        <span class="ai-version-badge">v3.8</span>
-        <span style="font-size:9px; color:#64748b; margin-left:3px;">✥</span>
+        <span style="font-size:14px;">🤖</span><span id="aiPillLabel">ШІ</span>
+        <span class="ai-version-badge">v3.9</span>
       </div>
       <div style="display:flex; align-items:center; gap:4px;">
-        <span class="ai-pill-tools" style="font-size:10px; color:#64748b; cursor:pointer; padding:2px;" title="Очистити історію діалогу" onclick="clearAiChatHistory(event)">🗑️</span>
-        <span class="ai-pill-tools" style="font-size:10px; color:#64748b; cursor:pointer; padding:2px;" title="Налаштування API Key" onclick="configureGeminiKey(event)">🔑</span>
+        <span class="ai-pill-tools" style="font-size:10px; color:#38bdf8; cursor:pointer; padding:2px; font-weight:800;" title="База знань" onclick="openKnowledgeBaseModal(event)">📚 База</span>
+        <span class="ai-pill-tools" style="font-size:10px; color:#64748b; cursor:pointer; padding:2px;" title="Очистити чат" onclick="clearAiChatHistory(event)">🗑️</span>
+        <span class="ai-pill-tools" style="font-size:10px; color:#64748b; cursor:pointer; padding:2px;" title="API Ключ" onclick="configureGeminiKey(event)">🔑</span>
         <button class="btn-toggle" id="btnAiPillToggle" onclick="toggleAiPillExpand(event)">▼</button>
       </div>
     </div>
-
     <div class="ai-pill-body" id="aiPillBody">
       <div id="aiChatBox" class="ai-chat-box">
-        <div class="ai-msg bot">
-          👋 Вітаю! Я ваш ШІ-штурман (Карта v3.8). Мульти-мітки, точні ділянки та Бородинська активні!
+        <div class="ai-msg bot">👋 Вітаю! Я ваш ШІ-штурман (Карта v3.9). Підтримує команди "А = Б" та блокування спаму.</div>
+      </div>
+      <div class="ai-learn-box">
+        <div class="ai-learn-header">
+          <span>🧠 Внести в пам'ять (Правило перенесення):</span>
+          <span style="cursor:pointer; color:#94a3b8; font-size:11px;" onclick="clearAiLearnInputs()">✕</span>
+        </div>
+        <div class="ai-learn-row">
+          <input type="text" id="learnInputAlias" class="ai-learn-input" placeholder="Що шукати (напр. карла маркса)">
+          <span style="font-weight:900; color:#38bdf8; font-size:12px;">=</span>
+          <input type="text" id="learnInputTarget" class="ai-learn-input" placeholder="Куди вести (напр. Яворницького)">
+        </div>
+        <div style="display:flex; justify-content:flex-end;">
+          <button class="btn-save-learn" onclick="executeManualLearn()">💾 Зберегти в пам'ять</button>
         </div>
       </div>
-
       <div class="ai-chips-compact">
         <span class="ai-mini-chip" onclick="sendAiQuick('Скрий зелені точки')">🟢 Без зелених</span>
         <span class="ai-mini-chip" onclick="sendAiQuick('Покажи всі точки')">🌐 Всі точки</span>
-        <span class="ai-mini-chip" onclick="sendAiQuick('Відключи Лівий берег від моніторингу')">🌉 Без Лівого</span>
         <span class="ai-mini-chip" onclick="sendAiQuick('Світлофор Річпорт переключи на авто режим')">🔄 Річпорт авто</span>
-        <span class="ai-mini-chip" onclick="sendAiQuick('Відкрий аналітику')">📊 Аналітика</span>
       </div>
-
       <div class="ai-chat-input-row">
         <textarea id="aiInlineInput" class="ai-inline-textarea" placeholder="Команда або запитання... (Enter)"></textarea>
         <button class="btn-ai-send" onclick="submitAiChatMessage()" id="btnAiSend">➤</button>
@@ -825,18 +276,13 @@
     </div>
   </div>
 
-  <!-- 3. МІЙ ШЛЯХ -->
+  <!-- МАРШРУТ И ОБНОВЛЕНИЕ -->
   <div id="routeStatusBar" class="route-status-bar" onclick="toggleRouteSubmenu(event)">
-    <span id="routeStatusIcon">🟢</span>
-    <span id="routeStatusText">Мій шлях: Чисто</span>
-    <span id="routeSubmenuArrow" style="font-size:10px; color:#94a3b8; margin-left:2px;">▴</span>
+    <span id="routeStatusIcon">🟢</span><span id="routeStatusText">Мій шлях: Чисто</span><span id="routeSubmenuArrow" style="font-size:10px; color:#94a3b8; margin-left:2px;">▴</span>
   </div>
-
-  <!-- ПОДМЕНЮ МАРШРУТА -->
   <div id="routeSubmenu" class="route-submenu" onclick="event.stopPropagation()">
     <div class="route-submenu-header">
-      <span>🛣️ Маршрут та райони міста</span>
-      <span style="cursor:pointer; font-size:14px; padding:0 4px; color:#94a3b8;" onclick="closeRouteSubmenu()">✕</span>
+      <span>🛣️ Маршрут та райони міста</span><span style="cursor:pointer; font-size:14px; padding:0 4px; color:#94a3b8;" onclick="closeRouteSubmenu()">✕</span>
     </div>
     <div class="route-submenu-quick">
       <button id="btnQuickSubRoute" class="btn-submenu-quick active" onclick="setSectorPreset('route')">🎯 Тільки мій шлях</button>
@@ -851,31 +297,28 @@
       <label class="sector-sub-item"><input type="checkbox" id="sub_sec_s6" onchange="onSubmenuSectorChange()"> 🏢 Лівий берег (Слобожанський)</label>
     </div>
   </div>
+  <div id="btnRefresh" class="btn-refresh" onclick="refreshRadarClick()"><span>🔄</span><span>Оновити</span></div>
 
-  <!-- 4. ОНОВИТИ -->
-  <div id="btnRefresh" class="btn-refresh" onclick="refreshRadarClick()">
-    <span>🔄</span><span>Оновити</span>
+  <!-- МОДАЛЬНЫЕ ОКНА -->
+  <div id="knowledgeBaseModal" class="action-sheet-backdrop" onclick="closeKnowledgeBaseModal(event)">
+    <div class="action-sheet-card" onclick="event.stopPropagation()" style="max-width:350px; max-height:85vh; overflow-y:auto;">
+      <div class="action-sheet-title"><span>📚 База знань ШІ</span><span style="cursor:pointer; font-size:16px;" onclick="closeKnowledgeBaseModal()">✕</span></div>
+      <div style="font-size:11px; font-weight:800; color:#38bdf8; margin-top:4px;">📍 Прив'язки вулиць ("А = Б"):</div>
+      <div id="customStreetsList" style="display:flex; flex-direction:column; gap:4px; max-height:140px; overflow-y:auto; background:#070d1d; padding:6px; border-radius:8px;"></div>
+      <div style="font-size:11px; font-weight:800; color:#ef4444; margin-top:6px;">🚫 Фільтри спаму:</div>
+      <div id="spamFiltersList" style="display:flex; flex-direction:column; gap:4px; max-height:120px; overflow-y:auto; background:#070d1d; padding:6px; border-radius:8px;"></div>
+    </div>
   </div>
-
-  <!-- НЕЗАВИСИМЫЙ ДИАЛОГ ВЫБОРА ДЕЙСТВИЯ -->
   <div id="markerActionSheet" class="action-sheet-backdrop" onclick="closeMarkerActionSheet(event)">
     <div class="action-sheet-card" onclick="event.stopPropagation()">
-      <div class="action-sheet-title">
-        <span>🎯 Переміщення мітки</span>
-        <span style="cursor:pointer; font-size:16px; padding:0 4px;" onclick="closeMarkerActionSheet()">✕</span>
-      </div>
+      <div class="action-sheet-title"><span>🎯 Переміщення мітки</span><span style="cursor:pointer; font-size:16px;" onclick="closeMarkerActionSheet()">✕</span></div>
       <button class="btn-sheet-act" style="background:#0284c7; color:#fff;" onclick="sheetStartManualDrag()">✋ Перемістити вручну пальцем</button>
       <button class="btn-sheet-act" style="background:#1e293b; color:#38bdf8; border:1px solid #0284c7;" onclick="sheetStartTrainModal()">📍 Перемістити за адресою зі списку</button>
     </div>
   </div>
-
-  <!-- НЕЗАВИСИМЫЙ ПУЛЬТ СВЕТОФОРА -->
   <div id="trafficLightActionSheet" class="action-sheet-backdrop" onclick="closeTrafficLightActionSheet(event)">
     <div class="action-sheet-card" onclick="event.stopPropagation()">
-      <div class="action-sheet-title">
-        <span id="tlSheetTitle">🚦 Керування світлофором</span>
-        <span style="cursor:pointer; font-size:16px; padding:0 4px;" onclick="closeTrafficLightActionSheet()">✕</span>
-      </div>
+      <div class="action-sheet-title"><span id="tlSheetTitle">🚦 Керування світлофором</span><span style="cursor:pointer; font-size:16px;" onclick="closeTrafficLightActionSheet()">✕</span></div>
       <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px;">
         <button class="btn-sheet-act" style="background:#059669; color:#fff;" onclick="sheetSetTlMode('green')">🟢 Чисто</button>
         <button class="btn-sheet-act" style="background:#dc2626; color:#fff;" onclick="sheetSetTlMode('red')">🔴 БП</button>
@@ -884,26 +327,17 @@
       </div>
     </div>
   </div>
-
-  <!-- МОДАЛКА ПЕРЕНОСА ЗА АДРЕСОЮ -->
   <div id="trainModal" class="train-modal-backdrop" onclick="closeTrainModal(event)">
     <div class="train-modal-card" onclick="event.stopPropagation()">
-      <div class="train-header">
-        <span>📍 Переміщення за адресою</span>
-        <span style="cursor:pointer; font-size:16px; padding:0 4px;" onclick="closeTrainModal()">✕</span>
-      </div>
+      <div class="train-header"><span>📍 Переміщення за адресою</span><span style="cursor:pointer; font-size:16px;" onclick="closeTrainModal()">✕</span></div>
       <div class="train-text-quote" id="trainTextQuote">...</div>
-      <div class="train-suggestions-title">Оберіть відповідну вулицю або ділянку:</div>
       <div class="train-suggestions-box" id="trainSuggestionsBox"></div>
-      <div class="train-suggestions-title" style="margin-top:4px;">Або введіть свою назву:</div>
       <div class="train-input-row">
         <input type="text" id="trainCustomInput" class="train-input" placeholder="Вулиця чи орієнтир..." onkeydown="if(event.key==='Enter') executeCustomTrain();">
         <button class="btn-train-search" onclick="executeCustomTrain()">Перемістити</button>
       </div>
     </div>
   </div>
-
-  <!-- ДИАЛОГ ПОДТВЕРЖДЕНИЯ ПЕРЕНОСА -->
   <div id="confirmMoveModal" class="confirm-modal-backdrop">
     <div class="confirm-modal-card">
       <div style="font-size:13px; font-weight:800; color:#38bdf8; margin-bottom:4px;">📍 Перевірте нове місце:</div>
@@ -915,14 +349,11 @@
       </div>
     </div>
   </div>
-
   <div id="toast" class="toast-msg">✅ Збережено!</div>
 
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
     const SECRET_KEY_HASH = "570984";
     const _VAULT_PREFIX = String.fromCharCode(65, 81, 46, 65, 98, 56, 82, 78, 54);
-
     const _VAULT_SHARDS = [
       ["I7GflB4phTHSa5jvsW", "72AcfGr11sjs1_hoz2-cwWvPvg"],
       ["JwJ0Vv6CzHDVFUo7BE", "ScSuZXXQ8nFcYU8_oyv5iMm5tg"],
@@ -938,25 +369,19 @@
 
     function verifyGeminiAuthorization(forcePrompt = false) {
       const savedAuth = localStorage.getItem("radar_gemini_unlocked");
-      if (savedAuth === SECRET_KEY_HASH && !forcePrompt) {
-        return true;
-      }
+      if (savedAuth === SECRET_KEY_HASH && !forcePrompt) return true;
       const entered = prompt("🔐 Введіть пароль для активації ШІ-штурмана:\n(Підказка: телефон батьків)");
       if (entered === SECRET_KEY_HASH) {
         localStorage.setItem("radar_gemini_unlocked", SECRET_KEY_HASH);
         showToast("🔓 ШІ-штурман успішно активовано!");
         return true;
-      } else if (entered !== null) {
-        alert("❌ Невірний пароль! Доступ до ШІ заблоковано.");
       }
       return false;
     }
 
     function getDecryptedGeminiPool() {
-      if (localStorage.getItem("radar_gemini_unlocked") !== SECRET_KEY_HASH) {
-        return [];
-      }
-      const builtins = _VAULT_SHARDS.map(shard => _VAULT_PREFIX + shard.join(''));
+      if (localStorage.getItem("radar_gemini_unlocked") !== SECRET_KEY_HASH) return [];
+      const builtins = _VAULT_SHARDS.map(s => _VAULT_PREFIX + s.join(''));
       const rawStored = localStorage.getItem("gemini_api_key") || "";
       const customKeys = rawStored.split(/[,;\s]+/).map(k => k.trim()).filter(k => k.length > 20);
       return [...new Set([...builtins, ...customKeys])];
@@ -965,308 +390,127 @@
     const FIREBASE_POINTS_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/points.json";
     const FIREBASE_CONFIG_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/config/traffic_lights.json";
     const FIREBASE_KB_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/knowledge_base.json";
+    const FIREBASE_CUSTOM_STREETS_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/custom_streets.json";
+    const FIREBASE_SPAM_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/spam_filters.json";
 
-    function isSpamMessage(text) {
-      if (!text) return false;
-      const t = text.toLowerCase();
-      const spamWords = [
-        "поддержите", "поддержка", "покупка бота", "покупка", "репост",
-        "сделайте репост", "пригласите друзей", "поделитесь ссылкой",
-        "продолжать работу", "улучшать функционал", "развивать проект",
-        "ссылка на бота", "описании группы", "описании канала", "группа вам полезна",
-        "напоминаем", "у нас есть бот", "бот с картой", "пробный доступ",
-        "события живут", "метки появляются", "без отдельных приложений",
-        "бесплатный пробный", "подписчик", "всё прямо в telegram",
-        "наш бот", "t.me/", "http://", "https://"
-      ];
-      return spamWords.some(w => t.includes(w));
-    }
+    let spamFilterWords = [
+      "поддержите", "поддержка", "покупка бота", "покупка", "репост", "сделайте репост",
+      "пригласите друзей", "поделитесь ссылкой", "продолжать работу", "улучшать функционал",
+      "развивать проект", "ссылка на бота", "описании группы", "описании канала", "группа вам полезна",
+      "напоминаем", "у нас есть бот", "бот с картой", "пробный доступ", "события живут",
+      "метки появляются", "без отдельных приложений", "бесплатный пробный", "подписчик",
+      "всё прямо в telegram", "наш бот", "t.me/", "http://", "https://"
+    ];
+    let customStreetsCloud = {};
 
-    // =========================================================================
-    // 📍 БЛОК ТОПОНІМІВ ТА ВУЛИЦЬ ДНІПРА (DNIPRO_STREETS_MAP v3.8)
-    // =========================================================================
+    let checkpoints = [
+      { id: "kaidak_rovd", name: "РОВД / Кайдацький з'їзд", lat: 48.4925, lng: 34.9625, keys: ["кайдак", "ровд", "з'їзд.*кайдак", "съезд.*кайдак"] },
+      { id: "vodolechebnitsa", name: "Водолікарня (пр. Свободи)", lat: 48.4848, lng: 34.9735, keys: ["водолечеб", "водолікарн", "пр свободи"] },
+      { id: "kombainoviy", name: "Комбайновий (Белелюбського)", lat: 48.4795, lng: 34.9845, keys: ["комбайн", "ударник"] },
+      { id: "krasnozavodska", name: "Краснозаводська", lat: 48.4812, lng: 34.9940, keys: ["краснозавод", "белелюб", "дтрз"] },
+      { id: "pavlova", name: "вул. Павлова", lat: 48.4818, lng: 35.0012, keys: ["павлова"] },
+      { id: "rechport", name: "Річпорт", lat: 48.4805, lng: 35.0210, keys: ["речпорт", "річпорт", "речной вокзал"] },
+      { id: "vodokachka", name: "Водокачка", lat: 48.4910, lng: 34.9480, keys: ["водокачк"] },
+      { id: "stan_550", name: "Стан 550", lat: 48.4865, lng: 34.9850, keys: ["стан 550", "стан550"] }
+    ];
+
     const DNIPRO_STREETS_MAP = {
-      // --- ДІЛЯНКИ: ПРОСП. ПОЛЯ / КІРОВА ---
-      "низ киров": { name: "просп. Олександра Поля (Низ, сквер Героїв)", old: "просп. Кірова (Низ)", lat: 48.4610, lng: 35.0310 },
-      "низ кіров": { name: "просп. Олександра Поля (Низ, сквер Героїв)", old: "просп. Кірова (Низ)", lat: 48.4610, lng: 35.0310 },
-      "низ поля": { name: "просп. Олександра Поля (Низ, сквер Героїв)", old: "просп. Кірова (Низ)", lat: 48.4610, lng: 35.0310 },
-      "середина киров": { name: "просп. Олександра Поля (Середина, Славутич)", old: "просп. Кірова (Середина)", lat: 48.4480, lng: 35.0240 },
-      "середина кіров": { name: "просп. Олександра Поля (Середина, Славутич)", old: "просп. Кірова (Середина)", lat: 48.4480, lng: 35.0240 },
-      "середина поля": { name: "просп. Олександра Поля (Середина, Славутич)", old: "просп. Кірова (Середина)", lat: 48.4480, lng: 35.0240 },
-      "верх киров": { name: "просп. Олександра Поля (Верх, Титова)", old: "просп. Кірова (Верх)", lat: 48.4340, lng: 35.0160 },
-      "верх кіров": { name: "просп. Олександра Поля (Верх, Титова)", old: "просп. Кірова (Верх)", lat: 48.4340, lng: 35.0160 },
-      "верх поля": { name: "просп. Олександра Поля (Верх, Титова)", old: "просп. Кірова (Верх)", lat: 48.4340, lng: 35.0160 },
-
-      // --- ДІЛЯНКИ: ВУЛ. РОБОЧА ---
-      "низ рабоч": { name: "вул. Робоча (Низ, р-н Нігояна)", lat: 48.4680, lng: 35.0110 },
-      "низ робоч": { name: "вул. Робоча (Низ, р-н Нігояна)", lat: 48.4680, lng: 35.0110 },
-      "середина рабоч": { name: "вул. Робоча (Середина, Театральна)", lat: 48.4520, lng: 35.0090 },
-      "середина робоч": { name: "вул. Робоча (Середина, Театральна)", lat: 48.4520, lng: 35.0090 },
-      "верх рабоч": { name: "вул. Робоча (Верх, Метеор / ЮМЗ)", lat: 48.4385, lng: 35.0065 },
-      "верх робоч": { name: "вул. Робоча (Верх, Метеор / ЮМЗ)", lat: 48.4385, lng: 35.0065 },
-
-      // --- ДІЛЯНКИ: ВУЛ. СІЧОВИХ СТРІЛЬЦІВ / АРТЕМА ---
-      "низ артем": { name: "вул. Січових Стрільців (Низ, Яворницького)", old: "вул. Артема (Низ)", lat: 48.4635, lng: 35.0445 },
-      "низ січов": { name: "вул. Січових Стрільців (Низ, Яворницького)", old: "вул. Артема (Низ)", lat: 48.4635, lng: 35.0445 },
-      "середина артем": { name: "вул. Січових Стрільців (Середина, Чкалова)", old: "вул. Артема (Середина)", lat: 48.4560, lng: 35.0420 },
-      "середина січов": { name: "вул. Січових Стрільців (Середина, Чкалова)", old: "вул. Артема (Середина)", lat: 48.4560, lng: 35.0420 },
-      "верх артем": { name: "вул. Січових Стрільців (Верх, тупик 4 трамвая)", old: "вул. Артема (Верх)", lat: 48.4480, lng: 35.0390 },
-      "верх січов": { name: "вул. Січових Стрільців (Верх, тупик 4 трамвая)", old: "вул. Артема (Верх)", lat: 48.4480, lng: 35.0390 },
-
-      // --- ДІЛЯНКИ: ПРОСП. НАУКИ / ГАГАРІНА ---
-      "низ гагарин": { name: "просп. Науки (Низ, Нагірка)", old: "просп. Гагаріна (Низ)", lat: 48.4510, lng: 35.0590 },
-      "низ гагарін": { name: "просп. Науки (Низ, Нагірка)", old: "просп. Гагаріна (Низ)", lat: 48.4510, lng: 35.0590 },
-      "низ науки": { name: "просп. Науки (Низ, Нагірка)", old: "просп. Гагаріна (Низ)", lat: 48.4510, lng: 35.0590 },
-      "середина гагарин": { name: "просп. Науки (Середина, ДІІТ / Казакова)", old: "просп. Гагаріна (Середина)", lat: 48.4350, lng: 35.0420 },
-      "середина гагарін": { name: "просп. Науки (Середина, ДІІТ / Казакова)", old: "просп. Гагаріна (Середина)", lat: 48.4350, lng: 35.0420 },
-      "середина науки": { name: "просп. Науки (Середина, ДІІТ / Казакова)", old: "просп. Гагаріна (Середина)", lat: 48.4350, lng: 35.0420 },
-      "верх гагарин": { name: "просп. Науки (Верх, Підстанція / Дафі)", old: "просп. Гагаріна (Верх)", lat: 48.4230, lng: 35.0320 },
-      "верх гагарін": { name: "просп. Науки (Верх, Підстанція / Дафі)", old: "просп. Гагаріна (Верх)", lat: 48.4230, lng: 35.0320 },
-      "верх науки": { name: "просп. Науки (Верх, Підстанція / Дафі)", old: "просп. Гагаріна (Верх)", lat: 48.4230, lng: 35.0320 },
-
-      // --- ДІЛЯНКИ: ПРОСП. БОГДАНА ХМЕЛЬНИЦЬКОГО (ГЕРОЇВ СТАЛІНГРАДА) ---
-      "низ сталинград": { name: "просп. Б. Хмельницького (Низ, Титова)", old: "вул. Героїв Сталінграда (Низ)", lat: 48.4310, lng: 35.0170 },
-      "низ хмельниц": { name: "просп. Б. Хмельницького (Низ, Титова)", old: "вул. Героїв Сталінграда (Низ)", lat: 48.4310, lng: 35.0170 },
-      "середина сталинград": { name: "просп. Б. Хмельницького (Середина, Шинна)", old: "вул. Героїв Сталінграда (Середина)", lat: 48.4200, lng: 35.0180 },
-      "середина хмельниц": { name: "просп. Б. Хмельницького (Середина, Шинна)", old: "вул. Героїв Сталінграда (Середина)", lat: 48.4200, lng: 35.0180 },
-      "верх сталинград": { name: "просп. Б. Хмельницького (Верх, 12 Квартал)", old: "вул. Героїв Сталінграда (Верх)", lat: 48.4050, lng: 35.0210 },
-      "верх хмельниц": { name: "просп. Б. Хмельницького (Верх, 12 Квартал)", old: "вул. Героїв Сталінграда (Верх)", lat: 48.4050, lng: 35.0210 },
-
-      // --- ДІЛЯНКИ: ПРОСП. МАЗЕПИ / ПЕТРОВСЬКОГО ---
-      "низ петровск": { name: "просп. Івана Мазепи (Низ, Органний зал)", old: "просп. Петровського (Низ)", lat: 48.4735, lng: 34.9860 },
-      "низ мазеп": { name: "просп. Івана Мазепи (Низ, Органний зал)", old: "просп. Петровського (Низ)", lat: 48.4735, lng: 34.9860 },
-      "середина петровск": { name: "просп. Івана Мазепи (Середина, Авіаційна)", old: "просп. Петровського (Середина)", lat: 48.4680, lng: 34.9650 },
-      "середина мазеп": { name: "просп. Івана Мазепи (Середина, Авіаційна)", old: "просп. Петровського (Середина)", lat: 48.4680, lng: 34.9650 },
-      "верх петровск": { name: "просп. Івана Мазепи (Верх, Київська)", old: "просп. Петровського (Верх)", lat: 48.4610, lng: 34.9480 },
-      "верх мазеп": { name: "просп. Івана Мазепи (Верх, Київська)", old: "просп. Петровського (Верх)", lat: 48.4610, lng: 34.9480 },
-
-      // --- ДІЛЯНКИ: ПРОСП. СЛОБОЖАНСЬКИЙ / ПРАВДИ ---
-      "начало правд": { name: "просп. Слобожанський (Початок, Новий міст)", old: "просп. Газети Правда (Початок)", lat: 48.4860, lng: 35.0560 },
-      "низ правд": { name: "просп. Слобожанський (Початок, Новий міст)", old: "просп. Газети Правда (Початок)", lat: 48.4860, lng: 35.0560 },
-      "початок слобожанськ": { name: "просп. Слобожанський (Початок, Новий міст)", old: "просп. Газети Правда (Початок)", lat: 48.4860, lng: 35.0560 },
-      "середина правд": { name: "просп. Слобожанський (Середина, Калинова)", old: "просп. Газети Правда (Середина)", lat: 48.5020, lng: 35.0690 },
-      "середина слобожанськ": { name: "просп. Слобожанський (Середина, Калинова)", old: "просп. Газети Правда (Середина)", lat: 48.5020, lng: 35.0690 },
-      "конец правд": { name: "просп. Слобожанський (Кінець, Золоті Ключі)", old: "просп. Газети Правда (Кінець)", lat: 48.5250, lng: 35.0880 },
-      "верх правд": { name: "просп. Слобожанський (Кінець, Золоті Ключі)", old: "просп. Газети Правда (Кінець)", lat: 48.5250, lng: 35.0880 },
-      "кінець слобожанськ": { name: "просп. Слобожанський (Кінець, Золоті Ключі)", old: "просп. Газети Правда (Кінець)", lat: 48.5250, lng: 35.0880 },
-
-      // --- ДІЛЯНКИ: ДОНЕЦЬКЕ ШОСЕ (ДШ) ---
-      "начало дш": { name: "Донецьке шосе (Початок, Ломівський)", lat: 48.5030, lng: 34.9780 },
-      "початок дш": { name: "Донецьке шосе (Початок, Ломівський)", lat: 48.5030, lng: 34.9780 },
-      "середина дш": { name: "Донецьке шосе (Середина, Березинський)", lat: 48.5170, lng: 35.0020 },
-      "конец дш": { name: "Донецьке шосе (Кінець, Караван)", lat: 48.5300, lng: 35.0250 },
-      "кінець дш": { name: "Донецьке шосе (Кінець, Караван)", lat: 48.5300, lng: 35.0250 },
-
-      // --- ДІЛЯНКИ: ПРОСП. ЯВОРНИЦЬКОГО / КАРЛА МАРКСА ---
-      "низ карла маркс": { name: "просп. Дмитра Яворницького (Вокзал / Островського)", old: "просп. Карла Маркса (Низ)", lat: 48.4760, lng: 35.0190 },
-      "низ яворниц": { name: "просп. Дмитра Яворницького (Вокзал / Островського)", old: "просп. Карла Маркса (Низ)", lat: 48.4760, lng: 35.0190 },
-      "центр карла маркс": { name: "просп. Дмитра Яворницького (Центр, ЦУМ / Пасаж)", old: "просп. Карла Маркса (Центр)", lat: 48.4650, lng: 35.0450 },
-      "центр яворниц": { name: "просп. Дмитра Яворницького (Центр, ЦУМ / Пасаж)", old: "просп. Карла Маркса (Центр)", lat: 48.4650, lng: 35.0450 },
-      "верх карла маркс": { name: "просп. Дмитра Яворницького (Верх, Соборна площа)", old: "просп. Карла Маркса (Верх)", lat: 48.4570, lng: 35.0640 },
-      "верх яворниц": { name: "просп. Дмитра Яворницького (Верх, Соборна площа)", old: "просп. Карла Маркса (Верх)", lat: 48.4570, lng: 35.0640 },
-
-      // --- ДІЛЯНКИ: ВУЛ. КОСМІЧНА ---
-      "низ космическ": { name: "вул. Космічна (Низ, Набережна)", lat: 48.4240, lng: 35.0740 },
-      "низ космічн": { name: "вул. Космічна (Низ, Набережна)", lat: 48.4240, lng: 35.0740 },
-      "верх космическ": { name: "вул. Космічна (Верх, Запорізьке шосе)", lat: 48.4060, lng: 35.0410 },
-      "верх космічн": { name: "вул. Космічна (Верх, Запорізьке шосе)", lat: 48.4060, lng: 35.0410 },
-      "тещин язык": { name: "Тьощин язик (вул. Космічна, серпантин)", lat: 48.4140, lng: 35.0510 },
-      "тьощин язик": { name: "Тьощин язик (вул. Космічна, серпантин)", lat: 48.4140, lng: 35.0510 },
-
-      // --- ВУЛ. БОРОДИНСЬКА (ЮРІЯ МАГАЛЕВСЬКОГО) ---
+      "низ киров": { name: "просп. Олександра Поля (Низ)", old: "просп. Кірова (Низ)", lat: 48.4610, lng: 35.0310 },
+      "середина киров": { name: "просп. Олександра Поля (Середина)", old: "просп. Кірова (Середина)", lat: 48.4480, lng: 35.0240 },
+      "верх киров": { name: "просп. Олександра Поля (Верх)", old: "просп. Кірова (Верх)", lat: 48.4340, lng: 35.0160 },
+      "низ поля": { name: "просп. Олександра Поля (Низ)", lat: 48.4610, lng: 35.0310 },
+      "середина поля": { name: "просп. Олександра Поля (Середина)", lat: 48.4480, lng: 35.0240 },
+      "верх поля": { name: "просп. Олександра Поля (Верх)", lat: 48.4340, lng: 35.0160 },
+      "низ рабоч": { name: "вул. Робоча (Низ)", lat: 48.4680, lng: 35.0110 },
+      "середина рабоч": { name: "вул. Робоча (Середина)", lat: 48.4520, lng: 35.0090 },
+      "верх рабоч": { name: "вул. Робоча (Верх)", lat: 48.4385, lng: 35.0065 },
+      "низ робоч": { name: "вул. Робоча (Низ)", lat: 48.4680, lng: 35.0110 },
+      "середина робоч": { name: "вул. Робоча (Середина)", lat: 48.4520, lng: 35.0090 },
+      "верх робоч": { name: "вул. Робоча (Верх)", lat: 48.4385, lng: 35.0065 },
+      "низ артем": { name: "вул. Січових Стрільців (Низ)", old: "вул. Артема (Низ)", lat: 48.4635, lng: 35.0445 },
+      "середина артем": { name: "вул. Січових Стрільців (Середина)", old: "вул. Артема (Середина)", lat: 48.4560, lng: 35.0420 },
+      "верх артем": { name: "вул. Січових Стрільців (Верх)", old: "вул. Артема (Верх)", lat: 48.4480, lng: 35.0390 },
+      "низ січов": { name: "вул. Січових Стрільців (Низ)", lat: 48.4635, lng: 35.0445 },
+      "середина січов": { name: "вул. Січових Стрільців (Середина)", lat: 48.4560, lng: 35.0420 },
+      "верх січов": { name: "вул. Січових Стрільців (Верх)", lat: 48.4480, lng: 35.0390 },
+      "низ гагарин": { name: "просп. Науки (Низ)", old: "просп. Гагаріна (Низ)", lat: 48.4510, lng: 35.0590 },
+      "середина гагарин": { name: "просп. Науки (Середина)", old: "просп. Гагаріна (Середина)", lat: 48.4350, lng: 35.0420 },
+      "верх гагарин": { name: "просп. Науки (Верх)", old: "просп. Гагаріна (Верх)", lat: 48.4230, lng: 35.0320 },
+      "низ науки": { name: "просп. Науки (Низ)", lat: 48.4510, lng: 35.0590 },
+      "середина науки": { name: "просп. Науки (Середина)", lat: 48.4350, lng: 35.0420 },
+      "верх науки": { name: "просп. Науки (Верх)", lat: 48.4230, lng: 35.0320 },
+      "низ сталинград": { name: "просп. Б. Хмельницького (Низ)", old: "вул. Героїв Сталінграда (Низ)", lat: 48.4310, lng: 35.0170 },
+      "середина сталинград": { name: "просп. Б. Хмельницького (Середина)", old: "вул. Героїв Сталінграда (Середина)", lat: 48.4200, lng: 35.0180 },
+      "верх сталинград": { name: "просп. Б. Хмельницького (Верх)", old: "вул. Героїв Сталінграда (Верх)", lat: 48.4050, lng: 35.0210 },
+      "початок слобожанськ": { name: "просп. Слобожанський (Початок)", old: "просп. Правди (Початок)", lat: 48.4860, lng: 35.0560 },
+      "середина слобожанськ": { name: "просп. Слобожанський (Середина)", old: "просп. Правди (Середина)", lat: 48.5020, lng: 35.0690 },
+      "кінець слобожанськ": { name: "просп. Слобожанський (Кінець)", old: "просп. Правди (Кінець)", lat: 48.5250, lng: 35.0880 },
+      "початок правд": { name: "просп. Слобожанський (Початок)", old: "просп. Правди (Початок)", lat: 48.4860, lng: 35.0560 },
+      "середина правд": { name: "просп. Слобожанський (Середина)", old: "просп. Правди (Середина)", lat: 48.5020, lng: 35.0690 },
+      "кінець правд": { name: "просп. Слобожанський (Кінець)", old: "просп. Правди (Кінець)", lat: 48.5250, lng: 35.0880 },
       "бородинск": { name: "вул. Юрія Магалевського", old: "вул. Бородинська", lat: 48.4555, lng: 35.0410 },
-      "бородинськ": { name: "вул. Юрія Магалевського", old: "вул. Бородинська", lat: 48.4555, lng: 35.0410 },
       "магалевськ": { name: "вул. Юрія Магалевського", old: "вул. Бородинська", lat: 48.4555, lng: 35.0410 },
-
-      // --- ЦЕНТР ТА ОСНОВНІ ВУЛИЦІ (ЗАГАЛЬНІ) ---
       "нагорк": { name: "Нагірний ринок (Нагорка)", lat: 48.4520, lng: 35.0610 },
-      "нагірк": { name: "Нагірний ринок (Нагорка)", lat: 48.4520, lng: 35.0610 },
       "гагарин": { name: "просп. Науки", old: "просп. Гагаріна", lat: 48.4350, lng: 35.0420 },
-      "гагарін": { name: "просп. Науки", old: "просп. Гагаріна", lat: 48.4350, lng: 35.0420 },
       "науки": { name: "просп. Науки", old: "просп. Гагаріна", lat: 48.4350, lng: 35.0420 },
       "артем": { name: "вул. Січових Стрільців", old: "вул. Артема", lat: 48.4550, lng: 35.0420 },
-      "січов": { name: "вул. Січових Стрільців", old: "вул. Артема", lat: 48.4550, lng: 35.0420 },
-      "сечевых": { name: "вул. Січових Стрільців", old: "вул. Артема", lat: 48.4550, lng: 35.0420 },
       "карла маркс": { name: "просп. Дмитра Яворницького", old: "просп. Карла Маркса", lat: 48.4650, lng: 35.0450 },
       "яворниц": { name: "просп. Дмитра Яворницького", old: "просп. Карла Маркса", lat: 48.4650, lng: 35.0450 },
-      "яворницьк": { name: "просп. Дмитра Яворницького", old: "просп. Карла Маркса", lat: 48.4650, lng: 35.0450 },
       "чкалов": { name: "вул. Святослава Хороброго", old: "вул. Чкалова", lat: 48.4560, lng: 35.0340 },
       "хоробр": { name: "вул. Святослава Хороброго", old: "вул. Чкалова", lat: 48.4560, lng: 35.0340 },
-      "храбр": { name: "вул. Святослава Хороброго", old: "вул. Чкалова", lat: 48.4560, lng: 35.0340 },
       "дзержинск": { name: "вул. Володимира Вернадського", old: "вул. Дзержинського", lat: 48.4630, lng: 35.0580 },
       "вернадск": { name: "вул. Володимира Вернадського", old: "вул. Дзержинського", lat: 48.4630, lng: 35.0580 },
       "комсомольск": { name: "вул. Старокозацька", old: "вул. Комсомольська", lat: 48.4610, lng: 35.0380 },
       "старокозац": { name: "вул. Старокозацька", old: "вул. Комсомольська", lat: 48.4610, lng: 35.0380 },
-      "старокозацьк": { name: "вул. Старокозацька", old: "вул. Комсомольська", lat: 48.4610, lng: 35.0380 },
       "плеханов": { name: "вул. Князя Володимира Великого", old: "вул. Плеханова", lat: 48.4680, lng: 35.0450 },
       "ленин": { name: "вул. Воскресенська", old: "вул. Леніна", lat: 48.4640, lng: 35.0410 },
-      "ленін": { name: "вул. Воскресенська", old: "вул. Леніна", lat: 48.4640, lng: 35.0410 },
       "воскресенск": { name: "вул. Воскресенська", old: "вул. Леніна", lat: 48.4640, lng: 35.0410 },
-      "воскресенськ": { name: "вул. Воскресенська", old: "вул. Леніна", lat: 48.4640, lng: 35.0410 },
       "киров": { name: "просп. Олександра Поля", old: "просп. Кірова", lat: 48.4480, lng: 35.0240 },
-      "кіров": { name: "просп. Олександра Поля", old: "просп. Кірова", lat: 48.4480, lng: 35.0240 },
       "поля": { name: "просп. Олександра Поля", old: "просп. Кірова", lat: 48.4480, lng: 35.0240 },
       "титов": { name: "вул. Незалежності (Титова)", old: "вул. Титова", lat: 48.4340, lng: 35.0150 },
-      "независимост": { name: "вул. Незалежності (Титова)", old: "вул. Титова", lat: 48.4340, lng: 35.0150 },
       "незалежност": { name: "вул. Незалежності (Титова)", old: "вул. Титова", lat: 48.4340, lng: 35.0150 },
       "энергетич": { name: "вул. Енергетична", lat: 48.4225, lng: 35.0085 },
-      "енергетич": { name: "вул. Енергетична", lat: 48.4225, lng: 35.0085 },
       "вакуленчук": { name: "вул. Леоніда Стромцова", old: "вул. Вакуленчука", lat: 48.4410, lng: 35.0250 },
       "стромцов": { name: "вул. Леоніда Стромцова", old: "вул. Вакуленчука", lat: 48.4410, lng: 35.0250 },
       "гавриленк": { name: "вул. Лікаря Ребініна", old: "вул. Гавриленка", lat: 48.4380, lng: 35.0210 },
       "ребинин": { name: "вул. Лікаря Ребініна", old: "вул. Гавриленка", lat: 48.4380, lng: 35.0210 },
-      "ребінін": { name: "вул. Лікаря Ребініна", old: "вул. Гавриленка", lat: 48.4380, lng: 35.0210 },
       "рабоч": { name: "вул. Робоча", lat: 48.4480, lng: 35.0080 },
-      "робоч": { name: "вул. Робоча", lat: 48.4480, lng: 35.0080 },
       "савченк": { name: "вул. В'ячеслава Чорновола", old: "вул. Савченка", lat: 48.4550, lng: 35.0180 },
       "черновол": { name: "вул. В'ячеслава Чорновола", old: "вул. Савченка", lat: 48.4550, lng: 35.0180 },
-      "чорновол": { name: "вул. В'ячеслава Чорновола", old: "вул. Савченка", lat: 48.4550, lng: 35.0180 },
       "криворож": { name: "вул. Криворізька", lat: 48.4385, lng: 34.9920 },
-      "криворіз": { name: "вул. Криворізька", lat: 48.4385, lng: 34.9920 },
-      "криворізьк": { name: "вул. Криворізька", lat: 48.4385, lng: 34.9920 },
       "шмидт": { name: "вул. Степана Бандери", old: "вул. Шмідта", lat: 48.4680, lng: 35.0240 },
-      "шмідт": { name: "вул. Степана Бандери", old: "вул. Шмідта", lat: 48.4680, lng: 35.0240 },
       "бандер": { name: "вул. Степана Бандери", old: "вул. Шмідта", lat: 48.4680, lng: 35.0240 },
       "курчатов": { name: "вул. 128-ї Бригади Тероборони", old: "вул. Курчатова", lat: 48.4740, lng: 35.0140 },
-      "128.*бригад": { name: "вул. 128-ї Бригади Тероборони", old: "вул. Курчатова", lat: 48.4740, lng: 35.0140 },
-      "канатн": { name: "вул. Канатна", lat: 48.4600, lng: 35.0100 },
-      "барвинковск": { name: "вул. Барвінківська", lat: 48.4493, lng: 35.0286 },
-      "барвінківськ": { name: "вул. Барвінківська", lat: 48.4493, lng: 35.0286 },
-
-      // --- ВОКЗАЛ / ЛЕНИНГРАДСКАЯ / БЕЛЕЛЮБСКОГО / СВОБОДЫ ---
       "ленинград": { name: "вул. Князя Ярослава Мудрого", old: "вул. Ленінградська", lat: 48.4758, lng: 35.0307 },
-      "ленінград": { name: "вул. Князя Ярослава Мудрого", old: "вул. Ленінградська", lat: 48.4758, lng: 35.0307 },
-      "мудрог": { name: "вул. Князя Ярослава Мудрого", old: "вул. Ленінградська", lat: 48.4758, lng: 35.0307 },
-      "ярослав.*мудр": { name: "вул. Князя Ярослава Мудрого", old: "вул. Ленінградська", lat: 48.4758, lng: 35.0307 },
-      "вокзал": { name: "Залізничний вокзал", lat: 48.4760, lng: 35.0160 },
-      "островск": { name: "Старомостова площа", old: "площа Островського", lat: 48.4770, lng: 35.0220 },
-      "островськ": { name: "Старомостова площа", old: "площа Островського", lat: 48.4770, lng: 35.0220 },
-      "старомостов": { name: "Старомостова площа", old: "площа Островського", lat: 48.4770, lng: 35.0220 },
-      "озерк": { name: "Ринок Озерка", lat: 48.4715, lng: 35.0215 },
-      "павлов": { name: "вул. Академіка Павлова", lat: 48.4818, lng: 35.0012 },
-      "белелюб": { name: "вул. Белелюбського", old: "вул. Краснозаводська", lat: 48.4800, lng: 34.9880 },
-      "краснозавод": { name: "вул. Краснозаводська (Белелюбського)", lat: 48.4812, lng: 34.9940 },
-      "свобод": { name: "просп. Свободи", lat: 48.4810, lng: 34.9750 },
-      "водолечеб": { name: "Водолікарня (пр. Свободи)", lat: 48.4848, lng: 34.9735 },
-      "водолікарн": { name: "Водолікарня (пр. Свободи)", lat: 48.4848, lng: 34.9735 },
-
-      // --- ЗАПАДНЫЙ / МАЗЕПЫ / НИГОЯНА / КАМЧАТСКАЯ ---
-      "мазеп": { name: "просп. Івана Мазепи", old: "просп. Петровського", lat: 48.4680, lng: 34.9650 },
-      "петровск": { name: "просп. Івана Мазепи", old: "просп. Петровського", lat: 48.4680, lng: 34.9650 },
-      "петровськ": { name: "просп. Івана Мазепи", old: "просп. Петровського", lat: 48.4680, lng: 34.9650 },
-      "нигоян": { name: "просп. Сергія Нігояна", old: "просп. Калініна", lat: 48.4730, lng: 34.9850 },
-      "нігоян": { name: "просп. Сергія Нігояна", old: "просп. Калініна", lat: 48.4730, lng: 34.9850 },
-      "калинин": { name: "просп. Сергія Нігояна", old: "просп. Калініна", lat: 48.4730, lng: 34.9850 },
-      "калінін": { name: "просп. Сергія Нігояна", old: "просп. Калініна", lat: 48.4730, lng: 34.9850 },
       "камчатск": { name: "вул. Калдирська", old: "вул. Камчатська", lat: 48.4650, lng: 34.9800 },
-      "камчатськ": { name: "вул. Калдирська", old: "вул. Камчатська", lat: 48.4650, lng: 34.9800 },
-      "калдирськ": { name: "вул. Калдирська", old: "вул. Камчатська", lat: 48.4650, lng: 34.9800 },
-      "западн": { name: "ж/м Західний", lat: 48.4650, lng: 34.9350 },
-      "західн": { name: "ж/м Західний", lat: 48.4650, lng: 34.9350 },
-      "чечел": { name: "Чечелівка", lat: 48.4620, lng: 34.9950 },
-      "лак": { name: "Лакофарбовий завод (з/м Західний)", lat: 48.4680, lng: 34.9520 },
-
-      // --- ПАРУС / ДИЕВКА / ПОКРОВСКИЙ / КОНДРАТЮКА / КАШТАНОВАЯ ---
       "парус": { name: "ж/м Парус", lat: 48.4840, lng: 34.9180 },
       "покровск": { name: "ж/м Покровський", old: "ж/м Комунар", lat: 48.4820, lng: 34.9380 },
-      "покровськ": { name: "ж/м Покровський", old: "ж/м Комунар", lat: 48.4820, lng: 34.9380 },
-      "коммунар": { name: "ж/м Покровський", old: "ж/м Комунар", lat: 48.4820, lng: 34.9380 },
       "комунар": { name: "ж/м Покровський", old: "ж/м Комунар", lat: 48.4820, lng: 34.9380 },
       "кондратюк": { name: "вул. Юрія Кондратюка", old: "вул. Комунарівська", lat: 48.4820, lng: 34.9350 },
-      "коммунаровск": { name: "вул. Юрія Кондратюка", old: "вул. Комунарівська", lat: 48.4820, lng: 34.9350 },
-      "комунарівськ": { name: "вул. Юрія Кондратюка", old: "вул. Комунарівська", lat: 48.4820, lng: 34.9350 },
-      "трофимов": { name: "вул. Велика Діївська (Братів Трофімових)", old: "вул. Братів Трофімових", lat: 48.4840, lng: 34.9180 },
-      "диевск": { name: "вул. Велика Діївська", lat: 48.4840, lng: 34.9180 },
-      "діївськ": { name: "вул. Велика Діївська", lat: 48.4840, lng: 34.9180 },
       "красный камень": { name: "ж/м Червоний Камінь", lat: 48.4830, lng: 34.9520 },
       "червон.*кам": { name: "ж/м Червоний Камінь", lat: 48.4830, lng: 34.9520 },
-      "каштанов": { name: "вул. Каштанова (Таромське)", lat: 48.4710, lng: 34.8250 },
-
-      // --- НАБЕРЕЖНАЯ / КАЙДАКСКИЙ МОСТ / РЕЧПОРТ / СТАН 550 ---
-      "набережн": { name: "Січеславська Набережна / Заводська", lat: 48.4800, lng: 35.0150 },
-      "речпорт": { name: "Річпорт", lat: 48.4805, lng: 35.0210 },
-      "річпорт": { name: "Річпорт", lat: 48.4805, lng: 35.0210 },
-      "стан 550": { name: "Стан 550", lat: 48.4865, lng: 34.9850 },
-      "стан.*550": { name: "Стан 550", lat: 48.4865, lng: 34.9850 },
-      "водокачк": { name: "Водокачка", lat: 48.4910, lng: 34.9480 },
-      "кайдак": { name: "Кайдацький міст", lat: 48.4925, lng: 34.9625 },
-
-      // --- 12 КВАРТАЛ / ТОПОЛЬ / ХМЕЛЬНИЦКОГО / КРАСНОПОЛЬЕ ---
       "12 квартал": { name: "12-й Квартал", lat: 48.4120, lng: 35.0150 },
-      "12.*квартал": { name: "12-й Квартал", lat: 48.4120, lng: 35.0150 },
-      "сталинград": { name: "просп. Богдана Хмельницького", old: "вул. Героїв Сталінграда", lat: 48.4200, lng: 35.0180 },
-      "сталінград": { name: "просп. Богдана Хмельницького", old: "вул. Героїв Сталінграда", lat: 48.4200, lng: 35.0180 },
       "хмельниц": { name: "просп. Богдана Хмельницького", old: "вул. Героїв Сталінграда", lat: 48.4200, lng: 35.0180 },
-      "хмельницьк": { name: "просп. Богдана Хмельницького", old: "вул. Героїв Сталінграда", lat: 48.4200, lng: 35.0180 },
       "топол": { name: "ж/м Тополя", lat: 48.3950, lng: 35.0350 },
-      "сокол": { name: "ж/м Сокіл", lat: 48.4150, lng: 35.0600 },
-      "сокіл": { name: "ж/м Сокіл", lat: 48.4150, lng: 35.0600 },
-      "подстанц": { name: "Підстанція", lat: 48.4250, lng: 35.0220 },
-      "підстанці": { name: "Підстанція", lat: 48.4250, lng: 35.0220 },
-      "краснопол": { name: "Краснопілля", lat: 48.4100, lng: 34.9550 },
-      "краснопіл": { name: "Краснопілля", lat: 48.4100, lng: 34.9550 },
-      "переезд.*мирн": { name: "Переїзд Мирний (Краснопілля)", lat: 48.3980, lng: 34.9850 },
-      "переїзд.*мирн": { name: "Переїзд Мирний (Краснопілля)", lat: 48.3980, lng: 34.9850 },
-      "космическ": { name: "вул. Космічна", lat: 48.4180, lng: 35.0550 },
-      "космічн": { name: "вул. Космічна", lat: 48.4180, lng: 35.0550 },
-      "аэропорт": { name: "Аеропорт Дніпро", lat: 48.3570, lng: 35.1000 },
-      "аеропорт": { name: "Аеропорт Дніпро", lat: 48.3570, lng: 35.1000 },
-
-      // --- ЛЕВЫЙ БЕРЕГ: СЛОБОЖАНСКИЙ / КАРУНЫ / КОСИОРА / КАЛИНОВАЯ / ШОССЕ ---
-      "карун": { name: "вул. Василя Каруни (Амур / з'їзд на Слобожанський)", lat: 48.4910, lng: 35.0560 },
-      "правд": { name: "просп. Слобожанський", old: "просп. Газети Правда", lat: 48.5000, lng: 35.0680 },
-      "слобожанск": { name: "просп. Слобожанський", old: "просп. Газети Правда", lat: 48.5000, lng: 35.0680 },
-      "слобожанськ": { name: "просп. Слобожанський", old: "просп. Газети Правда", lat: 48.5000, lng: 35.0680 },
-      "воронцов": { name: "просп. Мануйлівський", old: "просп. Воронцова", lat: 48.4850, lng: 35.0500 },
-      "мануйловск": { name: "просп. Мануйлівський", old: "просп. Воронцова", lat: 48.4850, lng: 35.0500 },
-      "мануйлівськ": { name: "просп. Мануйлівський", old: "просп. Воронцова", lat: 48.4850, lng: 35.0500 },
-      "косиор": { name: "просп. Петра Калнишевського", old: "вул. Косіора", lat: 48.5110, lng: 35.0780 },
-      "косіор": { name: "просп. Петра Калнишевського", old: "вул. Косіора", lat: 48.5110, lng: 35.0780 },
-      "калнишевск": { name: "просп. Петра Калнишевського", old: "вул. Косіора", lat: 48.5110, lng: 35.0780 },
-      "калнишевськ": { name: "просп. Петра Калнишевського", old: "вул. Косіора", lat: 48.5110, lng: 35.0780 },
+      "карун": { name: "вул. Василя Каруни", lat: 48.4910, lng: 35.0560 },
+      "слобожанск": { name: "просп. Слобожанський", old: "просп. Правди", lat: 48.5000, lng: 35.0680 },
+      "правд": { name: "просп. Слобожанський", old: "просп. Правди", lat: 48.5000, lng: 35.0680 },
       "калинов": { name: "вул. Калинова", lat: 48.5080, lng: 35.0550 },
-      "солнечн": { name: "ж/м Сонячний", lat: 48.4750, lng: 35.0650 },
-      "сонячн": { name: "ж/м Сонячний", lat: 48.4750, lng: 35.0650 },
-      "малиновск": { name: "Набережна Сонячна", old: "вул. Малиновського", lat: 48.4750, lng: 35.0650 },
-      "малиновськ": { name: "Набережна Сонячна", old: "вул. Малиновського", lat: 48.4750, lng: 35.0650 },
       "донецк.*шоссе": { name: "Донецьке шосе", lat: 48.5200, lng: 35.0100 },
-      "донецьк.*шосе": { name: "Донецьке шосе", lat: 48.5200, lng: 35.0100 },
       "дш": { name: "Донецьке шосе", lat: 48.5200, lng: 35.0100 },
-      "караван": { name: "ТРЦ Караван (Лівобережний)", lat: 48.5300, lng: 35.0250 },
-      "левобережн": { name: "ж/м Лівобережний", lat: 48.5250, lng: 35.0350 },
-      "лівобереж": { name: "ж/м Лівобережний", lat: 48.5250, lng: 35.0350 },
-      "фрунзенск": { name: "ж/м Ломівський", old: "ж/м Фрунзенський", lat: 48.5050, lng: 34.9750 },
-      "фрунзенськ": { name: "ж/м Ломівський", old: "ж/м Фрунзенський", lat: 48.5050, lng: 34.9750 },
-      "ломовск": { name: "ж/м Ломівський", old: "ж/м Фрунзенський", lat: 48.5050, lng: 34.9750 },
-      "ломівськ": { name: "ж/м Ломівський", old: "ж/м Фрунзенський", lat: 48.5050, lng: 34.9750 },
-      "ингульск": { name: "вул. Інгульська (АНД)", lat: 48.5120, lng: 35.0420 },
-      "інгульськ": { name: "вул. Інгульська (АНД)", lat: 48.5120, lng: 35.0420 },
-      "луговск": { name: "вул. Луговська (АНД)", lat: 48.4890, lng: 35.0480 },
-      "луговськ": { name: "вул. Луговська (АНД)", lat: 48.4890, lng: 35.0480 },
-      "солончаков": { name: "вул. Солончакова (АНД)", lat: 48.5010, lng: 35.0350 },
-      "моторн": { name: "вул. Моторна (Березанівка)", lat: 48.5350, lng: 34.9600 },
-      "петрозаводск": { name: "вул. Петрозаводська (Ковпака)", lat: 48.5300, lng: 34.9850 },
-      "петрозаводськ": { name: "вул. Петрозаводська (Ковпака)", lat: 48.5300, lng: 34.9850 },
-      "молодогвард": { name: "вул. Молодогвардійська (під мостами)", lat: 48.4680, lng: 35.1220 },
-      "золотые ключи": { name: "Золоті Ключі (Слобожанське)", lat: 48.5280, lng: 35.0920 },
-      "золоті ключі": { name: "Золоті Ключі (Слобожанське)", lat: 48.5280, lng: 35.0920 },
-      "бык": { name: "Пост «Бик» (Підгородне)", lat: 48.5350, lng: 35.1020 },
-      "бик": { name: "Пост «Бик» (Підгородне)", lat: 48.5350, lng: 35.1020 }
+      "караван": { name: "ТРЦ Караван", lat: 48.5300, lng: 35.0250 }
     };
 
     function resolveLocationFromText(rawText) {
       const lower = (rawText || "").toLowerCase();
       const isIntersection = /(?:на\s+перехрест|на\s+перетині|перетин|перехрестя|угол|на\s+углу|кут\s+вулиць)/i.test(lower);
-      
       const sortedKeys = Object.keys(DNIPRO_STREETS_MAP).sort((a, b) => b.length - a.length);
       const matches = [];
 
       for (const key of sortedKeys) {
         if (new RegExp(key, "i").test(lower)) {
           const item = DNIPRO_STREETS_MAP[key];
-          if (!matches.some(m => m.name === item.name)) {
-            matches.push(item);
-          }
+          if (!matches.some(m => m.name === item.name)) matches.push(item);
         }
       }
 
@@ -1274,140 +518,58 @@
         return {
           name: `${matches[0].name} / ${matches[1].name} (перехрестя)`,
           lat: Number(((matches[0].lat + matches[1].lat) / 2).toFixed(5)),
-          lng: Number(((matches[0].lng + matches[1].lng) / 2).toFixed(5)),
-          isIntersection: true
+          lng: Number(((matches[0].lng + matches[1].lng) / 2).toFixed(5))
         };
       }
-
-      if (matches.length > 0) {
-        return {
-          name: matches[0].name,
-          lat: matches[0].lat,
-          lng: matches[0].lng,
-          isIntersection: false
-        };
-      }
-      return null;
+      return matches.length > 0 ? matches[0] : null;
     }
 
     function getStreetRenameNote(text) {
       const lower = (text || "").toLowerCase();
-      const isLandmarkOnly = /(?:ровд|восток\s*газ|млин|варус|атб|заправк|окко|вокзал|станція|міст|пост|парк|озерк|бик)/i.test(lower);
-
+      const isLandmark = /(?:ровд|восток\s*газ|млин|варус|атб|заправк|окко|вокзал|станція|міст|пост|парк|озерк|бик)/i.test(lower);
       const sortedKeys = Object.keys(DNIPRO_STREETS_MAP).sort((a, b) => b.length - a.length);
+
       for (const key of sortedKeys) {
         if (new RegExp(key, "i").test(lower)) {
           const val = DNIPRO_STREETS_MAP[key];
-          if (val.old) return `💡 ${val.old} ➔ по-новому: <b>${val.name}</b>`;
-          else return `💡 <b>${val.name}</b> (назва не змінювалась)`;
+          return val.old ? `💡 ${val.old} ➔ по-новому: <b>${val.name}</b>` : `💡 <b>${val.name}</b> (назва не змінювалась)`;
         }
       }
-
-      if (isLandmarkOnly) {
-        return `💡 Локальний міський орієнтир`;
-      }
-      return `💡 Міський орієнтир`;
+      return isLandmark ? `💡 Локальний міський орієнтир` : `💡 Міський орієнтир`;
     }
 
     const LIFETIME_MS = 40 * 60 * 1000;
     const FRESH_THRESHOLD_MS = 10 * 60 * 1000;
-
     let showTrafficLights = localStorage.getItem("radar_tl_visible") !== "false";
     let showRouteStatusBar = localStorage.getItem("radar_show_route_status") !== "false";
     let currentMapType = localStorage.getItem("radar_map_type") || "google";
     let isEditMode = false;
     let trafficMarkersMap = {};
     let allPoints = [];
-
-    let filterShowGreen = true;
-    let filterShowRed = true;
-
-    let activeActionPoint = null;
-    let activeActionMarker = null;
-    let activeActionTrafficLight = null;
-    let pendingRelocation = null;
-
+    let filterShowGreen = true, filterShowRed = true;
+    let activeActionPoint = null, activeActionMarker = null, activeActionTrafficLight = null, pendingRelocation = null;
     let learnedRules = [];
+
     try {
       const storedRules = localStorage.getItem("radar_learned_rules");
       if (storedRules) learnedRules = JSON.parse(storedRules);
     } catch(e) {}
-
-    let screenWakeLock = null;
-    async function requestWakeLock() {
-      try {
-        if ('wakeLock' in navigator && !screenWakeLock) {
-          screenWakeLock = await navigator.wakeLock.request('screen');
-          screenWakeLock.addEventListener('release', () => { screenWakeLock = null; });
-        }
-      } catch (err) {}
-    }
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') requestWakeLock();
-    });
-    ['click', 'touchstart', 'touchend', 'mousemove'].forEach(evt => {
-      window.addEventListener(evt, () => { if (!screenWakeLock) requestWakeLock(); }, { passive: true });
-    });
-    setInterval(() => {
-      if (document.visibilityState === 'visible' && !screenWakeLock) requestWakeLock();
-    }, 10000);
-    requestWakeLock();
 
     const isMobile = window.innerWidth < 768;
     const INITIAL_CENTER = [48.484, 34.985];
     const INITIAL_ZOOM = isMobile ? 12 : 13;
     const map = L.map('map', { zoomControl: false }).setView(INITIAL_CENTER, INITIAL_ZOOM);
 
-    const googleLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', { subdomains: ['0', '1', '2', '3'], maxZoom: 20, attribution: 'Google Maps' });
-    const esriLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: 'Esri World Street Map' });
-    const satelliteLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', { subdomains: ['0', '1', '2', '3'], maxZoom: 20, attribution: 'Google Satellite Hybrid' });
+    const googleLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', { subdomains: ['0', '1', '2', '3'], maxZoom: 20 });
+    const esriLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 });
+    const satelliteLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', { subdomains: ['0', '1', '2', '3'], maxZoom: 20 });
 
     if (currentMapType === "osm") esriLayer.addTo(map);
     else if (currentMapType === "satellite") satelliteLayer.addTo(map);
     else googleLayer.addTo(map);
 
-    window.addEventListener('resize', () => {
-      setTimeout(() => { if (map) map.invalidateSize(); }, 120);
-    });
-
-    function updateMapLayerBtnUI() {
-      const iconEl = document.getElementById("btnMapLayerIcon");
-      const textEl = document.getElementById("btnMapLayerText");
-      if (!textEl) return;
-      if (currentMapType === "google") { if (iconEl) iconEl.innerText = "🗺️"; textEl.innerText = "Карта: Google (з вулицями)"; }
-      else if (currentMapType === "osm") { if (iconEl) iconEl.innerText = "🏙️"; textEl.innerText = "Карта: Вулична (Esri)"; }
-      else if (currentMapType === "satellite") { if (iconEl) iconEl.innerText = "🛰️"; textEl.innerText = "Карта: Google Супутник (3D)"; }
-    }
-    updateMapLayerBtnUI();
-
-    function toggleMapLayer(forcedType = null) {
-      if (forcedType) {
-        if (map.hasLayer(googleLayer)) map.removeLayer(googleLayer);
-        if (map.hasLayer(esriLayer)) map.removeLayer(esriLayer);
-        if (map.hasLayer(satelliteLayer)) map.removeLayer(satelliteLayer);
-        currentMapType = forcedType;
-        if (forcedType === 'osm') esriLayer.addTo(map);
-        else if (forcedType === 'satellite') satelliteLayer.addTo(map);
-        else googleLayer.addTo(map);
-      } else {
-        if (currentMapType === "google") {
-          if (map.hasLayer(googleLayer)) map.removeLayer(googleLayer);
-          esriLayer.addTo(map); currentMapType = "osm";
-        } else if (currentMapType === "osm") {
-          if (map.hasLayer(esriLayer)) map.removeLayer(esriLayer);
-          satelliteLayer.addTo(map); currentMapType = "satellite";
-        } else {
-          if (map.hasLayer(satelliteLayer)) map.removeLayer(satelliteLayer);
-          googleLayer.addTo(map); currentMapType = "google";
-        }
-      }
-      localStorage.setItem("radar_map_type", currentMapType);
-      updateMapLayerBtnUI();
-    }
-
     const markersLayer = L.layerGroup().addTo(map);
     const trafficLightLayer = L.layerGroup().addTo(map);
-
     if (!showTrafficLights) map.removeLayer(trafficLightLayer);
 
     function showToast(text) {
@@ -1429,53 +591,26 @@
     } catch(e) {}
 
     const SECTOR_DEFS = {
-      s1: {
-        name: "Парус — Вокзал — Робоча",
-        keys: ["парус", "покровськ", "комунар", "трофимов", "червон.*кам", "набережн.*завод", "речпорт", "річпорт", "водокачк", "стан.*550", "водолікарн", "свобод", "кайдак", "павлов", "белелюб", "краснозавод", "комбайн", "вокзал", "старомостов", "озерк", "курчатов", "шмідт", "бандер", "робоч", "канатн", "криворізьк", "каштанов", "савченк", "чорновол"],
-        bounds: { minLat: 48.435, maxLat: 48.510, minLng: 34.800, maxLng: 35.038 }
-      },
-      s2: {
-        name: "Центр — Нагірка — Перемога",
-        keys: ["центр", "міст.*сіті", "яворницьк", "нагірк", "гагарін", "науки", "перемог", "артем", "січов.*стрільц", "карл.*маркс", "чкалов", "дзержинськ", "комсомольськ", "плеханов", "ленін", "бородинськ"],
-        bounds: { minLat: 48.410, maxLat: 48.480, minLng: 35.038, maxLng: 35.120 }
-      },
-      s3: {
-        name: "Тополя — 12 Квартал — Поля",
-        keys: ["12.*квартал", "топол", "сокіл", "шинн", "хмельницьк", "поля", "кіров", "титов", "аеропорт", "барвінківськ", "переїзд.*мирн", "тещин.*язик", "гавриленк", "ребінін", "вакуленчук", "стромцов"],
-        bounds: { minLat: 48.320, maxLat: 48.445, minLng: 34.920, maxLng: 35.130 }
-      },
-      s4: {
-        name: "Мазепи — Нігояна — Західний",
-        keys: ["мазеп", "петровськ", "нігоян", "калінін", "західн", "чечел", "камчатськ", "калдирськ", "лак"],
-        bounds: { minLat: 48.450, maxLat: 48.485, minLng: 34.910, maxLng: 34.980 }
-      },
-      s5: {
-        name: "Лівий: Шосе — Калинова",
-        keys: ["донецьк.*шосе", "караван", "лівобереж", "калинов", "янтарн", "клочко", "фрунзенськ", "інгульськ", "моторн", "петрозаводськ"],
-        bounds: { minLat: 48.480, maxLat: 48.560, minLng: 34.930, maxLng: 35.070 }
-      },
-      s6: {
-        name: "Лівий: Слобожанський — Сонячний",
-        keys: ["слобожанськ", "правд", "сонячн", "малиновськ", "придніпров", "бик", "золоті ключі", "молодогвард", "карун", "косіор", "калнишевськ"],
-        bounds: { minLat: 48.440, maxLat: 48.540, minLng: 35.040, maxLng: 35.160 }
-      }
+      s1: { name: "Парус — Вокзал — Робоча", keys: ["парус", "покровськ", "робоч", "кайдак", "вокзал", "савченк"], bounds: { minLat: 48.435, maxLat: 48.510, minLng: 34.800, maxLng: 35.038 } },
+      s2: { name: "Центр — Нагірка — Перемога", keys: ["центр", "яворницьк", "гагарін", "науки", "перемог", "артем"], bounds: { minLat: 48.410, maxLat: 48.480, minLng: 35.038, maxLng: 35.120 } },
+      s3: { name: "Тополя — 12 Квартал — Поля", keys: ["12.*квартал", "топол", "поля", "кіров", "титов"], bounds: { minLat: 48.320, maxLat: 48.445, minLng: 34.920, maxLng: 35.130 } },
+      s4: { name: "Мазепи — Нігояна — Західний", keys: ["мазеп", "нігоян", "західн"], bounds: { minLat: 48.450, maxLat: 48.485, minLng: 34.910, maxLng: 34.980 } },
+      s5: { name: "Лівий: Шосе — Калинова", keys: ["донецьк.*шосе", "караван", "калинов"], bounds: { minLat: 48.480, maxLat: 48.560, minLng: 34.930, maxLng: 35.070 } },
+      s6: { name: "Лівий: Слобожанський — Сонячний", keys: ["слобожанськ", "правд", "сонячн", "карун"], bounds: { minLat: 48.440, maxLat: 48.540, minLng: 35.040, maxLng: 35.160 } }
     };
 
     function toggleRouteSubmenu(e) {
       if (e) e.stopPropagation();
       const menu = document.getElementById("routeSubmenu");
-      const arrow = document.getElementById("routeSubmenuArrow");
-      const isOpen = menu.style.display === "flex";
-      menu.style.display = isOpen ? "none" : "flex";
-      arrow.innerText = isOpen ? "▴" : "▾";
-      if (!isOpen) syncSectorCheckboxesUI();
+      const isVis = menu.style.display === "flex";
+      menu.style.display = isVis ? "none" : "flex";
+      document.getElementById("routeSubmenuArrow").innerText = isVis ? "▴" : "▾";
     }
 
     function closeRouteSubmenu() {
       const menu = document.getElementById("routeSubmenu");
-      const arrow = document.getElementById("routeSubmenuArrow");
       if (menu) menu.style.display = "none";
-      if (arrow) arrow.innerText = "▴";
+      document.getElementById("routeSubmenuArrow").innerText = "▴";
     }
 
     function onSubmenuSectorChange() {
@@ -1486,270 +621,235 @@
       });
       if (activeSectors.length === 0) activeSectors = ['s1'];
       localStorage.setItem("radar_active_sectors", JSON.stringify(activeSectors));
-      syncSectorCheckboxesUI();
-      renderMarkers();
-      renderTrafficLights();
-      updateRouteStatus();
-    }
-
-    function syncSectorCheckboxesUI() {
-      ["s1", "s2", "s3", "s4", "s5", "s6"].forEach(id => {
-        const elSub = document.getElementById(`sub_sec_${id}`);
-        const isAct = activeSectors.includes(id);
-        if (elSub) elSub.checked = isAct;
-      });
-
-      const isOnlyRoute = activeSectors.length === 1 && activeSectors[0] === "s1";
-      const isAll = activeSectors.length === 6;
-
-      const qSubRoute = document.getElementById("btnQuickSubRoute");
-      const qSubAll = document.getElementById("btnQuickSubAll");
-      if (qSubRoute) qSubRoute.classList.toggle("active", isOnlyRoute);
-      if (qSubAll) qSubAll.classList.toggle("active", isAll);
-
-      const subtitle = document.getElementById("sectorSubtitle");
-      if (subtitle) {
-        if (isOnlyRoute) subtitle.innerText = "📍 Режим: Мій маршрут";
-        else if (isAll) subtitle.innerText = "🌐 Режим: Весь Дніпро";
-        else subtitle.innerText = `🎯 Обрано секторів: ${activeSectors.length}`;
-      }
+      renderMarkers(); renderTrafficLights(); updateRouteStatus();
     }
 
     function setSectorPreset(type) {
-      if (type === 'route') activeSectors = ['s1'];
-      else if (type === 'all') activeSectors = ['s1', 's2', 's3', 's4', 's5', 's6'];
+      activeSectors = type === 'route' ? ['s1'] : ['s1', 's2', 's3', 's4', 's5', 's6'];
       localStorage.setItem("radar_active_sectors", JSON.stringify(activeSectors));
-      syncSectorCheckboxesUI();
-      renderMarkers();
-      renderTrafficLights();
-      updateRouteStatus();
+      ["s1", "s2", "s3", "s4", "s5", "s6"].forEach(id => {
+        const el = document.getElementById(`sub_sec_${id}`);
+        if (el) el.checked = activeSectors.includes(id);
+      });
+      document.getElementById("btnQuickSubRoute").classList.toggle("active", type === 'route');
+      document.getElementById("btnQuickSubAll").classList.toggle("active", type !== 'route');
+      renderMarkers(); renderTrafficLights(); updateRouteStatus();
       showToast(type === 'route' ? "🎯 Тільки мій шлях!" : "🌐 Весь Дніпро!");
     }
 
-    map.on('click', () => { 
-      closeRouteSubmenu();
-      closeMarkerActionSheet();
-      closeTrafficLightActionSheet();
-    });
-
     function isCleanPoint(p) {
-      const fullStr = ((p.raw_text || p.text || "") + " " + (p.address || "")).toLowerCase();
-      const negationWords = ["нет", "немає", "убрали", "прибрали", "сняли", "зняли", "поехали", "поїхали", "уехали", "пропали", "чисто по", "немає вже", "уже чисто"];
-      const hasNegation = negationWords.some(nw => fullStr.includes(nw));
-
-      const dangerKeywords = ["мент", "полиц", "поліц", "бп", "блокпост", "патруль", "тормоз", "стоят", "облав", "тцк", "бусик", "мусор", "зупиня", "шмонал", "пiдор", "пидор", "куча ментов"];
-      const hasDanger = dangerKeywords.some(w => fullStr.includes(w));
-
-      if (hasDanger) {
-        if (hasNegation) return true;
-        return false;
-      }
-
+      const t = ((p.raw_text || p.text || "") + " " + (p.address || "")).toLowerCase();
+      const neg = ["нет", "немає", "убрали", "прибрали", "сняли", "зняли", "поехали", "поїхали", "уехали", "чисто"];
+      const danger = ["мент", "полиц", "поліц", "бп", "блокпост", "патруль", "тормоз", "стоят", "облав", "тцк", "бусик"];
+      if (danger.some(w => t.includes(w))) return neg.some(nw => t.includes(nw));
       if (p.is_clean === true || p.color === "green" || p.status === "чисто") return true;
       if (p.is_clean === false && (p.color === "red" || p.status === "опасно")) return false;
-
-      for (const rule of learnedRules) {
-        if (rule && rule.phrase && fullStr.includes(rule.phrase.toLowerCase())) {
-          return rule.is_clean;
-        }
-      }
-
-      if (/(?:🌞|☀️|🌤️|чисто|чистенько|пусто|вільно|спокійно|проїзд|без\s+бп|сонце|сонечко|солнечно|солнце|ясно|сухо|пролітайте|знялися)/i.test(fullStr) && !/(?:не\s+чисто|не\s+пусто)/i.test(fullStr)) {
-        return true;
-      }
-      return false;
+      return /(?:🌞|☀️|чисто|пусто|вільно|спокійно|проїзд|без\s+бп|сонце|ясно)/i.test(t) && !/(?:не\s+чисто)/i.test(t);
     }
 
     function isPointInActiveSectors(p) {
-      if (p.needs_training) return true;
       if (activeSectors.length === 6) return true;
-      const fullText = ((p.raw_text || p.text || "") + " " + (p.address || "")).toLowerCase();
-      const lat = p.lat, lng = p.lng;
+      const t = ((p.raw_text || p.text || "") + " " + (p.address || "")).toLowerCase();
       return activeSectors.some(secId => {
         const def = SECTOR_DEFS[secId];
         if (!def) return false;
-        if (def.keys.some(k => new RegExp(k, "i").test(fullText))) return true;
-        if (lat >= def.bounds.minLat && lat <= def.bounds.maxLat && lng >= def.bounds.minLng && lng <= def.bounds.maxLng) return true;
-        return false;
+        if (def.keys.some(k => new RegExp(k, "i").test(t))) return true;
+        return (p.lat >= def.bounds.minLat && p.lat <= def.bounds.maxLat && p.lng >= def.bounds.minLng && p.lng <= def.bounds.maxLng);
       });
     }
 
+    let manualOverrides = {};
+    try { manualOverrides = JSON.parse(localStorage.getItem("radar_tl_overrides") || "{}"); } catch(e) {}
+
     function updateRouteStatus() {
       const bar = document.getElementById("routeStatusBar");
-      const icon = document.getElementById("routeStatusIcon");
-      const text = document.getElementById("routeStatusText");
       if (!bar) return;
-
-      if (!showRouteStatusBar) {
-        bar.style.display = "none";
-        return;
-      }
+      if (!showRouteStatusBar) { bar.style.display = "none"; return; }
       bar.style.display = "inline-flex";
 
       const now = Date.now();
-      const redCheckpoints = [];
+      const redPoints = [];
 
       checkpoints.forEach(cp => {
         const override = manualOverrides[cp.id];
         const isOverrideActive = override && (now - override.time < LIFETIME_MS);
-
         const matched = allPoints.filter(p => {
           const t = ((p.raw_text || p.text || "") + " " + (p.address || "")).toLowerCase();
-          return cp.keys.some(k => {
-            if (k === "стан") return /\bстан\b/i.test(t) && !/остановил/i.test(t);
-            return new RegExp(k, "i").test(t);
-          });
-        });
-        matched.sort((a,b) => (b.time||0) - (a.time||0));
+          return cp.keys.some(k => new RegExp(k, "i").test(t));
+        }).sort((a,b) => (b.time||0) - (a.time||0));
+
         const latest = matched[0];
-
         let isRed = false;
-        if (isOverrideActive) {
-          if (override.status === 'red') isRed = true;
-        } else if (latest) {
-          if (!isCleanPoint(latest)) isRed = true;
-        }
+        if (isOverrideActive) isRed = (override.status === 'red');
+        else if (latest) isRed = !isCleanPoint(latest);
 
-        if (isRed) {
-          let shortName = cp.name.split('(')[0].replace(/вул\.\s*/i, '').replace(/РОВД\s*\/\s*/i, '').trim();
-          redCheckpoints.push(shortName);
-        }
+        if (isRed) redPoints.push(cp.name.split('(')[0].trim());
       });
 
-      if (redCheckpoints.length > 0) {
+      if (redPoints.length > 0) {
         bar.classList.add("danger");
-        if (icon) icon.innerText = "🔴";
-        if (redCheckpoints.length === 1) {
-          if (text) text.innerText = `Мій шлях: Увага (${redCheckpoints[0]})!`;
-        } else {
-          if (text) text.innerText = `Мій шлях: ${redCheckpoints.length} БП (${redCheckpoints.slice(0, 2).join(', ')}${redCheckpoints.length > 2 ? '...' : ''})!`;
-        }
+        document.getElementById("routeStatusIcon").innerText = "🔴";
+        document.getElementById("routeStatusText").innerText = `Мій шлях: ${redPoints[0]} БП!`;
       } else {
         bar.classList.remove("danger");
-        if (icon) icon.innerText = "🟢";
-        if (text) text.innerText = "Мій шлях: Чисто";
+        document.getElementById("routeStatusIcon").innerText = "🟢";
+        document.getElementById("routeStatusText").innerText = "Мій шлях: Чисто";
       }
     }
 
-    function smoothGlideMarker(marker, startLatLng, endLatLng, duration = 900, onDone = null) {
+    function smoothGlideMarker(marker, startLatLng, endLatLng, duration = 850, onDone = null) {
       if (!marker) { if (onDone) onDone(); return; }
       const startTime = performance.now();
-      function animateStep(currentTime) {
-        const elapsed = currentTime - startTime;
-        const progress = Math.min(elapsed / duration, 1);
+      function step(now) {
+        const progress = Math.min((now - startTime) / duration, 1);
         const ease = 1 - Math.pow(1 - progress, 3);
-
-        const currentLat = startLatLng.lat + (endLatLng.lat - startLatLng.lat) * ease;
-        const currentLng = startLatLng.lng + (endLatLng.lng - startLatLng.lng) * ease;
-        marker.setLatLng([currentLat, currentLng]);
-
-        if (progress < 1) {
-          requestAnimationFrame(animateStep);
-        } else {
-          marker.setLatLng(endLatLng);
-          if (onDone) onDone();
-        }
+        marker.setLatLng([startLatLng.lat + (endLatLng.lat - startLatLng.lat) * ease, startLatLng.lng + (endLatLng.lng - startLatLng.lng) * ease]);
+        if (progress < 1) requestAnimationFrame(step);
+        else { marker.setLatLng(endLatLng); if (onDone) onDone(); }
       }
-      requestAnimationFrame(animateStep);
+      requestAnimationFrame(step);
     }
 
     function findMarkerByPoint(p) {
       let found = null;
       markersLayer.eachLayer(l => {
-        if (l.getLatLng && Math.abs(l.getLatLng().lat - p.lat) < 0.0001 && Math.abs(l.getLatLng().lng - p.lng) < 0.0001) {
-          found = l;
-        }
+        if (l.getLatLng && Math.abs(l.getLatLng().lat - p.lat) < 0.0001 && Math.abs(l.getLatLng().lng - p.lng) < 0.0001) found = l;
       });
       return found;
     }
 
-    // НАДЁЖНОЕ ИЗМЕНЕНИЕ ВЕРДИКТА В МУЛЬТИ-ПОПАПАХ
     window.setPointVerdictDirect = async function(fbKey, isClean, btnEl) {
       const p = allPoints.find(x => x._fbKey === fbKey);
       if (!p) return;
-      
-      p.is_clean = isClean;
-      p.color = isClean ? "green" : "red";
-      p.status = isClean ? "чисто" : "опасно";
+      p.is_clean = isClean; p.color = isClean ? "green" : "red"; p.status = isClean ? "чисто" : "опасно";
 
-      // Мгновенно обновляем заголовок отчёта прямо внутри открытого попапа
       if (btnEl) {
         const row = btnEl.closest('.report-row-item');
         if (row) {
-          const title = row.querySelector('.report-status-title');
-          if (title) {
-            title.innerHTML = `${isClean ? "🟢" : "🔴"} ${p.text || p.raw_text || ""}`;
-          }
+          const t = row.querySelector('.report-status-title');
+          if (t) t.innerHTML = `${isClean ? "🟢" : "🔴"} ${p.text || p.raw_text || ""}`;
         }
       }
-
-      // Обновляем цвет самого маркера на карте
       const marker = findMarkerByPoint(p);
       if (marker) {
-        const circle = marker.getElement()?.querySelector('.radar-circle');
-        if (circle) {
-          circle.classList.toggle('color-green', isClean);
-          circle.classList.toggle('color-red', !isClean);
-        }
+        const c = marker.getElement()?.querySelector('.radar-circle');
+        if (c) { c.classList.toggle('color-green', isClean); c.classList.toggle('color-red', !isClean); }
       }
 
       if (fbKey) {
         fetch(FIREBASE_POINTS_URL.replace(".json", `/${fbKey}.json`), {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
+          method: "PATCH", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ is_clean: isClean, color: p.color, status: p.status })
         }).catch(() => {});
       }
-
-      const rawText = p.text || p.raw_text || "";
-      let phrase = rawText.replace(/^(?:❓|\bчисто\b|\bбп\b|\bпатруль\b|\(чисто\))/gi, "").trim().toLowerCase();
-      if (phrase.length >= 3) {
-        learnedRules.push({ phrase: phrase, is_clean: isClean });
-        localStorage.setItem("radar_learned_rules", JSON.stringify(learnedRules));
-        fetch(FIREBASE_KB_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ phrase: phrase, is_clean: isClean, updated_at: Date.now() })
-        }).catch(() => {});
-      }
-
       showToast(isClean ? "🟢 Встановлено: ЧИСТО!" : "🔴 Встановлено: БЛОКПОСТ!");
-      updateRouteStatus();
-      renderTrafficLights();
+      updateRouteStatus(); renderTrafficLights();
     };
 
-    window.notifyAiAboutPoint = function(fbKey) {
+    window.markPointAsSpam = async function(fbKey) {
+      const p = allPoints.find(x => x._fbKey === fbKey);
+      if (!p) return;
+      const txt = (p.text || p.raw_text || "").trim();
+      let phrase = txt.length > 30 ? txt.substring(0, 30).toLowerCase() : txt.toLowerCase();
+
+      if (confirm(`Заблокувати як СПАМ та видалити?\n«${txt}»`)) {
+        if (!spamFilterWords.includes(phrase)) {
+          spamFilterWords.push(phrase);
+          fetch(FIREBASE_SPAM_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(phrase) }).catch(() => {});
+        }
+        if (fbKey) fetch(FIREBASE_POINTS_URL.replace(".json", `/${fbKey}.json`), { method: "DELETE" }).catch(() => {});
+        allPoints = allPoints.filter(x => x._fbKey !== fbKey);
+        renderMarkers(); renderTrafficLights(); updateRouteStatus();
+        showToast("🚫 Спам назавжди заблоковано!");
+      }
+    };
+
+    window.trainPointRuleFromPopup = function(fbKey) {
       const p = allPoints.find(x => x._fbKey === fbKey);
       if (!p) return;
       if (!aiPillPanel.classList.contains("expanded")) toggleAiPillExpand();
-      const rawText = p.text || p.raw_text || "";
-      aiInlineInput.value = `Перенеси мітку [KEY:${fbKey}]: "${rawText}" на...`;
-      aiInlineInput.focus();
-      showToast("🤖 Мітку передано ШІ-штурману!");
+      document.getElementById("learnInputAlias").value = (p.text || p.raw_text || "").replace(/^(?:❓|\bчисто\b|\bбп\b|\bпатруль\b|\(чисто\))/gi, "").trim();
+      document.getElementById("learnInputTarget").value = "";
+      document.getElementById("learnInputTarget").focus();
+      showToast("🧠 Введіть правильну адресу (=)!");
+    };
+
+    function clearAiLearnInputs() {
+      document.getElementById("learnInputAlias").value = "";
+      document.getElementById("learnInputTarget").value = "";
+    }
+
+    async function executeManualLearn() {
+      const alias = document.getElementById("learnInputAlias").value.trim().toLowerCase();
+      const targetStr = document.getElementById("learnInputTarget").value.trim();
+      if (!alias || !targetStr) return alert("Заповніть обидва поля: [Що шукати] = [Куди вести]");
+
+      let resolved = resolveLocationFromText(targetStr);
+      let lat = resolved ? resolved.lat : null, lng = resolved ? resolved.lng : null, realName = resolved ? resolved.name : targetStr;
+
+      if (!lat || !lng) {
+        try {
+          const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(targetStr + ", Дніпро")}&countrycodes=ua&limit=1`);
+          const data = await r.json();
+          if (data && data[0]) { lat = parseFloat(data[0].lat); lng = parseFloat(data[0].lon); realName = data[0].display_name.split(",")[0]; }
+        } catch(e) {}
+      }
+      if (!lat || !lng) return alert("Не вдалося знайти координати для зазначеного місця.");
+
+      const newEntry = { name: realName, lat: Number(lat.toFixed(5)), lng: Number(lng.toFixed(5)) };
+      DNIPRO_STREETS_MAP[alias] = newEntry;
+
+      const safeKey = encodeURIComponent(alias).replace(/\./g, '%2E');
+      fetch(FIREBASE_CUSTOM_STREETS_URL.replace(".json", `/${safeKey}.json`), { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(newEntry) }).catch(() => {});
+
+      allPoints.forEach(pt => {
+        if ((pt.text || pt.raw_text || "").toLowerCase().includes(alias)) {
+          let m = findMarkerByPoint(pt);
+          if (m) smoothGlideMarker(m, L.latLng(pt.lat, pt.lng), L.latLng(newEntry.lat, newEntry.lng), 850);
+          pt.lat = newEntry.lat; pt.lng = newEntry.lng; pt.address = newEntry.name;
+        }
+      });
+
+      map.flyTo([newEntry.lat, newEntry.lng], 16, { animate: true, duration: 0.85 });
+      clearAiLearnInputs();
+      showToast(`✅ «${alias} = ${realName}» збережено!`);
+      setTimeout(() => { renderMarkers(); updateRouteStatus(); }, 900);
+    }
+
+    function openKnowledgeBaseModal(e) {
+      if (e) e.stopPropagation();
+      const modal = document.getElementById("knowledgeBaseModal");
+      const streetsBox = document.getElementById("customStreetsList");
+      const spamBox = document.getElementById("spamFiltersList");
+      streetsBox.innerHTML = ""; spamBox.innerHTML = "";
+
+      const entries = Object.entries(customStreetsCloud);
+      if (entries.length === 0) streetsBox.innerHTML = '<span style="font-size:10px; color:#64748b;">Немає записів</span>';
+      else entries.forEach(([rawKey, it]) => {
+        const k = decodeURIComponent(rawKey);
+        streetsBox.innerHTML += `<div style="display:flex; justify-content:space-between; font-size:10px; padding:3px 0; border-bottom:1px solid #1e293b;"><span>«${k}» ➔ ${it.name}</span><span style="color:#ef4444; cursor:pointer;" onclick="deleteCustomRule('${rawKey}')">🗑️</span></div>`;
+      });
+
+      spamFilterWords.slice(-12).forEach(w => {
+        spamBox.innerHTML += `<div style="display:flex; justify-content:space-between; font-size:10px; padding:3px 0; border-bottom:1px solid #1e293b;"><span>«${w}»</span></div>`;
+      });
+      modal.style.display = "flex";
+    }
+
+    function closeKnowledgeBaseModal() { document.getElementById("knowledgeBaseModal").style.display = "none"; }
+    window.deleteCustomRule = async function(rawKey) {
+      delete customStreetsCloud[rawKey]; delete DNIPRO_STREETS_MAP[decodeURIComponent(rawKey)];
+      await fetch(FIREBASE_CUSTOM_STREETS_URL.replace(".json", `/${rawKey}.json`), { method: "DELETE" });
+      openKnowledgeBaseModal(); showToast("🗑️ Видалено!");
     };
 
     function openMarkerActionSheet(point, marker) {
-      activeActionPoint = point;
-      activeActionMarker = marker || findMarkerByPoint(point);
+      activeActionPoint = point; activeActionMarker = marker || findMarkerByPoint(point);
       document.getElementById("markerActionSheet").style.display = "flex";
     }
-
-    function closeMarkerActionSheet(e) {
-      if (e && e.target && e.target.id !== "markerActionSheet" && !e.target.closest(".action-sheet-card")) return;
-      document.getElementById("markerActionSheet").style.display = "none";
-    }
-
-    function sheetStartManualDrag() {
-      closeMarkerActionSheet();
-      if (!activeActionPoint) return;
-      startDirectManualDrag(activeActionPoint._fbKey);
-    }
-
-    function sheetStartTrainModal() {
-      closeMarkerActionSheet();
-      if (!activeActionPoint) return;
-      openTrainingModal(activeActionPoint, activeActionMarker);
-    }
+    function closeMarkerActionSheet() { document.getElementById("markerActionSheet").style.display = "none"; }
+    function sheetStartManualDrag() { closeMarkerActionSheet(); if (activeActionPoint) startDirectManualDrag(activeActionPoint._fbKey); }
+    function sheetStartTrainModal() { closeMarkerActionSheet(); if (activeActionPoint) openTrainingModal(activeActionPoint, activeActionMarker); }
 
     function openTrafficLightActionSheet(cpId) {
       activeActionTrafficLight = cpId;
@@ -1757,1027 +857,232 @@
       if (cp) document.getElementById("tlSheetTitle").innerText = `🚦 ${cp.name}`;
       document.getElementById("trafficLightActionSheet").style.display = "flex";
     }
+    function closeTrafficLightActionSheet() { document.getElementById("trafficLightActionSheet").style.display = "none"; }
+    function sheetSetTlMode(mode) { closeTrafficLightActionSheet(); if (activeActionTrafficLight) window.setTrafficLightManual(activeActionTrafficLight, mode); }
 
-    function closeTrafficLightActionSheet(e) {
-      if (e && e.target && e.target.id !== "trafficLightActionSheet" && !e.target.closest(".action-sheet-card")) return;
-      document.getElementById("trafficLightActionSheet").style.display = "none";
-    }
-
-    function sheetSetTlMode(mode) {
-      closeTrafficLightActionSheet();
-      if (!activeActionTrafficLight) return;
-      window.setTrafficLightManual(activeActionTrafficLight, mode);
-    }
+    window.setTrafficLightManual = function(cpId, status) {
+      if (status === 'auto') delete manualOverrides[cpId];
+      else manualOverrides[cpId] = { status: status, time: Date.now() };
+      localStorage.setItem("radar_tl_overrides", JSON.stringify(manualOverrides));
+      renderTrafficLights(); updateRouteStatus();
+      if (trafficMarkersMap[cpId]) trafficMarkersMap[cpId].closePopup();
+      showToast(status === 'auto' ? "🔄 Авто-режим!" : `🚦 Встановлено: ${status}!`);
+    };
 
     window.startDirectManualDrag = function(fbKey) {
       const p = allPoints.find(x => x._fbKey === fbKey);
       if (!p) return;
       let m = findMarkerByPoint(p);
       if (!m) return;
-
-      m.options.autoPan = true;
-      m.options.autoPanPadding = [60, 60];
-      m.options.autoPanSpeed = 15;
       m.dragging.enable();
-
-      const iconEl = m.getElement()?.querySelector('.radar-circle');
-      if (iconEl) iconEl.classList.add('moving-super-marker');
-
-      showToast("✋ Тягніть мітку пальцем на потрібне місце!");
+      const el = m.getElement()?.querySelector('.radar-circle');
+      if (el) el.classList.add('moving-super-marker');
+      showToast("✋ Тягніть мітку пальцем!");
 
       m.once('dragend', async (e) => {
         m.dragging.disable();
-        if (iconEl) iconEl.classList.remove('moving-super-marker');
+        if (el) el.classList.remove('moving-super-marker');
         const pos = e.target.getLatLng();
-
-        p.lat = Number(pos.lat.toFixed(5));
-        p.lng = Number(pos.lng.toFixed(5));
-        p.needs_training = false;
-        p.address = "Встановлено користувачем";
-
-        if (p._fbKey) {
-          fetch(FIREBASE_POINTS_URL.replace(".json", `/${p._fbKey}.json`), {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ lat: p.lat, lng: p.lng, needs_training: false, address: p.address })
-          }).catch(() => {});
-        }
-
-        showToast("✅ Мітку зафіксовано на новому місці!");
-        renderMarkers();
-        renderTrafficLights();
-        updateRouteStatus();
+        p.lat = Number(pos.lat.toFixed(5)); p.lng = Number(pos.lng.toFixed(5)); p.address = "Встановлено користувачем";
+        if (p._fbKey) fetch(FIREBASE_POINTS_URL.replace(".json", `/${p._fbKey}.json`), { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ lat: p.lat, lng: p.lng, address: p.address }) }).catch(() => {});
+        showToast("✅ Мітку закріплено!");
+        renderMarkers(); updateRouteStatus();
       });
     };
 
     function openTrainingModal(point, marker) {
-      activeActionPoint = point;
-      activeActionMarker = marker || findMarkerByPoint(point);
-
-      const rawTxt = point.raw_text || point.text || "";
-      document.getElementById("trainTextQuote").innerText = `«${rawTxt}»`;
+      activeActionPoint = point; activeActionMarker = marker || findMarkerByPoint(point);
+      document.getElementById("trainTextQuote").innerText = `«${point.raw_text || point.text || ""}»`;
       const box = document.getElementById("trainSuggestionsBox");
       box.innerHTML = "";
-
-      const lower = rawTxt.toLowerCase();
-      const matchedStreets = [];
-
-      const sortedKeys = Object.keys(DNIPRO_STREETS_MAP).sort((a, b) => b.length - a.length);
-      sortedKeys.forEach(key => {
-        if (new RegExp(key, "i").test(lower)) {
-          const item = DNIPRO_STREETS_MAP[key];
-          if (!matchedStreets.some(s => s.name === item.name)) matchedStreets.push(item);
-        }
+      const matches = ["верх киров", "низ киров", "верх рабоч", "низ рабоч", "нагорк", "верх артем", "гагарин"];
+      matches.forEach(k => {
+        const st = DNIPRO_STREETS_MAP[k];
+        if (st) box.innerHTML += `<div class="train-chip" onclick="applyPointRelocation('${st.name}', ${st.lat}, ${st.lng})">📍 ${st.name}</div>`;
       });
-
-      if (matchedStreets.length === 0) {
-        matchedStreets.push(
-          DNIPRO_STREETS_MAP["верх киров"],
-          DNIPRO_STREETS_MAP["низ киров"],
-          DNIPRO_STREETS_MAP["верх рабоч"],
-          DNIPRO_STREETS_MAP["низ рабоч"],
-          DNIPRO_STREETS_MAP["нагорк"],
-          DNIPRO_STREETS_MAP["верх артем"],
-          DNIPRO_STREETS_MAP["гагарин"]
-        );
-      }
-
-      matchedStreets.forEach(st => {
-        const chip = document.createElement("div");
-        chip.className = "train-chip";
-        chip.innerHTML = `📍 ${st.name}` + (st.old ? `<br><span style="font-size:9px; color:#f59e0b;">💡 ${st.old}</span>` : "");
-        chip.onclick = () => applyPointRelocation(st.name, st.lat, st.lng);
-        box.appendChild(chip);
-      });
-
-      document.getElementById("trainCustomInput").value = "";
-      const modal = document.getElementById("trainModal");
-      modal.style.display = "flex";
-      modal.scrollTop = 0;
+      document.getElementById("trainModal").style.display = "flex";
     }
 
-    function closeTrainModal(e) {
-      if (e && e.target && e.target.id !== "trainModal" && !e.target.closest(".train-modal-card")) return;
-      document.getElementById("trainModal").style.display = "none";
-      setTimeout(() => { if (map) map.invalidateSize(); }, 120);
-    }
+    function closeTrainModal() { document.getElementById("trainModal").style.display = "none"; }
 
-    async function applyPointRelocation(streetName, lat, lng) {
-      if (!activeActionPoint) return;
+    async function applyPointRelocation(name, lat, lng) {
       closeTrainModal();
-
+      if (!activeActionPoint) return;
       const p = activeActionPoint;
-      let m = activeActionMarker || findMarkerByPoint(p);
-
-      const startPos = L.latLng(p.lat, p.lng);
-      const targetPos = L.latLng(Number(lat.toFixed(5)), Number(lng.toFixed(5)));
-
-      p.lat = targetPos.lat;
-      p.lng = targetPos.lng;
-
-      pendingRelocation = {
-        point: p,
-        marker: m,
-        startPos: startPos,
-        targetPos: targetPos,
-        streetName: streetName,
-        originalCenter: map.getCenter(),
-        originalZoom: map.getZoom()
-      };
-
-      const banner = document.getElementById("transferBanner");
-      if (banner) {
-        banner.innerText = `⏳ Перенесення до ${streetName}...`;
-        banner.style.display = "block";
-      }
-
-      map.flyTo([targetPos.lat, targetPos.lng], 16, { animate: true, duration: 0.85 });
-
-      smoothGlideMarker(m, startPos, targetPos, 850, () => {
-        if (banner) banner.style.display = "none";
-        if (m) m.setLatLng(targetPos);
-
-        setTimeout(() => {
-          const confirmBox = document.getElementById("confirmMoveModal");
-          document.getElementById("confirmStreetName").innerText = `📍 ${streetName}`;
-          confirmBox.style.display = "block";
-        }, 300);
+      const m = activeActionMarker || findMarkerByPoint(p);
+      const start = L.latLng(p.lat, p.lng);
+      const target = L.latLng(Number(lat.toFixed(5)), Number(lng.toFixed(5)));
+      pendingRelocation = { point: p, marker: m, startPos: start, targetPos: target, streetName: name, origCenter: map.getCenter(), origZoom: map.getZoom() };
+      map.flyTo([target.lat, target.lng], 16, { animate: true, duration: 0.85 });
+      smoothGlideMarker(m, start, target, 850, () => {
+        document.getElementById("confirmStreetName").innerText = `📍 ${name}`;
+        document.getElementById("confirmMoveModal").style.display = "block";
       });
     }
 
-    function finalizeMoveConfirm(isConfirmed) {
-      const confirmBox = document.getElementById("confirmMoveModal");
-      confirmBox.style.display = "none";
-
+    function finalizeMoveConfirm(ok) {
+      document.getElementById("confirmMoveModal").style.display = "none";
       if (!pendingRelocation) return;
-      const { point, marker, startPos, targetPos, streetName, originalCenter, originalZoom } = pendingRelocation;
-
-      if (isConfirmed) {
-        point.lat = targetPos.lat;
-        point.lng = targetPos.lng;
-        point.needs_training = false;
-        point.address = streetName;
-
-        let phrase = (point.raw_text || point.text || "")
-          .replace(/^(?:❓|\bчисто\b|\bбп\b|\bпатруль\b|\(чисто\))/gi, "")
-          .replace(/(?:чисто|спокійно|вільно|пусто)/gi, "")
-          .trim().toLowerCase();
-        if (phrase.length < 3) phrase = streetName.toLowerCase();
-
-        if (point._fbKey) {
-          fetch(FIREBASE_POINTS_URL.replace(".json", `/${point._fbKey}.json`), {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ lat: point.lat, lng: point.lng, needs_training: false, address: streetName })
-          }).catch(() => {});
-        }
-
-        fetch(FIREBASE_KB_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ phrase: phrase, address: streetName, lat: point.lat, lng: point.lng, updated_at: Date.now() })
-        }).catch(() => {});
-
-        learnedRules.push({ phrase: phrase, address: streetName, lat: point.lat, lng: point.lng });
-        localStorage.setItem("radar_learned_rules", JSON.stringify(learnedRules));
-
+      const { point, marker, startPos, targetPos, streetName, origCenter, origZoom } = pendingRelocation;
+      if (ok) {
+        point.lat = targetPos.lat; point.lng = targetPos.lng; point.address = streetName;
+        if (point._fbKey) fetch(FIREBASE_POINTS_URL.replace(".json", `/${point._fbKey}.json`), { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ lat: point.lat, lng: point.lng, address: streetName }) }).catch(() => {});
         showToast(`✅ «${streetName}» підтверджено!`);
-        pendingRelocation = null;
-        renderMarkers();
-        renderTrafficLights();
-        updateRouteStatus();
       } else {
-        point.lat = startPos.lat;
-        point.lng = startPos.lng;
-        if (marker) marker.setLatLng(startPos);
-        map.flyTo(originalCenter, originalZoom, { animate: true, duration: 0.8 });
-        showToast("↩️ Перенесення скасовано");
-        pendingRelocation = null;
-        renderMarkers();
+        point.lat = startPos.lat; point.lng = startPos.lng; if (marker) marker.setLatLng(startPos);
+        map.flyTo(origCenter, origZoom); showToast("↩️ Скасовано");
       }
+      pendingRelocation = null; renderMarkers(); updateRouteStatus();
     }
 
     function finalizeMoveManual() {
-      const confirmBox = document.getElementById("confirmMoveModal");
-      confirmBox.style.display = "none";
-
-      if (!pendingRelocation || !pendingRelocation.marker) return;
-      const { marker } = pendingRelocation;
-
-      marker.options.autoPan = true;
-      marker.options.autoPanPadding = [60, 60];
-      marker.options.autoPanSpeed = 15;
-      marker.dragging.enable();
-
-      const circleEl = marker.getElement()?.querySelector('.radar-circle');
-      if (circleEl) circleEl.classList.add('moving-super-marker');
-
-      showToast("✋ Підтягніть мітку пальцем точно на потрібне місце!");
-
-      marker.once('dragend', (e) => {
-        marker.dragging.disable();
-        if (circleEl) circleEl.classList.remove('moving-super-marker');
-        const pos = e.target.getLatLng();
-        pendingRelocation.targetPos = pos;
-        pendingRelocation.streetName = "Встановлено користувачем (ручне)";
-
-        document.getElementById("confirmStreetName").innerText = "📍 Встановлено користувачем (ручне)";
-        confirmBox.style.display = "block";
-      });
+      document.getElementById("confirmMoveModal").style.display = "none";
+      if (pendingRelocation && pendingRelocation.point) startDirectManualDrag(pendingRelocation.point._fbKey);
     }
 
     async function executeCustomTrain() {
       const q = document.getElementById("trainCustomInput").value.trim();
       if (!q) return;
-
-      const lower = q.toLowerCase();
-      const sortedKeys = Object.keys(DNIPRO_STREETS_MAP).sort((a, b) => b.length - a.length);
-      for (const key of sortedKeys) {
-        if (lower.includes(key)) {
-          const val = DNIPRO_STREETS_MAP[key];
-          applyPointRelocation(val.name, val.lat, val.lng);
-          return;
-        }
-      }
-
-      showToast("🔍 Пошук вулиці у Дніпрі...");
-      try {
-        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q + ", Дніпро")}&countrycodes=ua&limit=1`;
-        const res = await fetch(url);
-        const data = await res.json();
-        if (data && data.length > 0) {
-          const item = data[0];
-          applyPointRelocation(item.display_name.split(",")[0], parseFloat(item.lat), parseFloat(item.lon));
-          return;
-        }
-      } catch(e) {}
-
-      showToast(`⚠️ Не знайдено координат для «${q}».`);
+      let res = resolveLocationFromText(q);
+      if (res) applyPointRelocation(res.name, res.lat, res.lng);
+      else showToast("🔍 Не знайдено координат");
     }
-
-    async function executeAiActionDirective(actionType, payload) {
-      if (actionType === "NAVIGATE") {
-        if (payload.url) window.location.href = payload.url;
-      } else if (actionType === "FLYTO") {
-        let lat = Number(payload.lat);
-        let lng = Number(payload.lng);
-        if (lat && lng && !isNaN(lat) && !isNaN(lng)) {
-          map.flyTo([lat, lng], 16, { animate: true, duration: 0.85 });
-          showToast(`🎯 Фокус наведено!`);
-        }
-      } else if (actionType === "MOVE" || actionType === "RELOCATE") {
-        let p = null;
-        if (payload.key) p = allPoints.find(x => x._fbKey === payload.key);
-        if (!p && payload.target_text) {
-          const q = payload.target_text.toLowerCase();
-          p = allPoints.find(x => ((x.text || '') + ' ' + (x.raw_text || '')).toLowerCase().includes(q));
-        }
-        if (!p && allPoints.length > 0) p = allPoints[allPoints.length - 1];
-        if (!p) return;
-
-        let lat = Number(payload.lat);
-        let lng = Number(payload.lng);
-        let street = payload.street || payload.address || "Нове місце";
-
-        if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
-          const resolved = resolveLocationFromText(street);
-          if (resolved) { 
-            lat = resolved.lat; lng = resolved.lng; street = resolved.name; 
-          } else {
-            try {
-              const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(street + ", Дніпро")}&countrycodes=ua&limit=1`;
-              const res = await fetch(url);
-              const data = await res.json();
-              if (data && data.length > 0) {
-                lat = parseFloat(data[0].lat);
-                lng = parseFloat(data[0].lon);
-                street = data[0].display_name.split(",")[0];
-              }
-            } catch(e) {}
-          }
-        }
-        if (!lat || !lng) return;
-
-        const startPos = L.latLng(p.lat, p.lng);
-        const targetPos = L.latLng(lat, lng);
-        let m = findMarkerByPoint(p);
-
-        p.lat = targetPos.lat; p.lng = targetPos.lng; p.address = street; p.needs_training = false;
-
-        if (m) {
-          smoothGlideMarker(m, startPos, targetPos, 850, () => {
-            m.setLatLng(targetPos);
-            renderMarkers(); renderTrafficLights(); updateRouteStatus();
-          });
-        } else {
-          renderMarkers(); renderTrafficLights(); updateRouteStatus();
-        }
-
-        map.flyTo([targetPos.lat, targetPos.lng], 15, { animate: true, duration: 0.85 });
-
-        if (p._fbKey) {
-          fetch(FIREBASE_POINTS_URL.replace(".json", `/${p._fbKey}.json`), {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ lat: p.lat, lng: p.lng, address: street, needs_training: false })
-          }).catch(() => {});
-        }
-        showToast(`🚀 ШІ переніс точку ➔ ${street}!`);
-
-      } else if (actionType === "STATUS") {
-        const isClean = payload.clean === true || payload.status === "чисто";
-        let targetPoint = null;
-
-        if (payload.key) targetPoint = allPoints.find(x => x._fbKey === payload.key);
-        if (!targetPoint && payload.target_text) {
-          const query = payload.target_text.toLowerCase();
-          targetPoint = allPoints.find(x => ((x.text || '') + ' ' + (x.raw_text || '')).toLowerCase().includes(query));
-        }
-        if (!targetPoint && allPoints.length > 0) targetPoint = allPoints[allPoints.length - 1];
-
-        if (targetPoint) {
-          targetPoint.is_clean = isClean;
-          targetPoint.color = isClean ? "green" : "red";
-          targetPoint.status = isClean ? "чисто" : "опасно";
-          if (targetPoint._fbKey) {
-            fetch(FIREBASE_POINTS_URL.replace(".json", `/${targetPoint._fbKey}.json`), {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ is_clean: isClean, color: targetPoint.color, status: targetPoint.status })
-            }).catch(() => {});
-          }
-          renderMarkers();
-          renderTrafficLights();
-          updateRouteStatus();
-          showToast(`🎯 Статус змінено на ${isClean ? 'ЧИСТО' : 'БЛОКПОСТ'}!`);
-        }
-      }
-    }
-
-    let manualOverrides = {};
-    try { manualOverrides = JSON.parse(localStorage.getItem("radar_tl_overrides") || "{}"); } catch(e) {}
-
-    window.setTrafficLightManual = function(cpId, status) {
-      if (status === 'auto') {
-        delete manualOverrides[cpId];
-        showToast("🔄 Авто-режим повернено!");
-      } else {
-        manualOverrides[cpId] = { status: status, time: Date.now() };
-        if (status === 'green') showToast("🟢 Примусово чисто!");
-        else if (status === 'red') showToast("🔴 Примусово увага (БП)!");
-        else if (status === 'off') showToast("⚪ Світлофор погашено!");
-      }
-      localStorage.setItem("radar_tl_overrides", JSON.stringify(manualOverrides));
-      renderTrafficLights();
-      updateRouteStatus();
-      if (trafficMarkersMap[cpId] && trafficMarkersMap[cpId].isPopupOpen()) {
-        trafficMarkersMap[cpId].closePopup();
-      }
-    };
-
-    let checkpoints = [
-      { id: "kaidak_rovd", name: "РОВД / Кайдацький з'їзд", lat: 48.4925, lng: 34.9625, keys: ["кайдак", "ровд", "з'їзд.*кайдак", "съезд.*кайдак"] },
-      { id: "vodolechebnitsa", name: "Водолікарня (пр. Свободи)", lat: 48.4848, lng: 34.9735, keys: ["водолечеб", "водолікарн", "пр свободи"] },
-      { id: "kombainoviy", name: "Комбайновий (Белелюбського)", lat: 48.4795, lng: 34.9845, keys: ["комбайн", "ударник"] },
-      { id: "krasnozavodska", name: "Краснозаводська", fullName: "Краснозаводська / Белелюбського / Комбайновий", lat: 48.4812, lng: 34.9940, keys: ["краснозавод", "белелюб", "дтрз"] },
-      { id: "pavlova", name: "вул. Павлова", fullName: "вул. Академіка Павлова", lat: 48.4818, lng: 35.0012, keys: ["павлова"] },
-      { id: "rechport", name: "Річпорт", fullName: "Річпорт (Речной вокзал / Десантники)", lat: 48.4805, lng: 35.0210, keys: ["речпорт", "річпорт", "речной вокзал"] },
-      { id: "vodokachka", name: "Водокачка", fullName: "Водокачка (Набережна Заводська)", lat: 48.4910, lng: 34.9480, keys: ["водокачк"] },
-      { id: "stan_550", name: "Стан 550", fullName: "Стан 550 (Набережна Заводська)", lat: 48.4865, lng: 34.9850, keys: ["стан 550", "стан550"] }
-    ];
 
     window.deleteSinglePoint = async function(fbKey) {
-      if (!confirm("Видалити це повідомлення як невідповідне/хибне?")) return;
-      showToast("⏳ Видаляю повідомлення з сервера...");
-
-      if (fbKey) {
-        try {
-          await fetch(FIREBASE_POINTS_URL.replace(".json", `/${fbKey}.json`), { method: "DELETE" });
-        } catch(e) {}
-      }
-
+      if (!confirm("Видалити повідомлення?")) return;
+      if (fbKey) fetch(FIREBASE_POINTS_URL.replace(".json", `/${fbKey}.json`), { method: "DELETE" }).catch(() => {});
       allPoints = allPoints.filter(p => p._fbKey !== fbKey);
-      renderMarkers();
-      renderTrafficLights();
-      updateRouteStatus();
-      showToast("🗑️ Повідомлення успішно видалено!");
+      renderMarkers(); renderTrafficLights(); updateRouteStatus();
+      showToast("🗑️ Видалено!");
     };
 
     const aiPillPanel = document.getElementById("aiPillPanel");
-    const aiPillHeader = document.getElementById("aiPillHeader");
     const aiInlineInput = document.getElementById("aiInlineInput");
     const aiChatBox = document.getElementById("aiChatBox");
-    const btnAiPillToggle = document.getElementById("btnAiPillToggle");
-
     let geminiChatHistory = [];
 
-    L.DomEvent.disableClickPropagation(aiPillPanel);
-    L.DomEvent.disableScrollPropagation(aiPillPanel);
-    L.DomEvent.disableClickPropagation(document.getElementById("dashPanel"));
-    L.DomEvent.disableClickPropagation(document.getElementById("routeStatusBar"));
-    L.DomEvent.disableClickPropagation(document.getElementById("routeSubmenu"));
-    L.DomEvent.disableClickPropagation(document.getElementById("btnRefresh"));
-    L.DomEvent.disableClickPropagation(document.getElementById("markerActionSheet"));
-    L.DomEvent.disableClickPropagation(document.getElementById("trafficLightActionSheet"));
-    L.DomEvent.disableClickPropagation(document.getElementById("trainModal"));
-    L.DomEvent.disableClickPropagation(document.getElementById("confirmMoveModal"));
-
-    let aiDragActive = false;
-    let aiStartX = 0, aiStartY = 0, aiInitLeft = 0, aiInitTop = 0;
-
-    function onAiDragStart(e) {
-      if (!aiPillPanel.classList.contains("expanded")) return;
-      if (e.target.closest('button') || e.target.closest('.ai-pill-tools')) return;
-      aiDragActive = true;
-      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-      aiStartX = clientX;
-      aiStartY = clientY;
-      const rect = aiPillPanel.getBoundingClientRect();
-      aiInitLeft = rect.left;
-      aiInitTop = rect.top;
-
-      document.addEventListener('mousemove', onAiDragMove, { passive: false });
-      document.addEventListener('mouseup', onAiDragEnd);
-      document.addEventListener('touchmove', onAiDragMove, { passive: false });
-      document.addEventListener('touchend', onAiDragEnd);
-    }
-
-    function onAiDragMove(e) {
-      if (!aiDragActive) return;
-      if (e.cancelable) e.preventDefault();
-      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-      const dx = clientX - aiStartX;
-      const dy = clientY - aiStartY;
-
-      let newLeft = Math.max(10, Math.min(window.innerWidth - aiPillPanel.offsetWidth - 10, aiInitLeft + dx));
-      let newTop = Math.max(10, Math.min(window.innerHeight - 80, aiInitTop + dy));
-
-      aiPillPanel.style.left = `${newLeft}px`;
-      aiPillPanel.style.top = `${newTop}px`;
-      aiPillPanel.style.right = 'auto';
-      aiPillPanel.style.bottom = 'auto';
-    }
-
-    function onAiDragEnd() {
-      aiDragActive = false;
-      document.removeEventListener('mousemove', onAiDragMove);
-      document.removeEventListener('mouseup', onAiDragEnd);
-      document.removeEventListener('touchmove', onAiDragMove);
-      document.removeEventListener('touchend', onAiDragEnd);
-    }
-
-    aiPillHeader.addEventListener('mousedown', onAiDragStart);
-    aiPillHeader.addEventListener('touchstart', onAiDragStart, { passive: false });
+    ['aiPillPanel', 'dashPanel', 'routeStatusBar', 'routeSubmenu', 'btnRefresh', 'markerActionSheet', 'trafficLightActionSheet', 'trainModal', 'confirmMoveModal', 'knowledgeBaseModal'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) { L.DomEvent.disableClickPropagation(el); L.DomEvent.disableScrollPropagation(el); }
+    });
 
     function toggleAiPillExpand(e) {
-      if (e && (e.target.closest('textarea') || e.target.closest('.btn-ai-send') || e.target.closest('.ai-mini-chip') || e.target.closest('span[title]'))) return;
-      
-      const isExpanded = aiPillPanel.classList.toggle("expanded");
-      aiPillPanel.classList.toggle("compact", !isExpanded);
-      btnAiPillToggle.innerText = isExpanded ? "▲" : "▼";
-
-      if (isExpanded) {
-        verifyGeminiAuthorization();
-        setTimeout(() => {
-          aiChatBox.scrollTop = aiChatBox.scrollHeight;
-          if (map) map.invalidateSize();
-        }, 150);
-      } else {
-        aiPillPanel.style.top = "15px";
-        aiPillPanel.style.right = "15px";
-        aiPillPanel.style.left = "auto";
-        aiPillPanel.style.bottom = "auto";
-        setTimeout(() => { if (map) map.invalidateSize(); }, 150);
-      }
+      if (e && (e.target.closest('textarea') || e.target.closest('.btn-ai-send') || e.target.closest('.ai-mini-chip') || e.target.closest('.ai-learn-box'))) return;
+      const isExp = aiPillPanel.classList.toggle("expanded");
+      aiPillPanel.classList.toggle("compact", !isExp);
+      document.getElementById("btnAiPillToggle").innerText = isExp ? "▲" : "▼";
+      if (isExp) verifyGeminiAuthorization();
     }
 
     function clearAiChatHistory(e) {
       if (e) e.stopPropagation();
       geminiChatHistory = [];
-      aiChatBox.innerHTML = `
-        <div class="ai-msg bot">
-          🧹 Діалог очищено. Готовий до нових команд!
-        </div>
-      `;
+      aiChatBox.innerHTML = '<div class="ai-msg bot">🧹 Чат очищено.</div>';
       showToast("💬 Діалог очищено!");
     }
 
-    function sendAiQuick(txt) {
-      aiInlineInput.value = txt;
-      submitAiChatMessage();
-    }
-
-    aiInlineInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        submitAiChatMessage();
-      }
-    });
-
-    function configureGeminiKey(e) {
-      if (e) e.stopPropagation();
-      verifyGeminiAuthorization(true);
-    }
-
-    async function executeGeminiRequestPool(promptPayload) {
-      if (!verifyGeminiAuthorization()) {
-        throw new Error("ШІ заблоковано. Введіть пароль (підказка: телефон батьків).");
-      }
-
-      const apiKeys = getDecryptedGeminiPool();
-      if (apiKeys.length === 0) {
-        throw new Error("Немає доступних ключів Gemini.");
-      }
-
-      const models = ['gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-3.8-flash'];
-      let lastErr = null;
-
-      for (const k of apiKeys) {
-        for (const m of models) {
-          try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 8000);
-
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${k}`;
-            const res = await fetch(url, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(promptPayload),
-              signal: controller.signal
-            });
-            clearTimeout(timeoutId);
-
-            if (res.ok) {
-              const data = await res.json();
-              return { model: m, data: data };
-            } else {
-              const errJson = await res.json().catch(() => ({}));
-              lastErr = errJson.error?.message || `HTTP ${res.status}`;
-              continue;
-            }
-          } catch (e) {
-            lastErr = e.name === 'AbortError' ? 'Таймаут відповіді (8с)' : e.message;
-            continue;
-          }
-        }
-      }
-      throw new Error(lastErr || "Всі ключі з пулу вичерпали квоту.");
-    }
+    function sendAiQuick(t) { aiInlineInput.value = t; submitAiChatMessage(); }
+    aiInlineInput.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitAiChatMessage(); } });
+    function configureGeminiKey(e) { if (e) e.stopPropagation(); verifyGeminiAuthorization(true); }
 
     async function submitAiChatMessage() {
-      const query = aiInlineInput.value.trim();
-      if (!query) return;
-
-      if (!verifyGeminiAuthorization()) return;
-
+      const q = aiInlineInput.value.trim();
+      if (!q || !verifyGeminiAuthorization()) return;
       aiInlineInput.value = "";
-
-      const userBubble = document.createElement("div");
-      userBubble.className = "ai-msg user";
-      userBubble.innerText = query;
-      aiChatBox.appendChild(userBubble);
-
-      const loadingBubble = document.createElement("div");
-      loadingBubble.className = "ai-msg bot loading";
-      loadingBubble.innerText = "🧠 ШІ аналізує та виконує...";
-      aiChatBox.appendChild(loadingBubble);
+      aiChatBox.innerHTML += `<div class="ai-msg user">${q}</div><div class="ai-msg bot loading">🧠 Обробка...</div>`;
       aiChatBox.scrollTop = aiChatBox.scrollHeight;
 
-      const now = Date.now();
-      const allLiveReportsText = allPoints.map((p, idx) => {
-        const diffMin = Math.round((now - (p.time || p.timestamp || 0)) / 60000);
-        const st = isCleanPoint(p) ? "ЧИСТО" : "БЛОКПОСТ";
-        const txt = p.text || p.raw_text || "";
-        const addr = p.address ? ` [${p.address}]` : "";
-        const key = p._fbKey || idx;
-        return `• [KEY:${key}] [${diffMin}хв тому] ${st}: "${txt}"${addr} (lat:${p.lat}, lng:${p.lng})`;
-      }).join('\n');
-
-      const systemInstructionText = `
-Ти — високоінтелектуальний військово-дорожній ШІ-штурман у місті Дніпро для водія (v3.8).
-Ти маєш ПОВНУ ВЛАДУ над картою. Якщо користувач просить перенести точку, змінити статус чи відкрити аналітику, ти ОБОВ'ЯЗКОВО в кінці своєї відповіді додаєш директиву дії:
-
-ТОЧКИ НА КАРТІ:
-${allLiveReportsText || "Повідомлень немає"}
-
-КОМАНДИ:
-1. ПЕРЕМІЩЕННЯ: <<<ACTION:MOVE:{"key":"KEY_ТОЧКИ","street":"Назва вулиці або перехрестя","lat":48.XXXXX,"lng":34.XXXXX}>>>
-2. СТАТУС: <<<ACTION:STATUS:{"key":"KEY_ТОЧКИ","clean":true}>>> (true - чисто, false - блокпост)
-3. АНАЛІТИКА: <<<ACTION:NAVIGATE:{"url":"stats.html"}>>>
-
-Завжди викликай <<<ACTION:...>>>, коли користувач дає вказівку змінити карту!
-`;
-
-      geminiChatHistory.push({ role: "user", parts: [{ text: query }] });
-      if (geminiChatHistory.length > 10) geminiChatHistory = geminiChatHistory.slice(-10);
-
-      const contentsPayload = [
-        { role: "user", parts: [{ text: systemInstructionText + "\n\nКористувач: " + geminiChatHistory[0].parts[0].text }] }
-      ];
-      for (let i = 1; i < geminiChatHistory.length; i++) {
-        contentsPayload.push(geminiChatHistory[i]);
-      }
+      const keys = getDecryptedGeminiPool();
+      if (keys.length === 0) { aiChatBox.lastChild.innerText = "⚠️ Немає ключів Gemini"; return; }
 
       try {
-        const resObj = await executeGeminiRequestPool({
-          contents: contentsPayload,
-          generationConfig: { temperature: 0.2 }
+        const sys = `Ти — ШІ-штурман карти Дніпра v3.9. Якщо просять навчити "Х = У", додай команду: <<<ACTION:LEARN_STREET:{"alias":"Х","target":"У"}>>>.`;
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${keys[0]}`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: `${sys}\nКористувач: ${q}` }] }] })
         });
-
-        let rawReply = resObj.data.candidates?.[0]?.content?.parts?.[0]?.text || "Готово.";
-
-        const actionMatches = rawReply.match(/<<<ACTION:(.*?)>>>/g);
-        if (actionMatches) {
-          actionMatches.forEach(tag => {
-            try {
-              const inner = tag.replace("<<<ACTION:", "").replace(">>>", "").trim();
-              const firstColon = inner.indexOf(":");
-              if (firstColon !== -1) {
-                const actType = inner.substring(0, firstColon).trim();
-                const jsonStr = inner.substring(firstColon + 1).trim();
-                const payload = JSON.parse(jsonStr);
-                executeAiActionDirective(actType, payload);
-              }
-            } catch(e) {}
-          });
+        const data = await res.json();
+        let reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "Готово.";
+        const m = reply.match(/<<<ACTION:(.*?)>>>/);
+        if (m) {
+          const [act, payloadStr] = m[1].split(/:(.+)/);
+          const p = JSON.parse(payloadStr);
+          if (act === "LEARN_STREET") { document.getElementById("learnInputAlias").value = p.alias; document.getElementById("learnInputTarget").value = p.target; executeManualLearn(); }
         }
-
-        const cleanReply = rawReply.replace(/<<<ACTION:[\s\S]*?>>>/g, '').trim();
-        geminiChatHistory.push({ role: "model", parts: [{ text: cleanReply }] });
-
-        loadingBubble.className = "ai-msg bot";
-        loadingBubble.innerText = cleanReply;
-        aiChatBox.scrollTop = aiChatBox.scrollHeight;
-
-      } catch (err) {
-        loadingBubble.className = "ai-msg bot";
-        loadingBubble.innerHTML = `<span style="color:#ef4444;">⚠️ Помилка Gemini API: ${err.message}</span>`;
-        aiChatBox.scrollTop = aiChatBox.scrollHeight;
+        aiChatBox.lastChild.className = "ai-msg bot";
+        aiChatBox.lastChild.innerText = reply.replace(/<<<ACTION:[\s\S]*?>>>/g, '').trim();
+      } catch(e) {
+        aiChatBox.lastChild.className = "ai-msg bot";
+        aiChatBox.lastChild.innerText = `⚠️ Помилка: ${e.message}`;
       }
     }
 
     function toggleTlDropdown() {
       const drop = document.getElementById("tlDropdown");
-      const arrow = document.getElementById("tlDropdownArrow");
       const isVis = drop.style.display === "flex";
       drop.style.display = isVis ? "none" : "flex";
-      arrow.innerText = isVis ? "▾" : "▴";
+      document.getElementById("tlDropdownArrow").innerText = isVis ? "▾" : "▴";
     }
-
     function toggleTrafficLights() {
       showTrafficLights = !showTrafficLights;
       localStorage.setItem("radar_tl_visible", showTrafficLights);
-      updateTrafficLightsBtnUI();
-
-      if (showTrafficLights) {
-        if (!map.hasLayer(trafficLightLayer)) map.addLayer(trafficLightLayer);
-        renderTrafficLights();
-        showToast("🚦 Світлофори увімкнено!");
-      } else {
-        trafficLightLayer.clearLayers();
-        trafficMarkersMap = {};
-        if (map.hasLayer(trafficLightLayer)) map.removeLayer(trafficLightLayer);
-        showToast("🙈 Світлофори приховано!");
-      }
+      if (showTrafficLights) { if (!map.hasLayer(trafficLightLayer)) map.addLayer(trafficLightLayer); renderTrafficLights(); }
+      else { trafficLightLayer.clearLayers(); if (map.hasLayer(trafficLightLayer)) map.removeLayer(trafficLightLayer); }
     }
-
-    function updateTrafficLightsBtnUI() {
-      const icon = document.getElementById("btnToggleTlIcon");
-      const text = document.getElementById("btnToggleTlText");
-      if (!text) return;
-      if (showTrafficLights) {
-        if (icon) icon.innerText = "👁️";
-        text.innerText = "Сховати світлофори";
-      } else {
-        if (icon) icon.innerText = "🙈";
-        text.innerText = "Показати світлофори";
-      }
-    }
-    updateTrafficLightsBtnUI();
-
-    async function toggleEditMode() {
-      if (!showTrafficLights) toggleTrafficLights();
+    function toggleEditMode() {
       isEditMode = !isEditMode;
-      const btnText = document.getElementById("btnSetupText");
-
-      if (isEditMode) {
-        if (btnText) btnText.innerText = "Зафіксувати позиції";
-        showToast("📍 Перетягуйте світлофори по карті.");
-      } else {
-        if (btnText) btnText.innerText = "Розставити (рухати)";
-        await syncCheckpointsToCloud();
-        showToast("✅ Позиції світлофорів збережено!");
-      }
+      document.getElementById("btnSetupText").innerText = isEditMode ? "Зафіксувати" : "Розставити (рухати)";
       renderTrafficLights();
-    }
-
-    async function syncCheckpointsToCloud() {
-      localStorage.setItem("dnepr_radar_checkpoints_v2", JSON.stringify(checkpoints));
-      try {
-        await fetch(FIREBASE_CONFIG_URL, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(checkpoints) });
-      } catch (e) {}
-    }
-
-    async function loadCheckpointsFromCloud() {
-      try {
-        const local = localStorage.getItem("dnepr_radar_checkpoints_v2");
-        if (local) {
-          const parsed = JSON.parse(local);
-          if (Array.isArray(parsed) && parsed.length > 0) checkpoints = parsed;
-        }
-        const res = await fetch(`${FIREBASE_CONFIG_URL}?t=${Date.now()}`);
-        if (res.ok) {
-          const data = await res.json();
-          if (Array.isArray(data) && data.length > 0) checkpoints = data;
-        }
-      } catch (e) {}
-
-      checkpoints.forEach(cp => {
-        if (cp.id === "stan_550") cp.keys = ["стан 550", "стан550"];
-        else if (cp.id === "rechport") cp.keys = ["речпорт", "річпорт", "репорт"];
-        else if (cp.id === "kaidak_rovd") cp.keys = ["кайдак", "ровд", "з'їзд.*кайдак", "съезд.*кайдак"];
-        else cp.keys = cp.keys.filter(k => k !== "стан");
-      });
-      localStorage.setItem("dnepr_radar_checkpoints_v2", JSON.stringify(checkpoints));
+      if (!isEditMode) showToast("✅ Позиції зафіксовано!");
     }
 
     function renderTrafficLights() {
       if (!showTrafficLights) return;
-      const now = Date.now();
-
       checkpoints.forEach(cp => {
-        const cpPointLike = { lat: cp.lat, lng: cp.lng, address: cp.name, raw_text: cp.name };
-        if (!isPointInActiveSectors(cpPointLike) && !isEditMode) {
-          if (trafficMarkersMap[cp.id]) { trafficLightLayer.removeLayer(trafficMarkersMap[cp.id]); delete trafficMarkersMap[cp.id]; }
-          return;
-        }
-
-        const matched = allPoints.filter(p => {
-          const text = ((p.raw_text || p.text || "") + " " + (p.address || "")).toLowerCase();
-          return cp.keys.some(k => {
-            if (k === "стан") return /\bстан\b/i.test(text) && !/остановил/i.test(text);
-            return new RegExp(k, "i").test(text);
-          });
-        });
-        matched.sort((a, b) => (b.time || 0) - (a.time || 0));
-        let latest = matched[0];
-
         const override = manualOverrides[cp.id];
-        const hasFresherDanger = latest && !isCleanPoint(latest) && override && (latest.time > override.time);
-        const isOverrideActive = override && (now - override.time < LIFETIME_MS) && !hasFresherDanger;
+        const isAct = override && (Date.now() - override.time < LIFETIME_MS);
+        const matched = allPoints.filter(p => cp.keys.some(k => new RegExp(k, "i").test(((p.raw_text||"")+" "+(p.address||"")).toLowerCase()))).sort((a,b)=>(b.time||0)-(a.time||0))[0];
 
-        if (!latest && !isEditMode && !isOverrideActive) {
-          if (trafficMarkersMap[cp.id]) {
-            trafficLightLayer.removeLayer(trafficMarkersMap[cp.id]);
-            delete trafficMarkersMap[cp.id];
-          }
-          return;
-        }
+        let rC = "tl-lamp off", gC = "tl-lamp off";
+        if (isAct) { rC = override.status === 'red' ? "tl-lamp red-active" : "tl-lamp red-dim"; gC = override.status === 'green' ? "tl-lamp green-active" : "tl-lamp green-dim"; }
+        else if (matched) { const cl = isCleanPoint(matched); rC = cl ? "tl-lamp red-dim" : "tl-lamp red-active"; gC = cl ? "tl-lamp green-active" : "tl-lamp green-dim"; }
 
-        let redClass = "tl-lamp off", greenClass = "tl-lamp off", statusTitle = "⚪ Очікування";
-
-        if (isOverrideActive) {
-          if (override.status === 'green') {
-            redClass = "tl-lamp red-dim"; greenClass = "tl-lamp green-active"; statusTitle = "🟢 ЧИСТО (Вручну)";
-          } else if (override.status === 'red') {
-            redClass = "tl-lamp red-active"; greenClass = "tl-lamp green-dim"; statusTitle = "🔴 УВАГА (Вручну)";
-          } else if (override.status === 'off') {
-            redClass = "tl-lamp off"; greenClass = "tl-lamp off"; statusTitle = "⚪ ПОГАШЕНО (Вручну)";
-            latest = null;
-          }
-        } else if (latest) {
-          if (isCleanPoint(latest)) {
-            redClass = "tl-lamp red-dim"; greenClass = "tl-lamp green-active"; statusTitle = "🟢 ЧИСТО";
-          } else {
-            redClass = "tl-lamp red-active"; greenClass = "tl-lamp green-dim"; statusTitle = "🔴 УВАГА";
-          }
-        }
-
-        const iconHtml = `<div class="traffic-pill ${isEditMode ? 'draggable-mode' : ''}"><div class="${redClass}"></div><div class="${greenClass}"></div></div>`;
-        const tlIcon = L.divIcon({ className: 'traffic-marker-icon', html: iconHtml, iconSize: [20, 36], iconAnchor: [10, 18] });
-
-        let messageBlock = "";
-        let deleteBtnHtml = "";
-        if (latest && (!isOverrideActive || (override && override.status !== 'off'))) {
-          const rawText = latest.text || latest.raw_text || "";
-          let timeVal = latest.time || latest.timestamp || 0;
-          let timeStr = "";
-          if (timeVal) {
-            const d = new Date(timeVal);
-            timeStr = String(d.getHours()).padStart(2, '0') + ":" + String(d.getMinutes()).padStart(2, '0');
-          }
-          const fbKeySafe = latest._fbKey || "";
-
-          deleteBtnHtml = `<div style="text-align:right; margin-top:3px;"><span onclick="event.stopPropagation(); deleteSinglePoint('${fbKeySafe}')" style="color:#ef4444; font-size:10px; font-weight:800; cursor:pointer;" title="Видалити повідомлення">🗑️ Видалити це повідомлення</span></div>`;
-
-          if (rawText) {
-            messageBlock = '<div style="font-size:11px; color:#0f172a; margin:5px 0 3px; line-height:1.35; background:#f8fafc; padding:6px 8px; border-radius:7px; border:1px solid #cbd5e1; word-break:break-word;">'
-              + '«' + rawText + '»'
-              + (timeStr ? '<div style="font-size:10px; color:#475569; margin-top:3px; text-align:right; font-weight:700;">🕒 ' + timeStr + '</div>' : '')
-              + deleteBtnHtml
-              + '</div>';
-          }
-        }
-
-        const overrideBadge = isOverrideActive ? '<span style="font-size:9px; background:#0284c7; color:#fff; padding:1px 4px; border-radius:3px; margin-left:4px;">РУЧНИЙ</span>' : "";
-
-        const standardPopupContent = 
-          '<div style="padding:2px; min-width:180px; font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif; color:#0f172a;">' +
-            '<div style="font-weight:800; font-size:12px; color:#0284c7; display:flex; align-items:center; justify-content:space-between;">' +
-              '<span>🚦 ' + cp.name + '</span>' + overrideBadge +
-            '</div>' +
-            '<div style="font-size:11px; font-weight:800; margin:4px 0; color:' + (statusTitle.includes('ЧИСТО') ? '#16a34a' : (statusTitle.includes('УВАГА') ? '#dc2626' : '#64748b')) + ';">' +
-              statusTitle +
-            '</div>' +
-            messageBlock +
-          '</div>';
-
-        let marker = trafficMarkersMap[cp.id];
-
-        if (marker) {
-          marker.setIcon(tlIcon);
-          marker.setPopupContent(standardPopupContent);
-          if (isEditMode) marker.dragging.enable();
-          else marker.dragging.disable();
-        } else {
-          marker = L.marker([cp.lat, cp.lng], { icon: tlIcon, zIndexOffset: 1000, draggable: isEditMode });
-          marker.bindPopup(standardPopupContent);
-
-          marker.on('dragend', async (e) => {
-            const pos = e.target.getLatLng();
-            cp.lat = Number(pos.lat.toFixed(5)); cp.lng = Number(pos.lng.toFixed(5));
-            await syncCheckpointsToCloud();
-          });
-
-          let pressTimer = null;
-          let isLongPress = false;
-          let startX = 0, startY = 0;
-
-          function startPress(clientX, clientY) {
-            isLongPress = false;
-            startX = clientX; startY = clientY;
-            pressTimer = setTimeout(() => {
-              isLongPress = true;
-              if (navigator.vibrate) navigator.vibrate(60);
-              openTrafficLightActionSheet(cp.id);
-            }, 500);
-          }
-
-          function cancelPress() {
-            if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
-          }
-
-          marker.on('add', () => {
-            const el = marker.getElement();
-            if (!el) return;
-
-            el.addEventListener('touchstart', (e) => {
-              startPress(e.touches[0].clientX, e.touches[0].clientY);
-            }, { passive: true });
-
-            el.addEventListener('touchmove', (e) => {
-              if (pressTimer && Math.hypot(e.touches[0].clientX - startX, e.touches[0].clientY - startY) > 8) cancelPress();
-            }, { passive: true });
-
-            el.addEventListener('touchend', (e) => {
-              if (isLongPress) {
-                if (e.cancelable) e.preventDefault();
-                e.stopPropagation();
-              }
-              cancelPress();
-            });
-
-            el.addEventListener('mousedown', (e) => { startPress(e.clientX, e.clientY); });
-            el.addEventListener('mousemove', (e) => {
-              if (pressTimer && Math.hypot(e.clientX - startX, e.clientY - startY) > 8) cancelPress();
-            });
-            el.addEventListener('mouseup', () => {
-              if (isLongPress) e.stopPropagation();
-              cancelPress();
-            });
-          });
-
-          trafficLightLayer.addLayer(marker);
-          trafficMarkersMap[cp.id] = marker;
+        const icon = L.divIcon({ className: 'traffic-marker-icon', html: `<div class="traffic-pill ${isEditMode?'draggable-mode':''}"><div class="${rC}"></div><div class="${gC}"></div></div>`, iconSize: [20, 36], iconAnchor: [10, 18] });
+        let m = trafficMarkersMap[cp.id];
+        if (m) { m.setIcon(icon); if (isEditMode) m.dragging.enable(); else m.dragging.disable(); }
+        else {
+          m = L.marker([cp.lat, cp.lng], { icon: icon, zIndexOffset: 1000, draggable: isEditMode });
+          m.bindPopup(`<b>🚦 ${cp.name}</b>`);
+          m.on('click', () => openTrafficLightActionSheet(cp.id));
+          trafficLightLayer.addLayer(m);
+          trafficMarkersMap[cp.id] = m;
         }
       });
     }
 
-    const dashPanel = document.getElementById("dashPanel");
-    const btnToggle = document.getElementById("btnToggle");
-
     function togglePanelCollapse(e) {
       if (e) e.stopPropagation();
-      const isNowCollapsed = document.documentElement.classList.toggle("dash-collapsed");
-      btnToggle.innerText = isNowCollapsed ? "▼" : "▲";
-      localStorage.setItem("radar_dash_collapsed", isNowCollapsed ? "true" : "false");
-      
-      if (isNowCollapsed) {
-        clearStreetSearch();
-      }
+      const isCol = document.documentElement.classList.toggle("dash-collapsed");
+      document.getElementById("btnToggle").innerText = isCol ? "▼" : "▲";
+      localStorage.setItem("radar_dash_collapsed", isCol ? "true" : "false");
     }
 
     const streetSearchInput = document.getElementById("streetSearchInput");
     const searchResults = document.getElementById("searchResults");
-    const searchClearBtn = document.getElementById("searchClearBtn");
-    let searchDebounceTimer = null;
-    let searchPinMarker = null;
-
     streetSearchInput.addEventListener("input", () => {
-      clearTimeout(searchDebounceTimer);
-      const query = streetSearchInput.value.trim();
-      searchClearBtn.style.display = query.length > 0 ? "block" : "none";
-      if (query.length < 2) { searchResults.style.display = "none"; return; }
-      searchDebounceTimer = setTimeout(() => executeSmartSearch(query), 250);
-    });
-
-    function clearStreetSearch() {
-      streetSearchInput.value = "";
-      searchClearBtn.style.display = "none";
-      searchResults.style.display = "none";
-      if (searchPinMarker) {
-        map.removeLayer(searchPinMarker);
-        searchPinMarker = null;
-      }
-    }
-
-    streetSearchInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        clearTimeout(searchDebounceTimer);
-        executeSmartSearch(streetSearchInput.value.trim());
-      }
-    });
-
-    async function executeSmartSearch(query) {
-      if (!query) return;
-      const lower = query.toLowerCase();
+      const q = streetSearchInput.value.trim().toLowerCase();
+      document.getElementById("searchClearBtn").style.display = q.length > 0 ? "block" : "none";
+      if (q.length < 2) { searchResults.style.display = "none"; return; }
       searchResults.innerHTML = "";
-
-      const localMatches = [];
-      const sortedKeys = Object.keys(DNIPRO_STREETS_MAP).sort((a, b) => b.length - a.length);
-
-      for (const key of sortedKeys) {
-        const item = DNIPRO_STREETS_MAP[key];
-        if (key.includes(lower) || (item.old && item.old.toLowerCase().includes(lower)) || item.name.toLowerCase().includes(lower)) {
-          if (!localMatches.some(m => m.name === item.name)) {
-            localMatches.push(item);
-          }
+      Object.entries(DNIPRO_STREETS_MAP).forEach(([k, it]) => {
+        if (k.includes(q) || (it.old && it.old.toLowerCase().includes(q)) || it.name.toLowerCase().includes(q)) {
+          searchResults.innerHTML += `<div class="search-item" onclick="map.flyTo([${it.lat}, ${it.lng}], 16); searchResults.style.display='none';">📍 ${it.name} ${it.old?`(\${it.old})`:''}</div>`;
         }
-      }
-
-      localMatches.forEach(item => {
-        const div = document.createElement("div");
-        div.className = "search-item";
-        div.innerHTML = item.old 
-          ? `📍 <b>${item.name}</b><br><span style="color:#f59e0b; font-size:10px;">(колишня: ${item.old})</span>` 
-          : `📍 <b>${item.name}</b>`;
-        div.onclick = () => {
-          map.flyTo([item.lat, item.lng], 16, { animate: true, duration: 1 });
-          if (searchPinMarker) map.removeLayer(searchPinMarker);
-          searchPinMarker = L.circleMarker([item.lat, item.lng], { radius: 10, color: "#38bdf8", fillColor: "#00f3ff", fillOpacity: 0.8 }).addTo(map).bindPopup(`📍 ${item.name}`).openPopup();
-          searchResults.style.display = "none";
-          streetSearchInput.value = item.name;
-        };
-        searchResults.appendChild(div);
       });
-
-      if (localMatches.length < 4 && query.length >= 3) {
-        try {
-          const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ", Дніпро")}&countrycodes=ua&limit=3`;
-          const res = await fetch(url);
-          const data = await res.json();
-          if (data && data.length > 0) {
-            data.forEach(item => {
-              const name = item.display_name.split(",")[0];
-              if (!localMatches.some(m => m.name.toLowerCase().includes(name.toLowerCase()))) {
-                const div = document.createElement("div");
-                div.className = "search-item";
-                div.innerHTML = `🌐 ${name}`;
-                div.onclick = () => {
-                  const lat = parseFloat(item.lat), lon = parseFloat(item.lon);
-                  map.flyTo([lat, lon], 16, { animate: true, duration: 1 });
-                  if (searchPinMarker) map.removeLayer(searchPinMarker);
-                  searchPinMarker = L.circleMarker([lat, lon], { radius: 10, color: "#38bdf8", fillColor: "#00f3ff", fillOpacity: 0.8 }).addTo(map).bindPopup(`📍 ${name}`).openPopup();
-                  searchResults.style.display = "none";
-                  streetSearchInput.value = name;
-                };
-                searchResults.appendChild(div);
-              }
-            });
-          }
-        } catch(e) {}
-      }
-
       searchResults.style.display = searchResults.children.length > 0 ? "block" : "none";
-    }
-
-    document.addEventListener("click", (e) => {
-      if (!e.target.closest(".search-box")) searchResults.style.display = "none";
     });
+    function clearStreetSearch() { streetSearchInput.value = ""; searchResults.style.display = "none"; document.getElementById("searchClearBtn").style.display = "none"; }
 
-    // ПРИНУДИТЕЛЬНАЯ НОРМАЛИЗАЦИЯ ТОЧЕК (УСТРАНЯЕТ РАЗБРОС «ВЕРХ АРТЕМА» И ДРУГИХ)
     async function loadPoints() {
       if (pendingRelocation) return;
       try {
@@ -2785,220 +1090,95 @@ ${allLiveReportsText || "Повідомлень немає"}
         if (!res.ok) return;
         const data = await res.json();
         if (!data) { allPoints = []; renderMarkers(); renderTrafficLights(); updateRouteStatus(); return; }
-        const now = Date.now();
-
-        const spamKeysToDelete = [];
 
         allPoints = Object.entries(data).map(([key, p]) => {
-          if (!p || typeof p !== 'object' || !p.lat || !p.lng) return null;
+          if (!p || !p.lat || !p.lng) return null;
           p._fbKey = key;
+          const full = (p.text || "") + " " + (p.raw_text || "");
+          if (isSpamMessage(full)) return null;
 
-          const fullText = (p.text || "") + " " + (p.raw_text || "");
-
-          if (isSpamMessage(fullText)) {
-            spamKeysToDelete.push(key);
-            return null;
-          }
-
-          // Обязательная нормализация по точным участкам словаря
-          const resolved = resolveLocationFromText(fullText);
-          if (resolved) {
-            // Если у точки не было точного участка или сервер поставил не туда
-            p.lat = resolved.lat;
-            p.lng = resolved.lng;
-            p.address = resolved.name;
-            p.needs_training = false;
-          }
-
+          const resLoc = resolveLocationFromText(full);
+          if (resLoc) { p.lat = resLoc.lat; p.lng = resLoc.lng; p.address = resLoc.name; }
           return p;
-        }).filter(p => p && (now - (p.time || p.timestamp || 0)) <= LIFETIME_MS);
+        }).filter(p => p && (Date.now() - (p.time || p.timestamp || 0)) <= LIFETIME_MS);
 
-        if (spamKeysToDelete.length > 0) {
-          spamKeysToDelete.forEach(k => {
-            fetch(FIREBASE_POINTS_URL.replace(".json", `/${k}.json`), { method: "DELETE" }).catch(() => {});
-          });
-        }
-
-        renderMarkers();
-        renderTrafficLights();
-        updateRouteStatus();
-      } catch (err) {}
+        renderMarkers(); renderTrafficLights(); updateRouteStatus();
+      } catch(e) {}
     }
 
-    // РЕНДЕР МАРКЕРОВ С ЗАЩИЩЕННЫМИ КНОПКАМИ ИЗОЛИРОВАННЫХ ОТЧЕТОВ
     function renderMarkers() {
       markersLayer.clearLayers();
-      const now = Date.now();
-      let visibleCount = 0;
-
       const clusters = {};
 
       allPoints.forEach(p => {
-        const time = p.time || p.timestamp || 0;
-        const diff = now - time;
-        if (diff > LIFETIME_MS) return;
         if (!isPointInActiveSectors(p)) return;
-
-        const clean = isCleanPoint(p);
-        if (clean && !filterShowGreen) return;
-        if (!clean && !filterShowRed) return;
-
-        const statusGroup = clean ? "green" : "red";
-        const groupKey = `${p.lat.toFixed(4)}_${p.lng.toFixed(4)}_${statusGroup}`;
-
-        if (!clusters[groupKey]) {
-          clusters[groupKey] = {
-            lat: p.lat,
-            lng: p.lng,
-            isClean: clean,
-            points: [],
-            isFresh: false,
-            needsTraining: false
-          };
-        }
-        clusters[groupKey].points.push(p);
-        if (diff <= FRESH_THRESHOLD_MS) clusters[groupKey].isFresh = true;
-        if (p.needs_training) clusters[groupKey].needsTraining = true;
+        const cl = isCleanPoint(p);
+        const k = `${p.lat.toFixed(4)}_${p.lng.toFixed(4)}_${cl?'g':'r'}`;
+        if (!clusters[k]) clusters[k] = { lat: p.lat, lng: p.lng, isClean: cl, points: [], isFresh: false };
+        clusters[k].points.push(p);
+        if (Date.now() - (p.time||0) <= FRESH_THRESHOLD_MS) clusters[k].isFresh = true;
       });
 
-      const coordCounts = {};
-      Object.values(clusters).forEach(cluster => {
-        const cKey = `${cluster.lat.toFixed(4)}_${cluster.lng.toFixed(4)}`;
-        if (!coordCounts[cKey]) coordCounts[cKey] = 0;
-        coordCounts[cKey]++;
-        if (coordCounts[cKey] > 1) {
-          const offset = 0.00012 * (coordCounts[cKey] % 2 === 0 ? 1 : -1);
-          cluster.lat += offset;
-          cluster.lng += offset;
-        }
-      });
-
-      Object.values(clusters).forEach(cluster => {
-        const p = cluster.points[cluster.points.length - 1];
-        const clean = cluster.isClean;
-        const isFresh = cluster.isFresh;
-        const trainingClass = cluster.needsTraining ? "needs-training" : "";
-        
-        const colorClass = clean ? "color-green" : "color-red";
-        const freshClass = isFresh ? "fresh" : "";
-        const sizeClass = cluster.points.length > 1 ? "clustered" : "";
-
-        const markerHtml = `<div class="radar-circle ${colorClass} ${freshClass} ${trainingClass} ${sizeClass}"></div>`;
-        
-        const dotIcon = L.divIcon({
-          className: 'custom-dot-marker',
-          html: markerHtml,
-          iconSize: [18, 18], iconAnchor: [9, 9]
-        });
+      let count = 0;
+      Object.values(clusters).forEach(c => {
+        count += c.points.length;
+        const html = `<div class="radar-circle ${c.isClean?'color-green':'color-red'} ${c.isFresh?'fresh':''} ${c.points.length>1?'clustered':''}"></div>`;
+        const icon = L.divIcon({ className: 'custom-dot-marker', html: html, iconSize: [18, 18], iconAnchor: [9, 9] });
 
         let listHtml = "";
-        cluster.points.sort((a,b) => (b.time||b.timestamp||0) - (a.time||a.timestamp||0)).forEach(pt => {
-          const ptTime = pt.time || pt.timestamp || 0;
-          const timeStr = ptTime ? new Date(ptTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "";
-          const remMin = Math.floor(Math.max(0, LIFETIME_MS - (now - ptTime)) / 60000);
-          const fbKeySafe = pt._fbKey || "";
-          const renameNote = getStreetRenameNote(pt.text || pt.raw_text || pt.address || "");
-
+        c.points.sort((a,b)=>(b.time||0)-(a.time||0)).forEach(pt => {
+          const rem = Math.floor(Math.max(0, LIFETIME_MS - (Date.now() - (pt.time||0))) / 60000);
           listHtml += `
-            <div class="report-row-item" style="border-bottom: 1px solid #334155; padding-bottom: 7px; margin-bottom: 7px;">
-              <div class="report-status-title" style="font-weight:700; font-size:12px; color:#0f172a; line-height:1.35;">${isCleanPoint(pt) ? "🟢" : "🔴"} ${pt.text || ""}</div>
-              <div style="font-size:10px; color:#64748b; margin-top:2px;">🕒 ${timeStr} | Зникне через: ${remMin} хв</div>
-              
-              <div style="font-size:10px; color:#0284c7; margin-top:4px; background:#f0f9ff; padding:3px 6px; border-radius:4px; border:1px solid #bae6fd;">
-                ${renameNote}
+            <div class="report-row-item" style="border-bottom:1px solid #334155; padding-bottom:6px; margin-bottom:6px;">
+              <div class="report-status-title" style="font-weight:700; font-size:12px; color:#0f172a;">${isCleanPoint(pt)?"🟢":"🔴"} ${pt.text||""}</div>
+              <div style="font-size:10px; color:#64748b;">🕒 Залишилось: ${rem} хв</div>
+              <div style="font-size:10px; color:#0284c7; margin-top:2px;">${getStreetRenameNote(pt.text||pt.raw_text||"")}</div>
+              <div style="display:flex; gap:4px; margin-top:5px;">
+                <button onclick="event.stopPropagation(); setPointVerdictDirect('${pt._fbKey}', true, this)" style="flex:1; background:#059669; border:none; color:#fff; padding:4px; border-radius:4px; font-size:9.5px; font-weight:800; cursor:pointer;">🟢 Чисто</button>
+                <button onclick="event.stopPropagation(); setPointVerdictDirect('${pt._fbKey}', false, this)" style="flex:1; background:#dc2626; border:none; color:#fff; padding:4px; border-radius:4px; font-size:9.5px; font-weight:800; cursor:pointer;">🔴 БП</button>
+                <button onclick="event.stopPropagation(); markPointAsSpam('${pt._fbKey}')" style="background:#7f1d1d; border:1px solid #dc2626; color:#fca5a5; padding:4px 6px; border-radius:4px; font-size:9.5px; font-weight:800; cursor:pointer;">🚫 Спам</button>
               </div>
-
-              <!-- КНОПКИ ВЕРДИКТА С ЗАЩИТОЙ ОТ ЗАКРЫТИЯ ПОПАПА -->
-              <div style="display:flex; gap:4px; margin-top:6px;">
-                <button onclick="event.stopPropagation(); setPointVerdictDirect('${fbKeySafe}', true, this)" style="flex:1; background:#059669; border:none; color:#fff; padding:5px 3px; border-radius:5px; font-size:10px; font-weight:800; cursor:pointer;">🟢 Чисто</button>
-                <button onclick="event.stopPropagation(); setPointVerdictDirect('${fbKeySafe}', false, this)" style="flex:1; background:#dc2626; border:none; color:#fff; padding:5px 3px; border-radius:5px; font-size:10px; font-weight:800; cursor:pointer;">🔴 Блокпост</button>
+              <div style="display:flex; justify-content:space-between; margin-top:5px;">
+                <span onclick="event.stopPropagation(); trainPointRuleFromPopup('${pt._fbKey}')" style="color:#0284c7; font-weight:800; font-size:9.5px; cursor:pointer;">🧠 В пам'ять ШІ</span>
+                <span onclick="event.stopPropagation(); deleteSinglePoint('${pt._fbKey}')" style="color:#ef4444; font-weight:800; font-size:9.5px; cursor:pointer;">🗑️ Видалити</span>
               </div>
-
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-top:5px;">
-                <span onclick="event.stopPropagation(); notifyAiAboutPoint('${fbKeySafe}')" style="color:#0284c7; font-weight:800; font-size:9.5px; cursor:pointer;" title="Передати мітку ШІ">🤖 Повідомити ШІ</span>
-                <span onclick="event.stopPropagation(); deleteSinglePoint('${fbKeySafe}')" style="color:#ef4444; font-weight:800; font-size:9.5px; cursor:pointer;" title="Видалити повідомлення">🗑️ Видалити</span>
-              </div>
-            </div>
-          `;
+            </div>`;
         });
 
-        const popupContent = `
-          <div style="padding:4px; font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif; min-width:215px; max-height:245px; overflow-y:auto;">
-            <div style="font-weight:800; font-size:11px; color:#0284c7; margin-bottom:6px; border-bottom:1px solid #cbd5e1; padding-bottom:3px;">
-              📍 Повідомлень у точці: ${cluster.points.length}
-            </div>
-            ${listHtml}
-          </div>
-        `;
+        const m = L.marker([c.lat, c.lng], { icon: icon });
+        m.bindPopup(`<div style="min-width:210px; max-height:240px; overflow-y:auto;">${listHtml}</div>`, { autoClose: true, closeOnClick: true });
 
-        const marker = L.marker([cluster.lat, cluster.lng], {
-          icon: dotIcon,
-          draggable: false
-        });
-
-        marker.bindPopup(popupContent, { autoClose: true, closeOnClick: true });
-
-        let pressTimer = null;
-        let isLongTap = false;
-        let startX = 0, startY = 0;
-
-        function startPress(clientX, clientY) {
-          isLongTap = false;
-          startX = clientX; startY = clientY;
-          pressTimer = setTimeout(() => {
-            isLongTap = true;
-            pressTimer = null;
-            if (navigator.vibrate) navigator.vibrate(50);
-            openMarkerActionSheet(p, marker);
-          }, 450);
-        }
-
-        function cancelPress(clientX, clientY) {
-          if (pressTimer && Math.hypot(clientX - startX, clientY - startY) > 8) {
-            clearTimeout(pressTimer); pressTimer = null;
-          }
-        }
-
-        marker.on('click', () => {
-          if (!isLongTap) marker.openPopup();
-        });
-
-        marker.on('add', () => {
-          const el = marker.getElement();
+        let pTimer = null, isLong = false;
+        m.on('add', () => {
+          const el = m.getElement();
           if (!el) return;
-
-          el.addEventListener('touchstart', (e) => {
-            startPress(e.touches[0].clientX, e.touches[0].clientY);
-          }, { passive: true });
-
-          el.addEventListener('touchmove', (e) => {
-            cancelPress(e.touches[0].clientX, e.touches[0].clientY);
-          }, { passive: true });
-
-          el.addEventListener('touchend', (e) => {
-            if (isLongTap) {
-              if (e.cancelable) e.preventDefault();
-              e.stopPropagation();
-            }
-            if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
-          });
-
-          el.addEventListener('mousedown', (e) => { startPress(e.clientX, e.clientY); });
-          el.addEventListener('mousemove', (e) => { cancelPress(e.clientX, e.clientY); });
-          el.addEventListener('mouseup', () => { if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } });
+          el.addEventListener('touchstart', () => { isLong = false; pTimer = setTimeout(() => { isLong = true; openMarkerActionSheet(c.points[0], m); }, 450); }, { passive: true });
+          el.addEventListener('touchend', e => { if (isLong && e.cancelable) e.preventDefault(); clearTimeout(pTimer); });
+          el.addEventListener('mousedown', () => { isLong = false; pTimer = setTimeout(() => { isLong = true; openMarkerActionSheet(c.points[0], m); }, 450); });
+          el.addEventListener('mouseup', () => clearTimeout(pTimer));
         });
+        m.on('click', () => { if (!isLong) m.openPopup(); });
 
-        markersLayer.addLayer(marker);
-        visibleCount += cluster.points.length;
+        markersLayer.addLayer(m);
       });
-
-      document.getElementById('countText').innerHTML = `<span>Точок: ${visibleCount}</span>`;
+      document.getElementById('countText').innerHTML = `<span>Точок: ${count}</span>`;
     }
 
-    loadCheckpointsFromCloud().then(() => {
+    (async function init() {
+      try {
+        const r1 = await fetch(`${FIREBASE_CUSTOM_STREETS_URL}?t=${Date.now()}`);
+        if (r1.ok) {
+          const d1 = await r1.json();
+          if (d1) { customStreetsCloud = d1; Object.entries(d1).forEach(([k, v]) => { if (v && v.lat) DNIPRO_STREETS_MAP[k.toLowerCase()] = v; }); }
+        }
+      } catch(e) {}
+      try {
+        const r2 = await fetch(`${FIREBASE_CONFIG_URL}?t=${Date.now()}`);
+        if (r2.ok) { const d2 = await r2.json(); if (Array.isArray(d2)) checkpoints = d2; }
+      } catch(e) {}
       loadPoints();
-    });
-    setInterval(loadPoints, 15000);
+      setInterval(loadPoints, 15000);
+    })();
   </script>
 </body>
 </html>
