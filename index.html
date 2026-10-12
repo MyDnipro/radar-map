@@ -33,7 +33,6 @@
     html, body { width: 100%; height: 100%; overflow: hidden !important; position: fixed; inset: 0; background: #0b1120; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; touch-action: none; }
     #map { position: absolute; inset: 0; width: 100% !important; height: 100% !important; z-index: 1; background: #0b1120; }
 
-    /* Панель дашборда */
     .dashboard {
       position: absolute !important; top: 15px !important; left: 15px !important; z-index: 1000;
       background: rgba(15, 23, 42, 0.94); backdrop-filter: blur(10px); padding: 10px 12px; border-radius: 14px;
@@ -48,7 +47,6 @@
     html.dash-collapsed .dash-header { margin-bottom: 0 !important; padding-bottom: 0 !important; border-bottom: none !important; }
     html.dash-collapsed #collapsibleBody { display: none; }
 
-    /* Поиск */
     .search-box { position: relative; margin-bottom: 8px; }
     .search-input-wrap { position: relative; display: flex; align-items: center; }
     .search-input { width: 100%; background: #0b1120; border: 1px solid #334155; color: #fff; padding: 7px 24px 7px 8px; border-radius: 8px; font-size: 11px; outline: none; }
@@ -58,7 +56,6 @@
     .search-item { padding: 6px 8px; font-size: 11px; color: #cbd5e1; cursor: pointer; border-bottom: 1px solid #1e293b; line-height: 1.3; }
     .search-item:hover { background: #1e293b; color: #38bdf8; }
 
-    /* Панель ШІ */
     .ai-pill-panel {
       position: absolute; top: 15px; right: 15px; z-index: 2000; background: rgba(15, 23, 42, 0.95);
       backdrop-filter: blur(10px); border: 1.5px solid #0284c7; border-radius: 12px; color: #fff;
@@ -78,7 +75,6 @@
     .ai-msg.bot { align-self: flex-start; background: #0f172a; color: #e2e8f0; border: 1px solid #334155; }
     .ai-msg.bot.loading { color: #38bdf8; font-style: italic; }
 
-    /* Обучение А = Б */
     .ai-learn-box { background: #0b1120; border: 1px dashed #0284c7; border-radius: 8px; padding: 6px 8px; display: flex; flex-direction: column; gap: 5px; }
     .ai-learn-header { font-size: 10px; font-weight: 800; color: #38bdf8; display: flex; justify-content: space-between; align-items: center; }
     .ai-learn-row { display: flex; align-items: center; gap: 4px; }
@@ -92,7 +88,6 @@
     .ai-inline-textarea { flex: 1; height: 34px; background: #0b1120; border: 1px solid #334155; border-radius: 8px; color: #fff; padding: 7px 8px; font-size: 11px; resize: none; outline: none; line-height: 1.3; }
     .btn-ai-send { width: 36px; height: 34px; flex-shrink: 0; background: linear-gradient(135deg, #0284c7 0%, #00f3ff 100%); border: none; color: #0f172a; border-radius: 8px; font-size: 14px; font-weight: 900; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 
-    /* Нижние кнопки статуса и обновления */
     .route-status-bar {
       position: absolute !important; bottom: 25px !important; left: 15px !important; z-index: 1000; height: 38px;
       background: rgba(15, 23, 42, 0.94); backdrop-filter: blur(10px); border: 1.5px solid #10b981; border-radius: 12px;
@@ -130,7 +125,6 @@
     .dot-green { background: var(--color-green); }
     .dot-red { background: var(--color-red); }
 
-    /* Маркеры карты */
     .custom-dot-marker { background: transparent !important; border: none !important; }
     .radar-circle { width: 18px; height: 18px; border-radius: 50%; cursor: pointer; position: relative; touch-action: none; transition: transform 0.2s ease; }
     .radar-circle.clustered { width: 22px !important; height: 22px !important; margin-top: -2px; margin-left: -2px; }
@@ -141,7 +135,6 @@
     @keyframes ripple-ring { 0% { transform: scale(1); opacity: 1; } 100% { transform: scale(2.4); opacity: 0; } }
     .moving-super-marker { transform: scale(2.5) !important; background: #f59e0b !important; border: 3px solid #fff !important; box-shadow: 0 0 25px 6px #f59e0b !important; z-index: 99999 !important; }
 
-    /* Светофоры */
     .traffic-pill { background: #0f172a !important; border: 1.5px solid #fff !important; border-radius: 13px !important; padding: 3px 2px !important; display: flex !important; flex-direction: column !important; align-items: center !important; gap: 3px !important; box-shadow: 0 3px 12px rgba(0,0,0,0.45) !important; width: 20px !important; height: 36px !important; cursor: pointer; }
     .traffic-pill.draggable-mode { cursor: grab; border-color: #38bdf8 !important; box-shadow: 0 0 14px 4px #38bdf8 !important; }
     .tl-lamp { width: 11px; height: 11px; border-radius: 50%; }
@@ -152,7 +145,6 @@
     .tl-lamp.off { background: #334155 !important; opacity: 0.4; }
     .traffic-marker-icon { background: transparent !important; border: none !important; }
 
-    /* Модалки и тосты */
     .toast-msg { position: absolute; top: 65px; left: 50%; transform: translateX(-50%); z-index: 3500; background: #0f172a; border: 1.5px solid #38bdf8; color: #fff; padding: 8px 18px; border-radius: 20px; font-size: 12px; font-weight: 700; box-shadow: 0 4px 20px rgba(0,243,255,0.4); display: none; white-space: nowrap; }
     .transfer-banner { position: absolute; top: 15px; left: 50%; transform: translateX(-50%); background: rgba(15,23,42,0.96); border: 1.5px solid #00f3ff; color: #00f3ff; padding: 8px 20px; border-radius: 22px; font-size: 13px; font-weight: 800; z-index: 5000; display: none; white-space: nowrap; pointer-events: none; }
     .action-sheet-backdrop { position: fixed; inset: 0; width: 100%; height: 100%; background: rgba(4,7,15,0.75); backdrop-filter: blur(5px); z-index: 9998; display: none; align-items: center; justify-content: center; padding: 15px; }
@@ -351,6 +343,9 @@
   </div>
   <div id="toast" class="toast-msg">✅ Збережено!</div>
 
+  <!-- ПОДКЛЮЧЕНИЕ LEAFLET JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
   <script>
     const SECRET_KEY_HASH = "570984";
     const _VAULT_PREFIX = String.fromCharCode(65, 81, 46, 65, 98, 56, 82, 78, 54);
@@ -546,14 +541,7 @@
     let isEditMode = false;
     let trafficMarkersMap = {};
     let allPoints = [];
-    let filterShowGreen = true, filterShowRed = true;
     let activeActionPoint = null, activeActionMarker = null, activeActionTrafficLight = null, pendingRelocation = null;
-    let learnedRules = [];
-
-    try {
-      const storedRules = localStorage.getItem("radar_learned_rules");
-      if (storedRules) learnedRules = JSON.parse(storedRules);
-    } catch(e) {}
 
     const isMobile = window.innerWidth < 768;
     const INITIAL_CENTER = [48.484, 34.985];
