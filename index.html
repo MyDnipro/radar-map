@@ -7,8 +7,8 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <meta name="color-scheme" content="light only">
-  <title>Радар Дніпро</title>
-  <link rel="manifest" href="manifest.json">
+  <title>Радар Дніпро v3.2</title>
+  <link rel="manifest" href="manifest.json?v=3.2">
   <link rel="icon" type="image/png" href="icon.png">
   <link rel="apple-touch-icon" href="icon.png">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -223,7 +223,7 @@
       min-height: 0;
     }
 
-    /* КНОПКИ ВЕРДИКТА ТЕПЕРЬ СВЕРХУ */
+    /* КНОПКИ ВЕРДИКТА СВЕРХУ */
     .ai-target-box {
       background: #0f172a;
       border: 1.5px solid #00f3ff;
@@ -233,7 +233,7 @@
       display: none;
       flex-direction: column;
       gap: 5px;
-      order: -1; /* Выше чата */
+      order: -1;
     }
     .ai-target-header {
       font-size: 11px;
@@ -342,7 +342,6 @@
       justify-content: center;
     }
 
-    /* 3. ЛЕВЫЙ НИЖНИЙ: МІЙ ШЛЯХ */
     .route-status-bar {
       position: absolute !important;
       bottom: 25px !important;
@@ -437,7 +436,6 @@
       cursor: pointer;
     }
 
-    /* 4. ПРАВЫЙ НИЖНИЙ: ОНОВИТИ */
     .btn-refresh {
       position: absolute !important;
       bottom: 25px !important;
@@ -642,7 +640,6 @@
 
     .custom-dot-marker { background: transparent !important; border: none !important; }
     
-    /* Укрупненные шарики (на 3px больше: 22px) БЕЗ ЦИФРОВЫХ ПЛАШЕК */
     .radar-circle.clustered {
       width: 22px !important;
       height: 22px !important;
@@ -905,13 +902,13 @@
     </div>
   </div>
 
-  <!-- 2. ПРАВЫЙ ВЕРХНИЙ УГОЛ: ШІ (ВЕРСИЯ 3.1 С КНОПКАМИ ВВЕРХУ) -->
+  <!-- 2. ПРАВЫЙ ВЕРХНИЙ УГОЛ: ШІ (ВЕРСИЯ 3.2 С КНОПКАМИ СВЕРХУ) -->
   <div id="aiPillPanel" class="ai-pill-panel compact">
     <div id="aiPillHeader" class="ai-pill-compact-content">
       <div class="ai-titleBadge" onclick="toggleAiPillExpand()">
         <span style="font-size:14px;">🤖</span>
         <span id="aiPillLabel">ШІ</span>
-        <span class="ai-version-badge">v3.1</span>
+        <span class="ai-version-badge">v3.2</span>
         <span style="font-size:9px; color:#64748b; margin-left:3px;">✥</span>
       </div>
       <div style="display:flex; align-items:center; gap:4px;">
@@ -933,7 +930,7 @@
 
       <div id="aiChatBox" class="ai-chat-box">
         <div class="ai-msg bot">
-          👋 Вітаю! Я ваш ШІ-штурман (Карта v3.1). Шарики чисті, без цифр, на 3px крупніше!
+          👋 Вітаю! Я ваш ШІ-штурман (Карта v3.2). Повністю розширені повноваження агента, кнопки зверху!
         </div>
       </div>
 
@@ -1128,7 +1125,6 @@
       return spamWords.some(w => t.includes(w));
     }
 
-    // СЛОВАРЬ ТОПОНИМОВ С УЧЕТОМ СТАРЫХ И НОВЫХ НАЗВАНИЙ
     const DNIPRO_STREETS_MAP = {
       "камчатськ": { name: "вул. Калдирська (колишня Камчатська)", lat: 48.4650, lng: 34.9800, note: "Колишня Камчатська" },
       "калд": { name: "вул. Калдирська", lat: 48.4650, lng: 34.9800 },
@@ -1669,6 +1665,7 @@
 
       if (matchedStreets.length === 0) {
         matchedStreets.push(
+          DNIPRO_STREETS_MAP["камчатськ"],
           DNIPRO_STREETS_MAP["каштанов"],
           DNIPRO_STREETS_MAP["лак"],
           DNIPRO_STREETS_MAP["тещин.*язик"],
@@ -1685,7 +1682,7 @@
       matchedStreets.forEach(st => {
         const chip = document.createElement("div");
         chip.className = "train-chip";
-        chip.innerText = `📍 ${st.name}` + (st.note ? ` (${st.note})` : "");
+        chip.innerHTML = `📍 ${st.name}` + (st.note ? `<br><span style="font-size:9px; color:#f59e0b;">💡 ${st.note}</span>` : "");
         chip.onclick = () => applyPointRelocation(st.name, st.lat, st.lng);
         box.appendChild(chip);
       });
@@ -1868,6 +1865,7 @@
       showToast(`⚠️ Не знайдено координат для «${q}». Спробуйте іншу назву.`);
     }
 
+    // ИСПРАВЛЕННЫЙ И РАСШИРЕННЫЙ ДВИЖОК ДЕЙСТВИЙ ШІ (ПОЛНОМОЧИЯ АГЕНТА)
     async function executeAiActionDirective(actionType, payload) {
       if (actionType === "NAVIGATE") {
         if (payload.url) window.location.href = payload.url;
@@ -2293,7 +2291,7 @@
 
       const systemInstructionText = `
 Ти — високоінтелектуальний військово-дорожній ШІ-штурман у місті Дніпро для водія.
-Ти маєш ПРЯМУ ВЛАДУ над картою. Якщо користувач просить відкрити аналітику, перенести точку чи змінити статус, ти ОБОВ'ЯЗКОВО повинен додати в самий кінець своєї відповіді відповідний тег дії (COMMAND)!
+Ти маєш ПРЯМУ ВЛАДУ над картою. Якщо користувач просить перенести точку, змінити статус чи відкрити аналітику, ти ОБОВ'ЯЗКОВО повинен додати в самий кінець своєї відповіді відповідну команду у форматі COMMAND:
 
 ${currentTargetInfo}
 СТАН СВІТЛОФОРІВ:
@@ -2303,19 +2301,16 @@ ${tlStatusText}
 ${allLiveReportsText || "Повідомлень немає"}
 
 ІНСТРУКЦІЯ З ДІЙ (COMMANDS):
-1. ВІДКРИТТЯ СТАТИСТИКИ (Аналітика):
-<<<ACTION:NAVIGATE:{"url":"stats.html"}>>>
-
-2. ПЕРЕМІЩЕННЯ КАРИ (Покажи ближче):
-<<<ACTION:FLYTO:{"lat":48.XXXXX,"lng":34.XXXXX}>>>
-
-3. ПЕРЕМІЩЕННЯ ТОЧКИ НА НОВЕ МІСЦЕ:
+1. ПЕРЕМІЩЕННЯ ТОЧКИ:
 <<<ACTION:MOVE:{"key":"KEY_ТОЧКИ","street":"Назва вулиці","lat":48.XXXXX,"lng":34.XXXXX}>>>
 
-4. ЗМІНА СТАТУСУ (Чисто / Блокпост):
-<<<ACTION:STATUS:{"target_text":"текст","clean":true}>>> (true - чисто, false - блокпост)
+2. ЗМІНА СТАТУСУ:
+<<<ACTION:STATUS:{"key":"KEY_ТОЧКИ","clean":true}>>> (true - чисто, false - блокпост)
 
-Завжди випускай <<<ACTION:...>>>, коли користувач просить виконати дію на карті!
+3. ВІДКРИТТЯ АНАЛІТИКИ:
+<<<ACTION:NAVIGATE:{"url":"stats.html"}>>>
+
+Завжди випускай <<<ACTION:...>>>, коли просять виконати дію!
 `;
 
       geminiChatHistory.push({ role: "user", parts: [{ text: query }] });
@@ -2867,7 +2862,6 @@ ${allLiveReportsText || "Повідомлень немає"}
       } catch (err) {}
     }
 
-    // РЕНДЕР МАРКЕРОВ: БЕЗ ЦИФР, ТОЛЬКО ЧИСТЫЕ ШАРИКИ НА 3PX КРУПНЕЕ С СПИСКОМ ПО КЛИКУ
     function renderMarkers() {
       markersLayer.clearLayers();
       const now = Date.now();
@@ -2923,8 +2917,6 @@ ${allLiveReportsText || "Повідомлень немає"}
         
         const colorClass = clean ? "color-green" : "color-red";
         const freshClass = isFresh ? "fresh" : "";
-        
-        // Укрупненный чистый шарик на 3px больше (22px) без цифр внутри
         const sizeClass = cluster.points.length > 1 ? "clustered" : "";
 
         const markerHtml = `<div class="radar-circle ${colorClass} ${freshClass} ${trainingClass} ${sizeClass}"></div>`;
