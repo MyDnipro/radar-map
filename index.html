@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <meta name="color-scheme" content="light only">
-  <title>Радар Дніпро v3.5</title>
+  <title>Радар Дніпро v3.6</title>
   <link rel="icon" type="image/png" href="icon.png">
   <link rel="apple-touch-icon" href="icon.png">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -70,7 +70,6 @@
       background: #0b1120;
     }
 
-    /* ЛЕВАЯ ПАНЕЛЬ: фикс ширины чтобы не заезжать под блок ШІ */
     .dashboard {
       position: absolute !important;
       top: 15px !important;
@@ -148,7 +147,6 @@
     }
     html.dash-collapsed #collapsibleBody { display: none; }
 
-    /* ПОИСК С КНОПКОЙ ОЧИСТКИ ✕ */
     .search-box { position: relative; margin-bottom: 8px; }
     .search-input-wrap {
       position: relative;
@@ -187,11 +185,12 @@
       background: #0f172a;
       border: 1px solid #38bdf8;
       border-radius: 8px;
-      max-height: 160px;
+      max-height: 180px;
       overflow-y: auto;
       z-index: 2000;
       display: none;
       margin-top: 4px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.6);
     }
     .search-item {
       padding: 6px 8px;
@@ -199,60 +198,10 @@
       color: #cbd5e1;
       cursor: pointer;
       border-bottom: 1px solid #1e293b;
+      line-height: 1.3;
     }
     .search-item:hover { background: #1e293b; color: #38bdf8; }
 
-    /* КОНВЕРТЕР С КНОПКОЙ ОЧИСТКИ ✕ */
-    .name-converter-box {
-      background: #070d1d;
-      border: 1px solid #1e293b;
-      border-radius: 8px;
-      padding: 6px 8px;
-      margin-bottom: 8px;
-    }
-    .name-converter-title {
-      font-size: 10px;
-      font-weight: 800;
-      color: #38bdf8;
-      margin-bottom: 4px;
-    }
-    .name-converter-wrap {
-      position: relative;
-      display: flex;
-      align-items: center;
-    }
-    .name-converter-input {
-      width: 100%;
-      background: #0b1120;
-      border: 1px solid #334155;
-      color: #fff;
-      padding: 5px 22px 5px 6px;
-      border-radius: 6px;
-      font-size: 10px;
-      outline: none;
-    }
-    .name-converter-input:focus { border-color: #00f3ff; }
-    .name-converter-clear-btn {
-      position: absolute;
-      right: 5px;
-      background: transparent;
-      border: none;
-      color: #94a3b8;
-      font-size: 11px;
-      cursor: pointer;
-      display: none;
-      padding: 2px;
-      line-height: 1;
-    }
-    .name-converter-result {
-      font-size: 10px;
-      color: #f59e0b;
-      margin-top: 5px;
-      line-height: 1.35;
-      display: none;
-    }
-
-    /* ПАНЕЛЬ ШІ */
     .ai-pill-panel {
       position: absolute;
       top: 15px;
@@ -420,7 +369,6 @@
       justify-content: center;
     }
 
-    /* МІЙ ШЛЯХ */
     .route-status-bar {
       position: absolute !important;
       bottom: 25px !important;
@@ -715,7 +663,29 @@
       display: none; white-space: nowrap; pointer-events: none;
     }
 
-    /* МОДАЛКА ПЕРЕНОСА ЗА АДРЕСОЮ */
+    /* НЕЗАВИСИМЫЕ МОДАЛЬНЫЕ СЛОИ (НЕ ПЕРЕЗАПИСЫВАЮТ POPUP МАРКЕРОВ) */
+    .action-sheet-backdrop {
+      position: fixed; inset: 0; width: 100%; height: 100%;
+      background: rgba(4, 7, 15, 0.75); backdrop-filter: blur(5px);
+      z-index: 9998; display: none; align-items: center; justify-content: center;
+      padding: 15px;
+    }
+    .action-sheet-card {
+      background: #0f172a; border: 1.5px solid #0284c7; border-radius: 16px;
+      width: 100%; max-width: 320px; padding: 14px; color: #fff;
+      box-shadow: 0 10px 35px rgba(0, 243, 255, 0.35); display: flex; flex-direction: column;
+      gap: 10px;
+    }
+    .action-sheet-title {
+      font-size: 13px; font-weight: 800; color: #38bdf8;
+      display: flex; justify-content: space-between; align-items: center;
+      border-bottom: 1px solid #1e293b; padding-bottom: 6px;
+    }
+    .btn-sheet-act {
+      width: 100%; padding: 10px; border-radius: 8px; font-size: 12px; font-weight: 800;
+      cursor: pointer; border: none; text-align: center;
+    }
+
     .train-modal-backdrop {
       position: fixed; inset: 0; width: 100%; height: 100%;
       background: rgba(4, 7, 15, 0.82); backdrop-filter: blur(6px);
@@ -731,7 +701,7 @@
     .train-header { display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: 800; color: #38bdf8; border-bottom: 1px solid #1e293b; padding-bottom: 6px; }
     .train-text-quote { background: #1e293b; border-radius: 8px; padding: 8px 10px; font-size: 12px; color: #e2e8f0; line-height: 1.35; word-break: break-word; border-left: 3px solid #f59e0b; }
     .train-suggestions-title { font-size: 11px; font-weight: 700; color: #94a3b8; margin-top: 2px; }
-    .train-suggestions-box { display: flex; flex-wrap: wrap; gap: 6px; max-height: 110px; overflow-y: auto; }
+    .train-suggestions-box { display: flex; flex-wrap: wrap; gap: 6px; max-height: 120px; overflow-y: auto; }
     .train-chip { background: #1e293b; border: 1px solid #0284c7; color: #38bdf8; padding: 6px 10px; border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer; }
     .train-chip:active { transform: scale(0.95); background: #0284c7; color: #fff; }
     .train-input-row { display: flex; gap: 6px; margin-top: 4px; }
@@ -739,7 +709,6 @@
     .train-input:focus { border-color: #38bdf8; }
     .btn-train-search { background: #0284c7; border: none; color: #fff; border-radius: 8px; padding: 0 12px; font-size: 11px; font-weight: 800; cursor: pointer; }
 
-    /* ДИАЛОГ ПОДТВЕРЖДЕНИЯ ПЕРЕНОСА */
     .confirm-modal-backdrop {
       position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
       z-index: 9999; display: none; width: 90%; max-width: 340px;
@@ -772,23 +741,13 @@
     <div id="collapsibleBody" class="collapsible-body">
       <div class="subtitle" id="sectorSubtitle">📍 Режим: Мій маршрут</div>
       
-      <!-- ПОИСК С КНОПКОЙ ОЧИСТКИ ✕ -->
+      <!-- ЕДИНЫЙ ПОИСК С ПОДСКАЗКАМИ СТАРЫХ И НОВЫХ НАЗВАНИЙ -->
       <div class="search-box">
         <div class="search-input-wrap">
-          <input type="text" id="streetSearchInput" class="search-input" placeholder="🔍 Пошук вулиці у Дніпрі..." autocomplete="off">
+          <input type="text" id="streetSearchInput" class="search-input" placeholder="🔍 Вулиця або стара назва..." autocomplete="off">
           <button id="searchClearBtn" class="search-clear-btn" onclick="clearStreetSearch()">✕</button>
         </div>
         <div id="searchResults" class="search-results"></div>
-      </div>
-
-      <!-- ОКОШКО СТАРЫХ / НОВЫХ НАЗВАНИЙ -->
-      <div class="name-converter-box">
-        <div class="name-converter-title">🏛️ Старі ➔ Нові назви:</div>
-        <div class="name-converter-wrap">
-          <input type="text" id="nameConverterInput" class="name-converter-input" placeholder="Введіть стару назву (напр. Савченка)..." autocomplete="off" oninput="handleNameConvert(this.value)">
-          <button id="nameConverterClearBtn" class="name-converter-clear-btn" onclick="clearNameConverter()">✕</button>
-        </div>
-        <div id="nameConverterResult" class="name-converter-result"></div>
       </div>
 
       <button id="btnMapLayer" class="btn-secondary" onclick="toggleMapLayer()">
@@ -830,13 +789,13 @@
     </div>
   </div>
 
-  <!-- 2. ШІ (ВЕРСИЯ v3.5) -->
+  <!-- 2. ШІ (ВЕРСИЯ v3.6) -->
   <div id="aiPillPanel" class="ai-pill-panel compact">
     <div id="aiPillHeader" class="ai-pill-compact-content">
       <div class="ai-titleBadge" onclick="toggleAiPillExpand()">
         <span style="font-size:14px;">🤖</span>
         <span id="aiPillLabel">ШІ</span>
-        <span class="ai-version-badge">v3.5</span>
+        <span class="ai-version-badge">v3.6</span>
         <span style="font-size:9px; color:#64748b; margin-left:3px;">✥</span>
       </div>
       <div style="display:flex; align-items:center; gap:4px;">
@@ -849,7 +808,7 @@
     <div class="ai-pill-body" id="aiPillBody">
       <div id="aiChatBox" class="ai-chat-box">
         <div class="ai-msg bot">
-          👋 Вітаю! Я ваш ШІ-штурман (Карта v3.5). Всі функції активні!
+          👋 Вітаю! Я ваш ШІ-штурман (Карта v3.6). Незалежні модальні вікна та автономний пошук адрес активні!
         </div>
       </div>
 
@@ -898,6 +857,34 @@
   <!-- 4. ОНОВИТИ -->
   <div id="btnRefresh" class="btn-refresh" onclick="refreshRadarClick()">
     <span>🔄</span><span>Оновити</span>
+  </div>
+
+  <!-- НЕЗАВИСИМЫЙ ПЛАВАЮЩИЙ ДИАЛОГ ДЛЯ ПЕРЕНОСА МЕТКИ (БЕЗ ЗАТИРАНИЯ POPUP) -->
+  <div id="markerActionSheet" class="action-sheet-backdrop" onclick="closeMarkerActionSheet(event)">
+    <div class="action-sheet-card" onclick="event.stopPropagation()">
+      <div class="action-sheet-title">
+        <span>🎯 Переміщення мітки</span>
+        <span style="cursor:pointer; font-size:16px; padding:0 4px;" onclick="closeMarkerActionSheet()">✕</span>
+      </div>
+      <button class="btn-sheet-act" style="background:#0284c7; color:#fff;" onclick="sheetStartManualDrag()">✋ Перемістити вручну пальцем</button>
+      <button class="btn-sheet-act" style="background:#1e293b; color:#38bdf8; border:1px solid #0284c7;" onclick="sheetStartTrainModal()">📍 Перемістити за адресою зі списку</button>
+    </div>
+  </div>
+
+  <!-- НЕЗАВИСИМЫЙ ПУЛЬТ СВЕТОФОРА (БЕЗ ЗАТИРАНИЯ POPUP) -->
+  <div id="trafficLightActionSheet" class="action-sheet-backdrop" onclick="closeTrafficLightActionSheet(event)">
+    <div class="action-sheet-card" onclick="event.stopPropagation()">
+      <div class="action-sheet-title">
+        <span id="tlSheetTitle">🚦 Керування світлофором</span>
+        <span style="cursor:pointer; font-size:16px; padding:0 4px;" onclick="closeTrafficLightActionSheet()">✕</span>
+      </div>
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px;">
+        <button class="btn-sheet-act" style="background:#059669; color:#fff;" onclick="sheetSetTlMode('green')">🟢 Чисто</button>
+        <button class="btn-sheet-act" style="background:#dc2626; color:#fff;" onclick="sheetSetTlMode('red')">🔴 БП</button>
+        <button class="btn-sheet-act" style="background:#64748b; color:#fff;" onclick="sheetSetTlMode('off')">⚪ Погасити</button>
+        <button class="btn-sheet-act" style="background:#0284c7; color:#fff;" onclick="sheetSetTlMode('auto')">🔄 Авто</button>
+      </div>
+    </div>
   </div>
 
   <!-- МОДАЛКА ПЕРЕНОСА ЗА АДРЕСОЮ -->
@@ -997,52 +984,61 @@
       return spamWords.some(w => t.includes(w));
     }
 
-    // СЛОВАРЬ ТОПОНИМОВ
+    // МАСШТАБНАЯ БАЗА ТОПОНИМОВ И ИСТОРИЧЕСКИХ НАЗВАНИЙ ДНЕПРА
     const DNIPRO_STREETS_MAP = {
-      "карун": { name: "вул. Василя Каруни (Амур / з'їзд на Слобожанський)", lat: 48.4910, lng: 35.0560 },
+      "артем": { name: "вул. Січових Стрільців", old: "вул. Артема", lat: 48.4550, lng: 35.0420 },
+      "січов.*стрільц": { name: "вул. Січових Стрільців", old: "вул. Артема", lat: 48.4550, lng: 35.0420 },
+      "карл.*маркс": { name: "просп. Дмитра Яворницького", old: "просп. Карла Маркса", lat: 48.4650, lng: 35.0450 },
+      "яворницьк": { name: "просп. Дмитра Яворницького", old: "просп. Карла Маркса", lat: 48.4650, lng: 35.0450 },
+      "чкалов": { name: "вул. Святослава Хороброго", old: "вул. Чкалова", lat: 48.4560, lng: 35.0340 },
+      "святослав.*хоробр": { name: "вул. Святослава Хороброго", old: "вул. Чкалова", lat: 48.4560, lng: 35.0340 },
+      "дзержинськ": { name: "вул. Володимира Вернадського", old: "вул. Дзержинського", lat: 48.4630, lng: 35.0580 },
+      "вернадськ": { name: "вул. Володимира Вернадського", old: "вул. Дзержинського", lat: 48.4630, lng: 35.0580 },
+      "комсомольськ": { name: "вул. Старокозацька", old: "вул. Комсомольська", lat: 48.4610, lng: 35.0380 },
+      "старокозацьк": { name: "вул. Старокозацька", old: "вул. Комсомольська", lat: 48.4610, lng: 35.0380 },
+      "плеханов": { name: "вул. Князя Володимира Великого", old: "вул. Плеханова", lat: 48.4680, lng: 35.0450 },
+      "володимир.*велик": { name: "вул. Князя Володимира Великого", old: "вул. Плеханова", lat: 48.4680, lng: 35.0450 },
+      "ленін": { name: "вул. Воскресенська", old: "вул. Леніна", lat: 48.4640, lng: 35.0410 },
+      "ленин": { name: "вул. Воскресенська", old: "вул. Леніна", lat: 48.4640, lng: 35.0410 },
+      "воскресенськ": { name: "вул. Воскресенська", old: "вул. Леніна", lat: 48.4640, lng: 35.0410 },
+      "косіор": { name: "просп. Петра Калнишевського", old: "вул. Косіора", lat: 48.5110, lng: 35.0780 },
+      "косиор": { name: "просп. Петра Калнишевського", old: "вул. Косіора", lat: 48.5110, lng: 35.0780 },
+      "калнишевськ": { name: "просп. Петра Калнишевського", old: "вул. Косіора", lat: 48.5110, lng: 35.0780 },
+      "вакуленчук": { name: "вул. Леоніда Стромцова", old: "вул. Вакуленчука", lat: 48.4410, lng: 35.0250 },
+      "стромцов": { name: "вул. Леоніда Стромцова", old: "вул. Вакуленчука", lat: 48.4410, lng: 35.0250 },
+      "титов": { name: "вул. Незалежності (Титова)", old: "вул. Титова", lat: 48.4340, lng: 35.0150 },
+      "незалежност": { name: "вул. Незалежності (Титова)", old: "вул. Титова", lat: 48.4340, lng: 35.0150 },
       "савченк": { name: "вул. В'ячеслава Чорновола", old: "вул. Савченка", lat: 48.4550, lng: 35.0180 },
       "чорновол": { name: "вул. В'ячеслава Чорновола", old: "вул. Савченка", lat: 48.4550, lng: 35.0180 },
-      "черновол": { name: "вул. В'ячеслава Чорновола", old: "вул. Савченка", lat: 48.4550, lng: 35.0180 },
       "гавриленк": { name: "вул. Лікаря Ребініна", old: "вул. Гавриленка", lat: 48.4380, lng: 35.0210 },
       "ребінін": { name: "вул. Лікаря Ребініна", old: "вул. Гавриленка", lat: 48.4380, lng: 35.0210 },
-      "ребинин": { name: "вул. Лікаря Ребініна", old: "вул. Гавриленка", lat: 48.4380, lng: 35.0210 },
+      "карун": { name: "вул. Василя Каруни (Амур / з'їзд на Слобожанський)", lat: 48.4910, lng: 35.0560 },
       "інгульськ": { name: "вул. Інгульська", lat: 48.5120, lng: 35.0420 },
       "ингульск": { name: "вул. Інгульська", lat: 48.5120, lng: 35.0420 },
       "барвінківськ": { name: "вул. Барвінківська", lat: 48.4493, lng: 35.0286 },
-      "барвинковск": { name: "вул. Барвінківська", lat: 48.4493, lng: 35.0286 },
       "переїзд.*мирн": { name: "Переїзд Мирний (Краснопілля)", lat: 48.3980, lng: 34.9850 },
-      "переезд.*мирн": { name: "Переїзд Мирний (Краснопілля)", lat: 48.3980, lng: 34.9850 },
       "ленінградськ": { name: "вул. Князя Ярослава Мудрого", old: "вул. Ленінградська", lat: 48.4758, lng: 35.0307 },
-      "ленинградск": { name: "вул. Князя Ярослава Мудрого", old: "вул. Ленінградська", lat: 48.4758, lng: 35.0307 },
       "ярослав.*мудр": { name: "вул. Князя Ярослава Мудрого", old: "вул. Ленінградська", lat: 48.4758, lng: 35.0307 },
       "камчатськ": { name: "вул. Калдирська", old: "вул. Камчатська", lat: 48.4650, lng: 34.9800 },
-      "камчатск": { name: "вул. Калдирська", old: "вул. Камчатська", lat: 48.4650, lng: 34.9800 },
       "калдирськ": { name: "вул. Калдирська", old: "вул. Камчатська", lat: 48.4650, lng: 34.9800 },
       "гагарін": { name: "просп. Науки", old: "просп. Гагаріна", lat: 48.4350, lng: 35.0420 },
-      "гагарин": { name: "просп. Науки", old: "просп. Гагаріна", lat: 48.4350, lng: 35.0420 },
       "науки": { name: "просп. Науки", old: "просп. Гагаріна", lat: 48.4350, lng: 35.0420 },
       "кіров": { name: "просп. Олександра Поля", old: "просп. Кірова", lat: 48.4480, lng: 35.0240 },
-      "киров": { name: "просп. Олександра Поля", old: "просп. Кірова", lat: 48.4480, lng: 35.0240 },
       "поля": { name: "просп. Олександра Поля", old: "просп. Кірова", lat: 48.4480, lng: 35.0240 },
       "шмідт": { name: "вул. Степана Бандери", old: "вул. Шмідта", lat: 48.4680, lng: 35.0240 },
-      "шмидт": { name: "вул. Степана Бандери", old: "вул. Шмідта", lat: 48.4680, lng: 35.0240 },
       "бандер": { name: "вул. Степана Бандери", old: "вул. Шмідта", lat: 48.4680, lng: 35.0240 },
       "курчатов": { name: "вул. 128-ї Бригади Тероборони", old: "вул. Курчатова", lat: 48.4740, lng: 35.0140 },
       "128.*бригад": { name: "вул. 128-ї Бригади Тероборони", old: "вул. Курчатова", lat: 48.4740, lng: 35.0140 },
       "каштанов": { name: "вул. Каштанова (Таромське)", lat: 48.4710, lng: 34.8250 },
       "лак": { name: "Лакофарбовий завод (з/м Західний)", lat: 48.4680, lng: 34.9520 },
-      "лакокраск": { name: "Лакофарбовий завод (з/м Західний)", lat: 48.4680, lng: 34.9520 },
       "тещин.*язик": { name: "Тьощин язик (вул. Космічна)", lat: 48.4140, lng: 35.0510 },
-      "тещин.*язык": { name: "Тьощин язик (вул. Космічна)", lat: 48.4140, lng: 35.0510 },
       "молодогвард": { name: "вул. Молодогвардійська (під мостами)", lat: 48.4680, lng: 35.1220 },
       "луговськ": { name: "вул. Луговська (АНД)", lat: 48.4890, lng: 35.0480 },
       "солончаков": { name: "вул. Солончакова (АНД)", lat: 48.5010, lng: 35.0350 },
       "моторн": { name: "вул. Моторна (Березанівка)", lat: 48.5350, lng: 34.9600 },
-      "семен": { name: "вул. Моторна (магазин Семен)", lat: 48.5350, lng: 34.9600 },
       "петрозаводськ": { name: "вул. Петрозаводська (Ковпака)", lat: 48.5300, lng: 34.9850 },
       "аеропорт": { name: "Аеропорт Дніпро", lat: 48.3570, lng: 35.1000 },
       "старих кодак": { name: "дорога на Старі Кодаки", lat: 48.3650, lng: 35.1050 },
-      "кодаки": { name: "дорога на Старі Кодаки", lat: 48.3650, lng: 35.1050 },
       "братськ": { name: "с. Братське (Запорізька траса)", lat: 48.3280, lng: 35.0250 },
       "новоолександрівк": { name: "с. Новоолександрівка", lat: 48.3520, lng: 35.0050 },
       "краснопіл": { name: "Краснопілля", lat: 48.4100, lng: 34.9550 },
@@ -1075,7 +1071,6 @@
       "старомостов": { name: "Старомостова площа", old: "площа Островського", lat: 48.4770, lng: 35.0220 },
       "островськ": { name: "Старомостова площа", old: "площа Островського", lat: 48.4770, lng: 35.0220 },
       "озерк": { name: "Ринок Озерка", lat: 48.4715, lng: 35.0215 },
-      "титов": { name: "вул. Титова", lat: 48.4340, lng: 35.0150 },
       "мазеп": { name: "просп. Івана Мазепи", old: "просп. Петровського", lat: 48.4680, lng: 34.9650 },
       "петровськ": { name: "просп. Івана Мазепи", old: "просп. Петровського", lat: 48.4680, lng: 34.9650 },
       "нігоян": { name: "просп. Сергія Нігояна", old: "просп. Калініна", lat: 48.4730, lng: 34.9850 },
@@ -1128,52 +1123,23 @@
       return null;
     }
 
+    // ДИФФЕРЕНЦИРОВАННЫЙ СТАТУС В КАРТОЧКЕ (3 ВАРИАНТА)
     function getStreetRenameNote(text) {
       const lower = (text || "").toLowerCase();
+      
+      const isLandmarkOnly = /(?:ровд|восток\s*газ|млин|варус|атб|заправк|окко|вокзал|станція|міст|пост|парк|озерк|бик)/i.test(lower);
+
       for (const [key, val] of Object.entries(DNIPRO_STREETS_MAP)) {
         if (new RegExp(key, "i").test(lower)) {
           if (val.old) return `💡 ${val.old} ➔ по-новому: <b>${val.name}</b>`;
           else return `💡 <b>${val.name}</b> (назва не змінювалась)`;
         }
       }
-      return `💡 Назва не змінювалась`;
-    }
 
-    function handleNameConvert(val) {
-      const q = val.trim().toLowerCase();
-      const resEl = document.getElementById("nameConverterResult");
-      const btnClear = document.getElementById("nameConverterClearBtn");
-      btnClear.style.display = q.length > 0 ? "block" : "none";
-
-      if (q.length < 2) {
-        resEl.style.display = "none";
-        return;
+      if (isLandmarkOnly) {
+        return `💡 Локальний міський орієнтир`;
       }
-
-      let found = null;
-      for (const [key, item] of Object.entries(DNIPRO_STREETS_MAP)) {
-        if (key.includes(q) || (item.old && item.old.toLowerCase().includes(q)) || item.name.toLowerCase().includes(q)) {
-          found = item;
-          break;
-        }
-      }
-
-      if (found) {
-        resEl.innerHTML = found.old 
-          ? `🟢 <b>${found.name}</b><br><span style="color:#94a3b8;">(колишня: ${found.old})</span>` 
-          : `🟢 <b>${found.name}</b> (назва не змінювалась)`;
-        resEl.style.display = "block";
-      } else {
-        resEl.innerHTML = `⚠️ Не знайдено перейменування для «${val}»`;
-        resEl.style.display = "block";
-      }
-    }
-
-    function clearNameConverter() {
-      const inp = document.getElementById("nameConverterInput");
-      inp.value = "";
-      document.getElementById("nameConverterClearBtn").style.display = "none";
-      document.getElementById("nameConverterResult").style.display = "none";
+      return `💡 Міський орієнтир`;
     }
 
     const LIFETIME_MS = 40 * 60 * 1000;
@@ -1189,8 +1155,8 @@
     let filterShowGreen = true;
     let filterShowRed = true;
 
-    let currentTrainingPoint = null;
-    let currentTrainingMarker = null;
+    let activeActionPoint = null;
+    let activeActionTrafficLight = null;
     let pendingRelocation = null;
 
     let learnedRules = [];
@@ -1302,12 +1268,12 @@
       },
       s2: {
         name: "Центр — Нагірка — Перемога",
-        keys: ["центр", "міст.*сіті", "яворницьк", "нагірк", "гагарін", "науки", "перемог"],
+        keys: ["центр", "міст.*сіті", "яворницьк", "нагірк", "гагарін", "науки", "перемог", "артем", "січов.*стрільц", "карл.*маркс", "чкалов", "дзержинськ", "комсомольськ", "плеханов", "ленін"],
         bounds: { minLat: 48.410, maxLat: 48.480, minLng: 35.038, maxLng: 35.120 }
       },
       s3: {
         name: "Тополя — 12 Квартал — Поля",
-        keys: ["12.*квартал", "топол", "сокіл", "шинн", "хмельницьк", "поля", "кіров", "титов", "аеропорт", "барвінківськ", "переїзд.*мирн", "тещин.*язик", "гавриленк", "ребінін"],
+        keys: ["12.*квартал", "топол", "сокіл", "шинн", "хмельницьк", "поля", "кіров", "титов", "аеропорт", "барвінківськ", "переїзд.*мирн", "тещин.*язик", "гавриленк", "ребінін", "вакуленчук", "стромцов"],
         bounds: { minLat: 48.320, maxLat: 48.445, minLng: 34.920, maxLng: 35.130 }
       },
       s4: {
@@ -1322,7 +1288,7 @@
       },
       s6: {
         name: "Лівий: Слобожанський — Сонячний",
-        keys: ["слобожанськ", "правд", "сонячн", "малиновськ", "придніпров", "бик", "золоті ключі", "молодогвард", "карун"],
+        keys: ["слобожанськ", "правд", "сонячн", "малиновськ", "придніпров", "бик", "золоті ключі", "молодогвард", "карун", "косіор", "калнишевськ"],
         bounds: { minLat: 48.440, maxLat: 48.540, minLng: 35.040, maxLng: 35.160 }
       }
     };
@@ -1392,7 +1358,11 @@
       showToast(type === 'route' ? "🎯 Тільки мій шлях!" : "🌐 Весь Дніпро!");
     }
 
-    map.on('click', () => { closeRouteSubmenu(); });
+    map.on('click', () => { 
+      closeRouteSubmenu();
+      closeMarkerActionSheet();
+      closeTrafficLightActionSheet();
+    });
 
     function isCleanPoint(p) {
       const fullStr = ((p.raw_text || p.text || "") + " " + (p.address || "")).toLowerCase();
@@ -1459,7 +1429,7 @@
           const t = ((p.raw_text || p.text || "") + " " + (p.address || "")).toLowerCase();
           return cp.keys.some(k => {
             if (k === "стан") return /\bстан\b/i.test(t) && !/остановил/i.test(t);
-            return t.includes(k);
+            return new RegExp(k, "i").test(t);
           });
         });
         matched.sort((a,b) => (b.time||0) - (a.time||0));
@@ -1565,23 +1535,51 @@
       if (!p) return;
       if (!aiPillPanel.classList.contains("expanded")) toggleAiPillExpand();
       const rawText = p.text || p.raw_text || "";
-      aiInlineInput.value = `Зверни увагу на мітку [KEY:${fbKey}]: "${rawText}".`;
+      aiInlineInput.value = `Перенеси мітку [KEY:${fbKey}]: "${rawText}" на...`;
       aiInlineInput.focus();
       showToast("🤖 Мітку передано ШІ-штурману!");
     };
 
-    // МЕНЮ ВЫБОРА: ВРУЧНУЮ ИЛИ ЗА АДРЕСОЮ
-    function showMarkerActionChoice(p, marker) {
-      const choiceHtml = `
-        <div style="padding:4px; min-width:180px; text-align:center; font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;">
-          <div style="font-size:11px; font-weight:800; color:#0f172a; margin-bottom:6px;">🎯 Як перемістити мітку?</div>
-          <div style="display:flex; flex-direction:column; gap:5px;">
-            <button onclick="startDirectManualDrag('${p._fbKey}')" style="background:#0284c7; color:#fff; border:none; padding:7px 10px; border-radius:7px; font-size:11px; font-weight:800; cursor:pointer;">✋ Перемістити вручну</button>
-            <button onclick="startAddressRelocationForPoint('${p._fbKey}')" style="background:#1e293b; color:#38bdf8; border:1px solid #0284c7; padding:7px 10px; border-radius:7px; font-size:11px; font-weight:800; cursor:pointer;">📍 Перемістити за адресою</button>
-          </div>
-        </div>
-      `;
-      marker.bindPopup(choiceHtml, { closeButton: true, autoClose: true }).openPopup();
+    // НЕЗАВИСИМЫЙ ПЛАВАЮЩИЙ СЛОЙ ВЫБОРА ДЕЙСТВИЯ (БЕЗ ПЕРЕЗАПИСИ POPUP МАРКЕРА)
+    function openMarkerActionSheet(point, marker) {
+      activeActionPoint = point;
+      activeActionMarker = marker || findMarkerByPoint(point);
+      document.getElementById("markerActionSheet").style.display = "flex";
+    }
+
+    function closeMarkerActionSheet(e) {
+      if (e && e.target && e.target.id !== "markerActionSheet" && !e.target.closest(".action-sheet-card")) return;
+      document.getElementById("markerActionSheet").style.display = "none";
+    }
+
+    function sheetStartManualDrag() {
+      closeMarkerActionSheet();
+      if (!activeActionPoint) return;
+      startDirectManualDrag(activeActionPoint._fbKey);
+    }
+
+    function sheetStartTrainModal() {
+      closeMarkerActionSheet();
+      if (!activeActionPoint) return;
+      openTrainingModal(activeActionPoint, activeActionMarker);
+    }
+
+    function openTrafficLightActionSheet(cpId) {
+      activeActionTrafficLight = cpId;
+      const cp = checkpoints.find(c => c.id === cpId);
+      if (cp) document.getElementById("tlSheetTitle").innerText = `🚦 ${cp.name}`;
+      document.getElementById("trafficLightActionSheet").style.display = "flex";
+    }
+
+    function closeTrafficLightActionSheet(e) {
+      if (e && e.target && e.target.id !== "trafficLightActionSheet" && !e.target.closest(".action-sheet-card")) return;
+      document.getElementById("trafficLightActionSheet").style.display = "none";
+    }
+
+    function sheetSetTlMode(mode) {
+      closeTrafficLightActionSheet();
+      if (!activeActionTrafficLight) return;
+      window.setTrafficLightManual(activeActionTrafficLight, mode);
     }
 
     window.startDirectManualDrag = function(fbKey) {
@@ -1589,7 +1587,6 @@
       if (!p) return;
       let m = findMarkerByPoint(p);
       if (!m) return;
-      m.closePopup();
 
       m.options.autoPan = true;
       m.options.autoPanPadding = [60, 60];
@@ -1626,17 +1623,9 @@
       });
     };
 
-    window.startAddressRelocationForPoint = function(fbKey) {
-      const p = allPoints.find(x => x._fbKey === fbKey);
-      if (!p) return;
-      let m = findMarkerByPoint(p);
-      if (m) m.closePopup();
-      openTrainingModal(p, m);
-    };
-
     function openTrainingModal(point, marker) {
-      currentTrainingPoint = point;
-      currentTrainingMarker = marker || findMarkerByPoint(point);
+      activeActionPoint = point;
+      activeActionMarker = marker || findMarkerByPoint(point);
 
       const rawTxt = point.raw_text || point.text || "";
       document.getElementById("trainTextQuote").innerText = `«${rawTxt}»`;
@@ -1654,6 +1643,7 @@
 
       if (matchedStreets.length === 0) {
         matchedStreets.push(
+          DNIPRO_STREETS_MAP["артем"],
           DNIPRO_STREETS_MAP["савченк"],
           DNIPRO_STREETS_MAP["гавриленк"],
           DNIPRO_STREETS_MAP["каштанов"],
@@ -1662,7 +1652,6 @@
           DNIPRO_STREETS_MAP["робоч"],
           DNIPRO_STREETS_MAP["поля"],
           DNIPRO_STREETS_MAP["парус"],
-          DNIPRO_STREETS_MAP["свобод"],
           DNIPRO_STREETS_MAP["набережн"]
         );
       }
@@ -1688,11 +1677,11 @@
     }
 
     async function applyPointRelocation(streetName, lat, lng) {
-      if (!currentTrainingPoint) return;
+      if (!activeActionPoint) return;
       closeTrainModal();
 
-      const p = currentTrainingPoint;
-      let m = currentTrainingMarker || findMarkerByPoint(p);
+      const p = activeActionPoint;
+      let m = activeActionMarker || findMarkerByPoint(p);
 
       const startPos = L.latLng(p.lat, p.lng);
       const targetPos = L.latLng(Number(lat.toFixed(5)), Number(lng.toFixed(5)));
@@ -1838,7 +1827,7 @@
       showToast(`⚠️ Не знайдено координат для «${q}».`);
     }
 
-    // ДВИЖОК ДЕЙСТВИЙ ШІ
+    // ДВИЖОК ДЕЙСТВИЙ ШІ С АВТОНОМНЫМ ГЕОКОДЕРОМ
     async function executeAiActionDirective(actionType, payload) {
       if (actionType === "NAVIGATE") {
         if (payload.url) window.location.href = payload.url;
@@ -1863,9 +1852,23 @@
         let lng = Number(payload.lng);
         let street = payload.street || payload.address || "Нове місце";
 
+        // Автономный локальный геокодер
         if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
           const resolved = resolveLocationFromText(street);
-          if (resolved) { lat = resolved.lat; lng = resolved.lng; street = resolved.name; }
+          if (resolved) { 
+            lat = resolved.lat; lng = resolved.lng; street = resolved.name; 
+          } else {
+            try {
+              const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(street + ", Дніпро")}&countrycodes=ua&limit=1`;
+              const res = await fetch(url);
+              const data = await res.json();
+              if (data && data.length > 0) {
+                lat = parseFloat(data[0].lat);
+                lng = parseFloat(data[0].lon);
+                street = data[0].display_name.split(",")[0];
+              }
+            } catch(e) {}
+          }
         }
         if (!lat || !lng) return;
 
@@ -1946,7 +1949,6 @@
       }
     };
 
-    // СВЕТОФОРЫ: исправлены ключи поиска (исключено ложное срабатывание слова «съезд» на Кайдакском мосту)
     let checkpoints = [
       { id: "kaidak_rovd", name: "РОВД / Кайдацький з'їзд", lat: 48.4925, lng: 34.9625, keys: ["кайдак", "ровд", "з'їзд.*кайдак", "съезд.*кайдак"] },
       { id: "vodolechebnitsa", name: "Водолікарня (пр. Свободи)", lat: 48.4848, lng: 34.9735, keys: ["водолечеб", "водолікарн", "пр свободи"] },
@@ -1989,6 +1991,8 @@
     L.DomEvent.disableClickPropagation(document.getElementById("routeStatusBar"));
     L.DomEvent.disableClickPropagation(document.getElementById("routeSubmenu"));
     L.DomEvent.disableClickPropagation(document.getElementById("btnRefresh"));
+    L.DomEvent.disableClickPropagation(document.getElementById("markerActionSheet"));
+    L.DomEvent.disableClickPropagation(document.getElementById("trafficLightActionSheet"));
     L.DomEvent.disableClickPropagation(document.getElementById("trainModal"));
     L.DomEvent.disableClickPropagation(document.getElementById("confirmMoveModal"));
 
@@ -2166,7 +2170,7 @@
       }).join('\n');
 
       const systemInstructionText = `
-Ти — високоінтелектуальний військово-дорожній ШІ-штурман у місті Дніпро для водія (v3.5).
+Ти — високоінтелектуальний військово-дорожній ШІ-штурман у місті Дніпро для водія (v3.6).
 Ти маєш ПОВНУ ВЛАДУ над картою. Якщо користувач просить перенести точку, змінити статус чи відкрити аналітику, ти ОБОВ'ЯЗКОВО в кінці своєї відповіді додаєш директиву дії:
 
 ТОЧКИ НА КАРТІ:
@@ -2313,27 +2317,6 @@ ${allLiveReportsText || "Повідомлень немає"}
       localStorage.setItem("dnepr_radar_checkpoints_v2", JSON.stringify(checkpoints));
     }
 
-    function openTrafficLightControl(cpId) {
-      const cp = checkpoints.find(c => c.id === cpId);
-      const marker = trafficMarkersMap[cpId];
-      if (!cp || !marker) return;
-
-      const controlContent = 
-        '<div style="padding:4px; min-width:185px; font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif; color:#0f172a;">' +
-          '<div style="font-weight:800; font-size:12px; color:#0284c7; margin-bottom:4px;">⚙️ Керування: ' + cp.name + '</div>' +
-          '<div style="font-size:10px; color:#64748b; margin-bottom:6px;">Оберіть примусовий стан:</div>' +
-          '<div style="display:grid; grid-template-columns: 1fr 1fr; gap:5px; margin-bottom:6px;">' +
-            '<button onclick="setTrafficLightManual(\'' + cp.id + '\', \'green\')" style="background:#059669; border:none; color:#fff; padding:6px; border-radius:5px; font-size:11px; font-weight:800; cursor:pointer;">🟢 Чисто</button>' +
-            '<button onclick="setTrafficLightManual(\'' + cp.id + '\', \'red\')" style="background:#dc2626; border:none; color:#fff; padding:6px; border-radius:5px; font-size:11px; font-weight:800; cursor:pointer;">🔴 БП</button>' +
-            '<button onclick="setTrafficLightManual(\'' + cp.id + '\', \'off\')" style="background:#64748b; border:none; color:#fff; padding:6px; border-radius:5px; font-size:11px; font-weight:800; cursor:pointer;">⚪ Погасити</button>' +
-            '<button onclick="setTrafficLightManual(\'' + cp.id + '\', \'auto\')" style="background:#0284c7; border:none; color:#fff; padding:6px; border-radius:5px; font-size:11px; font-weight:800; cursor:pointer;">🔄 Авто</button>' +
-          '</div>' +
-        '</div>';
-
-      marker.setPopupContent(controlContent);
-      marker.openPopup();
-    }
-
     function renderTrafficLights() {
       if (!showTrafficLights) return;
       const now = Date.now();
@@ -2401,7 +2384,7 @@ ${allLiveReportsText || "Повідомлень немає"}
           }
           const fbKeySafe = latest._fbKey || "";
 
-          deleteBtnHtml = `<div style="text-align:right; margin-top:3px;"><span onclick="deleteSinglePoint('${fbKeySafe}')" style="color:#ef4444; font-size:10px; font-weight:800; cursor:pointer;" title="Видалити помилкове повідомлення">🗑️ Видалити це повідомлення</span></div>`;
+          deleteBtnHtml = `<div style="text-align:right; margin-top:3px;"><span onclick="deleteSinglePoint('${fbKeySafe}')" style="color:#ef4444; font-size:10px; font-weight:800; cursor:pointer;" title="Видалити повідомлення">🗑️ Видалити це повідомлення</span></div>`;
 
           if (rawText) {
             messageBlock = '<div style="font-size:11px; color:#0f172a; margin:5px 0 3px; line-height:1.35; background:#f8fafc; padding:6px 8px; border-radius:7px; border:1px solid #cbd5e1; word-break:break-word;">'
@@ -2442,7 +2425,7 @@ ${allLiveReportsText || "Повідомлень немає"}
             await syncCheckpointsToCloud();
           });
 
-          // ДОЛГОЕ НАЖАТИЕ НА СВЕТОФОР (ПУЛЬТ)
+          // ДОЛГИЙ ТАП НА СВЕТОФОР (ПУЛЬТ НЕ ПЕРЕЗАПИСЫВАЕТ POPUP)
           let pressTimer = null;
           let isLongPress = false;
           let startX = 0, startY = 0;
@@ -2453,7 +2436,7 @@ ${allLiveReportsText || "Повідомлень немає"}
             pressTimer = setTimeout(() => {
               isLongPress = true;
               if (navigator.vibrate) navigator.vibrate(60);
-              openTrafficLightControl(cp.id);
+              openTrafficLightActionSheet(cp.id);
             }, 500);
           }
 
@@ -2508,10 +2491,10 @@ ${allLiveReportsText || "Повідомлень немає"}
       
       if (isNowCollapsed) {
         clearStreetSearch();
-        clearNameConverter();
       }
     }
 
+    // ИНТЕГРИРОВАННЫЙ ПОИСК С УМНЫМИ ПОДСКАЗКАМИ СТАРЫХ И НОВЫХ НАЗВАНИЙ
     const streetSearchInput = document.getElementById("streetSearchInput");
     const searchResults = document.getElementById("searchResults");
     const searchClearBtn = document.getElementById("searchClearBtn");
@@ -2522,8 +2505,8 @@ ${allLiveReportsText || "Повідомлень немає"}
       clearTimeout(searchDebounceTimer);
       const query = streetSearchInput.value.trim();
       searchClearBtn.style.display = query.length > 0 ? "block" : "none";
-      if (query.length < 3) { searchResults.style.display = "none"; return; }
-      searchDebounceTimer = setTimeout(() => executeStreetSearch(query), 400);
+      if (query.length < 2) { searchResults.style.display = "none"; return; }
+      searchDebounceTimer = setTimeout(() => executeSmartSearch(query), 250);
     });
 
     function clearStreetSearch() {
@@ -2539,36 +2522,70 @@ ${allLiveReportsText || "Повідомлень немає"}
     streetSearchInput.addEventListener("keydown", (e) => {
       if (e.key === "Enter") {
         clearTimeout(searchDebounceTimer);
-        executeStreetSearch(streetSearchInput.value.trim());
+        executeSmartSearch(streetSearchInput.value.trim());
       }
     });
 
-    async function executeStreetSearch(query) {
+    async function executeSmartSearch(query) {
       if (!query) return;
-      try {
-        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ", Дніпро")}&countrycodes=ua&limit=5`;
-        const res = await fetch(url);
-        const data = await res.json();
-        searchResults.innerHTML = "";
-        if (data && data.length > 0) {
-          data.forEach(item => {
-            const div = document.createElement("div");
-            div.className = "search-item";
-            div.innerText = item.display_name.split(",")[0];
-            div.onclick = () => {
-              const lat = parseFloat(item.lat), lon = parseFloat(item.lon);
-              map.flyTo([lat, lon], 16, { animate: true, duration: 1 });
-              if (searchPinMarker) map.removeLayer(searchPinMarker);
-              searchPinMarker = L.circleMarker([lat, lon], { radius: 10, color: "#38bdf8", fillColor: "#00f3ff", fillOpacity: 0.8 }).addTo(map).bindPopup(`📍 ${item.display_name.split(",")[0]}`).openPopup();
-              searchResults.style.display = "none";
-              streetSearchInput.value = item.display_name.split(",")[0];
-              searchClearBtn.style.display = "block";
-            };
-            searchResults.appendChild(div);
-          });
-          searchResults.style.display = "block";
+      const lower = query.toLowerCase();
+      searchResults.innerHTML = "";
+
+      // 1. Поиск по локальной базе декоммунизированных улиц
+      const localMatches = [];
+      for (const [key, item] of Object.entries(DNIPRO_STREETS_MAP)) {
+        if (key.includes(lower) || (item.old && item.old.toLowerCase().includes(lower)) || item.name.toLowerCase().includes(lower)) {
+          if (!localMatches.some(m => m.name === item.name)) {
+            localMatches.push(item);
+          }
         }
-      } catch (e) { searchResults.style.display = "none"; }
+      }
+
+      localMatches.forEach(item => {
+        const div = document.createElement("div");
+        div.className = "search-item";
+        div.innerHTML = item.old 
+          ? `📍 <b>${item.name}</b><br><span style="color:#f59e0b; font-size:10px;">(колишня: ${item.old})</span>` 
+          : `📍 <b>${item.name}</b>`;
+        div.onclick = () => {
+          map.flyTo([item.lat, item.lng], 16, { animate: true, duration: 1 });
+          if (searchPinMarker) map.removeLayer(searchPinMarker);
+          searchPinMarker = L.circleMarker([item.lat, item.lng], { radius: 10, color: "#38bdf8", fillColor: "#00f3ff", fillOpacity: 0.8 }).addTo(map).bindPopup(`📍 ${item.name}`).openPopup();
+          searchResults.style.display = "none";
+          streetSearchInput.value = item.name;
+        };
+        searchResults.appendChild(div);
+      });
+
+      // 2. Дополнение внешним поиском OpenStreetMap
+      if (localMatches.length < 4 && query.length >= 3) {
+        try {
+          const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ", Дніпро")}&countrycodes=ua&limit=3`;
+          const res = await fetch(url);
+          const data = await res.json();
+          if (data && data.length > 0) {
+            data.forEach(item => {
+              const name = item.display_name.split(",")[0];
+              if (!localMatches.some(m => m.name.toLowerCase().includes(name.toLowerCase()))) {
+                const div = document.createElement("div");
+                div.className = "search-item";
+                div.innerHTML = `🌐 ${name}`;
+                div.onclick = () => {
+                  const lat = parseFloat(item.lat), lon = parseFloat(item.lon);
+                  map.flyTo([lat, lon], 16, { animate: true, duration: 1 });
+                  if (searchPinMarker) map.removeLayer(searchPinMarker);
+                  searchPinMarker = L.circleMarker([lat, lon], { radius: 10, color: "#38bdf8", fillColor: "#00f3ff", fillOpacity: 0.8 }).addTo(map).bindPopup(`📍 ${name}`).openPopup();
+                  searchResults.style.display = "none";
+                  streetSearchInput.value = name;
+                };
+                searchResults.appendChild(div);
+              }
+            });
+          }
+        } catch(e) {}
+      }
+
+      searchResults.style.display = searchResults.children.length > 0 ? "block" : "none";
     }
 
     document.addEventListener("click", (e) => {
@@ -2627,7 +2644,7 @@ ${allLiveReportsText || "Повідомлень немає"}
       } catch (err) {}
     }
 
-    // РЕНДЕР МАРКЕРОВ С ДОЛГИМ НАЖАТИЕМ (ПЕРЕНОС) И КЛИКОМ (КАРТОЧКА)
+    // РЕНДЕР МАРКЕРОВ (НЕЗАВИСИМЫЕ POPUP, БЕЗ ЗАТИРАНИЙ)
     function renderMarkers() {
       markersLayer.clearLayers();
       const now = Date.now();
@@ -2706,11 +2723,12 @@ ${allLiveReportsText || "Повідомлень немає"}
               <div style="font-weight:700; font-size:12px; color:#0f172a; line-height:1.35;">${isCleanPoint(pt) ? "🟢" : "🔴"} ${pt.text || ""}</div>
               <div style="font-size:10px; color:#64748b; margin-top:2px;">🕒 ${timeStr} | Зникне через: ${remMin} хв</div>
               
+              <!-- ДИФФЕРЕНЦИРОВАННЫЙ СТАТУС ВНИЗУ -->
               <div style="font-size:10px; color:#0284c7; margin-top:4px; background:#f0f9ff; padding:3px 6px; border-radius:4px; border:1px solid #bae6fd;">
                 ${renameNote}
               </div>
 
-              <!-- КОМПАКТНЫЕ КНОПКИ ВЕРДИКТОВ ВНИЗУ КАРТОЧКИ -->
+              <!-- КОМПАКТНЫЕ МИНИ-КНОПКИ ВЕРДИКТОВ -->
               <div style="display:flex; gap:4px; margin-top:6px;">
                 <button onclick="setPointVerdictDirect('${fbKeySafe}', true)" style="flex:1; background:#059669; border:none; color:#fff; padding:4px 3px; border-radius:4px; font-size:9.5px; font-weight:800; cursor:pointer;">🟢 Чисто</button>
                 <button onclick="setPointVerdictDirect('${fbKeySafe}', false)" style="flex:1; background:#dc2626; border:none; color:#fff; padding:4px 3px; border-radius:4px; font-size:9.5px; font-weight:800; cursor:pointer;">🔴 Блокпост</button>
@@ -2740,7 +2758,7 @@ ${allLiveReportsText || "Повідомлень немає"}
 
         marker.bindPopup(popupContent, { autoClose: true, closeOnClick: true });
 
-        // ДОЛГОЕ НАЖАТИЕ НА МЕТКУ (ПЕРЕНОС ВРУЧНУЮ / ЗА АДРЕСОЮ)
+        // ДОЛГИЙ ТАП ОТКРЫВАЕТ НЕЗАВИСИМЫЙ СЛОЙ ВЫБОРА (НЕ ЗАТИРАЕТ POPUP!)
         let pressTimer = null;
         let isLongTap = false;
         let startX = 0, startY = 0;
@@ -2752,8 +2770,8 @@ ${allLiveReportsText || "Повідомлень немає"}
             isLongTap = true;
             pressTimer = null;
             if (navigator.vibrate) navigator.vibrate(50);
-            showMarkerActionChoice(p, marker);
-          }, 400);
+            openMarkerActionSheet(p, marker);
+          }, 450);
         }
 
         function cancelPress(clientX, clientY) {
