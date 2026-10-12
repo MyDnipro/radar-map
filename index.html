@@ -8,11 +8,18 @@
   <meta http-equiv="Expires" content="0" />
   <meta name="color-scheme" content="light only">
   <title>Радар Дніпро v3.2</title>
-  <link rel="manifest" href="manifest.json?v=3.2">
   <link rel="icon" type="image/png" href="icon.png">
   <link rel="apple-touch-icon" href="icon.png">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script>
+    // Принудительное удаление устаревших Service Worker и сброс кэша позиций
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function(registrations) {
+        for (let registration of registrations) {
+          registration.unregister();
+        }
+      });
+    }
     localStorage.removeItem("dash_pos_top"); localStorage.removeItem("dash_pos_left");
     localStorage.removeItem("ai_pos_top"); localStorage.removeItem("ai_pos_left");
     localStorage.removeItem("route_status_pos_top"); localStorage.removeItem("route_status_pos_left");
@@ -74,7 +81,7 @@
       border-radius: 14px;
       color: #fff;
       box-shadow: 0 6px 25px rgba(0,0,0,0.45);
-      width: 210px;
+      width: 225px;
       max-width: calc(100vw - 145px);
       border: 1.5px solid #334155;
       transition: width 0.28s cubic-bezier(0.4, 0, 0.2, 1), padding 0.25s ease;
@@ -136,7 +143,90 @@
     }
     html.dash-collapsed #collapsibleBody { display: none; }
 
-    /* ШІ ПАНЕЛЬ (ВЕРСИЯ 3.2 С КНОПКАМИ НАВЕРХУ) */
+    .search-box { position: relative; margin-bottom: 8px; }
+    .search-input-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    .search-input {
+      width: 100%;
+      background: #0b1120;
+      border: 1px solid #334155;
+      color: #fff;
+      padding: 7px 26px 7px 8px;
+      border-radius: 8px;
+      font-size: 11px;
+      outline: none;
+    }
+    .search-input:focus { border-color: #38bdf8; }
+    .search-clear-btn {
+      position: absolute;
+      right: 6px;
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      font-size: 11px;
+      cursor: pointer;
+      display: none;
+      padding: 2px 4px;
+    }
+    .search-clear-btn:hover { color: #fff; }
+    .search-results {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      width: 100%;
+      background: #0f172a;
+      border: 1px solid #38bdf8;
+      border-radius: 8px;
+      max-height: 160px;
+      overflow-y: auto;
+      z-index: 2000;
+      display: none;
+      margin-top: 4px;
+    }
+    .search-item {
+      padding: 6px 8px;
+      font-size: 11px;
+      color: #cbd5e1;
+      cursor: pointer;
+      border-bottom: 1px solid #1e293b;
+    }
+    .search-item:hover { background: #1e293b; color: #38bdf8; }
+
+    .name-converter-box {
+      background: #070d1d;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      padding: 6px 8px;
+      margin-bottom: 8px;
+    }
+    .name-converter-title {
+      font-size: 10px;
+      font-weight: 800;
+      color: #38bdf8;
+      margin-bottom: 4px;
+    }
+    .name-converter-input {
+      width: 100%;
+      background: #0b1120;
+      border: 1px solid #334155;
+      color: #fff;
+      padding: 5px 6px;
+      border-radius: 6px;
+      font-size: 10px;
+      outline: none;
+    }
+    .name-converter-input:focus { border-color: #00f3ff; }
+    .name-converter-result {
+      font-size: 10px;
+      color: #f59e0b;
+      margin-top: 4px;
+      line-height: 1.3;
+      display: none;
+    }
+
     .ai-pill-panel {
       position: absolute;
       top: 15px;
@@ -222,44 +312,6 @@
       flex: 1;
       min-height: 0;
     }
-
-    /* КНОПКИ ВЕРДИКТА СВЕРХУ */
-    .ai-target-box {
-      background: #0f172a;
-      border: 1.5px solid #00f3ff;
-      border-radius: 9px;
-      padding: 7px 9px;
-      margin-bottom: 6px;
-      display: none;
-      flex-direction: column;
-      gap: 5px;
-      order: -1;
-    }
-    .ai-target-header {
-      font-size: 11px;
-      font-weight: 700;
-      color: #38bdf8;
-      line-height: 1.3;
-      word-break: break-word;
-    }
-    .ai-target-buttons {
-      display: flex;
-      gap: 6px;
-    }
-    .btn-target-verdict {
-      flex: 1;
-      padding: 7px 4px;
-      border-radius: 6px;
-      border: none;
-      font-size: 10px;
-      font-weight: 800;
-      cursor: pointer;
-      text-align: center;
-      transition: transform 0.1s ease;
-    }
-    .btn-target-verdict:active { transform: scale(0.96); }
-    .btn-target-verdict.clean { background: #059669; color: #fff; }
-    .btn-target-verdict.danger { background: #dc2626; color: #fff; }
 
     .ai-chat-box {
       max-height: 180px;
@@ -401,10 +453,7 @@
       border-bottom: 1px solid #1e293b;
       padding-bottom: 6px;
     }
-    .route-submenu-quick {
-      display: flex;
-      gap: 6px;
-    }
+    .route-submenu-quick { display: flex; gap: 6px; }
     .btn-submenu-quick {
       flex: 1;
       padding: 6px 4px;
@@ -422,11 +471,7 @@
       border-color: #38bdf8;
       color: #fff;
     }
-    .route-submenu-list {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
+    .route-submenu-list { display: flex; flex-direction: column; gap: 4px; }
     .sector-sub-item {
       display: flex;
       align-items: center;
@@ -463,68 +508,7 @@
       white-space: nowrap;
     }
 
-    .moving-super-marker {
-      transform: scale(2.6) !important;
-      background: #f59e0b !important;
-      border: 3px solid #ffffff !important;
-      box-shadow: 0 0 0 5px #f59e0b, 0 0 28px 8px #f59e0b !important;
-      z-index: 99999 !important;
-      animation: superPulseYellow 0.45s infinite alternate !important;
-    }
-    @keyframes superPulseYellow {
-      from { transform: scale(2.2); }
-      to { transform: scale(2.8); }
-    }
-
-    .radar-circle.needs-training {
-      background: #f59e0b !important;
-      border-color: #ffffff !important;
-      box-shadow: 0 0 0 3px #f59e0b, 0 0 16px #f59e0b !important;
-      animation: pulse-training 1.3s infinite !important;
-      cursor: pointer !important;
-    }
-    @keyframes pulse-training {
-      0% { transform: scale(1); }
-      50% { transform: scale(1.35); }
-      100% { transform: scale(1); }
-    }
-
     .subtitle { font-size: 10px; color: #94a3b8; margin-bottom: 8px; }
-    .search-box { position: relative; margin-bottom: 8px; }
-    .search-input {
-      width: 100%;
-      background: #0b1120;
-      border: 1px solid #334155;
-      color: #fff;
-      padding: 7px 10px;
-      border-radius: 8px;
-      font-size: 11px;
-      outline: none;
-    }
-    .search-input:focus { border-color: #38bdf8; }
-    .search-results {
-      position: absolute;
-      top: 100%;
-      left: 0;
-      width: 100%;
-      background: #0f172a;
-      border: 1px solid #38bdf8;
-      border-radius: 8px;
-      max-height: 160px;
-      overflow-y: auto;
-      z-index: 2000;
-      display: none;
-      margin-top: 4px;
-    }
-    .search-item {
-      padding: 6px 10px;
-      font-size: 11px;
-      color: #cbd5e1;
-      cursor: pointer;
-      border-bottom: 1px solid #1e293b;
-    }
-    .search-item:hover { background: #1e293b; color: #38bdf8; }
-
     .btn-secondary {
       width: 100%;
       background: #1e293b;
@@ -640,14 +624,13 @@
 
     .custom-dot-marker { background: transparent !important; border: none !important; }
     
+    .radar-circle { width: 18px; height: 18px; border-radius: 50%; cursor: pointer; position: relative; touch-action: none; transition: transform 0.2s ease; }
     .radar-circle.clustered {
       width: 22px !important;
       height: 22px !important;
       margin-top: -2px;
       margin-left: -2px;
     }
-
-    .radar-circle { width: 18px; height: 18px; border-radius: 50%; cursor: pointer; position: relative; touch-action: none; transition: transform 0.2s ease; }
     .radar-circle.color-green { background: var(--color-green) !important; border: var(--border-green-size) solid var(--border-green-color) !important; }
     .radar-circle.color-red { background: var(--color-red) !important; border: var(--border-red-size) solid var(--border-red-color) !important; }
     .radar-circle.fresh.color-green::after {
@@ -667,7 +650,6 @@
       box-shadow: 0 3px 12px rgba(0,0,0,0.45) !important; width: 20px !important; height: 36px !important;
       cursor: pointer;
     }
-    .traffic-pill.draggable-mode { cursor: grab; border-color: #38bdf8 !important; box-shadow: 0 0 14px 4px #38bdf8 !important; }
     .tl-lamp { width: 11px; height: 11px; border-radius: 50%; }
     .tl-lamp.red-active { background: var(--color-red) !important; box-shadow: 0 0 10px 3px var(--color-red) !important; }
     .tl-lamp.red-dim { background: #3b1114 !important; opacity: 0.25; }
@@ -675,38 +657,6 @@
     .tl-lamp.green-dim { background: #092e16 !important; opacity: 0.25; }
     .tl-lamp.off { background: #334155 !important; opacity: 0.4; }
     .traffic-marker-icon { background: transparent !important; border: none !important; }
-
-    .neon-panel {
-      position: absolute; top: 60px; right: 15px; z-index: 2500;
-      background: rgba(15, 23, 42, 0.96); border: 1px solid #00f3ff;
-      border-radius: 14px; padding: 12px 14px; color: #fff; width: 260px;
-      max-height: 85vh; overflow-y: auto; display: none; box-shadow: 0 6px 25px rgba(0,0,0,0.5);
-      touch-action: none;
-    }
-    .neon-title {
-      font-size: 13px; font-weight: 800; color: #00f3ff; margin-bottom: 8px;
-      display: flex; justify-content: space-between; align-items: center; user-select: none;
-    }
-    .neon-colors { display: flex; gap: 6px; margin-bottom: 8px; }
-    .btn-color { width: 22px; height: 22px; border-radius: 50%; border: 2px solid #334155; cursor: pointer; }
-    .btn-color.active { border-color: #fff; box-shadow: 0 0 8px #fff; }
-    .btn-neon-action {
-      width: 100%; padding: 6px 8px; border-radius: 6px; font-size: 11px; font-weight: 600;
-      cursor: pointer; margin-bottom: 5px; border: none;
-    }
-    .btn-neon-toggle { background: #1e293b; color: #38bdf8; border: 1px solid #0284c7; }
-    .btn-neon-recolor { background: #1e293b; color: #facc15; border: 1px solid #eab308; }
-    .btn-neon-draw { background: #0284c7; color: #fff; }
-    .btn-neon-undo { background: #334155; color: #cbd5e1; }
-    .btn-neon-clear { background: #991b1b; color: #fee2e2; }
-
-    .sector-quick-btns { display: flex; gap: 5px; margin-bottom: 6px; }
-    .btn-sector-quick {
-      flex: 1; padding: 5px; border-radius: 6px; font-size: 10px; font-weight: 600;
-      cursor: pointer; background: #1e293b; border: 1px solid #475569; color: #fff;
-    }
-    .btn-sector-quick.active { background: #0284c7; border-color: #38bdf8; }
-    .sector-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #cbd5e1; margin-bottom: 4px; cursor: pointer; }
 
     .toast-msg {
       position: absolute; top: 65px; left: 50%; transform: translateX(-50%);
@@ -722,91 +672,6 @@
       font-size: 13px; font-weight: 800; z-index: 5000;
       box-shadow: 0 4px 25px rgba(0, 243, 255, 0.45);
       display: none; white-space: nowrap; pointer-events: none;
-    }
-
-    .train-modal-backdrop {
-      position: fixed;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(4, 7, 15, 0.82);
-      backdrop-filter: blur(6px);
-      z-index: 9999;
-      display: none;
-      align-items: flex-start;
-      justify-content: center;
-      padding: 10px;
-      overflow-y: auto;
-      -webkit-overflow-scrolling: touch;
-      touch-action: pan-y;
-    }
-    .train-modal-card {
-      background: #0f172a;
-      border: 1.5px solid #0284c7;
-      border-radius: 16px;
-      width: 100%;
-      max-width: 360px;
-      padding: 14px;
-      color: #fff;
-      box-shadow: 0 10px 35px rgba(0, 243, 255, 0.3);
-      display: flex;
-      flex-direction: column;
-      gap: 9px;
-      margin: auto 0;
-      max-height: calc(100vh - 20px);
-      overflow-y: auto;
-    }
-    .train-header {
-      display: flex; justify-content: space-between; align-items: center;
-      font-size: 13px; font-weight: 800; color: #38bdf8;
-      border-bottom: 1px solid #1e293b; padding-bottom: 6px;
-    }
-    .train-text-quote {
-      background: #1e293b; border-radius: 8px; padding: 8px 10px;
-      font-size: 12px; color: #e2e8f0; line-height: 1.35; word-break: break-word;
-      border-left: 3px solid #f59e0b;
-    }
-    .train-suggestions-title {
-      font-size: 11px; font-weight: 700; color: #94a3b8; margin-top: 2px;
-    }
-    .train-suggestions-box {
-      display: flex; flex-wrap: wrap; gap: 6px; max-height: 110px; overflow-y: auto;
-    }
-    .train-chip {
-      background: #1e293b; border: 1px solid #0284c7; color: #38bdf8;
-      padding: 6px 10px; border-radius: 8px; font-size: 11px; font-weight: 700;
-      cursor: pointer;
-    }
-    .train-chip:active {
-      transform: scale(0.95); background: #0284c7; color: #fff;
-    }
-    .train-input-row {
-      display: flex; gap: 6px; margin-top: 4px;
-    }
-    .train-input {
-      flex: 1; background: #0b1120; border: 1px solid #334155; border-radius: 8px;
-      color: #fff; padding: 7px 10px; font-size: 11px; outline: none;
-    }
-    .train-input:focus { border-color: #38bdf8; }
-    
-    .btn-train-search {
-      background: #0284c7; border: none; color: #fff; border-radius: 8px;
-      padding: 0 12px; font-size: 11px; font-weight: 800; cursor: pointer;
-    }
-    .btn-train-search:active { transform: scale(0.95); background: #00f3ff; color: #00f3ff; }
-
-    .train-modal-actions {
-      display: flex; gap: 8px; margin-top: 4px; border-top: 1px solid #1e293b; padding-top: 8px;
-    }
-    .btn-modal-act {
-      flex: 1; padding: 7px 10px; border-radius: 8px; font-size: 11px; font-weight: 700;
-      cursor: pointer; border: none; display: flex; align-items: center; justify-content: center; gap: 5px;
-    }
-    .btn-modal-act.ai {
-      background: #1e3a8a; border: 1px solid #3b82f6; color: #93c5fd;
-    }
-    .btn-modal-act.del {
-      background: #7f1d1d; border: 1px solid #ef4444; color: #fca5a5;
     }
 
     .confirm-modal-backdrop {
@@ -840,7 +705,6 @@
     }
     .btn-confirm-act.ok { background: #059669; color: #fff; }
     .btn-confirm-act.cancel { background: #dc2626; color: #fff; }
-    .btn-confirm-act.manual { background: #0284c7; color: #fff; }
   </style>
 </head>
 <body>
@@ -848,10 +712,10 @@
 
   <div id="transferBanner" class="transfer-banner">⏳ Виконується перенесення мітки...</div>
 
-  <!-- 1. ЛЕВЫЙ ВЕРХНИЙ УГОЛ: ТОЧЕК XX -->
+  <!-- 1. ДАШБОРД -->
   <div id="dashPanel" class="dashboard">
     <div id="dashHeader" class="dash-header">
-      <div class="points-count" id="countText" onclick="handleSecretClick()">
+      <div class="points-count" id="countText">
         <span>Точок: 0</span>
       </div>
       <button class="btn-toggle" id="btnToggle" onclick="togglePanelCollapse(event)">▲</button>
@@ -859,10 +723,23 @@
 
     <div id="collapsibleBody" class="collapsible-body">
       <div class="subtitle" id="sectorSubtitle">📍 Режим: Мій маршрут</div>
+      
+      <!-- ПОИСК С КНОПКОЙ ОЧИСТКИ ✕ -->
       <div class="search-box">
-        <input type="text" id="streetSearchInput" class="search-input" placeholder="🔍 Пошук вулиці у Дніпрі..." autocomplete="off">
+        <div class="search-input-wrap">
+          <input type="text" id="streetSearchInput" class="search-input" placeholder="🔍 Пошук вулиці у Дніпрі..." autocomplete="off">
+          <button id="searchClearBtn" class="search-clear-btn" onclick="clearStreetSearch()">✕</button>
+        </div>
         <div id="searchResults" class="search-results"></div>
       </div>
+
+      <!-- ОКОШКО СТАРЫХ / НОВЫХ НАЗВАНИЙ -->
+      <div class="name-converter-box">
+        <div class="name-converter-title">🏛️ Старі ➔ Нові назви:</div>
+        <input type="text" id="nameConverterInput" class="name-converter-input" placeholder="Введіть стару назву..." autocomplete="off" oninput="handleNameConvert(this.value)">
+        <div id="nameConverterResult" class="name-converter-result"></div>
+      </div>
+
       <button id="btnMapLayer" class="btn-secondary" onclick="toggleMapLayer()">
         <span id="btnMapLayerIcon">🗺️</span><span id="btnMapLayerText">Карта: Google (з вулицями)</span>
       </button>
@@ -902,7 +779,7 @@
     </div>
   </div>
 
-  <!-- 2. ПРАВЫЙ ВЕРХНИЙ УГОЛ: ШІ (ВЕРСИЯ 3.2 С КНОПКАМИ СВЕРХУ) -->
+  <!-- 2. ШІ (ВЕРСИЯ v3.2) -->
   <div id="aiPillPanel" class="ai-pill-panel compact">
     <div id="aiPillHeader" class="ai-pill-compact-content">
       <div class="ai-titleBadge" onclick="toggleAiPillExpand()">
@@ -919,18 +796,9 @@
     </div>
 
     <div class="ai-pill-body" id="aiPillBody">
-      <!-- КНОПКИ ВЕРДИКТА ТЕПЕРЬ СВЕРХУ -->
-      <div id="aiTargetBox" class="ai-target-box">
-        <div id="aiTargetTitle" class="ai-target-header">Об'єкт: ...</div>
-        <div class="ai-target-buttons">
-          <button class="btn-target-verdict clean" onclick="applyTargetVerdict(true)">🟢 Це означає: ЧИСТО</button>
-          <button class="btn-target-verdict danger" onclick="applyTargetVerdict(false)">🔴 Це означає: БЛОКПОСТ</button>
-        </div>
-      </div>
-
       <div id="aiChatBox" class="ai-chat-box">
         <div class="ai-msg bot">
-          👋 Вітаю! Я ваш ШІ-штурман (Карта v3.2). Повністю розширені повноваження агента, кнопки зверху!
+          👋 Вітаю! Я ваш ШІ-штурман (Карта v3.2). Повні повноваження агента над мітками та перехрестями!
         </div>
       </div>
 
@@ -949,14 +817,14 @@
     </div>
   </div>
 
-  <!-- 3. ЛЕВЫЙ НИЖНИЙ УГОЛ: МІЙ ШЛЯХ -->
+  <!-- 3. МІЙ ШЛЯХ -->
   <div id="routeStatusBar" class="route-status-bar" onclick="toggleRouteSubmenu(event)">
     <span id="routeStatusIcon">🟢</span>
     <span id="routeStatusText">Мій шлях: Чисто</span>
     <span id="routeSubmenuArrow" style="font-size:10px; color:#94a3b8; margin-left:2px;">▴</span>
   </div>
 
-  <!-- ПОДМЕНЮ МАРШРУТА И РАЙОНОВ -->
+  <!-- ПОДМЕНЮ МАРШРУТА -->
   <div id="routeSubmenu" class="route-submenu" onclick="event.stopPropagation()">
     <div class="route-submenu-header">
       <span>🛣️ Маршрут та райони міста</span>
@@ -976,32 +844,9 @@
     </div>
   </div>
 
-  <!-- 4. ПРАВЫЙ НИЖНИЙ УГОЛ: ОНОВИТИ -->
+  <!-- 4. ОНОВИТИ -->
   <div id="btnRefresh" class="btn-refresh" onclick="refreshRadarClick()">
     <span>🔄</span><span>Оновити</span>
-  </div>
-
-  <!-- МОДАЛЬНОЕ ОКНО ПРИВЯЗКИ ЗА АДРЕСОЮ -->
-  <div id="trainModal" class="train-modal-backdrop" onclick="closeTrainModal(event)">
-    <div class="train-modal-card" onclick="event.stopPropagation()">
-      <div class="train-header">
-        <span>📍 Переміщення за адресою</span>
-        <span style="cursor:pointer; font-size:16px; padding:0 4px;" onclick="closeTrainModal()">✕</span>
-      </div>
-      <div class="train-text-quote" id="trainTextQuote">...</div>
-      <div class="train-suggestions-title">Оберіть відповідну вулицю зі схожих:</div>
-      <div class="train-suggestions-box" id="trainSuggestionsBox"></div>
-      <div class="train-suggestions-title" style="margin-top:4px;">Або введіть свою назву:</div>
-      <div class="train-input-row">
-        <input type="text" id="trainCustomInput" class="train-input" placeholder="Вулиця чи орієнтир..." onkeydown="if(event.key==='Enter') executeCustomTrain();">
-        <button class="btn-train-search" onclick="executeCustomTrain()">Перемістити</button>
-      </div>
-      
-      <div class="train-modal-actions">
-        <button class="btn-modal-act ai" onclick="modalOpenAI()">🤖 Запитати ШІ</button>
-        <button class="btn-modal-act del" onclick="modalDeletePoint()">🗑️ Видалити мітку</button>
-      </div>
-    </div>
   </div>
 
   <!-- ОКНО ПОДТВЕРЖДЕНИЯ ПЕРЕНОСА МЕТКИ -->
@@ -1012,50 +857,8 @@
       <div style="display:flex; gap:6px;">
         <button class="btn-confirm-act ok" onclick="finalizeMoveConfirm(true)">✅ Підтвердити</button>
         <button class="btn-confirm-act cancel" onclick="finalizeMoveConfirm(false)">↩️ Скасувати</button>
-        <button class="btn-confirm-act manual" onclick="finalizeMoveManual()">✋ Вручну</button>
       </div>
     </div>
-  </div>
-
-  <!-- СЕКРЕТНОЕ МЕНЮ -->
-  <div id="neonPanel" class="neon-panel">
-    <div id="neonHeader" class="neon-title">
-      <span>⚙️ Секретне меню</span>
-      <span style="cursor:pointer; font-size:16px; padding: 0 4px;" onclick="closeNeonPanel()">✕</span>
-    </div>
-    <div style="font-size:11px; font-weight:700; color:#38bdf8; margin-bottom:5px;">🛣️ Інформер дороги:</div>
-    <label class="sector-item" style="margin-bottom:10px;">
-      <input type="checkbox" id="chkRouteStatusBar" onchange="toggleRouteStatusBarVisible()" checked>
-      Показувати рядок «Мій шлях» на карті
-    </label>
-    <div style="font-size:11px; font-weight:700; color:#38bdf8; margin-bottom:5px; border-top: 1px solid #334155; padding-top:6px;">🏙️ Фільтр районів міста:</div>
-    <div class="sector-quick-btns">
-      <button id="btnQuickRoute" class="btn-sector-quick active" onclick="setSectorPreset('route')">🎯 Тільки мій</button>
-      <button id="btnQuickAll" class="btn-sector-quick" onclick="setSectorPreset('all')">🌐 Весь Дніпро</button>
-    </div>
-    <div style="display:flex; flex-direction:column; gap:3px; margin-bottom:8px;">
-      <label class="sector-item"><input type="checkbox" id="sec_s1" onchange="onSectorChange()" checked> 📍 Мій маршрут (Парус — Вокзал — Робоча)</label>
-      <label class="sector-item"><input type="checkbox" id="sec_s2" onchange="onSectorChange()"> 🏙️ Центр, Нагірка, Перемога</label>
-      <label class="sector-item"><input type="checkbox" id="sec_s3" onchange="onSectorChange()"> 🚗 Південь (12 Квартал, Тополя, Поля)</label>
-      <label class="sector-item"><input type="checkbox" id="sec_s4" onchange="onSectorChange()"> 🏭 Мазепи / Нігояна, Західний</label>
-      <label class="sector-item"><input type="checkbox" id="sec_s5" onchange="onSectorChange()"> 🌉 Лівий берег (Шосе, Калинова)</label>
-      <label class="sector-item"><input type="checkbox" id="sec_s6" onchange="onSectorChange()"> 🏢 Лівий берег (Слобожанський, Сонячний)</label>
-    </div>
-    <div style="font-size:11px; font-weight:700; color:#38bdf8; margin: 10px 0 5px; border-top: 1px solid #334155; padding-top: 6px;">⚡ Неон вулиць</div>
-    <button id="btnToggleNeonVisible" class="btn-neon-action btn-neon-toggle" onclick="toggleNeonLinesVisibility()">👁️ Сховати неон</button>
-    <button id="btnNeonRecolor" class="btn-neon-action btn-neon-recolor" onclick="toggleNeonRecolorMode()">🎨 Перефарбувати лінію</button>
-    <div style="font-size:10px; color:#94a3b8; margin: 4px 0 6px;">Колір неону:</div>
-    <div class="neon-colors">
-      <div class="btn-color active" style="background:#00f3ff;" onclick="selectNeonColor('#00f3ff', this)"></div>
-      <div class="btn-color" style="background:#25d366;" onclick="selectNeonColor('#25d366', this)"></div>
-      <div class="btn-color" style="background:#f59e0b;" onclick="selectNeonColor('#f59e0b', this)"></div>
-      <div class="btn-color" style="background:#ec4899;" onclick="selectNeonColor('#ec4899', this)"></div>
-      <div class="btn-color" style="background:#a855f7;" onclick="selectNeonColor('#a855f7', this)"></div>
-    </div>
-    <button id="btnNeonDraw" class="btn-neon-action btn-neon-draw" onclick="toggleNeonDrawMode()">✏️ Почати нову лінію</button>
-    <button class="btn-neon-action btn-neon-undo" onclick="undoNeonPoint()">↩️ Скасувати точку</button>
-    <button class="btn-neon-action btn-neon-undo" onclick="finishCurrentLine()">💾 Зафіксувати лінію</button>
-    <button class="btn-neon-action btn-neon-clear" onclick="clearAllNeonLines()">🗑️ Видалити всі лінії</button>
   </div>
 
   <div id="toast" class="toast-msg">✅ Збережено!</div>
@@ -1106,7 +909,6 @@
 
     const FIREBASE_POINTS_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/points.json";
     const FIREBASE_CONFIG_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/config/traffic_lights.json";
-    const FIREBASE_NEON_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/config/neon_lines.json";
     const FIREBASE_KB_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/knowledge_base.json";
 
     function isSpamMessage(text) {
@@ -1125,15 +927,36 @@
       return spamWords.some(w => t.includes(w));
     }
 
+    // РАСШИРЕННЫЙ СЛОВАРЬ ТОПОНИМОВ И ИСТОРИЧЕСКИХ НАЗВАНИЙ ДНЕПРА
     const DNIPRO_STREETS_MAP = {
-      "камчатськ": { name: "вул. Калдирська (колишня Камчатська)", lat: 48.4650, lng: 34.9800, note: "Колишня Камчатська" },
-      "калд": { name: "вул. Калдирська", lat: 48.4650, lng: 34.9800 },
+      "інгульськ": { name: "вул. Інгульська", lat: 48.5120, lng: 35.0420 },
+      "ингульск": { name: "вул. Інгульська", lat: 48.5120, lng: 35.0420 },
+      "барвінківськ": { name: "вул. Барвінківська", lat: 48.4493, lng: 35.0286 },
+      "барвинковск": { name: "вул. Барвінківська", lat: 48.4493, lng: 35.0286 },
+      "переїзд.*мирн": { name: "Переїзд Мирний (Краснопілля)", lat: 48.3980, lng: 34.9850 },
+      "переезд.*мирн": { name: "Переїзд Мирний (Краснопілля)", lat: 48.3980, lng: 34.9850 },
+      "ленінградськ": { name: "вул. Князя Ярослава Мудрого", old: "вул. Ленінградська", lat: 48.4758, lng: 35.0307 },
+      "ленинградск": { name: "вул. Князя Ярослава Мудрого", old: "вул. Ленінградська", lat: 48.4758, lng: 35.0307 },
+      "ярослав.*мудр": { name: "вул. Князя Ярослава Мудрого", old: "вул. Ленінградська", lat: 48.4758, lng: 35.0307 },
+      "камчатськ": { name: "вул. Калдирська", old: "вул. Камчатська", lat: 48.4650, lng: 34.9800 },
+      "камчатск": { name: "вул. Калдирська", old: "вул. Камчатська", lat: 48.4650, lng: 34.9800 },
+      "калдирськ": { name: "вул. Калдирська", old: "вул. Камчатська", lat: 48.4650, lng: 34.9800 },
+      "гагарін": { name: "просп. Науки", old: "просп. Гагаріна", lat: 48.4350, lng: 35.0420 },
+      "гагарин": { name: "просп. Науки", old: "просп. Гагаріна", lat: 48.4350, lng: 35.0420 },
+      "науки": { name: "просп. Науки", old: "просп. Гагаріна", lat: 48.4350, lng: 35.0420 },
+      "кіров": { name: "просп. Олександра Поля", old: "просп. Кірова", lat: 48.4480, lng: 35.0240 },
+      "киров": { name: "просп. Олександра Поля", old: "просп. Кірова", lat: 48.4480, lng: 35.0240 },
+      "поля": { name: "просп. Олександра Поля", old: "просп. Кірова", lat: 48.4480, lng: 35.0240 },
+      "шмідт": { name: "вул. Степана Бандери", old: "вул. Шмідта", lat: 48.4680, lng: 35.0240 },
+      "шмидт": { name: "вул. Степана Бандери", old: "вул. Шмідта", lat: 48.4680, lng: 35.0240 },
+      "бандер": { name: "вул. Степана Бандери", old: "вул. Шмідта", lat: 48.4680, lng: 35.0240 },
+      "курчатов": { name: "вул. 128-ї Бригади Тероборони", old: "вул. Курчатова", lat: 48.4740, lng: 35.0140 },
+      "128.*бригад": { name: "вул. 128-ї Бригади Тероборони", old: "вул. Курчатова", lat: 48.4740, lng: 35.0140 },
       "каштанов": { name: "вул. Каштанова (Таромське)", lat: 48.4710, lng: 34.8250 },
       "лак": { name: "Лакофарбовий завод (з/м Західний)", lat: 48.4680, lng: 34.9520 },
       "лакокраск": { name: "Лакофарбовий завод (з/м Західний)", lat: 48.4680, lng: 34.9520 },
       "тещин.*язик": { name: "Тьощин язик (вул. Космічна)", lat: 48.4140, lng: 35.0510 },
       "тещин.*язык": { name: "Тьощин язик (вул. Космічна)", lat: 48.4140, lng: 35.0510 },
-      "тёщин.*язык": { name: "Тьощин язик (вул. Космічна)", lat: 48.4140, lng: 35.0510 },
       "молодогвард": { name: "вул. Молодогвардійська (під мостами)", lat: 48.4680, lng: 35.1220 },
       "луговськ": { name: "вул. Луговська (АНД)", lat: 48.4890, lng: 35.0480 },
       "солончаков": { name: "вул. Солончакова (АНД)", lat: 48.5010, lng: 35.0350 },
@@ -1141,7 +964,6 @@
       "семен": { name: "вул. Моторна (магазин Семен)", lat: 48.5350, lng: 34.9600 },
       "петрозаводськ": { name: "вул. Петрозаводська (Ковпака)", lat: 48.5300, lng: 34.9850 },
       "аеропорт": { name: "Аеропорт Дніпро", lat: 48.3570, lng: 35.1000 },
-      "аэропорт": { name: "Аеропорт Дніпро", lat: 48.3570, lng: 35.1000 },
       "старих кодак": { name: "дорога на Старі Кодаки", lat: 48.3650, lng: 35.1050 },
       "кодаки": { name: "дорога на Старі Кодаки", lat: 48.3650, lng: 35.1050 },
       "братськ": { name: "с. Братське (Запорізька траса)", lat: 48.3280, lng: 35.0250 },
@@ -1150,11 +972,11 @@
       "бик": { name: "Пост «Бик» (Підгородне)", lat: 48.5350, lng: 35.1020 },
       "золоті ключі": { name: "Золоті Ключі (Слобожанське)", lat: 48.5280, lng: 35.0920 },
       "обухівк": { name: "Полтавське шосе / Обухівка", lat: 48.5450, lng: 34.9350 },
-      "трофимов": { name: "вул. Велика Діївська (Братів Трофімових)", lat: 48.4840, lng: 34.9180 },
+      "трофимов": { name: "вул. Велика Діївська (Братів Трофімових)", old: "вул. Братів Трофімових", lat: 48.4840, lng: 34.9180 },
       "діївськ": { name: "вул. Велика Діївська", lat: 48.4840, lng: 34.9180 },
-      "кондратюк": { name: "вул. Юрія Кондратюка (Комунарівська)", lat: 48.4820, lng: 34.9350 },
+      "кондратюк": { name: "вул. Юрія Кондратюка", old: "вул. Комунарівська", lat: 48.4820, lng: 34.9350 },
       "парус": { name: "ж/м Парус", lat: 48.4840, lng: 34.9180 },
-      "покровськ": { name: "ж/м Покровський", lat: 48.4820, lng: 34.9380 },
+      "покровськ": { name: "ж/м Покровський", old: "ж/м Комунар", lat: 48.4820, lng: 34.9380 },
       "червон.*кам": { name: "ж/м Червоний Камінь", lat: 48.4830, lng: 34.9520 },
       "західн": { name: "ж/м Західний", lat: 48.4650, lng: 34.9350 },
       "чечел": { name: "Чечелівка", lat: 48.4620, lng: 34.9950 },
@@ -1164,8 +986,8 @@
       "свобод": { name: "просп. Свободи", lat: 48.4810, lng: 34.9750 },
       "водолікарн": { name: "Водолікарня (пр. Свободи)", lat: 48.4848, lng: 34.9735 },
       "павлов": { name: "вул. Академіка Павлова", lat: 48.4818, lng: 35.0012 },
-      "белелюб": { name: "вул. Белелюбського", lat: 48.4800, lng: 34.9880 },
-      "краснозавод": { name: "вул. Краснозаводська", lat: 48.4812, lng: 34.9940 },
+      "белелюб": { name: "вул. Белелюбського", old: "вул. Краснозаводська", lat: 48.4800, lng: 34.9880 },
+      "краснозавод": { name: "вул. Краснозаводська (Белелюбського)", lat: 48.4812, lng: 34.9940 },
       "набережн": { name: "Січеславська Набережна / Заводська", lat: 48.4800, lng: 35.0150 },
       "речпорт": { name: "Річпорт", lat: 48.4805, lng: 35.0210 },
       "річпорт": { name: "Річпорт", lat: 48.4805, lng: 35.0210 },
@@ -1173,36 +995,112 @@
       "водокачк": { name: "Водокачка", lat: 48.4910, lng: 34.9480 },
       "кайдак": { name: "Кайдацький міст", lat: 48.4925, lng: 34.9625 },
       "вокзал": { name: "Залізничний вокзал", lat: 48.4760, lng: 35.0160 },
-      "старомостов": { name: "Старомостова площа", lat: 48.4770, lng: 35.0220 },
+      "старомостов": { name: "Старомостова площа", old: "площа Островського", lat: 48.4770, lng: 35.0220 },
+      "островськ": { name: "Старомостова площа", old: "площа Островського", lat: 48.4770, lng: 35.0220 },
       "озерк": { name: "Ринок Озерка", lat: 48.4715, lng: 35.0215 },
-      "курчатов": { name: "вул. 128-ї Бригади (Курчатова)", lat: 48.4740, lng: 35.0140 },
-      "шмідт": { name: "вул. Степана Бандери (Шмідта)", lat: 48.4680, lng: 35.0240 },
-      "поля": { name: "просп. Олександра Поля", lat: 48.4480, lng: 35.0240 },
       "титов": { name: "вул. Титова", lat: 48.4340, lng: 35.0150 },
-      "мазеп": { name: "просп. Івана Мазепи", lat: 48.4680, lng: 34.9650 },
-      "нігоян": { name: "просп. Сергія Нігояна", lat: 48.4730, lng: 34.9850 },
+      "мазеп": { name: "просп. Івана Мазепи", old: "просп. Петровського", lat: 48.4680, lng: 34.9650 },
+      "петровськ": { name: "просп. Івана Мазепи", old: "просп. Петровського", lat: 48.4680, lng: 34.9650 },
+      "нігоян": { name: "просп. Сергія Нігояна", old: "просп. Калініна", lat: 48.4730, lng: 34.9850 },
+      "калінін": { name: "просп. Сергія Нігояна", old: "просп. Калініна", lat: 48.4730, lng: 34.9850 },
       "12.*квартал": { name: "12-й Квартал", lat: 48.4120, lng: 35.0150 },
-      "хмельницьк": { name: "просп. Б. Хмельницького", lat: 48.4200, lng: 35.0180 },
+      "хмельницьк": { name: "просп. Б. Хмельницького", old: "вул. Героїв Сталінграда", lat: 48.4200, lng: 35.0180 },
       "топол": { name: "ж/м Тополя", lat: 48.3950, lng: 35.0350 },
-      "гагарін": { name: "просп. Науки (Гагаріна)", lat: 48.4350, lng: 35.0420 },
-      "науки": { name: "просп. Науки", lat: 48.4350, lng: 35.0420 },
       "підстанці": { name: "Підстанція", lat: 48.4250, lng: 35.0220 },
       "перемог": { name: "ж/м Перемога", lat: 48.4250, lng: 35.0850 },
-      "правд": { name: "просп. Слобожанський", lat: 48.5000, lng: 35.0680 },
-      "слобожанськ": { name: "просп. Слобожанський", lat: 48.5000, lng: 35.0680 },
-      "мануйлівськ": { name: "просп. Мануйлівський", lat: 48.4850, lng: 35.0500 },
+      "правд": { name: "просп. Слобожанський", old: "просп. Газети Правда", lat: 48.5000, lng: 35.0680 },
+      "слобожанськ": { name: "просп. Слобожанський", old: "просп. Газети Правда", lat: 48.5000, lng: 35.0680 },
+      "мануйлівськ": { name: "просп. Мануйлівський", old: "просп. Воронцова", lat: 48.4850, lng: 35.0500 },
       "сонячн": { name: "ж/м Сонячний", lat: 48.4750, lng: 35.0650 },
-      "малиновськ": { name: "Набережна Сонячна", lat: 48.4750, lng: 35.0650 },
+      "малиновськ": { name: "Набережна Сонячна", old: "вул. Малиновського", lat: 48.4750, lng: 35.0650 },
       "калинов": { name: "вул. Калинова", lat: 48.5080, lng: 35.0550 },
       "донецьк": { name: "Донецьке шосе", lat: 48.5200, lng: 35.0100 },
-      "фрунзенськ": { name: "ж/м Ломівський (Фрунзенський)", lat: 48.5050, lng: 34.9750 }
+      "дш": { name: "Донецьке шосе", lat: 48.5200, lng: 35.0100 },
+      "фрунзенськ": { name: "ж/м Ломівський", old: "ж/м Фрунзенський", lat: 48.5050, lng: 34.9750 }
     };
+
+    // ФУНКЦИЯ ДЕТЕКЦИИ ПЕРЕКРЕСТКОВ И ПРИВЯЗКИ
+    function resolveLocationFromText(rawText) {
+      const lower = (rawText || "").toLowerCase();
+      const isIntersection = /(?:на\s+перехрест|на\s+перетині|перетин|перехрестя|угол|на\s+углу|кут\s+вулиць)/i.test(lower);
+      
+      const matches = [];
+      for (const [key, val] of Object.entries(DNIPRO_STREETS_MAP)) {
+        if (new RegExp(key, "i").test(lower)) {
+          if (!matches.some(m => m.name === val.name)) {
+            matches.push(val);
+          }
+        }
+      }
+
+      if (isIntersection && matches.length >= 2) {
+        return {
+          name: `${matches[0].name} / ${matches[1].name} (перехрестя)`,
+          lat: Number(((matches[0].lat + matches[1].lat) / 2).toFixed(5)),
+          lng: Number(((matches[0].lng + matches[1].lng) / 2).toFixed(5)),
+          isIntersection: true
+        };
+      }
+
+      if (matches.length > 0) {
+        return {
+          name: matches[0].name,
+          lat: matches[0].lat,
+          lng: matches[0].lng,
+          isIntersection: false
+        };
+      }
+
+      return null;
+    }
+
+    // ПОЛУЧЕНИЕ ПРИМЕЧАНИЯ О ПЕРЕИМЕНОВАНИИ
+    function getStreetRenameNote(text) {
+      const lower = (text || "").toLowerCase();
+      for (const [key, val] of Object.entries(DNIPRO_STREETS_MAP)) {
+        if (new RegExp(key, "i").test(lower)) {
+          if (val.old) {
+            return `💡 ${val.old} ➔ по-новому: <b>${val.name}</b>`;
+          } else {
+            return `💡 <b>${val.name}</b>: Назва не змінювалась`;
+          }
+        }
+      }
+      return `💡 Назва не змінювалась`;
+    }
+
+    // КОНВЕРТЕР СТАРЫХ НАЗВАНИЙ В ДАШБОРДЕ
+    function handleNameConvert(val) {
+      const q = val.trim().toLowerCase();
+      const resEl = document.getElementById("nameConverterResult");
+      if (q.length < 2) {
+        resEl.style.display = "none";
+        return;
+      }
+
+      let found = null;
+      for (const [key, item] of Object.entries(DNIPRO_STREETS_MAP)) {
+        if (key.includes(q) || (item.old && item.old.toLowerCase().includes(q)) || item.name.toLowerCase().includes(q)) {
+          found = item;
+          break;
+        }
+      }
+
+      if (found) {
+        resEl.innerHTML = found.old 
+          ? `🟢 <b>${found.name}</b><br><span style="color:#94a3b8;">(колишня: ${found.old})</span>` 
+          : `🟢 <b>${found.name}</b> (назва не змінювалась)`;
+        resEl.style.display = "block";
+      } else {
+        resEl.innerHTML = `⚠️ Не знайдено перейменування для «${val}»`;
+        resEl.style.display = "block";
+      }
+    }
 
     const LIFETIME_MS = 40 * 60 * 1000;
     const FRESH_THRESHOLD_MS = 10 * 60 * 1000;
 
     let showTrafficLights = localStorage.getItem("radar_tl_visible") !== "false";
-    let showNeonLines = localStorage.getItem("radar_neon_visible") !== "false";
     let showRouteStatusBar = localStorage.getItem("radar_show_route_status") !== "false";
     let currentMapType = localStorage.getItem("radar_map_type") || "google";
     let isEditMode = false;
@@ -1212,8 +1110,6 @@
     let filterShowGreen = true;
     let filterShowRed = true;
 
-    let currentTrainingPoint = null;
-    let currentTrainingMarker = null;
     let pendingRelocation = null;
 
     let learnedRules = [];
@@ -1294,7 +1190,6 @@
       updateMapLayerBtnUI();
     }
 
-    const neonLayer = L.layerGroup().addTo(map);
     const markersLayer = L.layerGroup().addTo(map);
     const trafficLightLayer = L.layerGroup().addTo(map);
 
@@ -1302,8 +1197,8 @@
 
     function showToast(text) {
       const toast = document.getElementById("toast");
-      toast.innerText = text; toast.style.display = "block";
-      setTimeout(() => { toast.style.display = "none"; }, 3000);
+      toast.innerHTML = text; toast.style.display = "block";
+      setTimeout(() => { toast.style.display = "none"; }, 3200);
     }
 
     function refreshRadarClick() {
@@ -1321,32 +1216,32 @@
     const SECTOR_DEFS = {
       s1: {
         name: "Парус — Вокзал — Робоча",
-        keys: ["парус", "покровськ", "комунар", "коммунар", "трофимов", "червон.*кам", "камни", "набережн.*завод", "речпорт", "річпорт", "репорт", "водокачк", "стан.*550", "водолікарн", "свобод", "кайдак", "павлов", "белелюб", "краснозавод", "дтрз", "комбайн", "ударник", "вокзал", "старомостов", "островськ", "озерк", "курчатов", "шмідт", "бандер", "робоч", "канатн", "філософськ", "савченко", "свердлов", "криворізьк", "каштанов"],
+        keys: ["парус", "покровськ", "комунар", "трофимов", "червон.*кам", "набережн.*завод", "речпорт", "річпорт", "водокачк", "стан.*550", "водолікарн", "свобод", "кайдак", "павлов", "белелюб", "краснозавод", "комбайн", "вокзал", "старомостов", "озерк", "курчатов", "шмідт", "бандер", "робоч", "канатн", "криворізьк", "каштанов"],
         bounds: { minLat: 48.435, maxLat: 48.510, minLng: 34.800, maxLng: 35.038 }
       },
       s2: {
         name: "Центр — Нагірка — Перемога",
-        keys: ["центр", "міст.*сіті", "мост.*сити", "європейськ", "яворницьк", "нагірк", "гагарін", "науки", "перемог", "побед", "соборн"],
+        keys: ["центр", "міст.*сіті", "яворницьк", "нагірк", "гагарін", "науки", "перемог"],
         bounds: { minLat: 48.410, maxLat: 48.480, minLng: 35.038, maxLng: 35.120 }
       },
       s3: {
         name: "Тополя — 12 Квартал — Поля",
-        keys: ["12.*квартал", "квартал", "топол", "сокіл", "сокол", "мирн", "корея", "кротов", "гальченк", "шинн", "хмельницьк", "поля", "кіров", "титов", "аеропорт", "аэропорт", "старих кодак", "старых кодак", "кодаки", "братськ", "братское", "новоолександрівк", "сурськ", "краснопіл", "тещин.*язик", "тещин.*язык"],
+        keys: ["12.*квартал", "топол", "сокіл", "шинн", "хмельницьк", "поля", "кіров", "титов", "аеропорт", "барвінківськ", "переїзд.*мирн", "тещин.*язик"],
         bounds: { minLat: 48.320, maxLat: 48.445, minLng: 34.920, maxLng: 35.130 }
       },
       s4: {
         name: "Мазепи — Нігояна — Західний",
-        keys: ["мазеп", "петровськ", "нігоян", "калінін", "металург", "західн", "западн", "діївк", "чечел", "лак", "лакокраск"],
+        keys: ["мазеп", "петровськ", "нігоян", "калінін", "західн", "чечел", "камчатськ", "калдирськ", "лак"],
         bounds: { minLat: 48.450, maxLat: 48.485, minLng: 34.910, maxLng: 34.980 }
       },
       s5: {
         name: "Лівий: Шосе — Калинова",
-        keys: ["донецьк.*шосе", "караван", "лівобереж", "левобереж", "березинк", "калинов", "янтарн", "клочко", "фрунзенськ", "ломівськ", "обухівк", "полтавськ.*шосе", "луговськ", "солончаков", "моторн", "петрозаводськ"],
+        keys: ["донецьк.*шосе", "караван", "лівобереж", "калинов", "янтарн", "клочко", "фрунзенськ", "інгульськ", "моторн", "петрозаводськ"],
         bounds: { minLat: 48.480, maxLat: 48.560, minLng: 34.930, maxLng: 35.070 }
       },
       s6: {
         name: "Лівий: Слобожанський — Сонячний",
-        keys: ["слобожанськ", "правд", "калнишевськ", "сонячн", "солнечн", "малиновськ", "придніпров", "ігрень", "придніпр", "придник", "бик", "бык", "золоті ключі", "молодогвард"],
+        keys: ["слобожанськ", "правд", "сонячн", "малиновськ", "придніпров", "бик", "золоті ключі", "молодогвард"],
         bounds: { minLat: 48.440, maxLat: 48.540, minLng: 35.040, maxLng: 35.160 }
       }
     };
@@ -1384,20 +1279,13 @@
 
     function syncSectorCheckboxesUI() {
       ["s1", "s2", "s3", "s4", "s5", "s6"].forEach(id => {
-        const elMenu = document.getElementById(`sec_${id}`);
         const elSub = document.getElementById(`sub_sec_${id}`);
         const isAct = activeSectors.includes(id);
-        if (elMenu) elMenu.checked = isAct;
         if (elSub) elSub.checked = isAct;
       });
 
       const isOnlyRoute = activeSectors.length === 1 && activeSectors[0] === "s1";
       const isAll = activeSectors.length === 6;
-
-      const qRoute = document.getElementById("btnQuickRoute");
-      const qAll = document.getElementById("btnQuickAll");
-      if (qRoute) qRoute.classList.toggle("active", isOnlyRoute);
-      if (qAll) qAll.classList.toggle("active", isAll);
 
       const qSubRoute = document.getElementById("btnQuickSubRoute");
       const qSubAll = document.getElementById("btnQuickSubAll");
@@ -1423,24 +1311,7 @@
       showToast(type === 'route' ? "🎯 Тільки мій шлях!" : "🌐 Весь Дніпро!");
     }
 
-    function onSectorChange() {
-      activeSectors = [];
-      ["s1", "s2", "s3", "s4", "s5", "s6"].forEach(id => {
-        const el = document.getElementById(`sec_${id}`);
-        if (el && el.checked) activeSectors.push(id);
-      });
-      if (activeSectors.length === 0) activeSectors = ['s1'];
-      localStorage.setItem("radar_active_sectors", JSON.stringify(activeSectors));
-      syncSectorCheckboxesUI();
-      renderMarkers();
-      renderTrafficLights();
-      updateRouteStatus();
-    }
-    syncSectorCheckboxesUI();
-
-    map.on('click', () => {
-      closeRouteSubmenu();
-    });
+    map.on('click', () => { closeRouteSubmenu(); });
 
     function isCleanPoint(p) {
       const fullStr = ((p.raw_text || p.text || "") + " " + (p.address || "")).toLowerCase();
@@ -1541,13 +1412,6 @@
       }
     }
 
-    function toggleRouteStatusBarVisible() {
-      const chk = document.getElementById("chkRouteStatusBar");
-      showRouteStatusBar = chk ? chk.checked : true;
-      localStorage.setItem("radar_show_route_status", showRouteStatusBar);
-      updateRouteStatus();
-    }
-
     function smoothGlideMarker(marker, startLatLng, endLatLng, duration = 900, onDone = null) {
       if (!marker) { if (onDone) onDone(); return; }
       const startTime = performance.now();
@@ -1580,292 +1444,41 @@
       return found;
     }
 
-    function showMarkerActionChoice(p, marker) {
-      const choiceHtml = `
-        <div style="padding:4px; min-width:180px; text-align:center; font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;">
-          <div style="font-size:11px; font-weight:800; color:#0f172a; margin-bottom:6px;">🎯 Як перемістити мітку?</div>
-          <div style="display:flex; flex-direction:column; gap:5px;">
-            <button onclick="startDirectManualDrag('${p._fbKey}')" style="background:#0284c7; color:#fff; border:none; padding:7px 10px; border-radius:7px; font-size:11px; font-weight:800; cursor:pointer;">✋ Перемістити вручну</button>
-            <button onclick="startAddressRelocationForPoint('${p._fbKey}')" style="background:#1e293b; color:#38bdf8; border:1px solid #0284c7; padding:7px 10px; border-radius:7px; font-size:11px; font-weight:800; cursor:pointer;">📍 Перемістити за адресою</button>
-          </div>
-        </div>
-      `;
-      marker.bindPopup(choiceHtml, { closeButton: true, autoClose: true }).openPopup();
-    }
-
-    window.startDirectManualDrag = function(fbKey) {
+    // УСТАНОВКА ВЕРДИКТА ИЗ КАРТОЧКИ СООБЩЕНИЯ
+    window.setPointVerdictDirect = async function(fbKey, isClean, rawText) {
       const p = allPoints.find(x => x._fbKey === fbKey);
-      if (!p) return;
-      let m = findMarkerByPoint(p);
-      if (!m) return;
-      m.closePopup();
-
-      m.options.autoPan = true;
-      m.options.autoPanPadding = [60, 60];
-      m.options.autoPanSpeed = 15;
-      m.dragging.enable();
-
-      const iconEl = m.getElement()?.querySelector('.radar-circle');
-      if (iconEl) iconEl.classList.add('moving-super-marker');
-
-      showToast("✋ Тягніть мітку пальцем на потрібне місце!");
-
-      m.once('dragend', async (e) => {
-        m.dragging.disable();
-        if (iconEl) iconEl.classList.remove('moving-super-marker');
-        const pos = e.target.getLatLng();
-
-        p.lat = Number(pos.lat.toFixed(5));
-        p.lng = Number(pos.lng.toFixed(5));
-        p.needs_training = false;
-        p.address = "Встановлено користувачем";
-
-        if (p._fbKey) {
-          fetch(FIREBASE_POINTS_URL.replace(".json", `/${p._fbKey}.json`), {
+      if (p) {
+        p.is_clean = isClean;
+        p.color = isClean ? "green" : "red";
+        p.status = isClean ? "чисто" : "опасно";
+        
+        if (fbKey) {
+          fetch(FIREBASE_POINTS_URL.replace(".json", `/${fbKey}.json`), {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ lat: p.lat, lng: p.lng, needs_training: false, address: p.address })
+            body: JSON.stringify({ is_clean: isClean, color: p.color, status: p.status })
           }).catch(() => {});
         }
 
-        showToast("✅ Мітку зафіксовано на новому місці!");
-        renderMarkers();
-        renderTrafficLights();
-        updateRouteStatus();
-      });
-    };
-
-    window.startAddressRelocationForPoint = function(fbKey) {
-      const p = allPoints.find(x => x._fbKey === fbKey);
-      if (!p) return;
-      let m = findMarkerByPoint(p);
-      if (m) m.closePopup();
-      openTrainingModal(p, m);
-    };
-
-    function openTrainingModal(point, marker) {
-      currentTrainingPoint = point;
-      currentTrainingMarker = marker || findMarkerByPoint(point);
-
-      const rawTxt = point.raw_text || point.text || "";
-      document.getElementById("trainTextQuote").innerText = `«${rawTxt}»`;
-      const box = document.getElementById("trainSuggestionsBox");
-      box.innerHTML = "";
-
-      const lower = rawTxt.toLowerCase();
-      const matchedStreets = [];
-
-      Object.entries(DNIPRO_STREETS_MAP).forEach(([key, val]) => {
-        if (new RegExp(key, "i").test(lower)) {
-          if (!matchedStreets.some(s => s.name === val.name)) {
-            matchedStreets.push(val);
-          }
-        }
-      });
-
-      if (matchedStreets.length === 0) {
-        matchedStreets.push(
-          DNIPRO_STREETS_MAP["камчатськ"],
-          DNIPRO_STREETS_MAP["каштанов"],
-          DNIPRO_STREETS_MAP["лак"],
-          DNIPRO_STREETS_MAP["тещин.*язик"],
-          DNIPRO_STREETS_MAP["трофимов"],
-          DNIPRO_STREETS_MAP["кондратюк"],
-          DNIPRO_STREETS_MAP["робоч"],
-          DNIPRO_STREETS_MAP["поля"],
-          DNIPRO_STREETS_MAP["парус"],
-          DNIPRO_STREETS_MAP["свобод"],
-          DNIPRO_STREETS_MAP["набережн"]
-        );
-      }
-
-      matchedStreets.forEach(st => {
-        const chip = document.createElement("div");
-        chip.className = "train-chip";
-        chip.innerHTML = `📍 ${st.name}` + (st.note ? `<br><span style="font-size:9px; color:#f59e0b;">💡 ${st.note}</span>` : "");
-        chip.onclick = () => applyPointRelocation(st.name, st.lat, st.lng);
-        box.appendChild(chip);
-      });
-
-      document.getElementById("trainCustomInput").value = "";
-      const modal = document.getElementById("trainModal");
-      modal.style.display = "flex";
-      modal.scrollTop = 0;
-    }
-
-    function closeTrainModal(e) {
-      if (e && e.target && e.target.id !== "trainModal" && !e.target.closest(".train-modal-card")) return;
-      document.getElementById("trainModal").style.display = "none";
-      setTimeout(() => { if (map) map.invalidateSize(); }, 120);
-    }
-
-    function modalOpenAI() {
-      if (!currentTrainingPoint) return;
-      const p = currentTrainingPoint;
-      closeTrainModal();
-      openAiContext('point', p._fbKey || "", p.text || p.raw_text || "Повідомлення", { raw_text: p.text || p.raw_text, lat: p.lat, lng: p.lng });
-    }
-
-    function modalDeletePoint() {
-      if (!currentTrainingPoint) return;
-      const p = currentTrainingPoint;
-      closeTrainModal();
-      deleteSinglePoint(p._fbKey, p.text || p.raw_text || "");
-    }
-
-    async function applyPointRelocation(streetName, lat, lng) {
-      if (!currentTrainingPoint) return;
-      closeTrainModal();
-
-      const p = currentTrainingPoint;
-      let m = currentTrainingMarker || findMarkerByPoint(p);
-
-      const startPos = L.latLng(p.lat, p.lng);
-      const targetPos = L.latLng(Number(lat.toFixed(5)), Number(lng.toFixed(5)));
-
-      p.lat = targetPos.lat;
-      p.lng = targetPos.lng;
-
-      pendingRelocation = {
-        point: p,
-        marker: m,
-        startPos: startPos,
-        targetPos: targetPos,
-        streetName: streetName,
-        originalCenter: map.getCenter(),
-        originalZoom: map.getZoom()
-      };
-
-      const banner = document.getElementById("transferBanner");
-      if (banner) {
-        banner.innerText = `⏳ Перенесення до ${streetName}...`;
-        banner.style.display = "block";
-      }
-
-      map.flyTo([targetPos.lat, targetPos.lng], 16, { animate: true, duration: 0.85 });
-
-      smoothGlideMarker(m, startPos, targetPos, 850, () => {
-        if (banner) banner.style.display = "none";
-        if (m) m.setLatLng(targetPos);
-
-        setTimeout(() => {
-          const confirmBox = document.getElementById("confirmMoveModal");
-          document.getElementById("confirmStreetName").innerText = `📍 ${streetName}`;
-          confirmBox.style.display = "block";
-        }, 300);
-      });
-    }
-
-    function finalizeMoveConfirm(isConfirmed) {
-      const confirmBox = document.getElementById("confirmMoveModal");
-      confirmBox.style.display = "none";
-
-      if (!pendingRelocation) return;
-      const { point, marker, startPos, targetPos, streetName, originalCenter, originalZoom } = pendingRelocation;
-
-      if (isConfirmed) {
-        point.lat = targetPos.lat;
-        point.lng = targetPos.lng;
-        point.needs_training = false;
-        point.address = streetName;
-
-        let phrase = (point.raw_text || point.text || "")
-          .replace(/^(?:❓|\bчисто\b|\bбп\b|\bпатруль\b|\(чисто\))/gi, "")
-          .replace(/(?:чисто|спокійно|вільно|пусто)/gi, "")
-          .trim().toLowerCase();
-        if (phrase.length < 3) phrase = streetName.toLowerCase();
-
-        if (point._fbKey) {
-          fetch(FIREBASE_POINTS_URL.replace(".json", `/${point._fbKey}.json`), {
-            method: "PATCH",
+        let phrase = (rawText || p.text || "").replace(/^(?:❓|\bчисто\b|\bбп\b|\bпатруль\b|\(чисто\))/gi, "").trim().toLowerCase();
+        if (phrase.length >= 3) {
+          learnedRules.push({ phrase: phrase, is_clean: isClean });
+          localStorage.setItem("radar_learned_rules", JSON.stringify(learnedRules));
+          fetch(FIREBASE_KB_URL, {
+            method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ lat: point.lat, lng: point.lng, needs_training: false, address: streetName })
+            body: JSON.stringify({ phrase: phrase, is_clean: isClean, updated_at: Date.now() })
           }).catch(() => {});
         }
 
-        fetch(FIREBASE_KB_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ phrase: phrase, address: streetName, lat: point.lat, lng: point.lng, updated_at: Date.now() })
-        }).catch(() => {});
-
-        learnedRules.push({ phrase: phrase, address: streetName, lat: point.lat, lng: point.lng });
-        localStorage.setItem("radar_learned_rules", JSON.stringify(learnedRules));
-
-        showToast(`✅ «${streetName}» підтверджено!`);
-        pendingRelocation = null;
+        showToast(isClean ? "🟢 Встановлено: ЧИСТО!" : "🔴 Встановлено: БЛОКПОСТ!");
         renderMarkers();
         renderTrafficLights();
         updateRouteStatus();
-
-      } else {
-        point.lat = startPos.lat;
-        point.lng = startPos.lng;
-        if (marker) marker.setLatLng(startPos);
-        map.flyTo(originalCenter, originalZoom, { animate: true, duration: 0.8 });
-        showToast("↩️ Перенесення скасовано");
-        pendingRelocation = null;
-        renderMarkers();
       }
-    }
+    };
 
-    function finalizeMoveManual() {
-      const confirmBox = document.getElementById("confirmMoveModal");
-      confirmBox.style.display = "none";
-
-      if (!pendingRelocation || !pendingRelocation.marker) return;
-      const { point, marker } = pendingRelocation;
-
-      marker.options.autoPan = true;
-      marker.options.autoPanPadding = [60, 60];
-      marker.options.autoPanSpeed = 15;
-      marker.dragging.enable();
-
-      const circleEl = marker.getElement()?.querySelector('.radar-circle');
-      if (circleEl) circleEl.classList.add('moving-super-marker');
-
-      showToast("✋ Підтягніть мітку пальцем точно на перехрестя!");
-
-      marker.once('dragend', (e) => {
-        marker.dragging.disable();
-        if (circleEl) circleEl.classList.remove('moving-super-marker');
-        const pos = e.target.getLatLng();
-        pendingRelocation.targetPos = pos;
-        pendingRelocation.streetName = "Встановлено користувачем (ручне)";
-
-        document.getElementById("confirmStreetName").innerText = "📍 Встановлено користувачем (ручне)";
-        confirmBox.style.display = "block";
-      });
-    }
-
-    async function executeCustomTrain() {
-      const q = document.getElementById("trainCustomInput").value.trim();
-      if (!q) return;
-
-      const lower = q.toLowerCase();
-      for (const [key, val] of Object.entries(DNIPRO_STREETS_MAP)) {
-        if (lower.includes(key)) {
-          applyPointRelocation(val.name, val.lat, val.lng);
-          return;
-        }
-      }
-
-      showToast("🔍 Пошук вулиці у Дніпрі...");
-      try {
-        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q + ", Дніпро")}&countrycodes=ua&limit=1`;
-        const res = await fetch(url);
-        const data = await res.json();
-        if (data && data.length > 0) {
-          const item = data[0];
-          applyPointRelocation(item.display_name.split(",")[0], parseFloat(item.lat), parseFloat(item.lon));
-          return;
-        }
-      } catch(e) {}
-
-      showToast(`⚠️ Не знайдено координат для «${q}». Спробуйте іншу назву.`);
-    }
-
-    // ИСПРАВЛЕННЫЙ И РАСШИРЕННЫЙ ДВИЖОК ДЕЙСТВИЙ ШІ (ПОЛНОМОЧИЯ АГЕНТА)
+    // ДВИЖОК ДЕЙСТВИЙ ШІ
     async function executeAiActionDirective(actionType, payload) {
       if (actionType === "NAVIGATE") {
         if (payload.url) window.location.href = payload.url;
@@ -1883,9 +1496,6 @@
           const q = payload.target_text.toLowerCase();
           p = allPoints.find(x => ((x.text || '') + ' ' + (x.raw_text || '')).toLowerCase().includes(q));
         }
-        if (!p && targetedPointContext && targetedPointContext.id) {
-          p = allPoints.find(x => x._fbKey === targetedPointContext.id);
-        }
         if (!p && allPoints.length > 0) p = allPoints[allPoints.length - 1];
         if (!p) return;
 
@@ -1894,10 +1504,8 @@
         let street = payload.street || payload.address || "Нове місце";
 
         if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
-          const lowSt = street.toLowerCase();
-          for (const [k, v] of Object.entries(DNIPRO_STREETS_MAP)) {
-            if (lowSt.includes(k)) { lat = v.lat; lng = v.lng; street = v.name; break; }
-          }
+          const resolved = resolveLocationFromText(street);
+          if (resolved) { lat = resolved.lat; lng = resolved.lng; street = resolved.name; }
         }
         if (!lat || !lng) return;
 
@@ -1931,19 +1539,12 @@
         const isClean = payload.clean === true || payload.status === "чисто";
         let targetPoint = null;
 
-        if (payload.key) {
-          targetPoint = allPoints.find(x => x._fbKey === payload.key);
-        }
+        if (payload.key) targetPoint = allPoints.find(x => x._fbKey === payload.key);
         if (!targetPoint && payload.target_text) {
           const query = payload.target_text.toLowerCase();
           targetPoint = allPoints.find(x => ((x.text || '') + ' ' + (x.raw_text || '')).toLowerCase().includes(query));
         }
-        if (!targetPoint && targetedPointContext && targetedPointContext.id) {
-          targetPoint = allPoints.find(x => x._fbKey === targetedPointContext.id);
-        }
-        if (!targetPoint && allPoints.length > 0) {
-          targetPoint = allPoints[allPoints.length - 1];
-        }
+        if (!targetPoint && allPoints.length > 0) targetPoint = allPoints[allPoints.length - 1];
 
         if (targetPoint) {
           targetPoint.is_clean = isClean;
@@ -2018,11 +1619,8 @@
     const aiInlineInput = document.getElementById("aiInlineInput");
     const aiChatBox = document.getElementById("aiChatBox");
     const btnAiPillToggle = document.getElementById("btnAiPillToggle");
-    const aiTargetBox = document.getElementById("aiTargetBox");
-    const aiTargetTitle = document.getElementById("aiTargetTitle");
 
     let geminiChatHistory = [];
-    let targetedPointContext = null;
 
     L.DomEvent.disableClickPropagation(aiPillPanel);
     L.DomEvent.disableScrollPropagation(aiPillPanel);
@@ -2030,7 +1628,6 @@
     L.DomEvent.disableClickPropagation(document.getElementById("routeStatusBar"));
     L.DomEvent.disableClickPropagation(document.getElementById("routeSubmenu"));
     L.DomEvent.disableClickPropagation(document.getElementById("btnRefresh"));
-    L.DomEvent.disableClickPropagation(document.getElementById("trainModal"));
     L.DomEvent.disableClickPropagation(document.getElementById("confirmMoveModal"));
 
     let aiDragActive = false;
@@ -2100,7 +1697,6 @@
         aiPillPanel.style.right = "15px";
         aiPillPanel.style.left = "auto";
         aiPillPanel.style.bottom = "auto";
-        aiTargetBox.style.display = "none";
         setTimeout(() => { if (map) map.invalidateSize(); }, 150);
       }
     }
@@ -2108,11 +1704,9 @@
     function clearAiChatHistory(e) {
       if (e) e.stopPropagation();
       geminiChatHistory = [];
-      targetedPointContext = null;
-      aiTargetBox.style.display = "none";
       aiChatBox.innerHTML = `
         <div class="ai-msg bot">
-          🧹 Діалог очищено. Готовий до нових запитань!
+          🧹 Діалог очищено. Готовий до нових команд!
         </div>
       `;
       showToast("💬 Діалог очищено!");
@@ -2134,71 +1728,6 @@
       if (e) e.stopPropagation();
       verifyGeminiAuthorization(true);
     }
-
-    window.openAiContext = function(type, id, name, extraData = {}) {
-      if (!aiPillPanel.classList.contains("expanded")) {
-        toggleAiPillExpand();
-      }
-      targetedPointContext = { type: type, id: id, name: name, ...extraData };
-
-      const displayName = extraData.raw_text || name;
-      aiTargetTitle.innerText = `🎯 Об'єкт: «${displayName}»\nВиберіть, що насправді означає повідомлення:`;
-      aiTargetBox.style.display = "flex";
-
-      aiInlineInput.value = "";
-      setTimeout(() => {
-        aiChatBox.scrollTop = aiChatBox.scrollHeight;
-      }, 120);
-    };
-
-    window.applyTargetVerdict = function(isClean) {
-      if (!targetedPointContext) return;
-      const ctx = targetedPointContext;
-      const statusText = isClean ? "ЧИСТО (зелена)" : "БЛОКПОСТ (червона)";
-      const rawText = ctx.raw_text || ctx.name || "";
-
-      if (ctx.type === 'point') {
-        const p = allPoints.find(x => x._fbKey === ctx.id || x.text === rawText || x.raw_text === rawText);
-        if (p) {
-          p.is_clean = isClean;
-          p.color = isClean ? "green" : "red";
-          p.status = isClean ? "чисто" : "опасно";
-          if (p._fbKey) {
-            fetch(FIREBASE_POINTS_URL.replace(".json", `/${p._fbKey}.json`), {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ is_clean: isClean, color: p.color, status: p.status })
-            }).catch(() => {});
-          }
-        }
-
-        let phrase = rawText.replace(/^(?:❓|\bчисто\b|\bбп\b|\bпатруль\b|\(чисто\))/gi, "").trim().toLowerCase();
-        if (phrase.length >= 3) {
-          learnedRules.push({ phrase: phrase, is_clean: isClean });
-          localStorage.setItem("radar_learned_rules", JSON.stringify(learnedRules));
-          fetch(FIREBASE_KB_URL, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ phrase: phrase, is_clean: isClean, updated_at: Date.now() })
-          }).catch(() => {});
-        }
-      } else if (ctx.type === 'traffic_light') {
-        window.setTrafficLightManual(ctx.id, isClean ? 'green' : 'red');
-      }
-
-      renderMarkers();
-      renderTrafficLights();
-      updateRouteStatus();
-
-      const msg = document.createElement("div");
-      msg.className = "ai-msg bot";
-      msg.innerHTML = `<b>✅ Прийнято!</b> Об'єкт «${rawText}» миттєво переведено у статус <b>${statusText}</b>. Карту та маршрут оновлено!`;
-      aiChatBox.appendChild(msg);
-      aiChatBox.scrollTop = aiChatBox.scrollHeight;
-
-      aiTargetBox.style.display = "none";
-      showToast(`🎯 Статус змінено на ${statusText}!`);
-    };
 
     async function executeGeminiRequestPool(promptPayload) {
       if (!verifyGeminiAuthorization()) {
@@ -2274,43 +1803,19 @@
         return `• [KEY:${key}] [${diffMin}хв тому] ${st}: "${txt}"${addr} (lat:${p.lat}, lng:${p.lng})`;
       }).join('\n');
 
-      const tlStatusText = checkpoints.map(cp => {
-        const matched = allPoints.filter(p => cp.keys.some(k => ((p.raw_text || p.text || '') + ' ' + (p.address || '')).toLowerCase().includes(k)));
-        matched.sort((a,b) => (b.time||0) - (a.time||0));
-        const latest = matched[0];
-        const override = manualOverrides[cp.id];
-        let state = "Очікування";
-        if (override) state = override.status === 'green' ? 'Зелений (ручний)' : (override.status === 'red' ? 'Червоний (ручний)' : 'Погашено (ручний)');
-        else if (latest) state = isCleanPoint(latest) ? 'Зелений (чисто)' : 'Червоний (увага/БП)';
-        return `• ${cp.name} (id: "${cp.id}"): стан ${state}.`;
-      }).join('\n');
-
-      const currentTargetInfo = targetedPointContext ? 
-        `ПОТОЧНИЙ ОБ'ЄКТ У ФОКУСІ:\n- Тип: ${targetedPointContext.type}\n- KEY: "${targetedPointContext.id}"\n- Текст: "${targetedPointContext.raw_text || targetedPointContext.name}"\n` 
-        : `ПОТОЧНИЙ ОБ'ЄКТ У ФОКУСІ: немає (загальний діалог)\n`;
-
       const systemInstructionText = `
 Ти — високоінтелектуальний військово-дорожній ШІ-штурман у місті Дніпро для водія.
-Ти маєш ПРЯМУ ВЛАДУ над картою. Якщо користувач просить перенести точку, змінити статус чи відкрити аналітику, ти ОБОВ'ЯЗКОВО повинен додати в самий кінець своєї відповіді відповідну команду у форматі COMMAND:
-
-${currentTargetInfo}
-СТАН СВІТЛОФОРІВ:
-${tlStatusText}
+Ти маєш ПОВНУ ВЛАДУ над картою. Якщо користувач просить перенести точку, змінити статус чи відкрити аналітику, ти ОБОВ'ЯЗКОВО в кінці своєї відповіді додаєш директиву дії:
 
 ТОЧКИ НА КАРТІ:
 ${allLiveReportsText || "Повідомлень немає"}
 
-ІНСТРУКЦІЯ З ДІЙ (COMMANDS):
-1. ПЕРЕМІЩЕННЯ ТОЧКИ:
-<<<ACTION:MOVE:{"key":"KEY_ТОЧКИ","street":"Назва вулиці","lat":48.XXXXX,"lng":34.XXXXX}>>>
+КОМАНДИ:
+1. ПЕРЕМІЩЕННЯ: <<<ACTION:MOVE:{"key":"KEY_ТОЧКИ","street":"Назва вулиці або перехрестя","lat":48.XXXXX,"lng":34.XXXXX}>>>
+2. СТАТУС: <<<ACTION:STATUS:{"key":"KEY_ТОЧКИ","clean":true}>>> (true - чисто, false - блокпост)
+3. АНАЛІТИКА: <<<ACTION:NAVIGATE:{"url":"stats.html"}>>>
 
-2. ЗМІНА СТАТУСУ:
-<<<ACTION:STATUS:{"key":"KEY_ТОЧКИ","clean":true}>>> (true - чисто, false - блокпост)
-
-3. ВІДКРИТТЯ АНАЛІТИКИ:
-<<<ACTION:NAVIGATE:{"url":"stats.html"}>>>
-
-Завжди випускай <<<ACTION:...>>>, коли просять виконати дію!
+Завжди викликай <<<ACTION:...>>>, коли користувач дає вказівку змінити карту!
 `;
 
       geminiChatHistory.push({ role: "user", parts: [{ text: query }] });
@@ -2359,134 +1864,6 @@ ${allLiveReportsText || "Повідомлень немає"}
         loadingBubble.innerHTML = `<span style="color:#ef4444;">⚠️ Помилка Gemini API: ${err.message}</span>`;
         aiChatBox.scrollTop = aiChatBox.scrollHeight;
       }
-    }
-
-    let secretClickCount = 0;
-    let secretClickTimer = null;
-    let neonLines = [];
-    let currentNeonColor = "#00f3ff";
-    let isDrawingNeon = false;
-    let isRecoloringNeon = false;
-    let tempPoints = [];
-    let activeDrawingPolyline = null;
-
-    function handleSecretClick() {
-      secretClickCount++;
-      clearTimeout(secretClickTimer);
-      secretClickTimer = setTimeout(() => { secretClickCount = 0; }, 800);
-      if (secretClickCount >= 3) {
-        secretClickCount = 0;
-        document.getElementById("neonPanel").style.display = "block";
-        syncSectorCheckboxesUI();
-        const chkRouteStatusBar = document.getElementById("chkRouteStatusBar");
-        if (chkRouteStatusBar) chkRouteStatusBar.checked = showRouteStatusBar;
-        showToast("⚡ Секретне меню відкрито!");
-      }
-    }
-
-    function closeNeonPanel() {
-      if (isDrawingNeon) toggleNeonDrawMode();
-      if (isRecoloringNeon) toggleNeonRecolorMode();
-      document.getElementById("neonPanel").style.display = "none";
-    }
-
-    function selectNeonColor(color, el) {
-      currentNeonColor = color;
-      document.querySelectorAll(".btn-color").forEach(b => b.classList.remove("active"));
-      el.classList.add("active");
-    }
-
-    function toggleNeonLinesVisibility() {
-      showNeonLines = !showNeonLines;
-      localStorage.setItem("radar_neon_visible", showNeonLines);
-      if (showNeonLines) renderAllNeonLines();
-      else neonLayer.clearLayers();
-    }
-
-    function toggleNeonRecolorMode() {
-      isRecoloringNeon = !isRecoloringNeon;
-      renderAllNeonLines();
-    }
-
-    function toggleNeonDrawMode() {
-      isDrawingNeon = !isDrawingNeon;
-      const btn = document.getElementById("btnNeonDraw");
-      if (isDrawingNeon) {
-        tempPoints = [];
-        btn.innerText = "🛑 Завершити креслення";
-      } else {
-        btn.innerText = "✏️ Почати нову лінію";
-        finishCurrentLine();
-      }
-    }
-
-    map.on('click', function(e) {
-      if (!isDrawingNeon) return;
-      tempPoints.push([Number(e.latlng.lat.toFixed(5)), Number(e.latlng.lng.toFixed(5))]);
-      if (!activeDrawingPolyline) {
-        activeDrawingPolyline = L.polyline(tempPoints, { color: currentNeonColor, weight: 3, opacity: 0.9 }).addTo(neonLayer);
-      } else {
-        activeDrawingPolyline.setLatLngs(tempPoints);
-      }
-    });
-
-    function undoNeonPoint() {
-      if (!isDrawingNeon || tempPoints.length === 0) return;
-      tempPoints.pop();
-      if (activeDrawingPolyline) activeDrawingPolyline.setLatLngs(tempPoints);
-    }
-
-    async function finishCurrentLine() {
-      if (tempPoints.length > 1) {
-        neonLines.push({ id: "neon_" + Date.now(), color: currentNeonColor, points: [...tempPoints] });
-        await saveNeonLines();
-      }
-      tempPoints = [];
-      activeDrawingPolyline = null;
-      renderAllNeonLines();
-    }
-
-    async function clearAllNeonLines() {
-      if (!confirm("Видалити всі лінії?")) return;
-      neonLines = []; tempPoints = []; activeDrawingPolyline = null;
-      await saveNeonLines();
-      renderAllNeonLines();
-    }
-
-    async function saveNeonLines() {
-      localStorage.setItem("dnepr_radar_neon_v1", JSON.stringify(neonLines));
-      try {
-        await fetch(FIREBASE_NEON_URL, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(neonLines) });
-      } catch (e) {}
-    }
-
-    async function loadNeonLines() {
-      try {
-        const local = localStorage.getItem("dnepr_radar_neon_v1");
-        if (local) neonLines = JSON.parse(local) || [];
-        const res = await fetch(`${FIREBASE_NEON_URL}?t=${Date.now()}`);
-        if (res.ok) {
-          const data = await res.json();
-          if (Array.isArray(data)) neonLines = data;
-        }
-      } catch (e) {}
-      renderAllNeonLines();
-    }
-
-    function renderAllNeonLines() {
-      neonLayer.clearLayers();
-      if (!showNeonLines) return;
-      neonLines.forEach(line => {
-        const poly = L.polyline(line.points, { color: line.color, weight: isRecoloringNeon ? 7 : 3, opacity: 0.9 }).addTo(neonLayer);
-        if (isRecoloringNeon) {
-          poly.on('click', async (e) => {
-            L.DomEvent.stopPropagation(e);
-            line.color = currentNeonColor;
-            poly.setStyle({ color: currentNeonColor });
-            await saveNeonLines();
-          });
-        }
-      });
     }
 
     function toggleTlDropdown() {
@@ -2646,7 +2023,7 @@ ${allLiveReportsText || "Повідомлень немає"}
           }
         }
 
-        const iconHtml = `<div class="traffic-pill ${isEditMode ? 'draggable-mode' : ''}"><div class="${redClass}"></div><div class="${greenClass}"></div></div>`;
+        const iconHtml = `<div class="traffic-pill"><div class="${redClass}"></div><div class="${greenClass}"></div></div>`;
         const tlIcon = L.divIcon({ className: 'traffic-marker-icon', html: iconHtml, iconSize: [20, 36], iconAnchor: [10, 18] });
 
         let messageBlock = "";
@@ -2674,9 +2051,6 @@ ${allLiveReportsText || "Повідомлень немає"}
         }
 
         const overrideBadge = isOverrideActive ? '<span style="font-size:9px; background:#0284c7; color:#fff; padding:1px 4px; border-radius:3px; margin-left:4px;">РУЧНИЙ</span>' : "";
-        const cleanSafeCpName = cp.name.replace(/'/g, "\\'");
-        const latestMsgSafe = latest ? (latest.text || latest.raw_text || "").replace(/'/g, "\\'").replace(/"/g, '') : "";
-        const latestKeySafe = latest ? (latest._fbKey || "") : "";
 
         const standardPopupContent = 
           '<div style="padding:2px; min-width:180px; font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif; color:#0f172a;">' +
@@ -2706,57 +2080,8 @@ ${allLiveReportsText || "Повідомлень немає"}
             await syncCheckpointsToCloud();
           });
 
-          let pressTimer = null;
-          let isLongPress = false;
-          let startX = 0, startY = 0;
-
-          function startPress(clientX, clientY) {
-            isLongPress = false;
-            startX = clientX; startY = clientY;
-            pressTimer = setTimeout(() => {
-              isLongPress = true;
-              if (navigator.vibrate) navigator.vibrate(60);
-              openTrafficLightControl(cp.id);
-            }, 500);
-          }
-
-          function cancelPress() {
-            if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
-          }
-
-          marker.on('add', () => {
-            const el = marker.getElement();
-            if (!el) return;
-
-            el.addEventListener('touchstart', (e) => {
-              startPress(e.touches[0].clientX, e.touches[0].clientY);
-            }, { passive: true });
-
-            el.addEventListener('touchmove', (e) => {
-              if (pressTimer && Math.hypot(e.touches[0].clientX - startX, e.touches[0].clientY - startY) > 8) cancelPress();
-            }, { passive: true });
-
-            el.addEventListener('touchend', (e) => {
-              if (isLongPress) {
-                if (e.cancelable) e.preventDefault();
-                e.stopPropagation();
-              }
-              cancelPress();
-            });
-
-            el.addEventListener('mousedown', (e) => { startPress(e.clientX, e.clientY); });
-            el.addEventListener('mousemove', (e) => {
-              if (pressTimer && Math.hypot(e.clientX - startX, e.clientY - startY) > 8) cancelPress();
-            });
-
-            el.addEventListener('mouseup', () => {
-              if (isLongPress) e.stopPropagation();
-              cancelPress();
-            });
-
-            el.addEventListener('click', () => {
-              if (!isLongPress) marker.setPopupContent(standardPopupContent);
-            });
+          marker.on('click', () => {
+            marker.openPopup();
           });
 
           trafficLightLayer.addLayer(marker);
@@ -2773,19 +2098,40 @@ ${allLiveReportsText || "Повідомлень немає"}
       const isNowCollapsed = document.documentElement.classList.toggle("dash-collapsed");
       btnToggle.innerText = isNowCollapsed ? "▼" : "▲";
       localStorage.setItem("radar_dash_collapsed", isNowCollapsed ? "true" : "false");
+      
+      // Автоматическая очистка строки поиска при сворачивании панели
+      if (isNowCollapsed) {
+        clearStreetSearch();
+        const conv = document.getElementById("nameConverterInput");
+        if (conv) conv.value = "";
+        const convRes = document.getElementById("nameConverterResult");
+        if (convRes) convRes.style.display = "none";
+      }
     }
 
     const streetSearchInput = document.getElementById("streetSearchInput");
     const searchResults = document.getElementById("searchResults");
+    const searchClearBtn = document.getElementById("searchClearBtn");
     let searchDebounceTimer = null;
     let searchPinMarker = null;
 
     streetSearchInput.addEventListener("input", () => {
       clearTimeout(searchDebounceTimer);
       const query = streetSearchInput.value.trim();
+      searchClearBtn.style.display = query.length > 0 ? "block" : "none";
       if (query.length < 3) { searchResults.style.display = "none"; return; }
       searchDebounceTimer = setTimeout(() => executeStreetSearch(query), 400);
     });
+
+    function clearStreetSearch() {
+      streetSearchInput.value = "";
+      searchClearBtn.style.display = "none";
+      searchResults.style.display = "none";
+      if (searchPinMarker) {
+        map.removeLayer(searchPinMarker);
+        searchPinMarker = null;
+      }
+    }
 
     streetSearchInput.addEventListener("keydown", (e) => {
       if (e.key === "Enter") {
@@ -2813,6 +2159,7 @@ ${allLiveReportsText || "Повідомлень немає"}
               searchPinMarker = L.circleMarker([lat, lon], { radius: 10, color: "#38bdf8", fillColor: "#00f3ff", fillOpacity: 0.8 }).addTo(map).bindPopup(`📍 ${item.display_name.split(",")[0]}`).openPopup();
               searchResults.style.display = "none";
               streetSearchInput.value = item.display_name.split(",")[0];
+              searchClearBtn.style.display = "block";
             };
             searchResults.appendChild(div);
           });
@@ -2847,6 +2194,22 @@ ${allLiveReportsText || "Повідомлень немає"}
             return null;
           }
 
+          // Автоматическая корректировка перекрестков и новых локаций
+          if (p.needs_training) {
+            const resolved = resolveLocationFromText(fullText);
+            if (resolved) {
+              p.lat = resolved.lat;
+              p.lng = resolved.lng;
+              p.address = resolved.name;
+              p.needs_training = false;
+              fetch(FIREBASE_POINTS_URL.replace(".json", `/${key}.json`), {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ lat: p.lat, lng: p.lng, needs_training: false, address: p.address })
+              }).catch(() => {});
+            }
+          }
+
           return p;
         }).filter(p => p && (now - (p.time || p.timestamp || 0)) <= LIFETIME_MS);
 
@@ -2862,6 +2225,7 @@ ${allLiveReportsText || "Повідомлень немає"}
       } catch (err) {}
     }
 
+    // РЕНДЕР МАРКЕРОВ: С КНОПКАМИ ВЕРДИКТА ВНУТРИ ПОПАПА И СТРОКОЙ СТАРОГО/НОВОГО НАЗВАНИЯ
     function renderMarkers() {
       markersLayer.clearLayers();
       const now = Date.now();
@@ -2932,25 +2296,39 @@ ${allLiveReportsText || "Повідомлень немає"}
           const ptTime = pt.time || pt.timestamp || 0;
           const timeStr = ptTime ? new Date(ptTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "";
           const remMin = Math.floor(Math.max(0, LIFETIME_MS - (now - ptTime)) / 60000);
-          const cleanTextSafe = (pt.text || "").replace(/'/g, "\\'");
+          const cleanTextSafe = (pt.text || "").replace(/'/g, "\\'").replace(/"/g, '&quot;');
           const fbKeySafe = pt._fbKey || "";
 
+          // Строка переименования топонима
+          const renameNote = getStreetRenameNote(pt.text || pt.raw_text || pt.address || "");
+
           listHtml += `
-            <div style="border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; margin-bottom: 6px;">
-              <div style="font-weight:700; font-size:12px; color:#0f172a;">${isCleanPoint(pt) ? "🟢" : "🔴"} ${pt.text || ""}</div>
-              <div style="font-size:10px; color:#64748b;">🕒 ${timeStr} | Зникне через: ${remMin} хв</div>
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-top:3px;">
-                <span onclick="deleteSinglePoint('${fbKeySafe}', '${cleanTextSafe}')" style="color:#ef4444; font-weight:800; font-size:9px; cursor:pointer;">🗑️ Видалити</span>
-                <span onclick="openAiContext('point', '${fbKeySafe}', '${cleanTextSafe}', {raw_text:'${cleanTextSafe}', lat:${pt.lat}, lng:${pt.lng}})" style="color:#0284c7; font-weight:800; font-size:9px; cursor:pointer;">🤖 ШІ</span>
+            <div style="border-bottom: 1px solid #334155; padding-bottom: 8px; margin-bottom: 8px;">
+              <!-- КНОПКИ ВЕРДИКТА ПРЯМО НАД КАЖДЫМ СООБЩЕНИЕМ -->
+              <div style="display:flex; gap:5px; margin-bottom:5px;">
+                <button onclick="setPointVerdictDirect('${fbKeySafe}', true, '${cleanTextSafe}')" style="flex:1; background:#059669; border:none; color:#fff; padding:5px 4px; border-radius:5px; font-size:10px; font-weight:800; cursor:pointer;">🟢 Це означає: ЧИСТО</button>
+                <button onclick="setPointVerdictDirect('${fbKeySafe}', false, '${cleanTextSafe}')" style="flex:1; background:#dc2626; border:none; color:#fff; padding:5px 4px; border-radius:5px; font-size:10px; font-weight:800; cursor:pointer;">🔴 Це означає: БЛОКПОСТ</button>
+              </div>
+
+              <div style="font-weight:700; font-size:12px; color:#0f172a; line-height:1.35;">${isCleanPoint(pt) ? "🟢" : "🔴"} ${pt.text || ""}</div>
+              <div style="font-size:10px; color:#64748b; margin-top:2px;">🕒 ${timeStr} | Зникне через: ${remMin} хв</div>
+              
+              <!-- ИНФОРМЕР СТАРОГО / НОВОГО НАЗВАНИЯ ВНИЗУ -->
+              <div style="font-size:10px; color:#0284c7; margin-top:4px; background:#f0f9ff; padding:3px 6px; border-radius:4px; border:1px solid #bae6fd;">
+                ${renameNote}
+              </div>
+
+              <div style="display:flex; justify-content:flex-end; margin-top:4px;">
+                <span onclick="deleteSinglePoint('${fbKeySafe}', '${cleanTextSafe}')" style="color:#ef4444; font-weight:800; font-size:9px; cursor:pointer;">🗑️ Видалити повідомлення</span>
               </div>
             </div>
           `;
         });
 
         const popupContent = `
-          <div style="padding:4px; font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif; min-width:190px; max-height:220px; overflow-y:auto;">
+          <div style="padding:4px; font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif; min-width:215px; max-height:240px; overflow-y:auto;">
             <div style="font-weight:800; font-size:11px; color:#0284c7; margin-bottom:6px; border-bottom:1px solid #cbd5e1; padding-bottom:3px;">
-              📍 Повідомлень у цій точці: ${cluster.points.length}
+              📍 Повідомлень у точці: ${cluster.points.length}
             </div>
             ${listHtml}
           </div>
@@ -2958,63 +2336,14 @@ ${allLiveReportsText || "Повідомлень немає"}
 
         const marker = L.marker([cluster.lat, cluster.lng], {
           icon: dotIcon,
-          draggable: false,
-          autoPan: true,
-          autoPanPadding: [60, 60],
-          autoPanSpeed: 15
+          draggable: false
         });
 
-        let pressTimer = null;
-        let isLongTap = false;
-        let startX = 0, startY = 0;
+        marker.bindPopup(popupContent, { autoClose: true, closeOnClick: true });
 
-        function startPress(clientX, clientY) {
-          isLongTap = false;
-          startX = clientX; startY = clientY;
-
-          pressTimer = setTimeout(() => {
-            isLongTap = true;
-            pressTimer = null;
-            if (navigator.vibrate) navigator.vibrate(50);
-            showMarkerActionChoice(p, marker);
-          }, 350);
-        }
-
-        function cancelPress(clientX, clientY) {
-          if (pressTimer && Math.hypot(clientX - startX, clientY - startY) > 8) {
-            clearTimeout(pressTimer); pressTimer = null;
-          }
-        }
-
+        // Устранение зависания: открытие и закрытие работает по клику без задержек
         marker.on('click', () => {
-          if (!isLongTap) {
-            marker.bindPopup(popupContent).openPopup();
-          }
-        });
-
-        marker.on('add', () => {
-          const el = marker.getElement();
-          if (!el) return;
-
-          el.addEventListener('touchstart', (e) => {
-            startPress(e.touches[0].clientX, e.touches[0].clientY);
-          }, { passive: true });
-
-          el.addEventListener('touchmove', (e) => {
-            cancelPress(e.touches[0].clientX, e.touches[0].clientY);
-          }, { passive: true });
-
-          el.addEventListener('touchend', (e) => {
-            if (isLongTap) {
-              if (e.cancelable) e.preventDefault();
-              e.stopPropagation();
-            }
-            if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
-          });
-
-          el.addEventListener('mousedown', (e) => { startPress(e.clientX, e.clientY); });
-          el.addEventListener('mousemove', (e) => { cancelPress(e.clientX, e.clientY); });
-          el.addEventListener('mouseup', () => { if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } });
+          marker.openPopup();
         });
 
         markersLayer.addLayer(marker);
@@ -3025,9 +2354,7 @@ ${allLiveReportsText || "Повідомлень немає"}
     }
 
     loadCheckpointsFromCloud().then(() => {
-      loadNeonLines().then(() => {
-        loadPoints();
-      });
+      loadPoints();
     });
     setInterval(loadPoints, 15000);
   </script>
