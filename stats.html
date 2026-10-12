@@ -158,13 +158,50 @@
     .feed-badge-red { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid #ef4444; }
     .feed-badge-green { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid #10b981; }
 
-    /* ХРОНОМЕТРАЖ И ГРАФИК */
+    /* ХРОНОМЕТРАЖ І ЦИФЕРБЛАТ */
     .timeline-day-switch { display: flex; gap: 6px; align-items: center; }
     .timeline-day-btn {
       background: #1e293b; border: 1px solid #334155; color: #94a3b8;
       padding: 4px 10px; border-radius: 6px; font-size: 10px; font-weight: 700; cursor: pointer;
     }
     .timeline-day-btn.active { background: #0284c7; border-color: #00f3ff; color: #fff; }
+
+    .clock-radar-container {
+      background: #070d1d; border: 1px solid #1e293b; border-radius: 12px;
+      padding: 14px; margin-bottom: 16px; display: flex; flex-direction: column; align-items: center; gap: 10px;
+    }
+    .clock-top-bar {
+      width: 100%; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;
+    }
+    .clock-mode-group { display: flex; gap: 4px; }
+    .btn-clock-mode {
+      background: #0f172a; border: 1px solid #334155; color: #94a3b8;
+      padding: 4px 8px; border-radius: 6px; font-size: 10px; font-weight: 800; cursor: pointer; transition: all 0.2s;
+    }
+    .btn-clock-mode.active {
+      background: #0284c7; border-color: #00f3ff; color: #fff; box-shadow: 0 0 10px rgba(0, 243, 255, 0.4);
+    }
+    .clock-streets-row {
+      display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; width: 100%; margin-top: 4px;
+    }
+    .clock-street-btn {
+      background: #0f172a; border: 1px solid #334155; color: #94a3b8;
+      padding: 5px 10px; border-radius: 6px; font-size: 11px; font-weight: 800; cursor: pointer; transition: all 0.2s;
+    }
+    .clock-street-btn.active {
+      color: #fff !important; box-shadow: 0 0 10px currentColor; border-color: currentColor;
+    }
+    .clock-wrap {
+      position: relative; width: 280px; height: 280px; display: flex; align-items: center; justify-content: center; margin: 8px 0;
+    }
+    #clockCanvas { width: 280px; height: 280px; cursor: pointer; }
+    .clock-center-info {
+      position: absolute; width: 118px; height: 118px; border-radius: 50%;
+      background: rgba(15, 23, 42, 0.95); border: 1.5px solid #334155;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; pointer-events: none;
+    }
+    .clock-center-val { font-size: 18px; font-weight: 900; color: #ff334b; text-shadow: 0 0 10px rgba(255, 51, 75, 0.4); }
+    .clock-center-lbl { font-size: 9px; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-top: 2px; }
 
     .timeline-node {
       background: #0f172a; border: 1px solid #1e293b; border-radius: 10px;
@@ -177,15 +214,6 @@
     .badge-active { background: rgba(255, 51, 75, 0.25); color: #ff334b; border: 1px solid #ff334b; }
     .badge-closed { background: rgba(148, 163, 184, 0.15); color: #94a3b8; border: 1px solid #334155; }
 
-    .day-strip-wrap { margin: 8px 0; }
-    .day-strip-labels { display: flex; justify-content: space-between; font-size: 9px; color: #64748b; font-weight: 700; margin-bottom: 2px; }
-    .day-strip-bar { position: relative; width: 100%; height: 12px; background: #060913; border-radius: 6px; overflow: hidden; border: 1px solid #1e293b; }
-    .strip-segment {
-      position: absolute; top: 0; height: 100%; border-radius: 2px; cursor: pointer;
-      box-shadow: 0 0 6px currentColor;
-    }
-    .strip-segment.night-carryover { border-right: 2px dashed #fff; }
-
     .session-list { display: flex; flex-direction: column; gap: 5px; margin-top: 8px; }
     .session-pill {
       background: #060913; border: 1px solid #1e293b; border-radius: 6px;
@@ -196,7 +224,7 @@
     .session-time { font-weight: 800; color: #38bdf8; }
     .session-duration { color: #f59e0b; font-weight: 700; }
 
-    /* СТОЛБИКИ ПО ДНЯМ */
+    /* СТОЛБИКИ ПО ДНЯХ */
     .street-control-toolbar {
       background: #070d1d; border: 1px solid #1e293b; border-radius: 10px;
       padding: 10px; margin-bottom: 14px; display: flex; flex-direction: column; gap: 8px;
@@ -265,6 +293,7 @@
 
     .chart-canvas-wrap { position: relative; width: 100%; height: 280px; }
 
+    /* МОДАЛЬНЕ ВІКНО ЗВІТІВ */
     .detail-modal-overlay {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
       background: rgba(6, 9, 19, 0.85); backdrop-filter: blur(6px);
@@ -377,10 +406,10 @@
       <div id="streetFeedContainer"></div>
     </div>
 
-    <!-- ТАБ 2: ХРОНОМЕТРАЖ И ГРАФИК-ПРЯМОУГОЛЬНИКИ -->
+    <!-- ТАБ 2: ХРОНОМЕТРАЖ + ЦИФЕРБЛАТ ГОДИН (24H / 12H AM / 12H PM) -->
     <div id="tabContent2" class="hud-card" style="display:none;">
       <div class="hud-card-title">
-        <span>⏱️ Добова хронограма (Інтервали засад):</span>
+        <span>⏱️ Добовий хронометраж маршруту:</span>
         <div class="timeline-day-switch">
           <span style="font-size:11px; color:#94a3b8; font-weight:700;">День:</span>
           <button id="btnDayToday" class="timeline-day-btn active" onclick="setTimelineDay(0)">Сьогодні</button>
@@ -388,8 +417,34 @@
         </div>
       </div>
 
+      <!-- КРУГОВИЙ ЦИФЕРБЛАТ-РАДАР -->
+      <div class="clock-radar-container">
+        <div class="clock-top-bar">
+          <span style="font-size:12px; font-weight:800; color:#38bdf8;">🕒 Добовий циферблат засад:</span>
+          <div class="clock-mode-group">
+            <button id="btnClockMode24" class="btn-clock-mode active" onclick="setClockMode('24h')">24 години</button>
+            <button id="btnClockModeAM" class="btn-clock-mode" onclick="setClockMode('12h_am')">12г AM (Ранок)</button>
+            <button id="btnClockModePM" class="btn-clock-mode" onclick="setClockMode('12h_pm')">12г PM (Вечір)</button>
+          </div>
+        </div>
+        
+        <div class="clock-streets-row" id="clockStreetSelector"></div>
+
+        <div class="clock-wrap">
+          <canvas id="clockCanvas" width="280" height="280"></canvas>
+          <div class="clock-center-info">
+            <div id="clockCenterPeak" class="clock-center-val">--:00</div>
+            <div class="clock-center-lbl">Пік небезпеки</div>
+            <div id="clockCenterTotal" style="font-size:10px; color:#38bdf8; font-weight:800; margin-top:3px;">0 засад</div>
+          </div>
+        </div>
+        <div style="font-size:10px; color:#94a3b8; text-align:center;">
+          💡 Натисніть на будь-який сектор години, щоб відкрити список зафіксованих блокпостів!
+        </div>
+      </div>
+
       <!-- ГРАФИК С ИНТЕРВАЛЬНЫМИ ПОЛОСАМИ -->
-      <div class="chart-canvas-wrap" style="height: 260px; margin-bottom: 16px;">
+      <div class="chart-canvas-wrap" style="height: 250px; margin-bottom: 16px;">
         <canvas id="canvasTimelineIntervals"></canvas>
       </div>
 
@@ -527,9 +582,7 @@
 
     function verifyGeminiAuthorization(forcePrompt = false) {
       const savedAuth = localStorage.getItem("radar_gemini_unlocked");
-      if (savedAuth === SECRET_KEY_HASH && !forcePrompt) {
-        return true;
-      }
+      if (savedAuth === SECRET_KEY_HASH && !forcePrompt) return true;
       const entered = prompt("🔐 Введіть пароль для активації ШІ-штурмана:\n(Підказка: телефон батьків)");
       if (entered === SECRET_KEY_HASH) {
         localStorage.setItem("radar_gemini_unlocked", SECRET_KEY_HASH);
@@ -541,9 +594,7 @@
     }
 
     function getDecryptedGeminiPool() {
-      if (localStorage.getItem("radar_gemini_unlocked") !== SECRET_KEY_HASH) {
-        return [];
-      }
+      if (localStorage.getItem("radar_gemini_unlocked") !== SECRET_KEY_HASH) return [];
       const builtins = _VAULT_SHARDS.map(shard => _VAULT_PREFIX + shard.join(''));
       const rawStored = localStorage.getItem("gemini_api_key") || "";
       const customKeys = rawStored.split(/[,;\s]+/).map(k => k.trim()).filter(k => k.length > 20);
@@ -561,6 +612,9 @@
     let currentWeekOffset = 0;
     let selectedDayTimestamp = null;
     let selectedStatsYear = parseInt(localStorage.getItem("stats_year") || "2026");
+
+    let clockMode = localStorage.getItem("stats_clock_mode") || "24h";
+    let selectedClockStreet = localStorage.getItem("stats_clock_street") || "all";
 
     let streetDaysChartInstance = null;
     let routeHourlyChartInstance = null;
@@ -661,14 +715,9 @@
     }
 
     async function executeStatsGemini(promptText) {
-      if (!verifyGeminiAuthorization()) {
-        throw new Error("ШІ заблоковано. Введіть пароль (підказка: телефон батьків).");
-      }
-
+      if (!verifyGeminiAuthorization()) throw new Error("ШІ заблоковано.");
       const apiKeys = getDecryptedGeminiPool();
-      if (apiKeys.length === 0) {
-        throw new Error("Немає доступних ключів Gemini.");
-      }
+      if (apiKeys.length === 0) throw new Error("Немає доступних ключів Gemini.");
 
       const candidateModels = ['gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-3.8-flash'];
       let lastErr = null;
@@ -678,7 +727,6 @@
           try {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 8000);
-
             const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${k}`;
             const res = await fetch(url, {
               method: "POST",
@@ -690,7 +738,6 @@
               signal: controller.signal
             });
             clearTimeout(timeoutId);
-
             if (res.ok) {
               const data = await res.json();
               const reply = data.candidates?.[0]?.content?.parts?.[0]?.text;
@@ -698,15 +745,13 @@
             } else {
               const errObj = await res.json().catch(() => ({}));
               lastErr = errObj.error?.message || `HTTP ${res.status}`;
-              continue;
             }
           } catch(e) {
-            lastErr = e.name === 'AbortError' ? 'Таймаут відповіді (8с)' : e.message;
-            continue;
+            lastErr = e.name === 'AbortError' ? 'Таймаут (8с)' : e.message;
           }
         }
       }
-      throw new Error(lastErr || "Всі ключі з пулу вичерпали квоту.");
+      throw new Error(lastErr || "Вичерпано квоту ключів.");
     }
 
     async function askAiStatsQuestion(userQuestion) {
@@ -715,7 +760,7 @@
       output.innerHTML = "🧠 Gemini аналізує дані...";
 
       if (!verifyGeminiAuthorization()) {
-        output.innerHTML = `<span style="color:#ef4444;">⚠️ ШІ заблоковано. Введіть пароль (підказка: телефон батьків).</span>`;
+        output.innerHTML = `<span style="color:#ef4444;">⚠️ ШІ заблоковано. Введіть пароль.</span>`;
         return;
       }
 
@@ -732,23 +777,22 @@
 
       const fullPrompt = `
 Ти — висококваліфікований аналітик дорожньо-патрульної ситуації у місті Дніпро для водія.
-Тобі надано повну аналітику бази даних "Радар":
-- Сьогодні на маршруті зафіксовано: ${document.getElementById("kpiRouteToday")?.innerText || 0} блокпостів
-- За 7 днів на маршруті: ${document.getElementById("kpiRouteWeek")?.innerText || 0} блокпостів
+Тобі надано аналітику "Радар":
+- Сьогодні на маршруті: ${document.getElementById("kpiRouteToday")?.innerText || 0}
+- За 7 днів на маршруті: ${document.getElementById("kpiRouteWeek")?.innerText || 0}
 - Активні зараз: ${document.getElementById("kpiActiveNow")?.innerText || 0}
 - Пікова година: ${document.getElementById("kpiPeakHour")?.innerText || '--:00'}
 
-СТАТИСТИКА ПО 7 ТОЧКАХ МАРШРУТУ:
+СТАТИСТИКА 7 ТОЧОК МАРШРУТУ:
 ${streetSummary}
 
-ОСТАННІ 30 ПОВІДОМЛЕНЬ З ТЕЛЕГРАМ-КАНАЛУ:
+ОСТАННІ ПОВІДОМЛЕННЯ:
 ${recentReports}
 
 ЗАПИТАННЯ ВОДІЯ:
 "${userQuestion}"
 
-ІНСТРУКЦІЯ:
-Дай розумну, живу, аналітичну відповідь людською мовою. Спирайся на точні цифри, вкажи конкретні години або вулиці.
+Дай чітку, практичну відповідь водієві.
 `;
 
       try {
@@ -799,14 +843,11 @@ ${recentReports}
     window.deleteArchiveItem = async function(fbKey, event) {
       if (event) event.stopPropagation();
       if (!confirm("Видалити цей звіт зі статистики назавжди?")) return;
-      
       try {
-        await fetch(`https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/stats_archive/${fbKey}.json`, {
-          method: "DELETE"
-        });
+        await fetch(`https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/stats_archive/${fbKey}.json`, { method: "DELETE" });
         rawArchive = rawArchive.filter(x => x._fbKey !== fbKey);
         renderAll();
-        alert("🗑️ Звіт успішно видалено зі статистики!");
+        alert("🗑️ Звіт успішно видалено!");
       } catch(e) {
         alert("Помилка видалення: " + e.message);
       }
@@ -816,13 +857,8 @@ ${recentReports}
       onlyConfirmedMode = !onlyConfirmedMode;
       localStorage.setItem("stats_only_confirmed", onlyConfirmedMode);
       const btn = document.getElementById("btnFilterConfirmed");
-      if (onlyConfirmedMode) {
-        btn.classList.add("active");
-        btn.innerText = "✅ Тільки підтверджені (2+ людей)";
-      } else {
-        btn.classList.remove("active");
-        btn.innerText = "📋 Усі звіти (включаючи поодинокі)";
-      }
+      btn.classList.toggle("active", onlyConfirmedMode);
+      btn.innerText = onlyConfirmedMode ? "✅ Тільки підтверджені (2+ людей)" : "📋 Усі звіти (включаючи поодинокі)";
       renderAll();
     }
 
@@ -897,13 +933,8 @@ ${recentReports}
       const f = streetFilters[tabKey];
       f.multi = !f.multi;
       const btn = document.getElementById(`btnMulti${tabKey.charAt(0).toUpperCase() + tabKey.slice(1)}`);
-      if (f.multi) {
-        btn.classList.add('active');
-        btn.innerText = "☑️ Мультивибір (УВІМКНЕНО)";
-      } else {
-        btn.classList.remove('active');
-        btn.innerText = "🔲 Вибір кількох вулиць (Вимк)";
-      }
+      btn.classList.toggle('active', f.multi);
+      btn.innerText = f.multi ? "☑️ Мультивибір (УВІМКНЕНО)" : "🔲 Вибір кількох вулиць (Вимк)";
     }
 
     function handleStreetButtonClick(tabKey, streetId) {
@@ -967,7 +998,6 @@ ${recentReports}
       const allBtn = document.getElementById(`btnAll${tabKey.charAt(0).toUpperCase() + tabKey.slice(1)}`);
       if (!allBtn) return;
       const isAll = f.selected.has('all');
-
       allBtn.classList.toggle('active', isAll);
 
       TARGET_CHECKPOINTS.forEach(t => {
@@ -1047,6 +1077,7 @@ ${recentReports}
       if (num === 1) renderFeedTab();
       if (num === 2) {
         renderTimelineChart(targetSessionsGlobal, timelineDayOffset);
+        renderClockRadar();
       }
       if (num === 3 && streetDaysChartInstance) streetDaysChartInstance.resize();
       if (num === 4) {
@@ -1091,7 +1122,10 @@ ${recentReports}
       document.getElementById("kpiRouteWeek").innerText = totalRouteWeek;
 
       renderFeedTab();
-      if (activeTabNum === 2) renderTimelineChart(targetSessionsGlobal, timelineDayOffset);
+      if (activeTabNum === 2) {
+        renderTimelineChart(targetSessionsGlobal, timelineDayOffset);
+        renderClockRadar();
+      }
       renderTimeline(targetSessionsGlobal, now, todayStart, yesterdayStart, ACTIVE_THRESHOLD_MS);
       renderStreetDaysChart(targetSessionsGlobal, todayStart, yesterdayStart, beforeYesterdayStart, weekStart);
       renderRouteTimeCharts(targetSessionsGlobal, todayStart);
@@ -1099,14 +1133,179 @@ ${recentReports}
       renderOtherSectors();
     }
 
-    // НОВЫЙ ИНТЕРАКТИВНЫЙ ГРАФИК-ХРОНОГРАМА (ПРЯМОУГОЛЬНИКИ ИНТЕРВАЛОВ)
+    // =========================================================================
+    // 🕒 КРУГОВИЙ ЦИФЕРБЛАТ-РАДАР (24H / 12H AM / 12H PM)
+    // =========================================================================
+    function setClockMode(mode) {
+      clockMode = mode;
+      localStorage.setItem("stats_clock_mode", mode);
+      document.getElementById("btnClockMode24").classList.toggle("active", mode === '24h');
+      document.getElementById("btnClockModeAM").classList.toggle("active", mode === '12h_am');
+      document.getElementById("btnClockModePM").classList.toggle("active", mode === '12h_pm');
+      renderClockRadar();
+    }
+
+    function renderClockStreetSelector() {
+      const container = document.getElementById("clockStreetSelector");
+      if (!container) return;
+      container.innerHTML = "";
+
+      const allBtn = document.createElement("button");
+      allBtn.className = `clock-street-btn ${selectedClockStreet === 'all' ? 'active' : ''}`;
+      allBtn.innerText = "🌐 Всі 7 вулиць";
+      allBtn.onclick = () => {
+        selectedClockStreet = 'all';
+        localStorage.setItem("stats_clock_street", 'all');
+        renderClockRadar();
+      };
+      container.appendChild(allBtn);
+
+      TARGET_CHECKPOINTS.forEach(t => {
+        const btn = document.createElement("button");
+        const isSel = (selectedClockStreet === t.id);
+        btn.className = `clock-street-btn ${isSel ? 'active' : ''}`;
+        btn.innerText = t.name;
+        btn.style.color = t.color;
+        if (isSel) {
+          btn.style.backgroundColor = t.color + '26';
+          btn.style.borderColor = t.color;
+        }
+        btn.onclick = () => {
+          selectedClockStreet = t.id;
+          localStorage.setItem("stats_clock_street", t.id);
+          renderClockRadar();
+        };
+        container.appendChild(btn);
+      });
+    }
+
+    function renderClockRadar() {
+      renderClockStreetSelector();
+
+      const canvas = document.getElementById("clockCanvas");
+      if (!canvas) return;
+      const ctx = canvas.getContext("2d");
+      const width = canvas.width, height = canvas.height;
+      const centerX = width / 2, centerY = height / 2;
+      const radius = 125;
+      const innerRadius = 66;
+
+      ctx.clearRect(0, 0, width, height);
+
+      // Підрахунок засад по годинах доби (0 - 23)
+      const allHourCounts = new Array(24).fill(0);
+      let totalCount = 0;
+
+      TARGET_CHECKPOINTS.forEach(t => {
+        if (selectedClockStreet !== 'all' && t.id !== selectedClockStreet) return;
+        const sessions = targetSessionsGlobal[t.id] || [];
+        sessions.forEach(s => {
+          const h = new Date(s.startTime).getHours();
+          allHourCounts[h]++;
+          totalCount++;
+        });
+      });
+
+      // Визначаємо пік для поточної вибірки
+      let peakHour = 0, peakVal = 0;
+      allHourCounts.forEach((cnt, h) => {
+        if (cnt > peakVal) { peakVal = cnt; peakHour = h; }
+      });
+
+      const peakHourDisplay = peakVal > 0 ? `${String(peakHour).padStart(2,'0')}:00` : "--:00";
+      document.getElementById("clockCenterPeak").innerText = peakHourDisplay;
+      document.getElementById("kpiPeakHour").innerText = peakHourDisplay;
+      document.getElementById("clockCenterTotal").innerText = `${totalCount} засад`;
+
+      const numSectors = clockMode === '24h' ? 24 : 12;
+      const hourOffset = clockMode === '12h_pm' ? 12 : 0;
+      const currentHour = new Date().getHours();
+
+      let activeSectorCounts = [];
+      for (let i = 0; i < numSectors; i++) {
+        activeSectorCounts.push(allHourCounts[i + hourOffset]);
+      }
+      const maxCount = Math.max(1, ...activeSectorCounts);
+
+      // Отрисовка секторов циферблата
+      for (let i = 0; i < numSectors; i++) {
+        const actualHour = i + hourOffset;
+        const anglePerSector = (2 * Math.PI) / numSectors;
+        const startAngle = (i * anglePerSector) - (Math.PI / 2) - (anglePerSector / 2);
+        const endAngle = startAngle + anglePerSector;
+
+        const val = allHourCounts[actualHour];
+        const ratio = val / maxCount;
+
+        let fillColor = "rgba(15, 23, 42, 0.75)";
+        if (val > 0) {
+          if (ratio < 0.35) fillColor = "rgba(16, 185, 129, 0.75)";
+          else if (ratio < 0.7) fillColor = "rgba(245, 158, 11, 0.85)";
+          else fillColor = "rgba(255, 51, 75, 0.95)";
+        }
+
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius, startAngle, endAngle);
+        ctx.arc(centerX, centerY, innerRadius, endAngle, startAngle, true);
+        ctx.closePath();
+        ctx.fillStyle = fillColor;
+        ctx.fill();
+
+        ctx.strokeStyle = "#1e293b";
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        // Підсвітка поточного часу
+        if (actualHour === currentHour) {
+          ctx.strokeStyle = "#00f3ff";
+          ctx.lineWidth = 2.5;
+          ctx.stroke();
+        }
+
+        // Мітки годин
+        const midAngle = startAngle + (anglePerSector / 2);
+        const labelRadius = radius - 14;
+        const textX = centerX + labelRadius * Math.cos(midAngle);
+        const textY = centerY + labelRadius * Math.sin(midAngle);
+
+        let labelText = `${actualHour}`;
+        if (clockMode !== '24h') {
+          const mod12 = actualHour % 12;
+          labelText = mod12 === 0 ? "12" : `${mod12}`;
+        }
+
+        ctx.fillStyle = (val > 0) ? "#ffffff" : "#64748b";
+        ctx.font = (numSectors === 12 || actualHour % 3 === 0) ? "bold 10px sans-serif" : "9px sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(labelText, textX, textY);
+      }
+
+      // Клік по сектору циферблата
+      canvas.onclick = function(e) {
+        const rect = canvas.getBoundingClientRect();
+        const clickX = e.clientX - rect.left - centerX;
+        const clickY = e.clientY - rect.top - centerY;
+        const dist = Math.hypot(clickX, clickY);
+
+        if (dist >= innerRadius && dist <= radius) {
+          const anglePerSector = (2 * Math.PI) / numSectors;
+          let clickAngle = Math.atan2(clickY, clickX) + (Math.PI / 2) + (anglePerSector / 2);
+          if (clickAngle < 0) clickAngle += 2 * Math.PI;
+          const sectorIndex = Math.floor(clickAngle / anglePerSector) % numSectors;
+          const clickedHour = sectorIndex + hourOffset;
+          openHourlyDetailModal(clickedHour);
+        }
+      };
+    }
+
     function renderTimelineChart(targetSessionsMap, dayOffset) {
       const nowDate = new Date();
       const dayStart = new Date(nowDate.getFullYear(), nowDate.getMonth(), nowDate.getDate()).getTime() - (dayOffset * 86400000);
       const dayEnd = dayStart + 86400000;
 
       const datasets = [];
-      TARGET_CHECKPOINTS.forEach((target, index) => {
+      TARGET_CHECKPOINTS.forEach(target => {
         const sessions = targetSessionsMap[target.id] || [];
         const dataPoints = [];
 
@@ -1217,7 +1416,7 @@ ${recentReports}
                   <span class="feed-msg-time">🕒 ${feedPeriod === 'week' ? dateStr + ' ' : ''}${timeStr}</span>
                   <div style="display:flex; gap:6px; align-items:center;">
                     <span class="feed-msg-badge ${badgeClass}">${badgeText}</span>
-                    <span onclick="deleteArchiveItem('${m._fbKey}', event)" style="color:#ef4444; font-size:10px; cursor:pointer;" title="Видалити з статистики">🗑️</span>
+                    <span onclick="deleteArchiveItem('${m._fbKey}', event)" style="color:#ef4444; font-size:10px; cursor:pointer;" title="Видалити зі статистики">🗑️</span>
                   </div>
                 </div>
                 <div style="color:#e2e8f0;">«${msgText}»</div>
@@ -1242,9 +1441,6 @@ ${recentReports}
       const timelineListEl = document.getElementById("timelineList");
       timelineListEl.innerHTML = "";
 
-      const viewDayStart = timelineDayOffset === 0 ? todayStart : yesterdayStart;
-      const viewDayEnd = viewDayStart + 86400000;
-
       TARGET_CHECKPOINTS.forEach(target => {
         const sessions = targetSessionsMap[target.id] || [];
         const isActiveNow = sessions.some(s => (!s.closedByClean && (now - s.endTime <= ACTIVE_THRESHOLD_MS)));
@@ -1257,7 +1453,6 @@ ${recentReports}
             const startD = new Date(s.startTime);
             const endD = new Date(s.endTime);
             const isCurrentlyAlive = (!s.closedByClean && (now - s.endTime <= ACTIVE_THRESHOLD_MS));
-
             const isStartedYesterday = s.startTime >= yesterdayStart && s.startTime < todayStart;
             const isEndedToday = s.endTime >= todayStart;
             const isNightCarryover = isStartedYesterday && isEndedToday;
@@ -1267,7 +1462,6 @@ ${recentReports}
 
             let durMin = Math.max(15, Math.round((s.endTime - s.startTime) / 60000));
             let durStr = durMin >= 60 ? `${Math.floor(durMin/60)}г ${durMin%60}хв` : `${durMin} хв`;
-
             if (isCurrentlyAlive) { endStr = "ЗАРАЗ 🔴"; durStr = "триває..."; }
 
             let formattedLabel = "";
@@ -1275,7 +1469,7 @@ ${recentReports}
 
             if (isNightCarryover) {
               formattedLabel = `з ${startStr} (вчора) по ${endStr} (сьогодні)`;
-              carryoverBadge = `<span class="night-tag">🌙 Перейшов з ночі</span>`;
+              carryoverBadge = `<span class="night-tag" style="background:#3b0764; color:#c084fc; padding:2px 5px; border-radius:4px; font-size:9px; margin-left:6px;">🌙 Нічний перехід</span>`;
             } else if (s.startTime >= todayStart) {
               formattedLabel = `з ${startStr} по ${endStr} (сьогодні)`;
             } else {
@@ -1317,11 +1511,7 @@ ${recentReports}
       const isAll = f.selected.has('all');
       const displayedTargets = TARGET_CHECKPOINTS.filter(t => isAll || f.selected.has(t.id));
 
-      const countsToday = [];
-      const countsYesterday = [];
-      const countsBefore = [];
-      const countsWeek = [];
-
+      const countsToday = [], countsYesterday = [], countsBefore = [], countsWeek = [];
       const cardsContainer = document.getElementById("streetTimeCards");
       cardsContainer.innerHTML = "";
 
@@ -1403,7 +1593,6 @@ ${recentReports}
       const f = streetFilters.tab4;
       const isAll = f.selected.has('all');
       const hourLabels = Array.from({length: 24}, (_, i) => `${i}:00`);
-
       const dayNames = ["Нд", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
       const days = [];
       const nowDate = new Date();
@@ -1457,20 +1646,15 @@ ${recentReports}
           if (selectedDayTimestamp !== null) {
             if (s.startTime < selectedDayTimestamp || s.startTime >= selectedDayTimestamp + 86400000) return;
           } else {
-            const weekRangeStart = days[0].startTime;
-            const weekRangeEnd = days[6].endTime;
-            if (s.startTime < weekRangeStart || s.startTime >= weekRangeEnd) return;
+            if (s.startTime < days[0].startTime || s.startTime >= days[6].endTime) return;
           }
-
           const h = new Date(s.startTime).getHours();
           hourData[h]++;
           if (isVisible) totalByHour[h]++;
         });
 
         if (isVisible) {
-          datasetsHourly.push({
-            type: 'bar', label: t.name, data: hourData, backgroundColor: t.color, borderRadius: 3
-          });
+          datasetsHourly.push({ type: 'bar', label: t.name, data: hourData, backgroundColor: t.color, borderRadius: 3 });
         }
       });
 
@@ -1512,9 +1696,7 @@ ${recentReports}
         });
 
         if (isVisible) {
-          datasetsWeekly.push({
-            type: 'bar', label: t.name, data: dayData, backgroundColor: t.color, borderRadius: 3
-          });
+          datasetsWeekly.push({ type: 'bar', label: t.name, data: dayData, backgroundColor: t.color, borderRadius: 3 });
         }
       });
 
@@ -1535,8 +1717,7 @@ ${recentReports}
           plugins: { legend: { display: false } },
           onClick: (e, elements) => {
             if (elements && elements.length > 0) {
-              const dayIndex = elements[0].index;
-              selectedDayTimestamp = days[dayIndex].startTime;
+              selectedDayTimestamp = days[elements[0].index].startTime;
               renderRouteTimeCharts(targetSessionsMap, todayStart);
             }
           },
@@ -1572,9 +1753,7 @@ ${recentReports}
           }
         });
 
-        datasetsMonthly.push({
-          type: 'bar', label: t.name, data: monthCounts, backgroundColor: t.color, borderRadius: 4
-        });
+        datasetsMonthly.push({ type: 'bar', label: t.name, data: monthCounts, backgroundColor: t.color, borderRadius: 4 });
       });
 
       datasetsMonthly.unshift({
@@ -1644,10 +1823,7 @@ ${recentReports}
       const validReports = rawArchive.filter(r => !r.is_clean);
 
       OTHER_SECTORS.forEach(sec => {
-        const matches = validReports.filter(p => {
-          const txt = ((p.text || "") + " " + (p.address || "")).toLowerCase();
-          return sec.regex.test(txt);
-        });
+        const matches = validReports.filter(p => sec.regex.test(((p.text || "") + " " + (p.address || "")).toLowerCase()));
         const cnt = matches.length;
         const pct = validReports.length > 0 ? Math.round((cnt / validReports.length) * 100) : 0;
         otherListEl.innerHTML += `
@@ -1685,10 +1861,7 @@ ${recentReports}
             const st = new Date(s.startTime).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
             const et = new Date(s.endTime).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
             
-            const reportsHtml = s.reports.map(r => {
-              const txt = r.text || r.raw_text || "";
-              return `• «${txt}» <span onclick="deleteArchiveItem('${r._fbKey}', event)" class="btn-del-report">Видалити</span>`;
-            }).join("<br>");
+            const reportsHtml = s.reports.map(r => `• «${r.text || r.raw_text || ""}» <span onclick="deleteArchiveItem('${r._fbKey}', event)" class="btn-del-report">Видалити</span>`).join("<br>");
 
             reportsBox.innerHTML += `
               <div class="modal-report-item" style="border-left: 3px solid ${t.color};">
@@ -1738,21 +1911,18 @@ ${recentReports}
       reportsBox.innerHTML = "";
 
       if (filtered.length === 0) {
-        reportsBox.innerHTML = `<div style="color:#94a3b8; font-size:12px;">За цей період на даній локації блокпостів не зафіксовано.</div>`;
+        reportsBox.innerHTML = `<div style="color:#94a3b8; font-size:12px;">За цей період блокпостів не зафіксовано.</div>`;
       } else {
         filtered.forEach(s => {
           const st = new Date(s.startTime).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
           const et = new Date(s.endTime).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
           const dt = new Date(s.startTime).toLocaleDateString([], { day:'2-digit', month:'2-digit' });
 
-          const reportsHtml = s.reports.map(r => {
-            const txt = r.text || r.raw_text || "";
-            return `• «${txt}» <span onclick="deleteArchiveItem('${r._fbKey}', event)" class="btn-del-report">Видалити</span>`;
-          }).join("<br>");
+          const reportsHtml = s.reports.map(r => `• «${r.text || r.raw_text || ""}» <span onclick="deleteArchiveItem('${r._fbKey}', event)" class="btn-del-report">Видалити</span>`).join("<br>");
 
           reportsBox.innerHTML += `
             <div class="modal-report-item">
-              <div class="modal-report-time">🕒 ${dt} (${st} ➔ ${et}) | Підтверджено: ${s.count} людей</div>
+              <div class="modal-report-time">🕒 ${dt} (${st} ➔ ${et}) | Свідків: ${s.count}</div>
               <div style="color:#e2e8f0; margin-top:4px;">${reportsHtml}</div>
             </div>
           `;
@@ -1777,11 +1947,10 @@ ${recentReports}
       const reportsBox = document.getElementById("modalReports");
       reportsBox.innerHTML = "";
       session.reports.forEach(r => {
-        const txt = r.text || r.raw_text || "";
         reportsBox.innerHTML += `
           <div class="modal-report-item">
             <div class="modal-report-time">🕒 ${new Date(r.time).toLocaleTimeString()}</div>
-            <div>«${txt}» <span onclick="deleteArchiveItem('${r._fbKey}', event)" class="btn-del-report">Видалити</span></div>
+            <div>«${r.text || r.raw_text || ""}» <span onclick="deleteArchiveItem('${r._fbKey}', event)" class="btn-del-report">Видалити</span></div>
           </div>
         `;
       });
@@ -1789,31 +1958,23 @@ ${recentReports}
     }
 
     function openHourlyDetailModal(hour) {
-      document.getElementById("modalTitle").innerText = `Година: ${hour}:00 – ${hour}:59`;
-      document.getElementById("modalSub").innerText = `Активність по ваших 7 місцях`;
+      document.getElementById("modalTitle").innerText = `Година: ${String(hour).padStart(2,'0')}:00 – ${String(hour).padStart(2,'0')}:59`;
+      document.getElementById("modalSub").innerText = selectedClockStreet === 'all' ? "Активність по всіх 7 точках маршруту" : `Активність: ${TARGET_CHECKPOINTS.find(t => t.id === selectedClockStreet)?.fullName || ''}`;
 
       const reportsBox = document.getElementById("modalReports");
       reportsBox.innerHTML = "";
       let foundAny = false;
 
       TARGET_CHECKPOINTS.forEach(t => {
+        if (selectedClockStreet !== 'all' && t.id !== selectedClockStreet) return;
         const sessions = targetSessionsGlobal[t.id] || [];
-        const inHour = sessions.filter(s => {
-          if (selectedDayTimestamp !== null) {
-            if (s.startTime < selectedDayTimestamp || s.startTime >= selectedDayTimestamp + 86400000) return false;
-          }
-          return new Date(s.startTime).getHours() === hour;
-        });
+        const inHour = sessions.filter(s => new Date(s.startTime).getHours() === hour);
 
         if (inHour.length > 0) {
           foundAny = true;
           inHour.forEach(s => {
             const dt = new Date(s.startTime).toLocaleDateString([], { day:'2-digit', month:'2-digit' });
-            
-            const reportsHtml = s.reports.map(r => {
-              const txt = r.text || r.raw_text || "";
-              return `• «${txt}» <span onclick="deleteArchiveItem('${r._fbKey}', event)" class="btn-del-report">Видалити</span>`;
-            }).join("<br>");
+            const reportsHtml = s.reports.map(r => `• «${r.text || r.raw_text || ""}» <span onclick="deleteArchiveItem('${r._fbKey}', event)" class="btn-del-report">Видалити</span>`).join("<br>");
 
             reportsBox.innerHTML += `
               <div class="modal-report-item" style="border-left: 3px solid ${t.color};">
@@ -1825,14 +1986,15 @@ ${recentReports}
         }
       });
 
-      if (!foundAny) reportsBox.innerHTML = `<div style="color:#94a3b8; font-size:12px;">У цей час блокпостів на маршруті не було.</div>`;
+      if (!foundAny) reportsBox.innerHTML = `<div style="color:#94a3b8; font-size:12px;">У цей час блокпостів не зафіксовано.</div>`;
       document.getElementById("detailModal").style.display = "flex";
     }
 
-    function closeDetailModal(e) {
+    function closeDetailModal() {
       document.getElementById("detailModal").style.display = "none";
     }
 
+    // Запуск після завантаження
     loadStats();
   </script>
 </body>
