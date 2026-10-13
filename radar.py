@@ -13,7 +13,7 @@ RAW_GEMINI_KEYS = os.environ.get("GEMINI_KEY", "").strip() or os.environ.get("GE
 GEMINI_KEYS = [k.strip() for k in re.split(r'[,;\s]+', RAW_GEMINI_KEYS) if len(k.strip()) > 15]
 
 current_key_index = 0
-SUPPORTED_MODELS = ["gemini-3.5-flash-lite", "gemini-3.5-flash", "gemini-3.8-flash"]
+SUPPORTED_MODELS = ["gemini-2.5-flash", "gemini-1.5-flash"]
 
 # Базовый URL Firebase Realtime Database
 FIREBASE_URL = os.environ.get("FIREBASE_URL", "").strip()
@@ -108,7 +108,7 @@ def is_ad_or_spam(text):
     return False
 
 # =========================================================================
-# 📍 ГЕНЕРАЛЬНАЯ БАЗА ТОПОНИМОВ И УЧАСТКОВ ДНЕПРА
+# 📍 ГЕНЕРАЛЬНАЯ БАЗА ТОПОНИМОВ И УЧАСТКОВ ДНЕПРА (ПОЛНЫЙ СПИСОК)
 # =========================================================================
 LOCAL_STREETS_DB = [
     # --- ДИЛЯНКИ: ПОЛЯ / КИРОВА ---
@@ -468,12 +468,11 @@ def fetch_channel_messages():
         return []
 
 # =========================================================================
-# 🚀 ШАГ 1: ПАКЕТНЫЙ ЗАПРОС В GEMINI (ОДИН ЗАПРОС НА ВСЕ СООБЩЕНИЯ)
+# 🚀 ПАКЕТНЫЙ ЗАПРОС В GEMINI (ОДИН ЗАПРОС ТОЛЬКО ДЛЯ НЕИЗВЕСТНЫХ)
 # =========================================================================
 def parse_batch_with_gemini(items_to_parse):
     """
-    Отправляет весь список нераспознанных сообщений одним пакетом (JSON)
-    items_to_parse: [{'id': 0, 'text': '...'}, ...]
+    Отправляет только неизвестные фразы в Gemini одним запросом.
     """
     if not items_to_parse or not GEMINI_KEYS:
         return {}
@@ -481,18 +480,16 @@ def parse_batch_with_gemini(items_to_parse):
     formatted_items = [{"id": it["id"], "text": it["text"]} for it in items_to_parse]
 
     prompt = f"""
-Ти — точний гео-аналітик міста Дніпро (Україна).
-Ось JSON-список коротких повідомлень водіїв про ситуацію на дорогах:
+Ти — гео-аналітик міста Дніпро (Україна).
+Визнач координати та адресу в Дніпрі для наступних повідомлень водіїв:
 {json.dumps(formatted_items, ensure_ascii=False)}
 
-Для КОЖНОГО елемента визнач локацію в Дніпрі (вулиця, проспект, район або орієнтир):
-Поверни строго JSON-масив:
+Відповідай ВИКЛЮЧНО валідним JSON-масивом без зайвого тексту:
 [
   {{"id": 0, "found": true, "address": "вул. ...", "lat": 48.45, "lng": 35.01, "status": "чисто"|"опасно"}},
   {{"id": 1, "found": false}}
 ]
-Координати мають бути строго в межах Дніпра: lat (48.25 - 48.70), lng (34.70 - 35.40).
-Не пиши нічого зайвого, тільки валідний чистий JSON.
+Координати строго в межах Дніпра (lat: 48.25-48.70, lng: 34.70-35.40).
 """
 
     total_keys = len(GEMINI_KEYS)
@@ -507,7 +504,7 @@ def parse_batch_with_gemini(items_to_parse):
                         "contents": [{"role": "user", "parts": [{"text": prompt}]}],
                         "generationConfig": {"temperature": 0.1, "responseMimeType": "application/json"}
                     },
-                    timeout=6  # Жесткий тайм-аут: не ждем минутами
+                    timeout=10
                 )
 
                 if r.status_code == 200:
@@ -515,18 +512,14 @@ def parse_batch_with_gemini(items_to_parse):
                     raw = raw.replace("```json", "").replace("```", "").strip()
                     data_list = json.loads(raw)
                     if isinstance(data_list, list):
-                        result_map = {}
-                        for res in data_list:
-                            if isinstance(res, dict) and "id" in res:
-                                result_map[res["id"]] = res
-                        log(f"📦 [GEMINI BATCH]: Успішно оброблено пакет із {len(result_map)} точок за 1 запит!")
+                        result_map = {res["id"]: res for res in data_list if isinstance(res, dict) and "id" in res}
+                        log(f"📦 [GEMINI BATCH]: Успішно розпізнано пакет із {len(result_map)} точок!")
                         return result_map
-                    return {}
                 elif r.status_code in [429, 403]:
                     rotate_to_next_key()
                     break
             except requests.exceptions.Timeout:
-                log(f"⏱️ Таймаут на ключі #{current_key_index + 1}, миттєве перемикання...")
+                log(f"⏱️ Таймаут на ключі #{current_key_index + 1}, перемикання...")
                 rotate_to_next_key()
                 break
             except Exception:
@@ -534,6 +527,48 @@ def parse_batch_with_gemini(items_to_parse):
                 break
 
     return {}
+
+def save_point_to_firebase(msg, parsed_result, is_clean, now_ms):
+    """Единая функция мгновенной записи точки в Firebase"""
+    status_clean = (parsed_result["status"] == "чисто" or is_clean)
+    color = "green" if status_clean else "red"
+    display_text = msg
+    if status_clean and "чисто" not in msg.lower():
+        display_text = f"{msg} (чисто)"
+
+    point_data = {
+        "text": display_text,
+        "raw_text": msg,
+        "address": parsed_result["address"],
+        "lat": parsed_result["lat"],
+        "lng": parsed_result["lng"],
+        "color": color,
+        "status": "чисто" if status_clean else "опасно",
+        "is_clean": status_clean,
+        "needs_training": parsed_result.get("needs_training", False),
+        "time": now_ms,
+        "timestamp": now_ms
+    }
+
+    if POINTS_URL:
+        try:
+            requests.post(POINTS_URL, json=point_data, timeout=8)
+        except Exception as e:
+            log(f"⚠️ Помилка запису в Firebase: {e}")
+
+    if STATS_ARCHIVE_URL:
+        try:
+            archive_entry = {
+                "text": msg,
+                "address": parsed_result["address"],
+                "lat": parsed_result["lat"],
+                "lng": parsed_result["lng"],
+                "is_clean": status_clean,
+                "time": now_ms
+            }
+            requests.post(STATS_ARCHIVE_URL, json=archive_entry, timeout=8)
+        except Exception:
+            pass
 
 # =========================================================================
 # 🔄 ОСНОВНОЙ ЦИКЛ СИНХРОНИЗАЦИИ
@@ -561,12 +596,10 @@ def sync_cycle():
         return
 
     now_ms = int(time.time() * 1000)
+    unresolved_queue = []
 
-    # 1. Быстрый локальный проход (Локальная база, База знаний, OSM)
-    items_to_process = []
-    gemini_queue = []
-
-    for idx, (unique_key, msg) in enumerate(new_items):
+    # ШАГ 1: Локальное распознавание (моментально сохраняет сушу на карту)
+    for unique_key, msg in new_items:
         PROCESSED_POST_IDS.add(unique_key)
 
         if is_ad_or_spam(msg):
@@ -576,7 +609,7 @@ def sync_cycle():
         is_clean = is_message_clean(msg)
         parsed_result = None
 
-        # Проверка локальных участков
+        # 1. Локальная база улиц и участков
         addr, lat, lng = geocode_local(msg)
         if addr and lat and lng:
             parsed_result = {
@@ -588,7 +621,7 @@ def sync_cycle():
             }
             log(f"⚡ [ЛОКАЛЬНО / ДІЛЯНКА]: '{msg[:45]}' ➔ {addr}")
 
-        # Проверка базы знаний
+        # 2. База знаний из Firebase
         if not parsed_result:
             matched_kb = match_knowledge_base(msg, kb_list)
             if matched_kb and matched_kb.get("lat") and matched_kb.get("lng"):
@@ -601,7 +634,7 @@ def sync_cycle():
                 }
                 log(f"🎯 [БАЗА ЗНАНЬ]: '{matched_kb.get('phrase')}' ➔ {parsed_result['address']}")
 
-        # Резерв OpenStreetMap
+        # 3. Резерв OpenStreetMap
         if not parsed_result:
             osm_addr, osm_lat, osm_lng = geocode_osm_fallback(msg)
             if osm_addr and osm_lat and osm_lng:
@@ -614,99 +647,52 @@ def sync_cycle():
                 }
                 log(f"🗺️ [OSM КАРТА]: '{msg[:45]}' ➔ {osm_addr}")
 
-        item_ctx = {
-            "id": idx,
-            "msg": msg,
-            "is_clean": is_clean,
-            "parsed_result": parsed_result
-        }
-        items_to_process.append(item_ctx)
+        # ЕСЛИ НАЙДЕНО ЛОКАЛЬНО — СРАЗУ СОХРАНЯЕМ В FIREBASE!
+        if parsed_result:
+            save_point_to_firebase(msg, parsed_result, is_clean, now_ms)
+        else:
+            # Неизвестные складываем в отдельную очередь
+            unresolved_queue.append((msg, is_clean))
 
-        # Если локально не определили — ставим в очередь на пакет Gemini
-        if not parsed_result:
-            gemini_queue.append({"id": idx, "text": msg})
+    # ШАГ 2: Только нераспознанные фразы запрашиваем у Gemini пакетом
+    if unresolved_queue:
+        gemini_items = [{"id": i, "text": item[0]} for i, item in enumerate(unresolved_queue)]
+        log(f"🚀 Відправка пакету з {len(gemini_items)} невідомих точок до Gemini...")
+        batch_results = parse_batch_with_gemini(gemini_items)
 
-    # 2. Если есть нераспознанные — выполняем РОВНО ОДИН пакетный запрос в Gemini
-    if gemini_queue:
-        log(f"🚀 Відправка пакету з {len(gemini_queue)} повідомлень до Gemini...")
-        batch_results = parse_batch_with_gemini(gemini_queue)
-        
-        for item_ctx in items_to_process:
-            if not item_ctx["parsed_result"] and item_ctx["id"] in batch_results:
-                res = batch_results[item_ctx["id"]]
-                if res.get("found") and res.get("lat") and res.get("lng"):
-                    lat = float(res["lat"])
-                    lng = float(res["lng"])
-                    if 48.25 <= lat <= 48.70 and 34.70 <= lng <= 35.40:
-                        addr = res.get("address", "Дніпро")
-                        item_ctx["parsed_result"] = {
-                            "address": addr,
-                            "lat": round(lat, 5),
-                            "lng": round(lng, 5),
-                            "status": res.get("status", "опасно"),
-                            "needs_training": False
-                        }
-                        log(f"🤖 [GEMINI AI]: '{item_ctx['msg'][:45]}' ➔ {addr}")
-                        # Шаг 4: Сразу обучаем базу знаний
-                        auto_save_to_knowledge_base(item_ctx["msg"], addr, round(lat, 5), round(lng, 5))
+        for i, (msg, is_clean) in enumerate(unresolved_queue):
+            ai_data = batch_results.get(i)
+            parsed_result = None
 
-    # 3. Финальная сборка и отправка в Firebase
-    for item_ctx in items_to_process:
-        msg = item_ctx["msg"]
-        is_clean = item_ctx["is_clean"]
-        parsed_result = item_ctx["parsed_result"]
+            if ai_data and ai_data.get("found") and ai_data.get("lat") and ai_data.get("lng"):
+                lat = float(ai_data["lat"])
+                lng = float(ai_data["lng"])
+                if 48.25 <= lat <= 48.70 and 34.70 <= lng <= 35.40:
+                    addr = ai_data.get("address", "Дніпро")
+                    parsed_result = {
+                        "address": addr,
+                        "lat": round(lat, 5),
+                        "lng": round(lng, 5),
+                        "status": ai_data.get("status", "опасно"),
+                        "needs_training": False
+                    }
+                    log(f"🤖 [GEMINI AI]: '{msg[:45]}' ➔ {addr}")
+                    auto_save_to_knowledge_base(msg, addr, round(lat, 5), round(lng, 5))
 
-        if not parsed_result:
-            water_lat = round(48.5020 + random.uniform(-0.0040, 0.0040), 5)
-            water_lng = round(34.9280 + random.uniform(-0.0060, 0.0060), 5)
-            parsed_result = {
-                "address": "Потребує навчання (натисніть та перетягніть з річки)",
-                "lat": water_lat,
-                "lng": water_lng,
-                "status": "чисто" if is_clean else "опасно",
-                "needs_training": True
-            }
-            log(f"🌊 [НАВЧАННЯ / НА ВОДУ]: '{msg[:45]}'")
-
-        status_clean = (parsed_result["status"] == "чисто" or is_clean)
-        color = "green" if status_clean else "red"
-        display_text = msg
-        if status_clean and "чисто" not in msg.lower():
-            display_text = f"{msg} (чисто)"
-
-        point_data = {
-            "text": display_text,
-            "raw_text": msg,
-            "address": parsed_result["address"],
-            "lat": parsed_result["lat"],
-            "lng": parsed_result["lng"],
-            "color": color,
-            "status": "чисто" if status_clean else "опасно",
-            "is_clean": status_clean,
-            "needs_training": parsed_result.get("needs_training", False),
-            "time": now_ms,
-            "timestamp": now_ms
-        }
-
-        if POINTS_URL:
-            try:
-                requests.post(POINTS_URL, json=point_data, timeout=8)
-            except Exception as e:
-                log(f"⚠️ Помилка запису в Firebase: {e}")
-
-        if STATS_ARCHIVE_URL:
-            try:
-                archive_entry = {
-                    "text": msg,
-                    "address": parsed_result["address"],
-                    "lat": parsed_result["lat"],
-                    "lng": parsed_result["lng"],
-                    "is_clean": status_clean,
-                    "time": now_ms
+            # И ТОЛЬКО если Gemini не нашел — кидаем в залив на воду
+            if not parsed_result:
+                water_lat = round(48.5020 + random.uniform(-0.0040, 0.0040), 5)
+                water_lng = round(34.9280 + random.uniform(-0.0060, 0.0060), 5)
+                parsed_result = {
+                    "address": "Потребує навчання (натисніть та перетягніть з річки)",
+                    "lat": water_lat,
+                    "lng": water_lng,
+                    "status": "чисто" if is_clean else "опасно",
+                    "needs_training": True
                 }
-                requests.post(STATS_ARCHIVE_URL, json=archive_entry, timeout=8)
-            except Exception:
-                pass
+                log(f"🌊 [НАВЧАННЯ / НА ВОДУ]: '{msg[:45]}'")
+
+            save_point_to_firebase(msg, parsed_result, is_clean, now_ms)
 
 if __name__ == "__main__":
     log(f"🚀 Запуск оновленого радара 24/7 v3.9 (Завантажено {len(GEMINI_KEYS)} API ключів)...")
