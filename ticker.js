@@ -1,8 +1,7 @@
 /**
  * Radar Dnipro — Модуль "Радіо ефір" (ticker.js)
- * Фільтр по контрольних точках: 
- * - Негативні (БП): червоні літери з чорною обводкою
- * - Звичайні (Чисто): чорні літери
+ * Фільтр по 8 контрольних точках маршруту
+ * Відкритий дашборд точок повністю перекриває радіо та повідомлення зверху
  */
 (function() {
   let isRadioActive = localStorage.getItem("radar_radio_active") === "true";
@@ -28,10 +27,16 @@
   // 1. Стилі інтерфейсу
   const style = document.createElement("style");
   style.textContent = `
+    /* Відкритий дашборд перекриває радіо та повідомлення зверху */
+    html:not(.dash-collapsed) #dashPanel,
+    html:not(.dash-collapsed) .dashboard {
+      z-index: 2500 !important;
+    }
+
     #btnRadioTopCenter {
       position: absolute !important;
       top: 15px !important;
-      left: calc(50% - 33px) !important;
+      left: calc(50% - 12px) !important;
       transform: translateX(-50%) !important;
       z-index: 2100 !important;
       width: 38px;
@@ -97,7 +102,7 @@
       white-space: nowrap;
     }
 
-    /* 🟢 Звичайні повідомлення: чисто чорний колір */
+    /* 🟢 Звичайні повідомлення: чорні літери */
     .radio-msg-line.clean .radio-msg-time,
     .radio-msg-line.clean .radio-msg-text {
       color: #000000 !important;
@@ -105,17 +110,12 @@
       -webkit-text-stroke: 0 !important;
     }
 
-    /* 🔴 Негативні повідомлення: червоні літери з чорною обводкою */
+    /* 🔴 Негативні повідомлення: просто червоні літери */
     .radio-msg-line.danger .radio-msg-time,
     .radio-msg-line.danger .radio-msg-text {
       color: #ff2233 !important;
-      -webkit-text-stroke: 0.6px #000000;
-      text-shadow: 
-        -1px -1px 0 #000000,
-         1px -1px 0 #000000,
-        -1px  1px 0 #000000,
-         1px  1px 0 #000000,
-         0 0 2px #000000 !important;
+      text-shadow: none !important;
+      -webkit-text-stroke: 0 !important;
     }
   `;
   document.head.appendChild(style);
