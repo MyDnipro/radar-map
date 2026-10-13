@@ -3,7 +3,7 @@
  * Фільтр по 8 контрольних точках маршруту
  * - Негативні (БП): чисто червоні літери
  * - Звичайні (Чисто): чорні літери
- * - Попапи та ШІ накладаються строго ЗВЕРХУ за рахунок z-index, нічого не знищуючи
+ * - Відкритий ШІ, Дашборд або відкрита картка точки (popup) повністю ховають повідомлення
  */
 (function() {
   let isRadioActive = localStorage.getItem("radar_radio_active") === "true";
@@ -26,16 +26,16 @@
     return CHECKPOINT_REGEXES.some(rgx => rgx.test(fullText));
   }
 
-  // 1. Стилі інтерфейсу — ЧИСТА ПІРАМІДА ШАРІВ (z-index)
+  // 1. Стилі інтерфейсу
   const style = document.createElement("style");
   style.textContent = `
-    /* Кнопка 📻 */
+    /* Кнопка 📻: шар нижчий за спливаючі картки та вікна ШІ (950) */
     #btnRadioTopCenter {
       position: absolute !important;
       top: 15px !important;
       left: calc(50% - 14px) !important;
       transform: translateX(-50%) !important;
-      z-index: 850 !important;
+      z-index: 950 !important;
       width: 38px;
       height: 38px;
       box-sizing: border-box;
@@ -50,7 +50,7 @@
       cursor: pointer;
       box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
       user-select: none;
-      transition: transform 0.2s ease;
+      transition: opacity 0.2s ease, transform 0.2s ease;
     }
     #btnRadioTopCenter:active { transform: translateX(-50%) scale(0.92); }
     #btnRadioTopCenter.active {
@@ -59,7 +59,7 @@
       box-shadow: 0 0 18px rgba(0, 243, 255, 0.6) !important;
     }
 
-    /* Шар стрічки повідомлень радіо (найнижчий серед плаваючих: 800) */
+    /* Шар повідомлень: опущений до 800, щоб спливаючі вікна точок були вище */
     #radioFeedOverlay {
       position: absolute !important;
       top: 60px !important;
@@ -71,18 +71,12 @@
       gap: 5px;
       pointer-events: none;
       user-select: none;
+      transition: opacity 0.2s ease;
     }
 
-    /* Усі спливаючі вікна точок та світлофорів (Leaflet Popup) лягають ЗВЕРХУ (1500) */
-    .leaflet-popup, 
-    .leaflet-popup-pane,
-    .leaflet-pane.leaflet-popup-pane {
+    /* Спливаючі картки точок на карті завжди вище повідомлень */
+    .leaflet-popup, .leaflet-popup-pane {
       z-index: 1500 !important;
-    }
-
-    /* Вікно ШІ гарантовано найвище над усім (2500) */
-    #aiPanel, #aiCard, #aiModal, #aiWindow, #aiChat, .ai-panel, .ai-card, #chatContainer {
-      z-index: 2500 !important;
     }
 
     .radio-msg-line {
@@ -129,6 +123,21 @@
       -webkit-text-stroke: 0 !important;
       filter: none !important;
     }
+
+    /* Приховування при відкритті будь-якої панелі */
+    body.panel-overlap-active #btnRadioTopCenter,
+    body.panel-overlap-active #radioFeedOverlay {
+      display: none !important;
+      opacity: 0 !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
+    }
+
+    /* Якщо на карті відкрито popup мітки — автоматично ховаємо повідомлення радіо */
+    body.has-popup-open #radioFeedOverlay {
+      display: none !important;
+      opacity: 0 !important;
+    }
   `;
   document.head.appendChild(style);
 
@@ -155,11 +164,17 @@
     return t;
   }
 
-  // 3. Відображення повідомлень (без втручання в приховування)
+  // 3. Відображення повідомлень
   function renderRadioFeed() {
     if (!isRadioActive) {
       feedBox.style.display = "none";
       radioBtn.classList.remove("active");
+      return;
+    }
+
+    // Якщо відкрита картка точки, не показуємо блок
+    if (document.body.classList.contains('has-popup-open')) {
+      feedBox.style.display = "none";
       return;
     }
 
@@ -211,7 +226,47 @@
     });
   }
 
-  // 4. Управління кнопкою радіо
+  // 4. Слідкування за станом вікна ШІ, Дашборду та відкритими картками на карті
+  function checkPanelsState() {
+    // 1. Перевірка відкритих карток точок (Leaflet popup)
+    const activePopup = document.querySelector('.leaflet-popup');
+    if (activePopup) {
+      document.body.classList.add('has-popup-open');
+    } else {
+      document.body.classList.remove('has-popup-open');
+    }
+
+    // 2. Перевірка вікна ШІ
+    const aiInput = document.querySelector('input[placeholder*="Команда" i], textarea[placeholder*="Команда" i]');
+    const aiPanel = aiInput 
+      ? (aiInput.closest('[id*="ai" i], [class*="ai" i], div[style*="position"], div') || aiInput.parentElement.parentElement)
+      : document.querySelector('#aiPanel, #aiCard, #aiModal, #aiWindow, #aiChat, .ai-panel, .ai-card, #chatContainer, [id*="ai" i]');
+
+    let isAiExpanded = false;
+    if (aiPanel) {
+      aiPanel.style.zIndex = "2500";
+      const isHidden = aiPanel.style.display === "none" || 
+                       aiPanel.classList.contains("collapsed") ||
+                       aiPanel.classList.contains("hidden") ||
+                       document.documentElement.classList.contains("ai-collapsed") ||
+                       aiPanel.offsetHeight < 80;
+      isAiExpanded = !isHidden && aiPanel.offsetHeight > 100;
+    }
+
+    // 3. Перевірка дашборду точок
+    const isDashExpanded = document.documentElement.classList.contains('dash-expanded') || 
+                           (!document.documentElement.classList.contains('dash-collapsed') && (document.querySelector('#dashPanel, .dash-panel')?.offsetHeight || 0) > 150);
+
+    if (isAiExpanded || isDashExpanded) {
+      document.body.classList.add('panel-overlap-active');
+    } else {
+      document.body.classList.remove('panel-overlap-active');
+    }
+  }
+
+  setInterval(checkPanelsState, 200);
+  window.addEventListener('click', () => setTimeout(checkPanelsState, 50));
+
   radioBtn.addEventListener("click", () => {
     isRadioActive = !isRadioActive;
     localStorage.setItem("radar_radio_active", isRadioActive ? "true" : "false");
@@ -229,5 +284,5 @@
     if (isRadioActive) renderRadioFeed();
   }, 4000);
 
-  setTimeout(renderRadioFeed, 600);
+  setTimeout(renderRadioFeed, 800);
 })();
