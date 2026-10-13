@@ -1555,7 +1555,11 @@
       closeTrafficLightActionSheet();
     });
 
-    function isCleanPoint(p) {
+function isCleanPoint(p) {
+      // 1. АБСОЛЮТНЫЙ ПРИОРИТЕТ: ручной выбор пользователя
+      if (p.is_clean === true || p.status === "чисто" || p.color === "green") return true;
+      if (p.is_clean === false || p.status === "опасно" || p.color === "red") return false;
+
       const fullStr = ((p.raw_text || p.text || "") + " " + (p.address || "")).toLowerCase();
       const negationWords = ["нет", "немає", "убрали", "прибрали", "сняли", "зняли", "поехали", "поїхали", "уехали", "пропали", "чисто по", "немає вже", "уже чисто"];
       const hasNegation = negationWords.some(nw => fullStr.includes(nw));
@@ -1568,9 +1572,6 @@
         return false;
       }
 
-      if (p.is_clean === true || p.color === "green" || p.status === "чисто") return true;
-      if (p.is_clean === false && (p.color === "red" || p.status === "опасно")) return false;
-
       for (const rule of learnedRules) {
         if (rule && rule.phrase && fullStr.includes(rule.phrase.toLowerCase())) {
           return rule.is_clean;
@@ -1582,7 +1583,6 @@
       }
       return false;
     }
-
     function isPointInActiveSectors(p) {
       if (p.needs_training) return true;
       if (activeSectors.length === 6) return true;
