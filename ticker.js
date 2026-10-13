@@ -31,7 +31,7 @@
     #btnRadioTopCenter {
       position: absolute !important;
       top: 15px !important;
-      left: calc(50% - 28px) !important;
+      left: calc(50% - 33px) !important;
       transform: translateX(-50%) !important;
       z-index: 2100 !important;
       width: 38px;
