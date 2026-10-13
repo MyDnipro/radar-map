@@ -1341,6 +1341,7 @@
     let isEditMode = false;
     let trafficMarkersMap = {};
     let allPoints = [];
+    window.allPoints = allPoints;
 
     let filterShowGreen = true;
     let filterShowRed = true;
@@ -2897,6 +2898,8 @@ ${allLiveReportsText || "Повідомлень немає"}
         renderMarkers();
         renderTrafficLights();
         updateRouteStatus();
+       window.allPoints = allPoints;
+        window.dispatchEvent(new CustomEvent('radar:pointsUpdated', { detail: allPoints })); 
       } catch (err) {}
     }
 
