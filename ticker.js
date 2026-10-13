@@ -1,18 +1,37 @@
 /**
  * Radar Dnipro — Модуль "Радіо ефір" (ticker.js)
- * Кнопка [ 📻 ] вгорі по центру та 4 останніх повідомлення чорним текстом без фону
+ * Фільтр по контрольних точках: 
+ * - Негативні (БП): червоні літери з чорною обводкою
+ * - Звичайні (Чисто): чорні літери
  */
 (function() {
   let isRadioActive = localStorage.getItem("radar_radio_active") === "true";
 
+  // Словник фільтрації за 8 контрольними точками
+  const CHECKPOINT_REGEXES = [
+    /кайдак/i, /ровд/i,
+    /водолечеб/i, /водолікарн/i, /пр[\s.]*свободи/i,
+    /комбайн/i, /ударник/i,
+    /краснозавод/i, /белелюб/i, /дтрз/i,
+    /павлов/i,
+    /речпорт/i, /річпорт/i, /десантник/i,
+    /водокачк/i,
+    /\bстан\s*550\b/i, /\bстан550\b/i
+  ];
+
+  function isCheckpointMessage(point) {
+    if (!point) return false;
+    const fullText = ((point.text || "") + " " + (point.raw_text || "") + " " + (point.address || "")).toLowerCase();
+    return CHECKPOINT_REGEXES.some(rgx => rgx.test(fullText));
+  }
+
   // 1. Стилі інтерфейсу
   const style = document.createElement("style");
   style.textContent = `
-    /* Кнопка 📻 строго посередині між двома верхніми блоками */
     #btnRadioTopCenter {
       position: absolute !important;
       top: 15px !important;
-      left: calc(50% - 14px) !important;
+      left: calc(50% - 20px) !important;
       transform: translateX(-50%) !important;
       z-index: 2100 !important;
       width: 38px;
@@ -38,7 +57,6 @@
       box-shadow: 0 0 18px rgba(0, 243, 255, 0.6) !important;
     }
 
-    /* Шар для 4 повідомлень без підкладки */
     #radioFeedOverlay {
       position: absolute !important;
       top: 60px !important;
@@ -52,45 +70,60 @@
       user-select: none;
     }
 
-    /* Рядок повідомлення: чисто чорний колір, без тіней */
     .radio-msg-line {
       pointer-events: auto;
       cursor: pointer;
-      font-size: 12px;
+      font-size: 12.5px;
       font-weight: 800;
-      color: #000000 !important;
       line-height: 1.3;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      text-shadow: none !important;
       display: flex;
       align-items: center;
       gap: 6px;
       transition: transform 0.15s ease;
     }
     .radio-msg-line:active { transform: scale(0.98); }
+
     .radio-msg-time {
-      color: #000000 !important;
       font-size: 11px;
       font-weight: 900;
       flex-shrink: 0;
-      text-shadow: none !important;
     }
     .radio-msg-text {
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+    }
+
+    /* 🟢 Звичайні повідомлення: чисто чорний колір */
+    .radio-msg-line.clean .radio-msg-time,
+    .radio-msg-line.clean .radio-msg-text {
       color: #000000 !important;
       text-shadow: none !important;
+      -webkit-text-stroke: 0 !important;
+    }
+
+    /* 🔴 Негативні повідомлення: червоні літери з чорною обводкою */
+    .radio-msg-line.danger .radio-msg-time,
+    .radio-msg-line.danger .radio-msg-text {
+      color: #ff2233 !important;
+      -webkit-text-stroke: 0.6px #000000;
+      text-shadow: 
+        -1px -1px 0 #000000,
+         1px -1px 0 #000000,
+        -1px  1px 0 #000000,
+         1px  1px 0 #000000,
+         0 0 2px #000000 !important;
     }
   `;
   document.head.appendChild(style);
 
-  // 2. Створення кнопки та контейнера повідомлень
+  // 2. Створення елементів розмітки
   const radioBtn = document.createElement("div");
   radioBtn.id = "btnRadioTopCenter";
-  radioBtn.title = "Радіо ефір (останні 4 повідомлення)";
+  radioBtn.title = "Радіо ефір маршруту";
   radioBtn.innerText = "📻";
   document.body.appendChild(radioBtn);
 
@@ -98,13 +131,11 @@
   feedBox.id = "radioFeedOverlay";
   document.body.appendChild(feedBox);
 
-  // Блокування передачі кліків на карту Leaflet
   if (window.L && L.DomEvent) {
     L.DomEvent.disableClickPropagation(radioBtn);
     L.DomEvent.disableClickPropagation(feedBox);
   }
 
-  // Універсальний парсер часу (секунди або мілісекунди)
   function getCleanTimestamp(p) {
     let t = p.time || p.timestamp || p.date || 0;
     if (typeof t === "string") t = Number(t) || Date.parse(t) || 0;
@@ -112,7 +143,7 @@
     return t;
   }
 
-  // 3. Формування та показ 4 останніх повідомлень
+  // 3. Відображення повідомлень
   function renderRadioFeed() {
     if (!isRadioActive) {
       feedBox.style.display = "none";
@@ -123,20 +154,22 @@
     feedBox.style.display = "flex";
     radioBtn.classList.add("active");
 
-    const pts = (window.allPoints && Array.isArray(window.allPoints)) ? window.allPoints.slice() : [];
-    pts.sort((a, b) => getCleanTimestamp(b) - getCleanTimestamp(a));
-    const top4 = pts.slice(0, 4);
+    const allPts = (window.allPoints && Array.isArray(window.allPoints)) ? window.allPoints.slice() : [];
+    const filteredPts = allPts.filter(isCheckpointMessage);
+    filteredPts.sort((a, b) => getCleanTimestamp(b) - getCleanTimestamp(a));
 
+    const top4 = filteredPts.slice(0, 4);
     feedBox.innerHTML = "";
 
     if (top4.length === 0) {
-      feedBox.innerHTML = `<div class="radio-msg-line" style="justify-content:center; color:#475569;">📻 Ефір підключається...</div>`;
+      feedBox.innerHTML = `<div class="radio-msg-line clean" style="opacity:0.65;">📻 По контрольних точках повідомлень немає</div>`;
       return;
     }
 
     top4.forEach(p => {
       const isClean = (typeof window.isCleanPoint === "function") ? window.isCleanPoint(p) : (p.color === "green");
       const dot = isClean ? "🟢" : "🔴";
+      const statusClass = isClean ? "clean" : "danger";
 
       const tMs = getCleanTimestamp(p);
       let timeStr = "";
@@ -148,14 +181,13 @@
       const txt = p.text || p.raw_text || p.address || "Повідомлення";
 
       const row = document.createElement("div");
-      row.className = "radio-msg-line";
+      row.className = `radio-msg-line ${statusClass}`;
       row.innerHTML = `
         <span>${dot}</span>
         <span class="radio-msg-time">${timeStr}</span>
         <span class="radio-msg-text">${txt}</span>
       `;
 
-      // При кліку по рядку — плавний політ до точки
       row.addEventListener("click", () => {
         if (window.map && window.map.flyTo && p.lat && p.lng) {
           window.map.flyTo([p.lat, p.lng], 16, { animate: true, duration: 0.85 });
@@ -167,22 +199,19 @@
     });
   }
 
-  // 4. Перемикання стану Радіо
   radioBtn.addEventListener("click", () => {
     isRadioActive = !isRadioActive;
     localStorage.setItem("radar_radio_active", isRadioActive ? "true" : "false");
     renderRadioFeed();
     if (typeof window.showToast === "function") {
-      window.showToast(isRadioActive ? "📻 Радіо ефір увімкнено!" : "📻 Радіо ефір вимкнено");
+      window.showToast(isRadioActive ? "📻 Ефір маршруту увімкнено!" : "📻 Радіо ефір вимкнено");
     }
   });
 
-  // Підписка на оновлення точок від карти
   window.addEventListener('radar:pointsUpdated', () => {
     if (isRadioActive) renderRadioFeed();
   });
 
-  // Автоматичне фонове оновлення кожні 4 секунди
   setInterval(() => {
     if (isRadioActive) renderRadioFeed();
   }, 4000);
