@@ -1,6 +1,6 @@
 /**
  * Radar Dnipro — Модуль "Хроніка" (timeline.js)
- * Вертикальний повзунок часу праворуч над кнопкою "Оновити"
+ * Вертикальний повзунок праворуч над "Оновити" + великий годинник по центру екрана
  */
 (function() {
   const FB_ARCHIVE_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/stats_archive.json";
@@ -14,7 +14,7 @@
   // Стилі
   const style = document.createElement("style");
   style.textContent = `
-    /* Кнопка активації над кнопкою Оновити */
+    /* Кнопка ⏱️ над кнопкою Оновити */
     #btnTimelineFloating {
       position: absolute !important;
       bottom: 70px !important;
@@ -37,6 +37,7 @@
       user-select: none;
       transition: all 0.2s ease;
     }
+    #btnTimelineFloating:active { transform: scale(0.92); }
     #btnTimelineFloating.active {
       background: #0284c7 !important;
       color: #fff !important;
@@ -44,13 +45,13 @@
       box-shadow: 0 0 18px rgba(0, 243, 255, 0.6) !important;
     }
 
-    /* Вертикальна панель повзунка праворуч над кнопкою */
+    /* Вертикальна панель із повзунком */
     #timelineSliderBox {
       position: absolute !important;
       bottom: 115px !important;
       right: 15px !important;
       width: 44px;
-      height: 240px;
+      height: 250px;
       background: rgba(15, 23, 42, 0.96);
       backdrop-filter: blur(12px);
       border: 1.5px solid #0284c7;
@@ -68,12 +69,12 @@
 
     .tl-day-btn {
       width: 36px;
-      height: 20px;
+      height: 22px;
       border-radius: 6px;
       background: #1e293b;
       border: 1px solid #475569;
       color: #94a3b8;
-      font-size: 8.5px;
+      font-size: 9px;
       font-weight: 800;
       display: flex;
       align-items: center;
@@ -106,27 +107,35 @@
       accent-color: #00f3ff;
     }
 
-    /* Велике інформаційне табло часу по центру екрана */
-    #timelineCenterBadge {
+    /* Велике неонове табло часу строго по центру екрана */
+    #timelineCenterHud {
       position: absolute !important;
-      top: 65px !important;
+      top: 50% !important;
       left: 50% !important;
-      transform: translateX(-50%) !important;
-      z-index: 2100 !important;
+      transform: translate(-50%, -50%) !important;
+      z-index: 4000 !important;
       background: rgba(15, 23, 42, 0.96);
-      border: 1.5px solid #00f3ff;
-      border-radius: 20px;
-      padding: 6px 16px;
-      color: #fff;
-      font-size: 13px;
-      font-weight: 800;
-      box-shadow: 0 4px 20px rgba(0, 243, 255, 0.45);
+      backdrop-filter: blur(14px);
+      border: 2px solid #00f3ff;
+      border-radius: 16px;
+      padding: 10px 22px;
+      color: #ffffff;
+      box-shadow: 0 8px 32px rgba(0, 243, 255, 0.45);
       display: none;
+      flex-direction: column;
       align-items: center;
-      gap: 6px;
-      white-space: nowrap;
+      justify-content: center;
+      gap: 2px;
       pointer-events: none;
+      user-select: none;
+      animation: fadeInScale 0.15s ease-out;
     }
+    @keyframes fadeInScale {
+      from { transform: translate(-50%, -50%) scale(0.9); opacity: 0; }
+      to { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+    }
+    .tl-hud-day { font-size: 11px; font-weight: 800; color: #38bdf8; letter-spacing: 0.5px; text-transform: uppercase; }
+    .tl-hud-clock { font-size: 26px; font-weight: 900; color: #ffffff; letter-spacing: 1px; font-family: monospace; }
   `;
   document.head.appendChild(style);
 
@@ -151,10 +160,13 @@
   `;
   document.body.appendChild(sliderBox);
 
-  const centerBadge = document.createElement("div");
-  centerBadge.id = "timelineCenterBadge";
-  centerBadge.innerHTML = `<span>⏳</span><span id="timelineBadgeText">...</span>`;
-  document.body.appendChild(centerBadge);
+  const centerHud = document.createElement("div");
+  centerHud.id = "timelineCenterHud";
+  centerHud.innerHTML = `
+    <div id="tlHudDay" class="tl-hud-day">СЬОГОДНІ</div>
+    <div id="tlHudClock" class="tl-hud-clock">00:00</div>
+  `;
+  document.body.appendChild(centerHud);
 
   if (window.L && L.DomEvent) {
     L.DomEvent.disableClickPropagation(toggleBtn);
@@ -165,7 +177,15 @@
   const slider = document.getElementById("tlRangeSlider");
   const btnToday = document.getElementById("btnTlDayToday");
   const btnYest = document.getElementById("btnTlDayYest");
-  const badgeText = document.getElementById("timelineBadgeText");
+  const hudDay = document.getElementById("tlHudDay");
+  const hudClock = document.getElementById("tlHudClock");
+
+  function getCleanTimestamp(p) {
+    let t = p.time || p.timestamp || 0;
+    if (typeof t === "string") t = Number(t) || Date.parse(t) || 0;
+    if (t > 0 && t < 10000000000) t *= 1000;
+    return t;
+  }
 
   function getDayBounds() {
     const now = new Date();
@@ -181,25 +201,26 @@
   }
 
   async function ensureArchiveLoaded() {
-    if (cachedArchive.length > 0) return;
-    try {
-      const res = await fetch(`${FB_ARCHIVE_URL}?t=${Date.now()}`);
-      if (res.ok) {
-        const data = await res.json();
-        if (data && typeof data === "object") {
-          cachedArchive = Object.values(data).filter(p => p && p.lat && p.lng && (p.time || p.timestamp));
+    if (cachedArchive.length === 0) {
+      try {
+        const res = await fetch(`${FB_ARCHIVE_URL}?t=${Date.now()}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && typeof data === "object") {
+            cachedArchive = Object.values(data).filter(p => p && p.lat && p.lng);
+          }
         }
-      }
-    } catch (e) {}
-
-    // Доповнюємо активними точками з пам'яті
-    if (Array.isArray(window.allPoints)) {
-      window.allPoints.forEach(p => {
-        if (!cachedArchive.some(x => x.lat === p.lat && x.lng === p.lng && (x.time || x.timestamp) === (p.time || p.timestamp))) {
-          cachedArchive.push(p);
-        }
-      });
+      } catch (e) {}
     }
+
+    // Підтягуємо точки з поточного списку
+    const livePts = (window.allPoints && Array.isArray(window.allPoints)) ? window.allPoints : [];
+    livePts.forEach(p => {
+      const ptTime = getCleanTimestamp(p);
+      if (!cachedArchive.some(x => Math.abs(x.lat - p.lat) < 0.0001 && Math.abs(x.lng - p.lng) < 0.0001 && getCleanTimestamp(x) === ptTime)) {
+        cachedArchive.push(p);
+      }
+    });
   }
 
   function updateSliderBounds() {
@@ -225,14 +246,14 @@
 
     const d = new Date(targetTime);
     const timeStr = String(d.getHours()).padStart(2, '0') + ":" + String(d.getMinutes()).padStart(2, '0');
-    const dayLabel = selectedDay === "today" ? "Сьогодні" : "Вчора";
 
-    badgeText.innerText = `${dayLabel}, ${timeStr}`;
-    centerBadge.style.display = "flex";
+    hudDay.innerText = selectedDay === "today" ? "СЬОГОДНІ" : "ВЧОРА";
+    hudClock.innerText = timeStr;
+    centerHud.style.display = "flex";
 
     const sliceStart = targetTime - WINDOW_MS;
     const pointsInWindow = cachedArchive.filter(p => {
-      const t = p.time || p.timestamp || 0;
+      const t = getCleanTimestamp(p);
       return t >= sliceStart && t <= targetTime;
     });
 
@@ -247,7 +268,7 @@
         iconAnchor: [9, 9]
       });
 
-      const ptDate = new Date(pt.time || pt.timestamp);
+      const ptDate = new Date(getCleanTimestamp(pt));
       const ptTimeStr = String(ptDate.getHours()).padStart(2, '0') + ":" + String(ptDate.getMinutes()).padStart(2, '0');
 
       const marker = L.marker([pt.lat, pt.lng], { icon: dotIcon });
@@ -259,6 +280,9 @@
       `);
       timelineLayer.addLayer(marker);
     });
+
+    const countText = document.getElementById("countText");
+    if (countText) countText.innerHTML = `<span>⏳ Точок: ${pointsInWindow.length}</span>`;
   }
 
   async function openTimeline() {
@@ -276,7 +300,7 @@
     isActive = false;
     toggleBtn.classList.remove("active");
     sliderBox.style.display = "none";
-    centerBadge.style.display = "none";
+    centerHud.style.display = "none";
 
     if (timelineLayer && window.map) {
       window.map.removeLayer(timelineLayer);
