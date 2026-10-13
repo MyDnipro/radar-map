@@ -1,25 +1,24 @@
 /**
  * Radar Dnipro — Модуль "Хроніка" (timeline.js)
- * Вертикальний повзунок праворуч над "Оновити" + великий годинник по центру екрана
+ * Працюючий повзунок часу + табло строго по центру екрана
  */
 (function() {
   const FB_ARCHIVE_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/stats_archive.json";
   const WINDOW_MS = 40 * 60 * 1000;
 
   let isActive = false;
-  let selectedDay = "today"; // "today" | "yesterday"
-  let cachedArchive = [];
+  let selectedDay = "today";
+  let fullArchiveList = [];
   let timelineLayer = null;
 
   // Стилі
   const style = document.createElement("style");
   style.textContent = `
-    /* Кнопка ⏱️ над кнопкою Оновити */
     #btnTimelineFloating {
       position: absolute !important;
       bottom: 70px !important;
       right: 15px !important;
-      z-index: 1005 !important;
+      z-index: 2200 !important;
       width: 38px;
       height: 38px;
       box-sizing: border-box;
@@ -37,7 +36,6 @@
       user-select: none;
       transition: all 0.2s ease;
     }
-    #btnTimelineFloating:active { transform: scale(0.92); }
     #btnTimelineFloating.active {
       background: #0284c7 !important;
       color: #fff !important;
@@ -45,7 +43,6 @@
       box-shadow: 0 0 18px rgba(0, 243, 255, 0.6) !important;
     }
 
-    /* Вертикальна панель із повзунком */
     #timelineSliderBox {
       position: absolute !important;
       bottom: 115px !important;
@@ -56,7 +53,7 @@
       backdrop-filter: blur(12px);
       border: 1.5px solid #0284c7;
       border-radius: 14px;
-      z-index: 1005 !important;
+      z-index: 2200 !important;
       display: none;
       flex-direction: column;
       align-items: center;
@@ -98,7 +95,7 @@
     .tl-vertical-range {
       -webkit-appearance: slider-vertical;
       writing-mode: bt-lr;
-      width: 8px;
+      width: 10px;
       height: 100%;
       background: #1e293b;
       border-radius: 4px;
@@ -107,42 +104,35 @@
       accent-color: #00f3ff;
     }
 
-    /* Велике неонове табло часу строго по центру екрана */
+    /* Великий неоновий блок часу по центру */
     #timelineCenterHud {
       position: absolute !important;
       top: 50% !important;
       left: 50% !important;
       transform: translate(-50%, -50%) !important;
-      z-index: 4000 !important;
+      z-index: 99999 !important;
       background: rgba(15, 23, 42, 0.96);
       backdrop-filter: blur(14px);
       border: 2px solid #00f3ff;
       border-radius: 16px;
-      padding: 10px 22px;
+      padding: 10px 24px;
       color: #ffffff;
-      box-shadow: 0 8px 32px rgba(0, 243, 255, 0.45);
+      box-shadow: 0 8px 35px rgba(0, 243, 255, 0.55);
       display: none;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 2px;
       pointer-events: none;
       user-select: none;
-      animation: fadeInScale 0.15s ease-out;
     }
-    @keyframes fadeInScale {
-      from { transform: translate(-50%, -50%) scale(0.9); opacity: 0; }
-      to { transform: translate(-50%, -50%) scale(1); opacity: 1; }
-    }
-    .tl-hud-day { font-size: 11px; font-weight: 800; color: #38bdf8; letter-spacing: 0.5px; text-transform: uppercase; }
-    .tl-hud-clock { font-size: 26px; font-weight: 900; color: #ffffff; letter-spacing: 1px; font-family: monospace; }
+    .tl-hud-day { font-size: 11px; font-weight: 800; color: #38bdf8; letter-spacing: 0.5px; }
+    .tl-hud-clock { font-size: 28px; font-weight: 900; color: #ffffff; font-family: monospace; }
   `;
   document.head.appendChild(style);
 
-  // Створення елементів
+  // Створення HTML
   const toggleBtn = document.createElement("div");
   toggleBtn.id = "btnTimelineFloating";
-  toggleBtn.title = "Хроніка (машина часу)";
   toggleBtn.innerText = "⏱️";
   document.body.appendChild(toggleBtn);
 
@@ -180,8 +170,8 @@
   const hudDay = document.getElementById("tlHudDay");
   const hudClock = document.getElementById("tlHudClock");
 
-  function getCleanTimestamp(p) {
-    let t = p.time || p.timestamp || 0;
+  function parseTimeMs(p) {
+    let t = p.time || p.timestamp || p.date || 0;
     if (typeof t === "string") t = Number(t) || Date.parse(t) || 0;
     if (t > 0 && t < 10000000000) t *= 1000;
     return t;
@@ -200,27 +190,28 @@
     }
   }
 
-  async function ensureArchiveLoaded() {
-    if (cachedArchive.length === 0) {
-      try {
-        const res = await fetch(`${FB_ARCHIVE_URL}?t=${Date.now()}`);
-        if (res.ok) {
-          const data = await res.json();
-          if (data && typeof data === "object") {
-            cachedArchive = Object.values(data).filter(p => p && p.lat && p.lng);
-          }
-        }
-      } catch (e) {}
+  async function loadArchive() {
+    fullArchiveList = [];
+    // 1. Поточні активні точки
+    if (window.allPoints && Array.isArray(window.allPoints)) {
+      window.allPoints.forEach(p => fullArchiveList.push(p));
     }
-
-    // Підтягуємо точки з поточного списку
-    const livePts = (window.allPoints && Array.isArray(window.allPoints)) ? window.allPoints : [];
-    livePts.forEach(p => {
-      const ptTime = getCleanTimestamp(p);
-      if (!cachedArchive.some(x => Math.abs(x.lat - p.lat) < 0.0001 && Math.abs(x.lng - p.lng) < 0.0001 && getCleanTimestamp(x) === ptTime)) {
-        cachedArchive.push(p);
+    // 2. Архів з бази
+    try {
+      const res = await fetch(`${FB_ARCHIVE_URL}?t=${Date.now()}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && typeof data === "object") {
+          const list = Object.values(data).filter(p => p && p.lat && p.lng);
+          list.forEach(p => {
+            const ptTime = parseTimeMs(p);
+            if (!fullArchiveList.some(x => parseTimeMs(x) === ptTime && Math.abs(x.lat - p.lat) < 0.0001)) {
+              fullArchiveList.push(p);
+            }
+          });
+        }
       }
-    });
+    } catch (e) {}
   }
 
   function updateSliderBounds() {
@@ -234,7 +225,9 @@
 
   function renderSliceAtMinute(minute) {
     if (!window.map) return;
-    if (!timelineLayer) timelineLayer = L.layerGroup().addTo(window.map);
+    if (!timelineLayer) {
+      timelineLayer = L.layerGroup().addTo(window.map);
+    }
     timelineLayer.clearLayers();
 
     const bounds = getDayBounds();
@@ -252,8 +245,8 @@
     centerHud.style.display = "flex";
 
     const sliceStart = targetTime - WINDOW_MS;
-    const pointsInWindow = cachedArchive.filter(p => {
-      const t = getCleanTimestamp(p);
+    const pointsInWindow = fullArchiveList.filter(p => {
+      const t = parseTimeMs(p);
       return t >= sliceStart && t <= targetTime;
     });
 
@@ -268,7 +261,7 @@
         iconAnchor: [9, 9]
       });
 
-      const ptDate = new Date(getCleanTimestamp(pt));
+      const ptDate = new Date(parseTimeMs(pt));
       const ptTimeStr = String(ptDate.getHours()).padStart(2, '0') + ":" + String(ptDate.getMinutes()).padStart(2, '0');
 
       const marker = L.marker([pt.lat, pt.lng], { icon: dotIcon });
@@ -291,7 +284,7 @@
     sliderBox.style.display = "flex";
 
     if (window.markersLayer && window.map) window.map.removeLayer(window.markersLayer);
-    await ensureArchiveLoaded();
+    await loadArchive();
     updateSliderBounds();
     renderSliceAtMinute(parseInt(slider.value, 10));
   }
