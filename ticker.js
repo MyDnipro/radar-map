@@ -1,9 +1,9 @@
 /**
  * Radar Dnipro — Модуль "Радіо ефір" (ticker.js)
  * Фільтр по 8 контрольних точках маршруту
- * - Негативні (БП): просто червоні літери
+ * - Негативні (БП): чисто червоні літери
  * - Звичайні (Чисто): чорні літери
- * - Відкритий ШІ та Дашборд точок перекривають радіо та повідомлення зверху
+ * - Відкритий ШІ або Дашборд точок повністю ховають значок радіо та повідомлення
  */
 (function() {
   let isRadioActive = localStorage.getItem("radar_radio_active") === "true";
@@ -29,19 +29,13 @@
   // 1. Стилі інтерфейсу
   const style = document.createElement("style");
   style.textContent = `
-    /* Відкритий ШІ-блок та дашборд точок повністю перекривають радіо зверху */
-    #aiPanel, #aiCard, #aiContainer, .ai-panel, .ai-card,
-    html:not(.dash-collapsed) #dashPanel,
-    html:not(.dash-collapsed) .dashboard {
-      z-index: 2600 !important;
-    }
-
+    /* Кнопка 📻: базовий шар нижчий за панелі (1050 замість 2100) */
     #btnRadioTopCenter {
       position: absolute !important;
       top: 15px !important;
       left: calc(50% - 14px) !important;
       transform: translateX(-50%) !important;
-      z-index: 2100 !important;
+      z-index: 1050 !important;
       width: 38px;
       height: 38px;
       box-sizing: border-box;
@@ -56,7 +50,7 @@
       cursor: pointer;
       box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
       user-select: none;
-      transition: all 0.2s ease;
+      transition: opacity 0.2s ease, transform 0.2s ease;
     }
     #btnRadioTopCenter:active { transform: translateX(-50%) scale(0.92); }
     #btnRadioTopCenter.active {
@@ -65,17 +59,19 @@
       box-shadow: 0 0 18px rgba(0, 243, 255, 0.6) !important;
     }
 
+    /* Шар повідомлень */
     #radioFeedOverlay {
       position: absolute !important;
       top: 60px !important;
       left: 15px !important;
       right: 15px !important;
-      z-index: 2000 !important;
+      z-index: 1040 !important;
       display: none;
       flex-direction: column;
       gap: 5px;
       pointer-events: none;
       user-select: none;
+      transition: opacity 0.2s ease;
     }
 
     .radio-msg-line {
@@ -105,7 +101,7 @@
       white-space: nowrap;
     }
 
-    /* 🟢 Звичайні повідомлення: чисто чорні літери без тіней */
+    /* 🟢 Звичайні повідомлення: чорні літери */
     .radio-msg-line.clean,
     .radio-msg-line.clean * {
       color: #000000 !important;
@@ -122,10 +118,17 @@
       -webkit-text-stroke: 0 !important;
       filter: none !important;
     }
+
+    /* Автоматичне повне приховування, коли активна будь-яка панель */
+    body.panel-overlap-active #btnRadioTopCenter,
+    body.panel-overlap-active #radioFeedOverlay {
+      opacity: 0 !important;
+      pointer-events: none !important;
+    }
   `;
   document.head.appendChild(style);
 
-  // 2. Створення елементів розмітки
+  // 2. Створення елементів
   const radioBtn = document.createElement("div");
   radioBtn.id = "btnRadioTopCenter";
   radioBtn.title = "Радіо ефір маршруту";
@@ -203,6 +206,32 @@
       feedBox.appendChild(row);
     });
   }
+
+  // 4. Слідкування за станом панелей (ШІ та Дашборд)
+  function checkPanelsState() {
+    // Шукаємо відкрите вікно ШІ
+    const aiPanel = document.querySelector('#aiPanel, #aiCard, .ai-panel, .ai-card, #chatContainer');
+    let isAiExpanded = false;
+    if (aiPanel) {
+      const isCollapsed = aiPanel.classList.contains('collapsed') || 
+                          document.documentElement.classList.contains('ai-collapsed') ||
+                          aiPanel.offsetHeight < 80;
+      isAiExpanded = !isCollapsed && aiPanel.offsetHeight > 100;
+    }
+
+    // Шукаємо відкритий дашборд точок
+    const isDashExpanded = !document.documentElement.classList.contains('dash-collapsed');
+
+    if (isAiExpanded || isDashExpanded) {
+      document.body.classList.add('panel-overlap-active');
+    } else {
+      document.body.classList.remove('panel-overlap-active');
+    }
+  }
+
+  // Запуск перевірки при кліках та змінах у DOM
+  setInterval(checkPanelsState, 200);
+  window.addEventListener('click', () => setTimeout(checkPanelsState, 50));
 
   radioBtn.addEventListener("click", () => {
     isRadioActive = !isRadioActive;
