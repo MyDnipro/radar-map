@@ -1,6 +1,6 @@
 /**
  * Radar Dnipro — Модуль "Хроніка" (timeline.js)
- * Працюючий повзунок часу + табло строго по центру екрана
+ * Довгий повзунок часу (56vh) + відображення зрізу на карті + годинник по центру
  */
 (function() {
   const FB_ARCHIVE_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/stats_archive.json";
@@ -11,7 +11,7 @@
   let fullArchiveList = [];
   let timelineLayer = null;
 
-  // Стилі
+  // 1. Стилі
   const style = document.createElement("style");
   style.textContent = `
     #btnTimelineFloating {
@@ -43,12 +43,15 @@
       box-shadow: 0 0 18px rgba(0, 243, 255, 0.6) !important;
     }
 
+    /* Довга панель: 56vh (вище середини екрана) */
     #timelineSliderBox {
       position: absolute !important;
       bottom: 115px !important;
       right: 15px !important;
-      width: 44px;
-      height: 250px;
+      width: 46px;
+      height: 56vh !important;
+      max-height: 520px;
+      min-height: 300px;
       background: rgba(15, 23, 42, 0.96);
       backdrop-filter: blur(12px);
       border: 1.5px solid #0284c7;
@@ -58,16 +61,17 @@
       flex-direction: column;
       align-items: center;
       justify-content: space-between;
-      padding: 8px 4px;
-      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.7);
+      padding: 10px 4px 8px;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.75);
       user-select: none;
       box-sizing: border-box;
+      touch-action: none !important;
     }
 
     .tl-day-btn {
-      width: 36px;
-      height: 22px;
-      border-radius: 6px;
+      width: 38px;
+      height: 24px;
+      border-radius: 7px;
       background: #1e293b;
       border: 1px solid #475569;
       color: #94a3b8;
@@ -90,21 +94,25 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 6px 0;
+      position: relative;
+      margin: 10px 0;
+      touch-action: none !important;
     }
+
     .tl-vertical-range {
       -webkit-appearance: slider-vertical;
       writing-mode: bt-lr;
-      width: 10px;
+      width: 14px;
       height: 100%;
       background: #1e293b;
-      border-radius: 4px;
+      border-radius: 6px;
       outline: none;
       cursor: pointer;
       accent-color: #00f3ff;
+      touch-action: none !important;
     }
 
-    /* Великий неоновий блок часу по центру */
+    /* Великий годинник по центру екрана */
     #timelineCenterHud {
       position: absolute !important;
       top: 50% !important;
@@ -114,10 +122,10 @@
       background: rgba(15, 23, 42, 0.96);
       backdrop-filter: blur(14px);
       border: 2px solid #00f3ff;
-      border-radius: 16px;
-      padding: 10px 24px;
+      border-radius: 18px;
+      padding: 12px 26px;
       color: #ffffff;
-      box-shadow: 0 8px 35px rgba(0, 243, 255, 0.55);
+      box-shadow: 0 10px 40px rgba(0, 243, 255, 0.55);
       display: none;
       flex-direction: column;
       align-items: center;
@@ -125,25 +133,26 @@
       pointer-events: none;
       user-select: none;
     }
-    .tl-hud-day { font-size: 11px; font-weight: 800; color: #38bdf8; letter-spacing: 0.5px; }
-    .tl-hud-clock { font-size: 28px; font-weight: 900; color: #ffffff; font-family: monospace; }
+    .tl-hud-day { font-size: 11px; font-weight: 800; color: #38bdf8; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 2px; }
+    .tl-hud-clock { font-size: 32px; font-weight: 900; color: #ffffff; font-family: monospace; line-height: 1; }
   `;
   document.head.appendChild(style);
 
-  // Створення HTML
+  // 2. Створення елементів
   const toggleBtn = document.createElement("div");
   toggleBtn.id = "btnTimelineFloating";
+  toggleBtn.title = "Хроніка (машина часу)";
   toggleBtn.innerText = "⏱️";
   document.body.appendChild(toggleBtn);
 
   const sliderBox = document.createElement("div");
   sliderBox.id = "timelineSliderBox";
   sliderBox.innerHTML = `
-    <div style="display:flex; flex-direction:column; gap:3px;">
+    <div style="display:flex; flex-direction:column; gap:4px;">
       <div id="btnTlDayToday" class="tl-day-btn active">СЬОГ</div>
       <div id="btnTlDayYest" class="tl-day-btn">ВЧО</div>
     </div>
-    <div class="tl-range-container">
+    <div class="tl-range-container" id="tlTrackContainer">
       <input type="range" id="tlRangeSlider" class="tl-vertical-range" min="0" max="1440" value="1440" step="5">
     </div>
     <div style="font-size:9px; font-weight:800; color:#38bdf8;">00:00</div>
@@ -165,6 +174,7 @@
   }
 
   const slider = document.getElementById("tlRangeSlider");
+  const trackContainer = document.getElementById("tlTrackContainer");
   const btnToday = document.getElementById("btnTlDayToday");
   const btnYest = document.getElementById("btnTlDayYest");
   const hudDay = document.getElementById("tlHudDay");
@@ -175,6 +185,21 @@
     if (typeof t === "string") t = Number(t) || Date.parse(t) || 0;
     if (t > 0 && t < 10000000000) t *= 1000;
     return t;
+  }
+
+  function extractAllPointsRecursive(obj) {
+    let result = [];
+    if (!obj || typeof obj !== 'object') return result;
+    if (obj.lat !== undefined && obj.lng !== undefined) {
+      result.push(obj);
+      return result;
+    }
+    for (const k in obj) {
+      if (obj[k] && typeof obj[k] === 'object') {
+        result = result.concat(extractAllPointsRecursive(obj[k]));
+      }
+    }
+    return result;
   }
 
   function getDayBounds() {
@@ -192,24 +217,21 @@
 
   async function loadArchive() {
     fullArchiveList = [];
-    // 1. Поточні активні точки
     if (window.allPoints && Array.isArray(window.allPoints)) {
       window.allPoints.forEach(p => fullArchiveList.push(p));
     }
-    // 2. Архів з бази
+
     try {
       const res = await fetch(`${FB_ARCHIVE_URL}?t=${Date.now()}`);
       if (res.ok) {
         const data = await res.json();
-        if (data && typeof data === "object") {
-          const list = Object.values(data).filter(p => p && p.lat && p.lng);
-          list.forEach(p => {
-            const ptTime = parseTimeMs(p);
-            if (!fullArchiveList.some(x => parseTimeMs(x) === ptTime && Math.abs(x.lat - p.lat) < 0.0001)) {
-              fullArchiveList.push(p);
-            }
-          });
-        }
+        const extracted = extractAllPointsRecursive(data);
+        extracted.forEach(p => {
+          const ptTime = parseTimeMs(p);
+          if (!fullArchiveList.some(x => parseTimeMs(x) === ptTime && Math.abs(x.lat - p.lat) < 0.0001)) {
+            fullArchiveList.push(p);
+          }
+        });
       }
     } catch (e) {}
   }
@@ -224,9 +246,11 @@
   }
 
   function renderSliceAtMinute(minute) {
-    if (!window.map) return;
+    const map = window.map;
+    if (!map) return;
+
     if (!timelineLayer) {
-      timelineLayer = L.layerGroup().addTo(window.map);
+      timelineLayer = L.layerGroup().addTo(map);
     }
     timelineLayer.clearLayers();
 
@@ -234,7 +258,7 @@
     const totalMinutes = selectedDay === "today"
       ? Math.max(5, Math.floor((bounds.end - bounds.start) / 60000))
       : 1440;
-    const clamped = Math.min(minute, totalMinutes);
+    const clamped = Math.max(0, Math.min(minute, totalMinutes));
     const targetTime = bounds.start + clamped * 60000;
 
     const d = new Date(targetTime);
@@ -278,12 +302,48 @@
     if (countText) countText.innerHTML = `<span>⏳ Точок: ${pointsInWindow.length}</span>`;
   }
 
+  function handleTouchPosition(clientY) {
+    const rect = trackContainer.getBoundingClientRect();
+    const totalHeight = rect.height;
+    if (totalHeight <= 0) return;
+
+    let ratio = (rect.bottom - clientY) / totalHeight;
+    ratio = Math.max(0, Math.min(1, ratio));
+
+    const maxVal = parseInt(slider.max, 10) || 1440;
+    const calculatedVal = Math.round((ratio * maxVal) / 5) * 5;
+
+    slider.value = calculatedVal;
+    renderSliceAtMinute(calculatedVal);
+  }
+
+  trackContainer.addEventListener("touchstart", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.touches && e.touches[0]) handleTouchPosition(e.touches[0].clientY);
+  }, { passive: false });
+
+  trackContainer.addEventListener("touchmove", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.touches && e.touches[0]) handleTouchPosition(e.touches[0].clientY);
+  }, { passive: false });
+
   async function openTimeline() {
     isActive = true;
     toggleBtn.classList.add("active");
     sliderBox.style.display = "flex";
 
-    if (window.markersLayer && window.map) window.map.removeLayer(window.markersLayer);
+    // Приховуємо онлайн-шари
+    if (window.map) {
+      if (window.markersLayer && window.map.hasLayer(window.markersLayer)) {
+        window.map.removeLayer(window.markersLayer);
+      }
+      if (window.trafficLightLayer && window.map.hasLayer(window.trafficLightLayer)) {
+        window.map.removeLayer(window.trafficLightLayer);
+      }
+    }
+
     await loadArchive();
     updateSliderBounds();
     renderSliceAtMinute(parseInt(slider.value, 10));
@@ -295,11 +355,19 @@
     sliderBox.style.display = "none";
     centerHud.style.display = "none";
 
+    // Прибираємо шар хроніки і повертаємо онлайн
     if (timelineLayer && window.map) {
       window.map.removeLayer(timelineLayer);
       timelineLayer = null;
     }
-    if (window.markersLayer && window.map) window.map.addLayer(window.markersLayer);
+    if (window.map) {
+      if (window.markersLayer && !window.map.hasLayer(window.markersLayer)) {
+        window.map.addLayer(window.markersLayer);
+      }
+      if (window.trafficLightLayer && !window.map.hasLayer(window.trafficLightLayer)) {
+        window.map.addLayer(window.trafficLightLayer);
+      }
+    }
     if (typeof window.loadPoints === "function") window.loadPoints();
     if (typeof window.showToast === "function") window.showToast("🟢 Онлайн: актуальний час");
   }
