@@ -1,6 +1,9 @@
 /**
  * Radar Dnipro — Модуль "Радіо ефір" (ticker.js)
- * Стабільна версія: 4 рядки, чисті шари
+ * Фільтр по 8 контрольних точках маршруту
+ * - Негативні (БП): чисто червоні літери
+ * - Звичайні (Чисто): чорні літери
+ * - Попапи та ШІ накладаються строго ЗВЕРХУ за рахунок z-index, нічого не знищуючи
  */
 (function() {
   let isRadioActive = localStorage.getItem("radar_radio_active") === "true";
@@ -23,9 +26,10 @@
     return CHECKPOINT_REGEXES.some(rgx => rgx.test(fullText));
   }
 
-  // 1. Стилі інтерфейсу
+  // 1. Стилі інтерфейсу — ЧИСТА ПІРАМІДА ШАРІВ (z-index)
   const style = document.createElement("style");
   style.textContent = `
+    /* Кнопка 📻 */
     #btnRadioTopCenter {
       position: absolute !important;
       top: 15px !important;
@@ -55,6 +59,7 @@
       box-shadow: 0 0 18px rgba(0, 243, 255, 0.6) !important;
     }
 
+    /* Шар стрічки повідомлень радіо (найнижчий серед плаваючих: 800) */
     #radioFeedOverlay {
       position: absolute !important;
       top: 60px !important;
@@ -68,12 +73,14 @@
       user-select: none;
     }
 
+    /* Усі спливаючі вікна точок та світлофорів (Leaflet Popup) лягають ЗВЕРХУ (1500) */
     .leaflet-popup, 
     .leaflet-popup-pane,
     .leaflet-pane.leaflet-popup-pane {
       z-index: 1500 !important;
     }
 
+    /* Вікно ШІ гарантовано найвище над усім (2500) */
     #aiPanel, #aiCard, #aiModal, #aiWindow, #aiChat, .ai-panel, .ai-card, #chatContainer {
       z-index: 2500 !important;
     }
@@ -105,6 +112,7 @@
       white-space: nowrap;
     }
 
+    /* 🟢 Звичайні повідомлення: чорні літери */
     .radio-msg-line.clean,
     .radio-msg-line.clean * {
       color: #000000 !important;
@@ -113,6 +121,7 @@
       filter: none !important;
     }
 
+    /* 🔴 Негативні повідомлення: чисто червоні літери */
     .radio-msg-line.danger,
     .radio-msg-line.danger * {
       color: #ff2233 !important;
@@ -146,7 +155,7 @@
     return t;
   }
 
-  // 3. Відображення 4 повідомлень
+  // 3. Відображення повідомлень (без втручання в приховування)
   function renderRadioFeed() {
     if (!isRadioActive) {
       feedBox.style.display = "none";
@@ -202,7 +211,7 @@
     });
   }
 
-  // 4. Клік по кнопці радіо
+  // 4. Управління кнопкою радіо
   radioBtn.addEventListener("click", () => {
     isRadioActive = !isRadioActive;
     localStorage.setItem("radar_radio_active", isRadioActive ? "true" : "false");
