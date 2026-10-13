@@ -108,7 +108,7 @@ def is_ad_or_spam(text):
     return False
 
 # =========================================================================
-# 📍 ГЕНЕРАЛЬНАЯ БАЗА ТОПОНИМОВ И УЧАСТКОВ ДНЕПРА (СОРТИРОВКА ПО ДЛИНЕ КЛЮЧА)
+# 📍 ГЕНЕРАЛЬНАЯ БАЗА ТОПОНИМОВ И УЧАСТКОВ ДНЕПРА
 # =========================================================================
 LOCAL_STREETS_DB = [
     # --- ДИЛЯНКИ: ПОЛЯ / КИРОВА ---
@@ -250,7 +250,6 @@ LOCAL_STREETS_DB = [
 ]
 
 def sync_cloud_knowledge_and_spam():
-    """Синхронизирует самообученные улицы 'А = Б' и спам-фильтры из Firebase"""
     global CUSTOM_STREETS_CACHE, DYNAMIC_SPAM_WORDS, LAST_CLOUD_SYNC
     if time.time() - LAST_CLOUD_SYNC < 45:
         return
@@ -278,21 +277,14 @@ def sync_cloud_knowledge_and_spam():
         log(f"⚠️ Помилка синхронізації з хмарою знань: {e}")
 
 def geocode_local(text):
-    """
-    Приоритетный поиск:
-    1. Пользовательские правила 'А = Б' из Firebase.
-    2. Базовый словарь с приоритетом длинных составных ключей (участков 'верх/середина/низ').
-    """
     t = " " + text.lower() + " "
 
-    # 1. Проверяем динамические правила из облака
     for raw_alias, data in CUSTOM_STREETS_CACHE.items():
         if isinstance(data, dict):
             alias = unquote(raw_alias).lower()
             if alias in t:
                 return data.get("name", alias), data.get("lat"), data.get("lng")
 
-    # 2. Проверяем локальную базу: сортируем по максимальной длине ключей
     sorted_items = sorted(
         LOCAL_STREETS_DB,
         key=lambda item: max(len(k) for k in item["keys"]),
@@ -333,9 +325,6 @@ def geocode_osm_fallback(text):
             pass
     return None, None, None
 
-# =========================================================================
-# 🟢/🔴 ВЕРДИКТ: ЧИСТО ИЛИ БЛОКПОСТ (С УЧЕТОМ ОТРИЦАНИЙ)
-# =========================================================================
 CLEAN_KEYWORDS = [
     "чисто", "чистенько", "пусто", "вільно", "спокійно", "проїзд",
     "без бп", "сонечко", "солнечно", "солнце", "ясно", "сухо",
@@ -397,6 +386,24 @@ def match_knowledge_base(text, kb_list):
                 except (ValueError, TypeError):
                     pass
     return None
+
+def auto_save_to_knowledge_base(phrase, address, lat, lng):
+    """Шаг 4: Автообучение — сохраняем распознанную фразу в Firebase"""
+    if not KNOWLEDGE_BASE_URL or not phrase or not address or not lat or not lng:
+        return
+    try:
+        clean_key = re.sub(r'[^a-zA-Z0-9а-яА-ЯіїєґІЇЄҐ_]', '_', phrase.strip().lower())[:40]
+        data = {
+            "phrase": phrase.strip().lower(),
+            "address": address,
+            "lat": lat,
+            "lng": lng,
+            "time": int(time.time() * 1000)
+        }
+        requests.put(f"{BASE_FB_URL}/knowledge_base/{clean_key}.json", json=data, timeout=5)
+        log(f"💾 [АВТО-НАВЧАННЯ]: '{phrase}' ➔ {address} збережено в базу знань!")
+    except Exception as e:
+        log(f"⚠️ Помилка авто-навчання бази знань: {e}")
 
 def cleanup_old_points():
     now_ms = int(time.time() * 1000)
@@ -460,17 +467,32 @@ def fetch_channel_messages():
         log(f"⚠️ Помилка зчитування Telegram: {e}")
         return []
 
-def parse_with_gemini(text):
-    if not GEMINI_KEYS:
-        return None
+# =========================================================================
+# 🚀 ШАГ 1: ПАКЕТНЫЙ ЗАПРОС В GEMINI (ОДИН ЗАПРОС НА ВСЕ СООБЩЕНИЯ)
+# =========================================================================
+def parse_batch_with_gemini(items_to_parse):
+    """
+    Отправляет весь список нераспознанных сообщений одним пакетом (JSON)
+    items_to_parse: [{'id': 0, 'text': '...'}, ...]
+    """
+    if not items_to_parse or not GEMINI_KEYS:
+        return {}
+
+    formatted_items = [{"id": it["id"], "text": it["text"]} for it in items_to_parse]
 
     prompt = f"""
-Ти — аналітик геолокації у місті Дніпро (Україна).
-Повідомлення: "{text}"
-Знайди назву вулиці, району або орієнтир у місті Дніпро (враховуй народні назви та ділянки: верх, середина, низ).
-Відповідай ТІЛЬКИ JSON:
-{{"found": true, "address": "вул. ...", "lat": 48.45, "lng": 35.01, "status": "чисто"|"опасно"}}
-Якщо локації немає: {{"found": false}}
+Ти — точний гео-аналітик міста Дніпро (Україна).
+Ось JSON-список коротких повідомлень водіїв про ситуацію на дорогах:
+{json.dumps(formatted_items, ensure_ascii=False)}
+
+Для КОЖНОГО елемента визнач локацію в Дніпрі (вулиця, проспект, район або орієнтир):
+Поверни строго JSON-масив:
+[
+  {{"id": 0, "found": true, "address": "вул. ...", "lat": 48.45, "lng": 35.01, "status": "чисто"|"опасно"}},
+  {{"id": 1, "found": false}}
+]
+Координати мають бути строго в межах Дніпра: lat (48.25 - 48.70), lng (34.70 - 35.40).
+Не пиши нічого зайвого, тільки валідний чистий JSON.
 """
 
     total_keys = len(GEMINI_KEYS)
@@ -485,30 +507,33 @@ def parse_with_gemini(text):
                         "contents": [{"role": "user", "parts": [{"text": prompt}]}],
                         "generationConfig": {"temperature": 0.1, "responseMimeType": "application/json"}
                     },
-                    timeout=8
+                    timeout=6  # Жесткий тайм-аут: не ждем минутами
                 )
+
                 if r.status_code == 200:
                     raw = r.json().get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
                     raw = raw.replace("```json", "").replace("```", "").strip()
-                    data = json.loads(raw)
-                    if data.get("found") and data.get("lat") and data.get("lng"):
-                        lat = float(data["lat"])
-                        lng = float(data["lng"])
-                        if 48.25 <= lat <= 48.70 and 34.70 <= lng <= 35.40:
-                            return {
-                                "address": data.get("address", "Дніпро"),
-                                "lat": round(lat, 5),
-                                "lng": round(lng, 5),
-                                "status": data.get("status", "опасно")
-                            }
-                    return None
+                    data_list = json.loads(raw)
+                    if isinstance(data_list, list):
+                        result_map = {}
+                        for res in data_list:
+                            if isinstance(res, dict) and "id" in res:
+                                result_map[res["id"]] = res
+                        log(f"📦 [GEMINI BATCH]: Успішно оброблено пакет із {len(result_map)} точок за 1 запит!")
+                        return result_map
+                    return {}
                 elif r.status_code in [429, 403]:
                     rotate_to_next_key()
-                    continue
+                    break
+            except requests.exceptions.Timeout:
+                log(f"⏱️ Таймаут на ключі #{current_key_index + 1}, миттєве перемикання...")
+                rotate_to_next_key()
+                break
             except Exception:
-                continue
+                rotate_to_next_key()
+                break
 
-    return None
+    return {}
 
 # =========================================================================
 # 🔄 ОСНОВНОЙ ЦИКЛ СИНХРОНИЗАЦИИ
@@ -537,7 +562,11 @@ def sync_cycle():
 
     now_ms = int(time.time() * 1000)
 
-    for unique_key, msg in new_items:
+    # 1. Быстрый локальный проход (Локальная база, База знаний, OSM)
+    items_to_process = []
+    gemini_queue = []
+
+    for idx, (unique_key, msg) in enumerate(new_items):
         PROCESSED_POST_IDS.add(unique_key)
 
         if is_ad_or_spam(msg):
@@ -547,7 +576,7 @@ def sync_cycle():
         is_clean = is_message_clean(msg)
         parsed_result = None
 
-        # 1. Проверка пользовательских правил из Firebase и локальной базы участков
+        # Проверка локальных участков
         addr, lat, lng = geocode_local(msg)
         if addr and lat and lng:
             parsed_result = {
@@ -559,7 +588,7 @@ def sync_cycle():
             }
             log(f"⚡ [ЛОКАЛЬНО / ДІЛЯНКА]: '{msg[:45]}' ➔ {addr}")
 
-        # 2. Проверка базы знаний
+        # Проверка базы знаний
         if not parsed_result:
             matched_kb = match_knowledge_base(msg, kb_list)
             if matched_kb and matched_kb.get("lat") and matched_kb.get("lng"):
@@ -572,7 +601,7 @@ def sync_cycle():
                 }
                 log(f"🎯 [БАЗА ЗНАНЬ]: '{matched_kb.get('phrase')}' ➔ {parsed_result['address']}")
 
-        # 3. Резерв OpenStreetMap
+        # Резерв OpenStreetMap
         if not parsed_result:
             osm_addr, osm_lat, osm_lng = geocode_osm_fallback(msg)
             if osm_addr and osm_lat and osm_lng:
@@ -585,15 +614,48 @@ def sync_cycle():
                 }
                 log(f"🗺️ [OSM КАРТА]: '{msg[:45]}' ➔ {osm_addr}")
 
-        # 4. Gemini AI fallback
-        if not parsed_result:
-            time.sleep(0.3)
-            ai_res = parse_with_gemini(msg)
-            if ai_res:
-                parsed_result = {**ai_res, "needs_training": False}
-                log(f"🤖 [GEMINI AI]: '{msg[:45]}' ➔ {parsed_result['address']}")
+        item_ctx = {
+            "id": idx,
+            "msg": msg,
+            "is_clean": is_clean,
+            "parsed_result": parsed_result
+        }
+        items_to_process.append(item_ctx)
 
-        # 5. Если локация неизвестна — ставим в залив на воду (для обучения пользователем)
+        # Если локально не определили — ставим в очередь на пакет Gemini
+        if not parsed_result:
+            gemini_queue.append({"id": idx, "text": msg})
+
+    # 2. Если есть нераспознанные — выполняем РОВНО ОДИН пакетный запрос в Gemini
+    if gemini_queue:
+        log(f"🚀 Відправка пакету з {len(gemini_queue)} повідомлень до Gemini...")
+        batch_results = parse_batch_with_gemini(gemini_queue)
+        
+        for item_ctx in items_to_process:
+            if not item_ctx["parsed_result"] and item_ctx["id"] in batch_results:
+                res = batch_results[item_ctx["id"]]
+                if res.get("found") and res.get("lat") and res.get("lng"):
+                    lat = float(res["lat"])
+                    lng = float(res["lng"])
+                    if 48.25 <= lat <= 48.70 and 34.70 <= lng <= 35.40:
+                        addr = res.get("address", "Дніпро")
+                        item_ctx["parsed_result"] = {
+                            "address": addr,
+                            "lat": round(lat, 5),
+                            "lng": round(lng, 5),
+                            "status": res.get("status", "опасно"),
+                            "needs_training": False
+                        }
+                        log(f"🤖 [GEMINI AI]: '{item_ctx['msg'][:45]}' ➔ {addr}")
+                        # Шаг 4: Сразу обучаем базу знаний
+                        auto_save_to_knowledge_base(item_ctx["msg"], addr, round(lat, 5), round(lng, 5))
+
+    # 3. Финальная сборка и отправка в Firebase
+    for item_ctx in items_to_process:
+        msg = item_ctx["msg"]
+        is_clean = item_ctx["is_clean"]
+        parsed_result = item_ctx["parsed_result"]
+
         if not parsed_result:
             water_lat = round(48.5020 + random.uniform(-0.0040, 0.0040), 5)
             water_lng = round(34.9280 + random.uniform(-0.0060, 0.0060), 5)
@@ -649,7 +711,7 @@ def sync_cycle():
 if __name__ == "__main__":
     log(f"🚀 Запуск оновленого радара 24/7 v3.9 (Завантажено {len(GEMINI_KEYS)} API ключів)...")
     start_time = time.time()
-    MAX_RUNTIME_SEC = 5 * 3600 + 40 * 60  # Лимит для GitHub Actions
+    MAX_RUNTIME_SEC = 5 * 3600 + 40 * 60
 
     while (time.time() - start_time) < MAX_RUNTIME_SEC:
         try:
