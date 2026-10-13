@@ -3,7 +3,7 @@
  * Фільтр по 8 контрольних точках маршруту
  * - Негативні (БП): чисто червоні літери
  * - Звичайні (Чисто): чорні літери
- * - Відкритий ШІ або Дашборд точок повністю ховають значок радіо та повідомлення
+ * - Відкритий ШІ, Дашборд або відкрита картка точки (popup) повністю ховають повідомлення
  */
 (function() {
   let isRadioActive = localStorage.getItem("radar_radio_active") === "true";
@@ -29,7 +29,7 @@
   // 1. Стилі інтерфейсу
   const style = document.createElement("style");
   style.textContent = `
-    /* Кнопка 📻: шар нижчий за спливаючі вікна (950) */
+    /* Кнопка 📻: шар нижчий за спливаючі картки та вікна ШІ (950) */
     #btnRadioTopCenter {
       position: absolute !important;
       top: 15px !important;
@@ -59,19 +59,24 @@
       box-shadow: 0 0 18px rgba(0, 243, 255, 0.6) !important;
     }
 
-    /* Шар повідомлень */
+    /* Шар повідомлень: опущений до 800, щоб спливаючі вікна точок були вище */
     #radioFeedOverlay {
       position: absolute !important;
       top: 60px !important;
       left: 15px !important;
       right: 15px !important;
-      z-index: 940 !important;
+      z-index: 800 !important;
       display: none;
       flex-direction: column;
       gap: 5px;
       pointer-events: none;
       user-select: none;
       transition: opacity 0.2s ease;
+    }
+
+    /* Спливаючі картки точок на карті завжди вище повідомлень */
+    .leaflet-popup, .leaflet-popup-pane {
+      z-index: 1500 !important;
     }
 
     .radio-msg-line {
@@ -119,13 +124,19 @@
       filter: none !important;
     }
 
-    /* Жорстке приховування при відкритті будь-якої панелі */
+    /* Приховування при відкритті будь-якої панелі */
     body.panel-overlap-active #btnRadioTopCenter,
     body.panel-overlap-active #radioFeedOverlay {
       display: none !important;
       opacity: 0 !important;
       visibility: hidden !important;
       pointer-events: none !important;
+    }
+
+    /* Якщо на карті відкрито popup мітки — автоматично ховаємо повідомлення радіо */
+    body.has-popup-open #radioFeedOverlay {
+      display: none !important;
+      opacity: 0 !important;
     }
   `;
   document.head.appendChild(style);
@@ -158,6 +169,12 @@
     if (!isRadioActive) {
       feedBox.style.display = "none";
       radioBtn.classList.remove("active");
+      return;
+    }
+
+    // Якщо відкрита картка точки, не показуємо блок
+    if (document.body.classList.contains('has-popup-open')) {
+      feedBox.style.display = "none";
       return;
     }
 
@@ -209,9 +226,17 @@
     });
   }
 
-  // 4. Безпомилкове слідкування за станом вікна ШІ та Дашборду
+  // 4. Слідкування за станом вікна ШІ, Дашборду та відкритими картками на карті
   function checkPanelsState() {
-    // Шукаємо вікно ШІ через інпут команд або селектори
+    // 1. Перевірка відкритих карток точок (Leaflet popup)
+    const activePopup = document.querySelector('.leaflet-popup');
+    if (activePopup) {
+      document.body.classList.add('has-popup-open');
+    } else {
+      document.body.classList.remove('has-popup-open');
+    }
+
+    // 2. Перевірка вікна ШІ
     const aiInput = document.querySelector('input[placeholder*="Команда" i], textarea[placeholder*="Команда" i]');
     const aiPanel = aiInput 
       ? (aiInput.closest('[id*="ai" i], [class*="ai" i], div[style*="position"], div') || aiInput.parentElement.parentElement)
@@ -219,9 +244,7 @@
 
     let isAiExpanded = false;
     if (aiPanel) {
-      // Піднімаємо саме вікно ШІ на безпечну висоту
       aiPanel.style.zIndex = "2500";
-      
       const isHidden = aiPanel.style.display === "none" || 
                        aiPanel.classList.contains("collapsed") ||
                        aiPanel.classList.contains("hidden") ||
@@ -230,7 +253,7 @@
       isAiExpanded = !isHidden && aiPanel.offsetHeight > 100;
     }
 
-    // Шукаємо розгорнутий дашборд точок
+    // 3. Перевірка дашборду точок
     const isDashExpanded = document.documentElement.classList.contains('dash-expanded') || 
                            (!document.documentElement.classList.contains('dash-collapsed') && (document.querySelector('#dashPanel, .dash-panel')?.offsetHeight || 0) > 150);
 
