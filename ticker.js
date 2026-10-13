@@ -29,13 +29,13 @@
   // 1. Стилі інтерфейсу
   const style = document.createElement("style");
   style.textContent = `
-    /* Кнопка 📻: базовий шар нижчий за панелі (1050 замість 2100) */
+    /* Кнопка 📻: шар нижчий за спливаючі вікна (950) */
     #btnRadioTopCenter {
       position: absolute !important;
       top: 15px !important;
       left: calc(50% - 14px) !important;
       transform: translateX(-50%) !important;
-      z-index: 1050 !important;
+      z-index: 950 !important;
       width: 38px;
       height: 38px;
       box-sizing: border-box;
@@ -65,7 +65,7 @@
       top: 60px !important;
       left: 15px !important;
       right: 15px !important;
-      z-index: 1040 !important;
+      z-index: 940 !important;
       display: none;
       flex-direction: column;
       gap: 5px;
@@ -119,10 +119,12 @@
       filter: none !important;
     }
 
-    /* Автоматичне повне приховування, коли активна будь-яка панель */
+    /* Жорстке приховування при відкритті будь-якої панелі */
     body.panel-overlap-active #btnRadioTopCenter,
     body.panel-overlap-active #radioFeedOverlay {
+      display: none !important;
       opacity: 0 !important;
+      visibility: hidden !important;
       pointer-events: none !important;
     }
   `;
@@ -207,20 +209,30 @@
     });
   }
 
-  // 4. Слідкування за станом панелей (ШІ та Дашборд)
+  // 4. Безпомилкове слідкування за станом вікна ШІ та Дашборду
   function checkPanelsState() {
-    // Шукаємо відкрите вікно ШІ
-    const aiPanel = document.querySelector('#aiPanel, #aiCard, .ai-panel, .ai-card, #chatContainer');
+    // Шукаємо вікно ШІ через інпут команд або селектори
+    const aiInput = document.querySelector('input[placeholder*="Команда" i], textarea[placeholder*="Команда" i]');
+    const aiPanel = aiInput 
+      ? (aiInput.closest('[id*="ai" i], [class*="ai" i], div[style*="position"], div') || aiInput.parentElement.parentElement)
+      : document.querySelector('#aiPanel, #aiCard, #aiModal, #aiWindow, #aiChat, .ai-panel, .ai-card, #chatContainer, [id*="ai" i]');
+
     let isAiExpanded = false;
     if (aiPanel) {
-      const isCollapsed = aiPanel.classList.contains('collapsed') || 
-                          document.documentElement.classList.contains('ai-collapsed') ||
-                          aiPanel.offsetHeight < 80;
-      isAiExpanded = !isCollapsed && aiPanel.offsetHeight > 100;
+      // Піднімаємо саме вікно ШІ на безпечну висоту
+      aiPanel.style.zIndex = "2500";
+      
+      const isHidden = aiPanel.style.display === "none" || 
+                       aiPanel.classList.contains("collapsed") ||
+                       aiPanel.classList.contains("hidden") ||
+                       document.documentElement.classList.contains("ai-collapsed") ||
+                       aiPanel.offsetHeight < 80;
+      isAiExpanded = !isHidden && aiPanel.offsetHeight > 100;
     }
 
-    // Шукаємо відкритий дашборд точок
-    const isDashExpanded = !document.documentElement.classList.contains('dash-collapsed');
+    // Шукаємо розгорнутий дашборд точок
+    const isDashExpanded = document.documentElement.classList.contains('dash-expanded') || 
+                           (!document.documentElement.classList.contains('dash-collapsed') && (document.querySelector('#dashPanel, .dash-panel')?.offsetHeight || 0) > 150);
 
     if (isAiExpanded || isDashExpanded) {
       document.body.classList.add('panel-overlap-active');
@@ -229,7 +241,6 @@
     }
   }
 
-  // Запуск перевірки при кліках та змінах у DOM
   setInterval(checkPanelsState, 200);
   window.addEventListener('click', () => setTimeout(checkPanelsState, 50));
 
