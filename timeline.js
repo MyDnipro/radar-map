@@ -1,6 +1,6 @@
 /**
  * Radar Dnipro — Модуль "Хроніка" (timeline.js)
- * Довгий повзунок часу (56vh) + відображення зрізу на карті + годинник по центру
+ * Довгий повзунок (56vh) над "Оновити" + компактне табло часу над повзунком
  */
 (function() {
   const FB_ARCHIVE_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/stats_archive.json";
@@ -36,6 +36,7 @@
       user-select: none;
       transition: all 0.2s ease;
     }
+    #btnTimelineFloating:active { transform: scale(0.92); }
     #btnTimelineFloating.active {
       background: #0284c7 !important;
       color: #fff !important;
@@ -43,7 +44,6 @@
       box-shadow: 0 0 18px rgba(0, 243, 255, 0.6) !important;
     }
 
-    /* Довга панель: 56vh (вище середини екрана) */
     #timelineSliderBox {
       position: absolute !important;
       bottom: 115px !important;
@@ -112,33 +112,51 @@
       touch-action: none !important;
     }
 
-    /* Великий годинник по центру екрана */
+    /* Компактне табло часу: розташоване строго над повзунком */
     #timelineCenterHud {
       position: absolute !important;
-      top: 50% !important;
-      left: 50% !important;
-      transform: translate(-50%, -50%) !important;
-      z-index: 99999 !important;
+      bottom: calc(115px + 56vh + 8px) !important;
+      right: 12px !important;
+      left: auto !important;
+      top: auto !important;
+      transform: none !important;
+      z-index: 2200 !important;
       background: rgba(15, 23, 42, 0.96);
-      backdrop-filter: blur(14px);
-      border: 2px solid #00f3ff;
-      border-radius: 18px;
-      padding: 12px 26px;
+      backdrop-filter: blur(12px);
+      border: 1.5px solid #00f3ff;
+      border-radius: 10px;
+      padding: 4px 8px;
       color: #ffffff;
-      box-shadow: 0 10px 40px rgba(0, 243, 255, 0.55);
+      box-shadow: 0 4px 16px rgba(0, 243, 255, 0.45);
       display: none;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       pointer-events: none;
       user-select: none;
+      white-space: nowrap;
+      min-width: 52px;
+      box-sizing: border-box;
     }
-    .tl-hud-day { font-size: 11px; font-weight: 800; color: #38bdf8; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 2px; }
-    .tl-hud-clock { font-size: 32px; font-weight: 900; color: #ffffff; font-family: monospace; line-height: 1; }
+    .tl-hud-day {
+      font-size: 8px;
+      font-weight: 800;
+      color: #38bdf8;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      line-height: 1.1;
+    }
+    .tl-hud-clock {
+      font-size: 13px;
+      font-weight: 900;
+      color: #ffffff;
+      font-family: monospace;
+      line-height: 1.2;
+    }
   `;
   document.head.appendChild(style);
 
-  // 2. Створення елементів
+  // 2. Створення розмітки
   const toggleBtn = document.createElement("div");
   toggleBtn.id = "btnTimelineFloating";
   toggleBtn.title = "Хроніка (машина часу)";
@@ -162,7 +180,7 @@
   const centerHud = document.createElement("div");
   centerHud.id = "timelineCenterHud";
   centerHud.innerHTML = `
-    <div id="tlHudDay" class="tl-hud-day">СЬОГОДНІ</div>
+    <div id="tlHudDay" class="tl-hud-day">СЬОГ</div>
     <div id="tlHudClock" class="tl-hud-clock">00:00</div>
   `;
   document.body.appendChild(centerHud);
@@ -334,7 +352,6 @@
     toggleBtn.classList.add("active");
     sliderBox.style.display = "flex";
 
-    // Приховуємо онлайн-шари
     if (window.map) {
       if (window.markersLayer && window.map.hasLayer(window.markersLayer)) {
         window.map.removeLayer(window.markersLayer);
@@ -352,50 +369,4 @@
   function closeTimeline() {
     isActive = false;
     toggleBtn.classList.remove("active");
-    sliderBox.style.display = "none";
-    centerHud.style.display = "none";
-
-    // Прибираємо шар хроніки і повертаємо онлайн
-    if (timelineLayer && window.map) {
-      window.map.removeLayer(timelineLayer);
-      timelineLayer = null;
-    }
-    if (window.map) {
-      if (window.markersLayer && !window.map.hasLayer(window.markersLayer)) {
-        window.map.addLayer(window.markersLayer);
-      }
-      if (window.trafficLightLayer && !window.map.hasLayer(window.trafficLightLayer)) {
-        window.map.addLayer(window.trafficLightLayer);
-      }
-    }
-    if (typeof window.loadPoints === "function") window.loadPoints();
-    if (typeof window.showToast === "function") window.showToast("🟢 Онлайн: актуальний час");
-  }
-
-  toggleBtn.addEventListener("click", () => {
-    if (isActive) closeTimeline();
-    else openTimeline();
-  });
-
-  slider.addEventListener("input", (e) => {
-    renderSliceAtMinute(parseInt(e.target.value, 10));
-  });
-
-  btnToday.addEventListener("click", () => {
-    if (selectedDay === "today") return;
-    selectedDay = "today";
-    btnToday.classList.add("active");
-    btnYest.classList.remove("active");
-    updateSliderBounds();
-    renderSliceAtMinute(parseInt(slider.value, 10));
-  });
-
-  btnYest.addEventListener("click", () => {
-    if (selectedDay === "yesterday") return;
-    selectedDay = "yesterday";
-    btnYest.classList.add("active");
-    btnToday.classList.remove("active");
-    updateSliderBounds();
-    renderSliceAtMinute(parseInt(slider.value, 10));
-  });
-})();
+    sliderBox.
