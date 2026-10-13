@@ -1,111 +1,100 @@
 /**
- * Radar Dnipro — Модуль "Хроніка / Машина часу" (timeline.js)
- * Вертикальний таймлапс подій за Сьогодні / Вчора
+ * Radar Dnipro — Модуль "Хроніка" (timeline.js)
+ * Вертикальний повзунок часу праворуч над кнопкою "Оновити"
  */
 (function() {
   const FB_ARCHIVE_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/stats_archive.json";
-  const WINDOW_MS = 40 * 60 * 1000; // Вікно життя мітки: 40 хвилин
+  const WINDOW_MS = 40 * 60 * 1000;
 
-  let isTimelineActive = false;
-  let selectedDay = "today"; // "today" або "yesterday"
-  let archivePoints = [];
-  let isPlaying = false;
-  let playInterval = null;
+  let isActive = false;
+  let selectedDay = "today"; // "today" | "yesterday"
+  let cachedArchive = [];
   let timelineLayer = null;
 
-  // 1. Ін'єкція стилів
+  // Стилі
   const style = document.createElement("style");
   style.textContent = `
-    /* Кнопка вгорі по центру між панелями */
-    #btnTimelineToggle {
+    /* Кнопка активації над кнопкою Оновити */
+    #btnTimelineFloating {
       position: absolute !important;
-      top: 15px !important;
-      left: 50% !important;
-      transform: translateX(-50%) !important;
-      z-index: 2100 !important;
+      bottom: 70px !important;
+      right: 15px !important;
+      z-index: 1005 !important;
+      width: 38px;
       height: 38px;
-      padding: 0 12px;
+      box-sizing: border-box;
       background: rgba(15, 23, 42, 0.94);
       backdrop-filter: blur(10px);
       border: 1.5px solid #38bdf8;
       border-radius: 12px;
       color: #38bdf8;
-      font-size: 11px;
-      font-weight: 800;
-      display: inline-flex;
+      display: flex;
       align-items: center;
-      gap: 6px;
+      justify-content: center;
+      font-size: 18px;
       cursor: pointer;
-      box-shadow: 0 4px 18px rgba(56, 189, 248, 0.35);
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
       user-select: none;
-      white-space: nowrap;
       transition: all 0.2s ease;
     }
-    #btnTimelineToggle.active {
+    #btnTimelineFloating.active {
       background: #0284c7 !important;
-      color: #ffffff !important;
+      color: #fff !important;
       border-color: #00f3ff !important;
-      box-shadow: 0 0 20px rgba(0, 243, 255, 0.6) !important;
+      box-shadow: 0 0 18px rgba(0, 243, 255, 0.6) !important;
     }
 
-    /* Права вертикальна панель керування часом */
-    #timelineSidePanel {
+    /* Вертикальна панель повзунка праворуч над кнопкою */
+    #timelineSliderBox {
       position: absolute !important;
-      right: 12px !important;
-      top: 65px !important;
-      bottom: 80px !important;
+      bottom: 115px !important;
+      right: 15px !important;
       width: 44px;
-      background: rgba(15, 23, 42, 0.95);
+      height: 240px;
+      background: rgba(15, 23, 42, 0.96);
       backdrop-filter: blur(12px);
       border: 1.5px solid #0284c7;
-      border-radius: 16px;
-      z-index: 2200 !important;
+      border-radius: 14px;
+      z-index: 1005 !important;
       display: none;
       flex-direction: column;
       align-items: center;
       justify-content: space-between;
-      padding: 10px 4px;
-      box-shadow: 0 6px 25px rgba(0, 0, 0, 0.65);
+      padding: 8px 4px;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.7);
       user-select: none;
       box-sizing: border-box;
-      animation: slideInRight 0.25s ease-out;
-    }
-    @keyframes slideInRight {
-      from { transform: translateX(60px); opacity: 0; }
-      to { transform: translateX(0); opacity: 1; }
     }
 
-    .tl-day-toggle {
-      width: 34px;
-      height: 24px;
+    .tl-day-btn {
+      width: 36px;
+      height: 20px;
       border-radius: 6px;
       background: #1e293b;
       border: 1px solid #475569;
       color: #94a3b8;
-      font-size: 9px;
+      font-size: 8.5px;
       font-weight: 800;
       display: flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
     }
-    .tl-day-toggle.active {
+    .tl-day-btn.active {
       background: #0284c7;
       border-color: #38bdf8;
-      color: #ffffff;
+      color: #fff;
     }
 
-    /* Вертикальний слайдер */
-    .tl-slider-wrap {
+    .tl-range-container {
       flex: 1;
       width: 100%;
       display: flex;
       align-items: center;
       justify-content: center;
-      position: relative;
-      margin: 10px 0;
+      padding: 6px 0;
     }
-    .tl-slider {
+    .tl-vertical-range {
       -webkit-appearance: slider-vertical;
       writing-mode: bt-lr;
       width: 8px;
@@ -117,151 +106,140 @@
       accent-color: #00f3ff;
     }
 
-    .tl-btn-play {
-      width: 34px;
-      height: 34px;
-      border-radius: 10px;
-      background: #1e293b;
-      border: 1.5px solid #38bdf8;
-      color: #38bdf8;
-      font-size: 14px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-    }
-    .tl-btn-play:active { transform: scale(0.92); }
-
-    /* Плаваючий бейдж точного часу ліворуч від повзунка */
-    #tlTimeBadge {
+    /* Велике інформаційне табло часу по центру екрана */
+    #timelineCenterBadge {
       position: absolute !important;
-      right: 64px !important;
-      background: rgba(15, 23, 42, 0.98);
+      top: 65px !important;
+      left: 50% !important;
+      transform: translateX(-50%) !important;
+      z-index: 2100 !important;
+      background: rgba(15, 23, 42, 0.96);
       border: 1.5px solid #00f3ff;
-      color: #ffffff;
-      padding: 6px 10px;
-      border-radius: 8px;
-      font-size: 11px;
+      border-radius: 20px;
+      padding: 6px 16px;
+      color: #fff;
+      font-size: 13px;
       font-weight: 800;
-      box-shadow: 0 4px 18px rgba(0, 243, 255, 0.4);
+      box-shadow: 0 4px 20px rgba(0, 243, 255, 0.45);
+      display: none;
+      align-items: center;
+      gap: 6px;
       white-space: nowrap;
       pointer-events: none;
-      display: none;
-      z-index: 2300 !important;
     }
   `;
   document.head.appendChild(style);
 
-  // 2. Створення HTML-розмітки
+  // Створення елементів
   const toggleBtn = document.createElement("div");
-  toggleBtn.id = "btnTimelineToggle";
-  toggleBtn.innerHTML = `<span>⏳</span><span>Хроніка</span>`;
+  toggleBtn.id = "btnTimelineFloating";
+  toggleBtn.title = "Хроніка (машина часу)";
+  toggleBtn.innerText = "⏱️";
   document.body.appendChild(toggleBtn);
 
-  const sidePanel = document.createElement("div");
-  sidePanel.id = "timelineSidePanel";
-  sidePanel.innerHTML = `
-    <div style="display:flex; flex-direction:column; gap:4px; align-items:center;">
-      <div id="btnDayToday" class="tl-day-toggle active" title="Сьогодні">СЬОГ</div>
-      <div id="btnDayYesterday" class="tl-day-toggle" title="Вчора">ВЧО</div>
+  const sliderBox = document.createElement("div");
+  sliderBox.id = "timelineSliderBox";
+  sliderBox.innerHTML = `
+    <div style="display:flex; flex-direction:column; gap:3px;">
+      <div id="btnTlDayToday" class="tl-day-btn active">СЬОГ</div>
+      <div id="btnTlDayYest" class="tl-day-btn">ВЧО</div>
     </div>
-
-    <div class="tl-slider-wrap">
-      <input type="range" id="tlRangeSlider" class="tl-slider" min="0" max="1440" value="1440" step="5">
+    <div class="tl-range-container">
+      <input type="range" id="tlRangeSlider" class="tl-vertical-range" min="0" max="1440" value="1440" step="5">
     </div>
-
-    <div style="display:flex; flex-direction:column; gap:6px; align-items:center;">
-      <button id="btnTlPlay" class="tl-btn-play" title="Старт / Пауза">▶</button>
-      <div id="btnTlClose" style="cursor:pointer; color:#94a3b8; font-size:14px; padding:2px;" title="Вийти в Live">✕</div>
-    </div>
+    <div style="font-size:9px; font-weight:800; color:#38bdf8;">00:00</div>
   `;
-  document.body.appendChild(sidePanel);
+  document.body.appendChild(sliderBox);
 
-  const timeBadge = document.createElement("div");
-  timeBadge.id = "tlTimeBadge";
-  document.body.appendChild(timeBadge);
+  const centerBadge = document.createElement("div");
+  centerBadge.id = "timelineCenterBadge";
+  centerBadge.innerHTML = `<span>⏳</span><span id="timelineBadgeText">...</span>`;
+  document.body.appendChild(centerBadge);
 
-  // 3. Відключення пробивання кліків на карту Leaflet
   if (window.L && L.DomEvent) {
     L.DomEvent.disableClickPropagation(toggleBtn);
-    L.DomEvent.disableClickPropagation(sidePanel);
-    L.DomEvent.disableScrollPropagation(sidePanel);
+    L.DomEvent.disableClickPropagation(sliderBox);
+    L.DomEvent.disableScrollPropagation(sliderBox);
   }
 
-  const rangeSlider = document.getElementById("tlRangeSlider");
-  const playBtn = document.getElementById("btnTlPlay");
-  const closeBtn = document.getElementById("btnTlClose");
-  const btnToday = document.getElementById("btnDayToday");
-  const btnYesterday = document.getElementById("btnDayYesterday");
+  const slider = document.getElementById("tlRangeSlider");
+  const btnToday = document.getElementById("btnTlDayToday");
+  const btnYest = document.getElementById("btnTlDayYest");
+  const badgeText = document.getElementById("timelineBadgeText");
 
-  // 4. Отримання часових діапазонів
   function getDayBounds() {
     const now = new Date();
     if (selectedDay === "today") {
       const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0).getTime();
-      const end = now.getTime();
-      return { start, end };
+      return { start, end: now.getTime() };
     } else {
-      const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-      const start = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 0, 0, 0).getTime();
-      const end = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 23, 59, 59).getTime();
+      const y = new Date(now.getTime() - 86400000);
+      const start = new Date(y.getFullYear(), y.getMonth(), y.getDate(), 0, 0, 0).getTime();
+      const end = new Date(y.getFullYear(), y.getMonth(), y.getDate(), 23, 59, 59).getTime();
       return { start, end };
     }
   }
 
-  // 5. Завантаження архівних точок з Firebase
-  async function loadArchiveData() {
-    if (typeof window.showToast === "function") window.showToast("⏳ Завантаження історії подій...");
+  async function ensureArchiveLoaded() {
+    if (cachedArchive.length > 0) return;
     try {
       const res = await fetch(`${FB_ARCHIVE_URL}?t=${Date.now()}`);
       if (res.ok) {
         const data = await res.json();
         if (data && typeof data === "object") {
-          archivePoints = Object.values(data).filter(p => p && p.lat && p.lng && (p.time || p.timestamp));
+          cachedArchive = Object.values(data).filter(p => p && p.lat && p.lng && (p.time || p.timestamp));
         }
       }
     } catch (e) {}
+
+    // Доповнюємо активними точками з пам'яті
+    if (Array.isArray(window.allPoints)) {
+      window.allPoints.forEach(p => {
+        if (!cachedArchive.some(x => x.lat === p.lat && x.lng === p.lng && (x.time || x.timestamp) === (p.time || p.timestamp))) {
+          cachedArchive.push(p);
+        }
+      });
+    }
   }
 
-  // 6. Фільтрація та рендер точок для поточного положення повзунка
-  function renderTimelineAtMinute(selectedMinute) {
+  function updateSliderBounds() {
+    const bounds = getDayBounds();
+    const totalMinutes = selectedDay === "today"
+      ? Math.max(5, Math.floor((bounds.end - bounds.start) / 60000))
+      : 1440;
+    slider.max = totalMinutes;
+    slider.value = totalMinutes;
+  }
+
+  function renderSliceAtMinute(minute) {
     if (!window.map) return;
-    if (!timelineLayer) {
-      timelineLayer = L.layerGroup().addTo(window.map);
-    }
+    if (!timelineLayer) timelineLayer = L.layerGroup().addTo(window.map);
     timelineLayer.clearLayers();
 
     const bounds = getDayBounds();
-    const totalMinutes = selectedDay === "today" 
-      ? Math.floor((bounds.end - bounds.start) / 60000) 
+    const totalMinutes = selectedDay === "today"
+      ? Math.max(5, Math.floor((bounds.end - bounds.start) / 60000))
       : 1440;
+    const clamped = Math.min(minute, totalMinutes);
+    const targetTime = bounds.start + clamped * 60000;
 
-    const clampedMinute = Math.min(selectedMinute, totalMinutes);
-    const targetTimestamp = bounds.start + clampedMinute * 60000;
+    const d = new Date(targetTime);
+    const timeStr = String(d.getHours()).padStart(2, '0') + ":" + String(d.getMinutes()).padStart(2, '0');
+    const dayLabel = selectedDay === "today" ? "Сьогодні" : "Вчора";
 
-    // Оновлюємо бейдж часу
-    const targetDate = new Date(targetTimestamp);
-    const timeStr = String(targetDate.getHours()).padStart(2, '0') + ":" + String(targetDate.getMinutes()).padStart(2, '0');
-    timeBadge.innerHTML = `🕒 <b>${selectedDay === "today" ? "Сьогодні" : "Вчора"} ${timeStr}</b>`;
-    timeBadge.style.display = "block";
+    badgeText.innerText = `${dayLabel}, ${timeStr}`;
+    centerBadge.style.display = "flex";
 
-    // Позиціонування бейджа біля бігунка
-    const rect = rangeSlider.getBoundingClientRect();
-    const progress = clampedMinute / totalMinutes; // 0 (низ) до 1 (верх)
-    const badgeY = rect.bottom - (rect.height * progress) - 14;
-    timeBadge.style.top = `${badgeY}px`;
-
-    // Точки, що потрапляють у 40-хвилинне вікно [T - 40хв ... T]
-    const windowStart = targetTimestamp - WINDOW_MS;
-    const activeAtMoment = archivePoints.filter(p => {
+    const sliceStart = targetTime - WINDOW_MS;
+    const pointsInWindow = cachedArchive.filter(p => {
       const t = p.time || p.timestamp || 0;
-      return t >= windowStart && t <= targetTimestamp;
+      return t >= sliceStart && t <= targetTime;
     });
 
-    activeAtMoment.forEach(pt => {
+    pointsInWindow.forEach(pt => {
       const isClean = (typeof window.isCleanPoint === "function") ? window.isCleanPoint(pt) : (pt.color === "green");
       const colorClass = isClean ? "color-green" : "color-red";
-      
+
       const dotIcon = L.divIcon({
         className: 'custom-dot-marker',
         html: `<div class="radar-circle ${colorClass}"></div>`,
@@ -269,119 +247,70 @@
         iconAnchor: [9, 9]
       });
 
-      const ptTime = new Date(pt.time || pt.timestamp);
-      const ptTimeStr = String(ptTime.getHours()).padStart(2, '0') + ":" + String(ptTime.getMinutes()).padStart(2, '0');
+      const ptDate = new Date(pt.time || pt.timestamp);
+      const ptTimeStr = String(ptDate.getHours()).padStart(2, '0') + ":" + String(ptDate.getMinutes()).padStart(2, '0');
 
       const marker = L.marker([pt.lat, pt.lng], { icon: dotIcon });
       marker.bindPopup(`
-        <div style="font-size:11px; color:#0f172a; padding:4px;">
+        <div style="font-size:11px; color:#0f172a; padding:3px;">
           <b>${isClean ? "🟢 ЧИСТО" : "🔴 БЛОКПОСТ"}</b> (🕒 ${ptTimeStr})<br>
           «${pt.text || pt.raw_text || ""}»
         </div>
       `);
       timelineLayer.addLayer(marker);
     });
-
-    const countText = document.getElementById("countText");
-    if (countText) countText.innerHTML = `<span>⏳ Хроніка: ${activeAtMoment.length}</span>`;
   }
 
-  // 7. Керування режимом Play / Pause
-  function togglePlay() {
-    isPlaying = !isPlaying;
-    playBtn.innerText = isPlaying ? "⏸" : "▶";
-
-    if (isPlaying) {
-      playInterval = setInterval(() => {
-        let val = parseInt(rangeSlider.value, 10);
-        const max = parseInt(rangeSlider.max, 10);
-        if (val >= max) val = 0;
-        val += 5;
-        rangeSlider.value = val;
-        renderTimelineAtMinute(val);
-      }, 350);
-    } else {
-      if (playInterval) clearInterval(playInterval);
-    }
-  }
-
-  function stopPlay() {
-    isPlaying = false;
-    playBtn.innerText = "▶";
-    if (playInterval) clearInterval(playInterval);
-  }
-
-  // 8. Вхід та вихід із режиму Хроніки
-  async function activateTimeline() {
-    isTimelineActive = true;
+  async function openTimeline() {
+    isActive = true;
     toggleBtn.classList.add("active");
-    sidePanel.style.display = "flex";
+    sliderBox.style.display = "flex";
 
-    // Тимчасово ховаємо основний живий шар точок
     if (window.markersLayer && window.map) window.map.removeLayer(window.markersLayer);
-
-    await loadArchiveData();
+    await ensureArchiveLoaded();
     updateSliderBounds();
-    renderTimelineAtMinute(parseInt(rangeSlider.value, 10));
+    renderSliceAtMinute(parseInt(slider.value, 10));
   }
 
-  function deactivateTimeline() {
-    isTimelineActive = false;
-    stopPlay();
+  function closeTimeline() {
+    isActive = false;
     toggleBtn.classList.remove("active");
-    sidePanel.style.display = "none";
-    timeBadge.style.display = "none";
+    sliderBox.style.display = "none";
+    centerBadge.style.display = "none";
 
-    // Прибираємо шар таймлапсу і повертаємо live-шар
     if (timelineLayer && window.map) {
       window.map.removeLayer(timelineLayer);
       timelineLayer = null;
     }
     if (window.markersLayer && window.map) window.map.addLayer(window.markersLayer);
     if (typeof window.loadPoints === "function") window.loadPoints();
+    if (typeof window.showToast === "function") window.showToast("🟢 Онлайн: актуальний час");
   }
 
-  function updateSliderBounds() {
-    const bounds = getDayBounds();
-    const totalMinutes = selectedDay === "today"
-      ? Math.floor((bounds.end - bounds.start) / 60000)
-      : 1440;
-
-    rangeSlider.max = totalMinutes;
-    rangeSlider.value = totalMinutes; // За замовчуванням ставимо вгору (на поточний час)
-  }
-
-  // Події
   toggleBtn.addEventListener("click", () => {
-    if (isTimelineActive) deactivateTimeline();
-    else activateTimeline();
+    if (isActive) closeTimeline();
+    else openTimeline();
   });
 
-  closeBtn.addEventListener("click", deactivateTimeline);
-  playBtn.addEventListener("click", togglePlay);
-
-  rangeSlider.addEventListener("input", (e) => {
-    stopPlay();
-    renderTimelineAtMinute(parseInt(e.target.value, 10));
+  slider.addEventListener("input", (e) => {
+    renderSliceAtMinute(parseInt(e.target.value, 10));
   });
 
   btnToday.addEventListener("click", () => {
     if (selectedDay === "today") return;
     selectedDay = "today";
     btnToday.classList.add("active");
-    btnYesterday.classList.remove("active");
-    stopPlay();
+    btnYest.classList.remove("active");
     updateSliderBounds();
-    renderTimelineAtMinute(parseInt(rangeSlider.value, 10));
+    renderSliceAtMinute(parseInt(slider.value, 10));
   });
 
-  btnYesterday.addEventListener("click", () => {
+  btnYest.addEventListener("click", () => {
     if (selectedDay === "yesterday") return;
     selectedDay = "yesterday";
-    btnYesterday.classList.add("active");
+    btnYest.classList.add("active");
     btnToday.classList.remove("active");
-    stopPlay();
     updateSliderBounds();
-    renderTimelineAtMinute(parseInt(rangeSlider.value, 10));
+    renderSliceAtMinute(parseInt(slider.value, 10));
   });
 })();
