@@ -1,6 +1,6 @@
 /**
  * Radar Dnipro — Модуль "Хроніка" (timeline.js)
- * Довгий повзунок (56vh) над "Оновити" + компактне табло часу над повзунком
+ * Довгий повзунок (56vh) над "Оновити" + компактне табло часу строго над шкалою
  */
 (function() {
   const FB_ARCHIVE_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/stats_archive.json";
@@ -44,14 +44,15 @@
       box-shadow: 0 0 18px rgba(0, 243, 255, 0.6) !important;
     }
 
+    /* Панель повзунка */
     #timelineSliderBox {
       position: absolute !important;
       bottom: 115px !important;
       right: 15px !important;
-      width: 46px;
+      width: 48px;
       height: 56vh !important;
       max-height: 520px;
-      min-height: 300px;
+      min-height: 320px;
       background: rgba(15, 23, 42, 0.96);
       backdrop-filter: blur(12px);
       border: 1.5px solid #0284c7;
@@ -61,21 +62,51 @@
       flex-direction: column;
       align-items: center;
       justify-content: space-between;
-      padding: 10px 4px 8px;
+      padding: 6px 3px 6px;
       box-shadow: 0 8px 30px rgba(0, 0, 0, 0.75);
       user-select: none;
       box-sizing: border-box;
       touch-action: none !important;
     }
 
+    /* Компактне табло часу: вбудовано в шапку колонки */
+    #timelineHeaderBadge {
+      width: 42px;
+      background: #0b1120;
+      border: 1px solid #00f3ff;
+      border-radius: 6px;
+      padding: 2px 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 8px rgba(0, 243, 255, 0.35);
+      margin-bottom: 4px;
+      box-sizing: border-box;
+    }
+    .tl-badge-day {
+      font-size: 7.5px;
+      font-weight: 800;
+      color: #38bdf8;
+      line-height: 1;
+      text-transform: uppercase;
+    }
+    .tl-badge-clock {
+      font-size: 11px;
+      font-weight: 900;
+      color: #ffffff;
+      font-family: monospace;
+      line-height: 1.15;
+    }
+
     .tl-day-btn {
-      width: 38px;
-      height: 24px;
-      border-radius: 7px;
+      width: 40px;
+      height: 20px;
+      border-radius: 5px;
       background: #1e293b;
       border: 1px solid #475569;
       color: #94a3b8;
-      font-size: 9px;
+      font-size: 8.5px;
       font-weight: 800;
       display: flex;
       align-items: center;
@@ -95,14 +126,14 @@
       align-items: center;
       justify-content: center;
       position: relative;
-      margin: 10px 0;
+      margin: 6px 0;
       touch-action: none !important;
     }
 
     .tl-vertical-range {
       -webkit-appearance: slider-vertical;
       writing-mode: bt-lr;
-      width: 14px;
+      width: 12px;
       height: 100%;
       background: #1e293b;
       border-radius: 6px;
@@ -111,52 +142,10 @@
       accent-color: #00f3ff;
       touch-action: none !important;
     }
-
-    /* Компактне табло часу: розташоване строго над повзунком */
-    #timelineCenterHud {
-      position: absolute !important;
-      bottom: calc(115px + 56vh + 8px) !important;
-      right: 12px !important;
-      left: auto !important;
-      top: auto !important;
-      transform: none !important;
-      z-index: 2200 !important;
-      background: rgba(15, 23, 42, 0.96);
-      backdrop-filter: blur(12px);
-      border: 1.5px solid #00f3ff;
-      border-radius: 10px;
-      padding: 4px 8px;
-      color: #ffffff;
-      box-shadow: 0 4px 16px rgba(0, 243, 255, 0.45);
-      display: none;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      pointer-events: none;
-      user-select: none;
-      white-space: nowrap;
-      min-width: 52px;
-      box-sizing: border-box;
-    }
-    .tl-hud-day {
-      font-size: 8px;
-      font-weight: 800;
-      color: #38bdf8;
-      letter-spacing: 0.5px;
-      text-transform: uppercase;
-      line-height: 1.1;
-    }
-    .tl-hud-clock {
-      font-size: 13px;
-      font-weight: 900;
-      color: #ffffff;
-      font-family: monospace;
-      line-height: 1.2;
-    }
   `;
   document.head.appendChild(style);
 
-  // 2. Створення розмітки
+  // 2. Розмітка
   const toggleBtn = document.createElement("div");
   toggleBtn.id = "btnTimelineFloating";
   toggleBtn.title = "Хроніка (машина часу)";
@@ -166,24 +155,24 @@
   const sliderBox = document.createElement("div");
   sliderBox.id = "timelineSliderBox";
   sliderBox.innerHTML = `
-    <div style="display:flex; flex-direction:column; gap:4px;">
+    <!-- Компактний годинник прямо вгорі панелі -->
+    <div id="timelineHeaderBadge">
+      <span id="tlBadgeDay" class="tl-badge-day">СЬОГ</span>
+      <span id="tlBadgeClock" class="tl-badge-clock">00:00</span>
+    </div>
+
+    <div style="display:flex; flex-direction:column; gap:3px;">
       <div id="btnTlDayToday" class="tl-day-btn active">СЬОГ</div>
       <div id="btnTlDayYest" class="tl-day-btn">ВЧО</div>
     </div>
+
     <div class="tl-range-container" id="tlTrackContainer">
       <input type="range" id="tlRangeSlider" class="tl-vertical-range" min="0" max="1440" value="1440" step="5">
     </div>
-    <div style="font-size:9px; font-weight:800; color:#38bdf8;">00:00</div>
+
+    <div style="font-size:8.5px; font-weight:800; color:#38bdf8;">00:00</div>
   `;
   document.body.appendChild(sliderBox);
-
-  const centerHud = document.createElement("div");
-  centerHud.id = "timelineCenterHud";
-  centerHud.innerHTML = `
-    <div id="tlHudDay" class="tl-hud-day">СЬОГ</div>
-    <div id="tlHudClock" class="tl-hud-clock">00:00</div>
-  `;
-  document.body.appendChild(centerHud);
 
   if (window.L && L.DomEvent) {
     L.DomEvent.disableClickPropagation(toggleBtn);
@@ -195,8 +184,8 @@
   const trackContainer = document.getElementById("tlTrackContainer");
   const btnToday = document.getElementById("btnTlDayToday");
   const btnYest = document.getElementById("btnTlDayYest");
-  const hudDay = document.getElementById("tlHudDay");
-  const hudClock = document.getElementById("tlHudClock");
+  const badgeDay = document.getElementById("tlBadgeDay");
+  const badgeClock = document.getElementById("tlBadgeClock");
 
   function parseTimeMs(p) {
     let t = p.time || p.timestamp || p.date || 0;
@@ -282,9 +271,8 @@
     const d = new Date(targetTime);
     const timeStr = String(d.getHours()).padStart(2, '0') + ":" + String(d.getMinutes()).padStart(2, '0');
 
-    hudDay.innerText = selectedDay === "today" ? "СЬОГОДНІ" : "ВЧОРА";
-    hudClock.innerText = timeStr;
-    centerHud.style.display = "flex";
+    badgeDay.innerText = selectedDay === "today" ? "СЬОГ" : "ВЧО";
+    badgeClock.innerText = timeStr;
 
     const sliceStart = targetTime - WINDOW_MS;
     const pointsInWindow = fullArchiveList.filter(p => {
@@ -369,4 +357,48 @@
   function closeTimeline() {
     isActive = false;
     toggleBtn.classList.remove("active");
-    sliderBox.
+    sliderBox.style.display = "none";
+
+    if (timelineLayer && window.map) {
+      window.map.removeLayer(timelineLayer);
+      timelineLayer = null;
+    }
+    if (window.map) {
+      if (window.markersLayer && !window.map.hasLayer(window.markersLayer)) {
+        window.map.addLayer(window.markersLayer);
+      }
+      if (window.trafficLightLayer && !window.map.hasLayer(window.trafficLightLayer)) {
+        window.map.addLayer(window.trafficLightLayer);
+      }
+    }
+    if (typeof window.loadPoints === "function") window.loadPoints();
+    if (typeof window.showToast === "function") window.showToast("🟢 Онлайн: актуальний час");
+  }
+
+  toggleBtn.addEventListener("click", () => {
+    if (isActive) closeTimeline();
+    else openTimeline();
+  });
+
+  slider.addEventListener("input", (e) => {
+    renderSliceAtMinute(parseInt(e.target.value, 10));
+  });
+
+  btnToday.addEventListener("click", () => {
+    if (selectedDay === "today") return;
+    selectedDay = "today";
+    btnToday.classList.add("active");
+    btnYest.classList.remove("active");
+    updateSliderBounds();
+    renderSliceAtMinute(parseInt(slider.value, 10));
+  });
+
+  btnYest.addEventListener("click", () => {
+    if (selectedDay === "yesterday") return;
+    selectedDay = "yesterday";
+    btnYest.classList.add("active");
+    btnToday.classList.remove("active");
+    updateSliderBounds();
+    renderSliceAtMinute(parseInt(slider.value, 10));
+  });
+})();
