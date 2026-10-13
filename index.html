@@ -1431,7 +1431,9 @@
 
     const markersLayer = L.layerGroup().addTo(map);
     const trafficLightLayer = L.layerGroup().addTo(map);
-
+    window.map = map;
+    window.markersLayer = markersLayer;
+    window.trafficLightLayer = trafficLightLayer;
     if (!showTrafficLights) map.removeLayer(trafficLightLayer);
 
     function showToast(text) {
