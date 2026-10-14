@@ -1,5 +1,5 @@
 // =========================================================================
-// 🚗 МОДУЛЬ GPS-НАВІГАЦІЇ ТА ШТУРМАНА (GPS ENGINE v1.2)
+// 🚗 МОДУЛЬ GPS-НАВІГАЦІЇ ТА ШТУРМАНА (GPS ENGINE v1.3)
 // =========================================================================
 
 (function() {
@@ -61,7 +61,7 @@
       background: radial-gradient(ellipse at bottom, rgba(254, 240, 138, 0.45) 0%, rgba(254, 240, 138, 0) 75%);
       pointer-events: none;
     }
-    /* Пульсуючий радарний маячок навколо авто в режимі 1 (Огляд) */
+    /* Пульсуючий радарний маячок навколо авто (активний завжди, коли є машинка) */
     .nav-car-pulse {
       position: absolute;
       top: 50%;
@@ -77,8 +77,6 @@
       pointer-events: none;
       opacity: 0;
       z-index: -1;
-    }
-    .nav-car-wrapper.is-mode-1 .nav-car-pulse {
       animation: carBeaconPing 1.7s infinite ease-out;
     }
     @keyframes carBeaconPing {
@@ -90,7 +88,7 @@
         opacity: 0.45;
       }
       100% {
-        transform: scale(4.0);
+        transform: scale(3.5);
         opacity: 0;
       }
     }
@@ -190,7 +188,6 @@
   speedHud.innerText = `0 км/год`;
   document.body.appendChild(speedHud);
 
-  // Розрахунок масштабу машинки залежно від масштабу карти
   function getDynamicCarScale() {
     if (!window.map) return 1.0;
     const z = window.map.getZoom();
@@ -205,7 +202,6 @@
     const rotateDeg = gpsMode === 3 ? 0 : currentHeading;
     const scale = getDynamicCarScale();
     wrapper.style.transform = `rotate(${rotateDeg}deg) scale(${scale})`;
-    wrapper.classList.toggle("is-mode-1", gpsMode === 1);
   }
 
   function setupMapInteractionListeners() {
