@@ -285,4 +285,34 @@
   }, 4000);
 
   setTimeout(renderRadioFeed, 800);
+  // === МОДУЛЬ УТРИМАННЯ ЕКРАНУ УВІМКНЕНИМ В ДОРОЗІ (WAKE LOCK API) ===
+  let wakeLock = null;
+
+  async function requestWakeLock() {
+    if ('wakeLock' in navigator) {
+      try {
+        if (!wakeLock) {
+          wakeLock = await navigator.wakeLock.request('screen');
+          wakeLock.addEventListener('release', () => {
+            wakeLock = null;
+          });
+          console.log('🔆 Екран зафіксовано (режим В дорозі активний)');
+        }
+      } catch (err) {
+        console.warn('WakeLock очікує торкання екрану:', err.message);
+      }
+    }
+  }
+
+  // Запускаємо відразу та при першому ж дотику пальцем до карти
+  requestWakeLock();
+  document.addEventListener('click', requestWakeLock, { passive: true });
+  document.addEventListener('touchstart', requestWakeLock, { passive: true });
+
+  // Якщо згортали браузер і повернулися назад — знову вмикаємо блокування сну
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      requestWakeLock();
+    }
+  });
 })();
