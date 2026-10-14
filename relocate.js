@@ -2,6 +2,34 @@
 // 🎯 МОДУЛЬ ПЕРЕМІЩЕННЯ ТА НАВЧАННЯ МІТОК (RELOCATE ENGINE v4.0)
 // =========================================================================
 
+const FB_CUSTOM_STREETS_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/custom_streets.json";
+
+/**
+ * Інтелектуальне вичленення назви вулиці / топоніму з повідомлення
+ * Вирізає час, статуси, смайлики та стоп-слова, залишаючи чисте ядро.
+ */
+function extractCleanStreetAlias(rawText, fallbackName) {
+  if (!rawText) return (fallbackName || "").toLowerCase().trim();
+
+  let t = rawText
+    .replace(/[\r\n]+/g, " ")
+    // Вирізаємо час (16:20, 16-20, на 16.20 тощо)
+    .replace(/\b(?:\d{1,2}[:.-]\d{2})\b/g, " ")
+    .replace(/\b(?:на\s+зараз|на\s+сейчас|тільки\s+що|только\s+что)\b/gi, " ")
+    // Вирізаємо статуси небезпеки та чистоти
+    .replace(/\b(?:чисто|чистенько|пусто|вільно|спокійно|проїзд|проїхав|проехали|норм|добре|ясно|сухо)\b/gi, " ")
+    .replace(/\b(?:бп|блокпост|патруль|мент|полиц|поліц|тцк|бусик|зупиня|стоят|облав|мусор)\b/gi, " ")
+    .replace(/[🟢🔴👍👌🤝🌞☀️🌤️❓]/g, " ")
+    // Вирізаємо стоп-слова та прийменники
+    .replace(/\b(?:біля|возле|около|район|на|в\s+сторону|до|угол|перехрестя|перекресток|по)\b/gi, " ")
+    .replace(/[^a-zA-Zа-яА-ЯіІїЇєЄґҐ0-9\s-]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+
+  return t.length >= 3 ? t : (fallbackName || "").toLowerCase().trim();
+}
+
 function openTrainingModal(point, marker) {
   activeActionPoint = point;
   activeActionMarker = marker || findMarkerByPoint(point);
@@ -117,14 +145,11 @@ function finalizeMoveConfirm(isConfirmed) {
     point.needs_training = false;
     point.address = streetName;
 
-    // Очищаємо текст повідомлення, щоб зберегти його чистим синонімом
-    let phrase = (point.raw_text || point.text || "")
-      .replace(/^(?:❓|\bчисто\b|\bбп\b|\bпатруль\b|\(чисто\))/gi, "")
-      .replace(/(?:чисто|спокійно|вільно|пусто)/gi, "")
-      .trim().toLowerCase();
-    if (phrase.length < 3) phrase = streetName.toLowerCase();
+    // Вичленяємо чисту назву вулиці з тексту повідомлення
+    const rawMsg = point.raw_text || point.text || "";
+    const cleanAlias = extractCleanStreetAlias(rawMsg, streetName);
 
-    // 1. Оновлюємо саму точку в Firebase
+    // 1. Оновлюємо координати поточної точки в Firebase points.json
     if (point._fbKey) {
       fetch(FIREBASE_POINTS_URL.replace(".json", `/${point._fbKey}.json`), {
         method: "PATCH",
@@ -133,20 +158,44 @@ function finalizeMoveConfirm(isConfirmed) {
       }).catch(() => {});
     }
 
-    // 2. Зберігаємо правило в Мозок (Firebase KB) для майбутніх збігів
+    // 2. ЗБЕРІГАЄМО ПРЯМО В МОЗОК (custom_streets.json "А = Б")
+    const memEntry = {
+      name: streetName,
+      lat: Number(point.lat.toFixed(5)),
+      lng: Number(point.lng.toFixed(5)),
+      time: Date.now()
+    };
+    const safeKey = encodeURIComponent(cleanAlias).replace(/\./g, "%2E");
+
+    fetch(FB_CUSTOM_STREETS_URL.replace(".json", `/${safeKey}.json`), {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(memEntry)
+    }).catch(() => {});
+
+    // 3. Також дублюємо в Knowledge Base
     fetch(FIREBASE_KB_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ phrase: phrase, address: streetName, lat: point.lat, lng: point.lng, updated_at: Date.now() })
+      body: JSON.stringify({ phrase: cleanAlias, address: streetName, lat: point.lat, lng: point.lng, updated_at: Date.now() })
     }).catch(() => {});
 
-    // 3. Додаємо в локальний масив Мозку
+    // 4. Оновлюємо локальний словник топонімів та лічильник Мозку
+    if (window.DNIPRO_STREETS_MAP) {
+      window.DNIPRO_STREETS_MAP[cleanAlias] = memEntry;
+    }
+    const memBadge = document.getElementById("memCountBadge");
+    if (memBadge) {
+      const currentCount = parseInt(memBadge.innerText || "0", 10);
+      memBadge.innerText = currentCount + 1;
+    }
+
     if (typeof learnedRules !== "undefined" && Array.isArray(learnedRules)) {
-      learnedRules.push({ phrase: phrase, address: streetName, lat: point.lat, lng: point.lng });
+      learnedRules.push({ phrase: cleanAlias, address: streetName, lat: point.lat, lng: point.lng });
       localStorage.setItem("radar_learned_rules", JSON.stringify(learnedRules));
     }
 
-    showToast(`✅ «${streetName}» підтверджено та додано до Мозку!`);
+    showToast(`✅ «${cleanAlias} = ${streetName}» збережено в Мозок!`);
     pendingRelocation = null;
     renderMarkers();
     renderTrafficLights();
@@ -268,7 +317,7 @@ if (trainCustomInput && trainSearchResults) {
         trainSearchResults.appendChild(div);
       });
 
-      // 3. ТРЕТІЙ ПРІОРИТЕТ: Якщо збігів мало — онлайн-пошук по всьому Дніпру (OpenStreetMap)
+      // 3. ТРЕТІЙ ПРІОРИТЕТ: Онлайн-пошук по всьому Дніпру (OpenStreetMap)
       if (matches.length < 4 && query.length >= 3) {
         try {
           const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ", Дніпро")}&countrycodes=ua&limit=4`;
