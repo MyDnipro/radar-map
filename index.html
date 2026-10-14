@@ -1837,41 +1837,17 @@ function isCleanPoint(p) {
 
       const rawTxt = point.raw_text || point.text || "";
       document.getElementById("trainTextQuote").innerText = `«${rawTxt}»`;
-      const box = document.getElementById("trainSuggestionsBox");
-      box.innerHTML = "";
-
-      const lower = rawTxt.toLowerCase();
-      const matchedStreets = [];
-
-      const sortedKeys = Object.keys(DNIPRO_STREETS_MAP).sort((a, b) => b.length - a.length);
-      sortedKeys.forEach(key => {
-        if (new RegExp(key, "i").test(lower)) {
-          const item = DNIPRO_STREETS_MAP[key];
-          if (!matchedStreets.some(s => s.name === item.name)) matchedStreets.push(item);
-        }
-      });
-
-      if (matchedStreets.length === 0) {
-        matchedStreets.push(
-          DNIPRO_STREETS_MAP["верх киров"],
-          DNIPRO_STREETS_MAP["низ киров"],
-          DNIPRO_STREETS_MAP["верх рабоч"],
-          DNIPRO_STREETS_MAP["низ рабоч"],
-          DNIPRO_STREETS_MAP["нагорк"],
-          DNIPRO_STREETS_MAP["верх артем"],
-          DNIPRO_STREETS_MAP["гагарин"]
-        );
+const inp = document.getElementById("trainCustomInput");
+      if (inp) {
+        inp.value = "";
+        setTimeout(() => inp.focus(), 150);
       }
-
-      matchedStreets.forEach(st => {
-        const chip = document.createElement("div");
-        chip.className = "train-chip";
-        chip.innerHTML = `📍 ${st.name}` + (st.old ? `<br><span style="font-size:9px; color:#f59e0b;">💡 ${st.old}</span>` : "");
-        chip.onclick = () => applyPointRelocation(st.name, st.lat, st.lng);
-        box.appendChild(chip);
-      });
-
-      document.getElementById("trainCustomInput").value = "";
+      const res = document.getElementById("trainSearchResults");
+      if (res) {
+        res.innerHTML = "";
+        res.style.display = "none";
+      }
+      document.getElementById("trainModal").style.display = "flex";
       const modal = document.getElementById("trainModal");
       modal.style.display = "flex";
       modal.scrollTop = 0;
