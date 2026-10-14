@@ -1,0 +1,275 @@
+// =========================================================================
+// 🎯 МОДУЛЬ ПЕРЕМІЩЕННЯ ТА НАВЧАННЯ МІТОК (RELOCATE ENGINE v4.0)
+// =========================================================================
+
+function openTrainingModal(point, marker) {
+  activeActionPoint = point;
+  activeActionMarker = marker || findMarkerByPoint(point);
+
+  const rawTxt = point.raw_text || point.text || "";
+  const quoteEl = document.getElementById("trainTextQuote");
+  if (quoteEl) quoteEl.innerText = `«${rawTxt}»`;
+
+  const inp = document.getElementById("trainCustomInput");
+  if (inp) {
+    inp.value = "";
+    setTimeout(() => inp.focus(), 150);
+  }
+
+  const res = document.getElementById("trainSearchResults");
+  if (res) {
+    res.innerHTML = "";
+    res.style.display = "none";
+  }
+
+  const modal = document.getElementById("trainModal");
+  if (modal) {
+    modal.style.display = "flex";
+    modal.scrollTop = 0;
+  }
+}
+
+function closeTrainModal(e) {
+  if (e && e.target && e.target.id !== "trainModal" && !e.target.closest(".train-modal-card")) return;
+  const modal = document.getElementById("trainModal");
+  if (modal) modal.style.display = "none";
+  const res = document.getElementById("trainSearchResults");
+  if (res) res.style.display = "none";
+  setTimeout(() => { if (window.map) window.map.invalidateSize(); }, 120);
+}
+
+function smoothGlideMarker(marker, startLatLng, endLatLng, duration = 900, onDone = null) {
+  if (!marker) { if (onDone) onDone(); return; }
+  const startTime = performance.now();
+  function animateStep(currentTime) {
+    const elapsed = currentTime - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    const ease = 1 - Math.pow(1 - progress, 3);
+
+    const currentLat = startLatLng.lat + (endLatLng.lat - startLatLng.lat) * ease;
+    const currentLng = startLatLng.lng + (endLatLng.lng - startLatLng.lng) * ease;
+    marker.setLatLng([currentLat, currentLng]);
+
+    if (progress < 1) {
+      requestAnimationFrame(animateStep);
+    } else {
+      marker.setLatLng(endLatLng);
+      if (onDone) onDone();
+    }
+  }
+  requestAnimationFrame(animateStep);
+}
+
+async function applyPointRelocation(streetName, lat, lng) {
+  if (!activeActionPoint) return;
+  closeTrainModal();
+
+  const p = activeActionPoint;
+  let m = activeActionMarker || findMarkerByPoint(p);
+
+  const startPos = L.latLng(p.lat, p.lng);
+  const targetPos = L.latLng(Number(lat.toFixed(5)), Number(lng.toFixed(5)));
+
+  p.lat = targetPos.lat;
+  p.lng = targetPos.lng;
+
+  pendingRelocation = {
+    point: p,
+    marker: m,
+    startPos: startPos,
+    targetPos: targetPos,
+    streetName: streetName,
+    originalCenter: window.map.getCenter(),
+    originalZoom: window.map.getZoom()
+  };
+
+  const banner = document.getElementById("transferBanner");
+  if (banner) {
+    banner.innerText = `⏳ Перенесення до ${streetName}...`;
+    banner.style.display = "block";
+  }
+
+  window.map.flyTo([targetPos.lat, targetPos.lng], 16, { animate: true, duration: 0.85 });
+
+  smoothGlideMarker(m, startPos, targetPos, 850, () => {
+    if (banner) banner.style.display = "none";
+    if (m) m.setLatLng(targetPos);
+
+    setTimeout(() => {
+      const confirmBox = document.getElementById("confirmMoveModal");
+      const nameEl = document.getElementById("confirmStreetName");
+      if (nameEl) nameEl.innerText = `📍 ${streetName}`;
+      if (confirmBox) confirmBox.style.display = "block";
+    }, 300);
+  });
+}
+
+function finalizeMoveConfirm(isConfirmed) {
+  const confirmBox = document.getElementById("confirmMoveModal");
+  if (confirmBox) confirmBox.style.display = "none";
+
+  if (!pendingRelocation) return;
+  const { point, marker, startPos, targetPos, streetName, originalCenter, originalZoom } = pendingRelocation;
+
+  if (isConfirmed) {
+    point.lat = targetPos.lat;
+    point.lng = targetPos.lng;
+    point.needs_training = false;
+    point.address = streetName;
+
+    let phrase = (point.raw_text || point.text || "")
+      .replace(/^(?:❓|\bчисто\b|\bбп\b|\bпатруль\b|\(чисто\))/gi, "")
+      .replace(/(?:чисто|спокійно|вільно|пусто)/gi, "")
+      .trim().toLowerCase();
+    if (phrase.length < 3) phrase = streetName.toLowerCase();
+
+    if (point._fbKey) {
+      fetch(FIREBASE_POINTS_URL.replace(".json", `/${point._fbKey}.json`), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lat: point.lat, lng: point.lng, needs_training: false, address: streetName })
+      }).catch(() => {});
+    }
+
+    fetch(FIREBASE_KB_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phrase: phrase, address: streetName, lat: point.lat, lng: point.lng, updated_at: Date.now() })
+    }).catch(() => {});
+
+    learnedRules.push({ phrase: phrase, address: streetName, lat: point.lat, lng: point.lng });
+    localStorage.setItem("radar_learned_rules", JSON.stringify(learnedRules));
+
+    showToast(`✅ «${streetName}» підтверджено!`);
+    pendingRelocation = null;
+    renderMarkers();
+    renderTrafficLights();
+    updateRouteStatus();
+  } else {
+    point.lat = startPos.lat;
+    point.lng = startPos.lng;
+    if (marker) marker.setLatLng(startPos);
+    window.map.flyTo(originalCenter, originalZoom, { animate: true, duration: 0.8 });
+    showToast("↩️ Перенесення скасовано");
+    pendingRelocation = null;
+    renderMarkers();
+  }
+}
+
+function finalizeMoveManual() {
+  const confirmBox = document.getElementById("confirmMoveModal");
+  if (confirmBox) confirmBox.style.display = "none";
+
+  if (!pendingRelocation || !pendingRelocation.marker) return;
+  const { marker } = pendingRelocation;
+
+  marker.options.autoPan = true;
+  marker.options.autoPanPadding = [60, 60];
+  marker.options.autoPanSpeed = 15;
+  marker.dragging.enable();
+
+  const circleEl = marker.getElement()?.querySelector('.radar-circle');
+  if (circleEl) circleEl.classList.add('moving-super-marker');
+
+  showToast("✋ Підтягніть мітку пальцем точно на потрібне місце!");
+
+  marker.once('dragend', (e) => {
+    marker.dragging.disable();
+    if (circleEl) circleEl.classList.remove('moving-super-marker');
+    const pos = e.target.getLatLng();
+    pendingRelocation.targetPos = pos;
+    pendingRelocation.streetName = "Встановлено користувачем (ручне)";
+
+    const nameEl = document.getElementById("confirmStreetName");
+    if (nameEl) nameEl.innerText = "📍 Встановлено користувачем (ручне)";
+    if (confirmBox) confirmBox.style.display = "block";
+  });
+}
+
+// Пошук і підказки в модалці
+const trainCustomInput = document.getElementById("trainCustomInput");
+const trainSearchResults = document.getElementById("trainSearchResults");
+let trainSearchDebounceTimer = null;
+
+if (trainCustomInput && trainSearchResults) {
+  trainCustomInput.addEventListener("input", () => {
+    clearTimeout(trainSearchDebounceTimer);
+    const query = trainCustomInput.value.trim();
+    if (query.length < 2) {
+      trainSearchResults.style.display = "none";
+      trainSearchResults.innerHTML = "";
+      return;
+    }
+    trainSearchDebounceTimer = setTimeout(() => {
+      const lower = query.toLowerCase();
+      trainSearchResults.innerHTML = "";
+      const localMatches = [];
+      const sortedKeys = Object.keys(DNIPRO_STREETS_MAP).sort((a, b) => b.length - a.length);
+
+      for (const key of sortedKeys) {
+        const item = DNIPRO_STREETS_MAP[key];
+        if (key.includes(lower) || (item.old && item.old.toLowerCase().includes(lower)) || item.name.toLowerCase().includes(lower)) {
+          if (!localMatches.some(m => m.name === item.name)) {
+            localMatches.push(item);
+          }
+        }
+      }
+
+      if (localMatches.length === 0) {
+        trainSearchResults.style.display = "none";
+        return;
+      }
+
+      localMatches.forEach(item => {
+        const div = document.createElement("div");
+        div.className = "search-item";
+        div.innerHTML = item.old 
+          ? `📍 <b>${item.name}</b><br><span style="color:#f59e0b; font-size:10px;">(колишня: ${item.old})</span>` 
+          : `📍 <b>${item.name}</b>`;
+        div.onclick = () => {
+          trainCustomInput.value = item.name;
+          trainSearchResults.style.display = "none";
+          applyPointRelocation(item.name, item.lat, item.lng);
+        };
+        trainSearchResults.appendChild(div);
+      });
+
+      trainSearchResults.style.display = "block";
+    }, 200);
+  });
+
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest(".train-input-row")) {
+      trainSearchResults.style.display = "none";
+    }
+  });
+}
+
+async function executeCustomTrain() {
+  const q = document.getElementById("trainCustomInput").value.trim();
+  if (!q) return;
+
+  const lower = q.toLowerCase();
+  const sortedKeys = Object.keys(DNIPRO_STREETS_MAP).sort((a, b) => b.length - a.length);
+  for (const key of sortedKeys) {
+    if (lower.includes(key)) {
+      const val = DNIPRO_STREETS_MAP[key];
+      applyPointRelocation(val.name, val.lat, val.lng);
+      return;
+    }
+  }
+
+  showToast("🔍 Пошук вулиці у Дніпрі...");
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q + ", Дніпро")}&countrycodes=ua&limit=1`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data && data.length > 0) {
+      const item = data[0];
+      applyPointRelocation(item.display_name.split(",")[0], parseFloat(item.lat), parseFloat(item.lon));
+      return;
+    }
+  } catch(e) {}
+
+  showToast(`⚠️ Не знайдено координат для «${q}».`);
+}
