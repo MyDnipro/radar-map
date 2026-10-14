@@ -5,8 +5,9 @@
 (function() {
   const FB_CUSTOM_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/custom_streets.json";
   let cloudRules = {};
+  let selectedTargetCoords = null; // Кеш координат обраної з підказок точки
 
-  // 1. Стилі для кнопки мозку та вікон налаштування
+  // 1. Стилі
   const style = document.createElement("style");
   style.textContent = `
     #memWidget {
@@ -56,6 +57,8 @@
       flex-direction: column;
       gap: 8px;
       box-sizing: border-box;
+      overflow: visible !important;
+      z-index: 10000;
     }
     .mem-header {
       display: flex;
@@ -67,10 +70,10 @@
       border-bottom: 1px solid #334155;
       padding-bottom: 6px;
     }
-    .mem-row { display: flex; align-items: center; gap: 4px; width: 100%; box-sizing: border-box; }
+    .mem-row { display: flex; align-items: center; gap: 6px; width: 100%; box-sizing: border-box; }
+    .mem-input-wrap { position: relative; flex: 1; min-width: 0; }
     .mem-input {
-      flex: 1;
-      min-width: 0;
+      width: 100%;
       background: #0b1120;
       border: 1px solid #475569;
       color: #fff;
@@ -79,8 +82,40 @@
       font-size: 11px;
       outline: none;
       box-sizing: border-box;
+      transition: border-color 0.2s ease, background 0.2s ease;
     }
     .mem-input:focus { border-color: #c084fc; }
+    .mem-input.autofilled {
+      border-color: #a855f7 !important;
+      background: rgba(168, 85, 247, 0.15) !important;
+    }
+
+    #memTargetResults {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      width: 100%;
+      min-width: 200px;
+      background: #0f172a;
+      border: 1.5px solid #a855f7;
+      border-radius: 8px;
+      max-height: 190px;
+      overflow-y: auto;
+      z-index: 10005;
+      display: none;
+      margin-top: 4px;
+      box-shadow: 0 8px 25px rgba(0,0,0,0.8);
+    }
+    .mem-search-item {
+      padding: 7px 9px;
+      font-size: 11px;
+      color: #cbd5e1;
+      cursor: pointer;
+      border-bottom: 1px solid #1e293b;
+      line-height: 1.35;
+    }
+    .mem-search-item:hover { background: #1e293b; color: #c084fc; }
+
     .btn-mem-save {
       background: #9333ea;
       border: none;
@@ -173,7 +208,7 @@
   `;
   document.head.appendChild(style);
 
-  // 2. Розмітка блоку: Кнопка мозку [🧠] та картка
+  // 2. Розмітка
   const widget = document.createElement("div");
   widget.id = "memWidget";
   widget.innerHTML = `
@@ -185,9 +220,14 @@
         <span id="memCloseBtn" style="cursor:pointer; font-size:16px; padding:0 4px;">✕</span>
       </div>
       <div class="mem-row">
-        <input type="text" id="memAlias" class="mem-input" placeholder="Що шукати (напр. карла маркса)">
+        <div class="mem-input-wrap">
+          <input type="text" id="memAlias" class="mem-input" placeholder="Що шукати (напр. оброзцова)" autocomplete="off">
+        </div>
         <span style="font-weight:900; color:#c084fc;">=</span>
-        <input type="text" id="memTarget" class="mem-input" placeholder="Куди вести (напр. Яворницького)">
+        <div class="mem-input-wrap">
+          <input type="text" id="memTarget" class="mem-input" placeholder="Куди вести (напр. Зразкова)" autocomplete="off">
+          <div id="memTargetResults"></div>
+        </div>
       </div>
       <button class="btn-mem-save" id="memSaveBtn">💾 Зберегти в пам'ять</button>
       <button class="btn-mem-view-all" id="memViewAllBtn">
@@ -211,7 +251,7 @@
   `;
   document.body.appendChild(fullModal);
 
-  // 3. Захист від передачі кліків на карту Leaflet
+  // 3. Захист від передачі кліків на карту
   if (window.L && L.DomEvent) {
     L.DomEvent.disableClickPropagation(widget);
     L.DomEvent.disableScrollPropagation(widget);
@@ -226,9 +266,17 @@
   const viewAllBtn = document.getElementById("memViewAllBtn");
   const fullCloseBtn = document.getElementById("memFullCloseBtn");
 
+  const aliasInput = document.getElementById("memAlias");
+  const targetInput = document.getElementById("memTarget");
+  const targetResults = document.getElementById("memTargetResults");
+
   function toggleCard() {
     const isOpen = card.style.display === "flex";
     card.style.display = isOpen ? "none" : "flex";
+    if (!isOpen) {
+      targetResults.style.display = "none";
+      setTimeout(() => aliasInput.focus(), 100);
+    }
   }
 
   function openFullModal() {
@@ -246,6 +294,152 @@
   viewAllBtn.addEventListener("click", openFullModal);
   fullCloseBtn.addEventListener("click", closeFullModal);
 
+  // =========================================================================
+  // 🔍 ЛОГІКА ДВОХ ПОЛІВ:
+  // 1. Поле «А»: якщо слово вже відоме — самостійно заповнює поле «Б»
+  // =========================================================================
+  let aliasDebounceTimer = null;
+  aliasInput.addEventListener("input", () => {
+    clearTimeout(aliasDebounceTimer);
+    const query = aliasInput.value.trim().toLowerCase();
+    targetInput.classList.remove("autofilled");
+
+    if (query.length < 2) return;
+
+    aliasDebounceTimer = setTimeout(() => {
+      // 1. Шукаємо в Мозку (cloudRules)
+      for (const [rawKey, rule] of Object.entries(cloudRules)) {
+        const key = decodeURIComponent(rawKey).toLowerCase();
+        if (key === query || query.includes(key) || key.includes(query)) {
+          targetInput.value = rule.name;
+          targetInput.classList.add("autofilled");
+          selectedTargetCoords = { lat: rule.lat, lng: rule.lng, name: rule.name };
+          return;
+        }
+      }
+
+      // 2. Шукаємо в словнику топонімів (DNIPRO_STREETS_MAP)
+      if (window.DNIPRO_STREETS_MAP) {
+        for (const [key, item] of Object.entries(window.DNIPRO_STREETS_MAP)) {
+          if (query.includes(key) || key.includes(query)) {
+            targetInput.value = item.name;
+            targetInput.classList.add("autofilled");
+            selectedTargetCoords = { lat: item.lat, lng: item.lng, name: item.name };
+            return;
+          }
+        }
+      }
+    }, 250);
+  });
+
+  // =========================================================================
+  // 2. Поле «Б»: випадаючий список із трьома градаціями (🧠 ➔ 📍 ➔ 🌐)
+  // =========================================================================
+  let targetDebounceTimer = null;
+  targetInput.addEventListener("input", () => {
+    clearTimeout(targetDebounceTimer);
+    selectedTargetCoords = null;
+    targetInput.classList.remove("autofilled");
+    const query = targetInput.value.trim();
+
+    if (query.length < 2) {
+      targetResults.style.display = "none";
+      targetResults.innerHTML = "";
+      return;
+    }
+
+    targetDebounceTimer = setTimeout(async () => {
+      const lower = query.toLowerCase();
+      targetResults.innerHTML = "";
+      const matches = [];
+
+      // 1. Мозок (🧠) — раніше збережені зв'язки
+      for (const [rawKey, rule] of Object.entries(cloudRules)) {
+        if (!rule || !rule.lat || !rule.lng) continue;
+        const key = decodeURIComponent(rawKey).toLowerCase();
+        const nameLower = (rule.name || "").toLowerCase();
+        if (nameLower.includes(lower) || key.includes(lower)) {
+          if (!matches.some(m => m.name === rule.name)) {
+            matches.push({
+              name: rule.name,
+              lat: rule.lat,
+              lng: rule.lng,
+              badge: "🧠",
+              subtext: `(пам'ять: ${key})`
+            });
+          }
+        }
+      }
+
+      // 2. Словник (📍) — офіційні назви вулиць Дніпра
+      if (window.DNIPRO_STREETS_MAP) {
+        const sortedKeys = Object.keys(window.DNIPRO_STREETS_MAP).sort((a, b) => b.length - a.length);
+        for (const k of sortedKeys) {
+          const item = window.DNIPRO_STREETS_MAP[k];
+          if (k.includes(lower) || (item.old && item.old.toLowerCase().includes(lower)) || item.name.toLowerCase().includes(lower)) {
+            if (!matches.some(m => m.name === item.name)) {
+              matches.push({
+                name: item.name,
+                lat: item.lat,
+                lng: item.lng,
+                badge: "📍",
+                subtext: item.old ? `(колишня: ${item.old})` : ""
+              });
+            }
+          }
+        }
+      }
+
+      // Рендер підказок Мозку та Словника
+      matches.forEach(item => {
+        const div = document.createElement("div");
+        div.className = "mem-search-item";
+        div.innerHTML = item.subtext 
+          ? `${item.badge} <b>${item.name}</b><br><span style="color:#f59e0b; font-size:10px;">${item.subtext}</span>` 
+          : `${item.badge} <b>${item.name}</b>`;
+        div.onclick = () => {
+          targetInput.value = item.name;
+          selectedTargetCoords = { lat: item.lat, lng: item.lng, name: item.name };
+          targetResults.style.display = "none";
+        };
+        targetResults.appendChild(div);
+      });
+
+      // 3. Онлайн-карта Дніпра (🌐) — якщо мало локальних збігів
+      if (matches.length < 4 && query.length >= 3) {
+        try {
+          const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ", Дніпро")}&countrycodes=ua&limit=3`;
+          const res = await fetch(url);
+          const data = await res.json();
+          if (data && data.length > 0) {
+            data.forEach(osmItem => {
+              const name = osmItem.display_name.split(",")[0];
+              if (!matches.some(m => m.name.toLowerCase().includes(name.toLowerCase()))) {
+                const div = document.createElement("div");
+                div.className = "mem-search-item";
+                div.innerHTML = `🌐 ${name}`;
+                div.onclick = () => {
+                  targetInput.value = name;
+                  selectedTargetCoords = { lat: parseFloat(osmItem.lat), lng: parseFloat(osmItem.lon), name: name };
+                  targetResults.style.display = "none";
+                };
+                targetResults.appendChild(div);
+              }
+            });
+          }
+        } catch(e) {}
+      }
+
+      targetResults.style.display = targetResults.children.length > 0 ? "block" : "none";
+    }, 200);
+  });
+
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest(".mem-input-wrap")) {
+      targetResults.style.display = "none";
+    }
+  });
+
   function formatDateTime(ts) {
     if (!ts) return "Час не вказано";
     const d = new Date(ts);
@@ -257,7 +451,7 @@
     return `📅 ${day}.${month}.${year} 🕒 ${hours}:${minutes}`;
   }
 
-  // 4. Завантаження збережених правил із Firebase
+  // Завантаження правил із Firebase
   async function loadCloudRules() {
     try {
       const res = await fetch(`${FB_CUSTOM_URL}?t=${Date.now()}`);
@@ -281,7 +475,6 @@
     if (badge) badge.innerText = Object.keys(cloudRules).length;
   }
 
-  // 5. Відображення повного списку
   function renderFullList() {
     const box = document.getElementById("memFullList");
     if (!box) return;
@@ -316,10 +509,8 @@
     });
   }
 
-  // 6. Збереження правила
+  // Збереження правила
   async function saveRule() {
-    const aliasInput = document.getElementById("memAlias");
-    const targetInput = document.getElementById("memTarget");
     const alias = aliasInput.value.trim().toLowerCase();
     const target = targetInput.value.trim();
 
@@ -329,25 +520,32 @@
     }
 
     let lat = null, lng = null, realName = target;
-    if (typeof window.resolveLocationFromText === "function") {
-      const res = window.resolveLocationFromText(target);
-      if (res) { lat = res.lat; lng = res.lng; realName = res.name; }
+
+    // Якщо користувач обрав пункт із підказок — координати вже готові
+    if (selectedTargetCoords && selectedTargetCoords.name === target) {
+      lat = selectedTargetCoords.lat;
+      lng = selectedTargetCoords.lng;
+    } else {
+      if (typeof window.resolveLocationFromText === "function") {
+        const res = window.resolveLocationFromText(target);
+        if (res) { lat = res.lat; lng = res.lng; realName = res.name; }
+      }
+
+      if (!lat || !lng) {
+        try {
+          const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(target + ", Дніпро")}&countrycodes=ua&limit=1`);
+          const data = await r.json();
+          if (data && data[0]) {
+            lat = parseFloat(data[0].lat);
+            lng = parseFloat(data[0].lon);
+            realName = data[0].display_name.split(",")[0];
+          }
+        } catch(e) {}
+      }
     }
 
     if (!lat || !lng) {
-      try {
-        const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(target + ", Дніпро")}&countrycodes=ua&limit=1`);
-        const data = await r.json();
-        if (data && data[0]) {
-          lat = parseFloat(data[0].lat);
-          lng = parseFloat(data[0].lon);
-          realName = data[0].display_name.split(",")[0];
-        }
-      } catch(e) {}
-    }
-
-    if (!lat || !lng) {
-      alert(`Не вдалося знайти координати для «${target}».`);
+      alert(`Не вдалося визначити координати для «${target}». Оберіть варіант зі списку підказок.`);
       return;
     }
 
@@ -365,6 +563,7 @@
       body: JSON.stringify(entry)
     }).catch(() => {});
 
+    // Оновлюємо мітки на карті, якщо вони містять це слово
     if (Array.isArray(window.allPoints)) {
       window.allPoints.forEach(p => {
         const t = ((p.raw_text || p.text || "") + " " + (p.address || "")).toLowerCase();
@@ -383,13 +582,16 @@
 
     aliasInput.value = "";
     targetInput.value = "";
+    targetInput.classList.remove("autofilled");
+    selectedTargetCoords = null;
+    targetResults.style.display = "none";
     updateCountBadge();
     if (typeof window.showToast === "function") window.showToast(`✅ Зв'язку «${alias} = ${realName}» збережено!`);
   }
 
   saveBtn.addEventListener("click", saveRule);
 
-  // 7. Видалення правила
+  // Видалення правила
   async function deleteRule(rawKey) {
     if (!confirm("Видалити цю прив'язку з пам'яті?")) return;
     delete cloudRules[rawKey];
