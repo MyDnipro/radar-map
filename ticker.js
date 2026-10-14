@@ -1,8 +1,9 @@
 /**
- * Radar Dnipro — Модуль "Радіо ефір" з розумним маскуванням (ticker.js)
- * - 4 рядки на екрані + плавний скрол до 100 повідомлень назад
+ * Radar Dnipro — Модуль "Радіо ефір" з точковим кліком по кружку (ticker.js)
+ * - 4 рядки на екрані + скрол до 100 повідомлень
  * - Перемикач: "Мій шлях" / "Все місто"
- * - Динамічний "ластик": ховаються тільки ті рядки, які реально накриті попапом карти
+ * - Динамічний "ластик" для попапів
+ * - Клікабельний ТІЛЬКИ кружок (🟢/🔴) на початку рядка — весь текст і фон тепер НЕ інтерферентять з кліками по карті!
  * - Автоматичне утримання екрана (завжди увімкнено)
  */
 (function() {
@@ -73,7 +74,7 @@
       display: none;
       flex-direction: column;
       gap: 3px;
-      pointer-events: none;
+      pointer-events: none; /* Загалом блок не заважає клікати на карту скрізь */
       user-select: none;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       transition: opacity 0.15s ease;
@@ -81,7 +82,7 @@
 
     /* Ненав'язливий напівпрозорий перемикач: Мій шлях | Все місто */
     .radio-mode-switcher {
-      pointer-events: auto;
+      pointer-events: auto; /* Перемикач клікабельний */
       display: inline-flex;
       align-items: center;
       gap: 2px;
@@ -127,8 +128,7 @@
     .radio-msg-line {
       height: 24px !important;
       line-height: 24px !important;
-      pointer-events: auto;
-      cursor: pointer;
+      pointer-events: none; /* Сам рядок не перехоплює кліки карти */
       font-size: 12.5px;
       font-weight: 800;
       white-space: nowrap;
@@ -139,17 +139,36 @@
       gap: 6px;
       transition: opacity 0.15s ease;
     }
-    .radio-msg-line:active { opacity: 0.6; }
+
+    /* А от сам кружок у початку рядка — клікабельний приціл! */
+    .radio-msg-dot {
+      pointer-events: auto;
+      cursor: pointer;
+      font-size: 13px;
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      transition: transform 0.15s ease;
+    }
+    .radio-msg-dot:active {
+      transform: scale(1.35);
+    }
 
     .radio-msg-time {
       font-size: 11px;
       font-weight: 900;
       flex-shrink: 0;
+      pointer-events: auto; /* Час теж можна залишити клікабельним за бажанням, або прибрати */
     }
     .radio-msg-text {
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+      pointer-events: none; /* Текст повністю прозорий для кліків карти */
     }
 
     .radio-msg-line.clean,
@@ -197,16 +216,13 @@
   if (window.L && L.DomEvent) {
     L.DomEvent.disableClickPropagation(radioBtn);
     L.DomEvent.disableClickPropagation(feedBox);
-    L.DomEvent.disableScrollPropagation(feedBox);
     L.DomEvent.disableScrollPropagation(scrollList);
   }
   ["touchstart", "touchmove", "touchend", "wheel", "mousedown", "dblclick"].forEach(evt => {
     feedBox.addEventListener(evt, (e) => e.stopPropagation(), { passive: true });
   });
 
-  // =========================================================================
-  // 🧠 РОЗУМНИЙ ДИНАМІЧНИЙ ЛАСТИК (ПЕРЕВІРКА ПЕРЕРИСУВАННЯ ПОПАПОМ)
-  // =========================================================================
+  // Розумний динамічний ластик для попапів
   function updateSmartMask() {
     if (!isRadioActive || feedBox.style.display === "none") return;
 
@@ -214,20 +230,15 @@
     const rows = scrollList.querySelectorAll(".radio-msg-line");
 
     if (!popupWrapper) {
-      // Якщо немає попапа — усі рядки видимі на 100%
       rows.forEach(r => r.style.opacity = "1");
       return;
     }
 
     const pRect = popupWrapper.getBoundingClientRect();
 
-    // Порядково перевіряємо: чи накриває попап конкретний рядок радіо
     rows.forEach(row => {
       const rRect = row.getBoundingClientRect();
-      // Перетин по вертикалі (з невеликим запасом)
       const isOverlapped = !(rRect.bottom < pRect.top + 5 || rRect.top > pRect.bottom - 5 || rRect.right < pRect.left || rRect.left > pRect.right);
-      
-      // Якщо рядок під попапом — робимо його повністю прозорим, інакше видимим
       row.style.opacity = isOverlapped ? "0" : "1";
     });
   }
@@ -306,18 +317,32 @@
 
       const row = document.createElement("div");
       row.className = `radio-msg-line ${statusClass}`;
-      row.innerHTML = `
-        <span>${dot}</span>
-        <span class="radio-msg-time">${timeStr}</span>
-        <span class="radio-msg-text">${txt}</span>
-      `;
+      
+      // Створюємо елементи окремо: клікабельний лише кружок (dot)
+      const dotSpan = document.createElement("span");
+      dotSpan.className = "radio-msg-dot";
+      dotSpan.innerText = dot;
+      dotSpan.title = "Натисніть для переходу до точки на карті";
 
-      row.addEventListener("click", () => {
+      dotSpan.addEventListener("click", (e) => {
+        e.stopPropagation();
         if (window.map && window.map.flyTo && p.lat && p.lng) {
           window.map.flyTo([p.lat, p.lng], 16, { animate: true, duration: 0.85 });
           if (typeof window.showToast === "function") window.showToast(`🎯 Фокус: ${txt.slice(0, 22)}...`);
         }
       });
+
+      const timeSpan = document.createElement("span");
+      timeSpan.className = "radio-msg-time";
+      timeSpan.innerText = timeStr;
+
+      const textSpan = document.createElement("span");
+      textSpan.className = "radio-msg-text";
+      textSpan.innerText = txt;
+
+      row.appendChild(dotSpan);
+      row.appendChild(timeSpan);
+      row.appendChild(textSpan);
 
       scrollList.appendChild(row);
     });
@@ -347,9 +372,7 @@
 
   setTimeout(() => renderRadioFeed(true), 600);
 
-  // =========================================================================
-  // 🔆 ФОНОВЕ УТРИМАННЯ ЕКРАНА ЗАВЖДИ УВІМКНЕНИМ ЗА ЗАМОВЧУВАННЯМ
-  // =========================================================================
+  // Фонове утримання екрана завжди увімкненим
   let wakeLockObj = null;
   let videoEl = null;
   let audioCtx = null;
