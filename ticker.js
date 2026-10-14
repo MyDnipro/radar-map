@@ -1,12 +1,13 @@
 /**
- * Radar Dnipro — Модуль "Радіо ефір" (ticker.js)
- * - На екрані рівно 4 рядки + плавний скрол пальцем до 100 повідомлень назад
- * - Прозорий міні-перемикач: "Мій шлях" / "Все місто"
- * - Живе всередині контейнера #map (z-index: 500), тому попапи (z-index: 700) ЗАВЖДИ лягають ПОВЕРХ тексту!
+ * Radar Dnipro — Модуль "Радіо ефір" + Фонове утримання екрана (ticker.js)
+ * - 4 рядки на екрані + плавний скрол до 100 повідомлень назад
+ * - Перемикач: "Мій шлях" / "Все місто"
+ * - Точний шар z-index: 400 перед .leaflet-map-pane -> попапи ЗАВЖДИ лягають ПОВЕРХ тексту!
+ * - Автоматичне утримання екрана (без жодних кнопок 🔆 на екрані, завжди увімкнено)
  */
 (function() {
   let isRadioActive = localStorage.getItem("radar_radio_active") === "true";
-  let radioMode = localStorage.getItem("radar_radio_mode") || "route"; // "route" або "city"
+  let radioMode = localStorage.getItem("radar_radio_mode") || "route";
   let lastDataSignature = "";
 
   // Словник фільтрації за 8 контрольними точками маршруту
@@ -30,6 +31,9 @@
   // 1. Стилі інтерфейсу
   const style = document.createElement("style");
   style.textContent = `
+    /* Ховаємо стару кнопку сонечка, якщо залишився підключеним keepawake.js */
+    #btnKeepAwake { display: none !important; }
+
     /* Кнопка 📻 */
     #btnRadioTopCenter {
       position: absolute !important;
@@ -60,13 +64,35 @@
       box-shadow: 0 0 18px rgba(0, 243, 255, 0.6) !important;
     }
 
-    /* Контейнер радіо-ефіру ВСЕРЕДИНІ #map на шарі 500 (нижче попапів 700, але вище карти 200) */
+    /*
+     * КЛЮЧОВЕ РІШЕННЯ ДЛЯ ПОПАПІВ:
+     * Знімаємо стек-контекст з .leaflet-map-pane (z-index: auto !important),
+     * щоб внутрішній .leaflet-popup-pane (z-index: 700) гарантовано перекривав #radioFeedOverlay (z-index: 420)!
+     */
+    .leaflet-pane.leaflet-map-pane {
+      z-index: auto !important;
+    }
+    .leaflet-pane.leaflet-tile-pane {
+      z-index: 200 !important;
+    }
+    .leaflet-pane.leaflet-overlay-pane {
+      z-index: 400 !important;
+    }
+    .leaflet-pane.leaflet-marker-pane {
+      z-index: 600 !important;
+    }
+    .leaflet-pane.leaflet-popup-pane,
+    .leaflet-popup {
+      z-index: 1500 !important;
+    }
+
+    /* Радіо лежить на шарі 450: вище за карту (200), але НИЖЧЕ за маркери (600) та попапи (1500)! */
     #radioFeedOverlay {
       position: absolute !important;
       top: 58px !important;
       left: 15px !important;
       right: 15px !important;
-      z-index: 500 !important;
+      z-index: 450 !important;
       display: none;
       pointer-events: none;
       user-select: none;
@@ -100,10 +126,10 @@
       color: #ffffff;
     }
 
-    /* Скрол-контейнер: display: block виключає сплющування рядків */
+    /* Скрол-контейнер: 4 рядки по 24px */
     .radio-scroll-list {
       display: block !important;
-      height: 96px !important; /* Рівно 4 рядки по 24px */
+      height: 96px !important;
       max-height: 96px !important;
       overflow-y: auto !important;
       overflow-x: hidden !important;
@@ -117,7 +143,6 @@
       display: none;
     }
 
-    /* Кожен рядок має жорстку висоту 24px */
     .radio-msg-line {
       height: 24px !important;
       line-height: 24px !important;
@@ -145,7 +170,6 @@
       white-space: nowrap;
     }
 
-    /* 🟢 Звичайні повідомлення: чорні літери */
     .radio-msg-line.clean,
     .radio-msg-line.clean * {
       color: #000000 !important;
@@ -154,7 +178,6 @@
       filter: none !important;
     }
 
-    /* 🔴 Негативні повідомлення: чисто червоні літери */
     .radio-msg-line.danger,
     .radio-msg-line.danger * {
       color: #ff2233 !important;
@@ -162,15 +185,10 @@
       -webkit-text-stroke: 0 !important;
       filter: none !important;
     }
-
-    /* Попапи точок і світлофорів всередині карти — на шарі 750 (вище за радіо 500!) */
-    .leaflet-pane.leaflet-popup-pane {
-      z-index: 750 !important;
-    }
   `;
   document.head.appendChild(style);
 
-  // 2. Створення елементів
+  // 2. Створення елементів радіо
   const radioBtn = document.createElement("div");
   radioBtn.id = "btnRadioTopCenter";
   radioBtn.title = "Радіо ефір маршруту";
@@ -193,19 +211,30 @@
   feedBox.appendChild(switcher);
   feedBox.appendChild(scrollList);
 
-  // КЛЮЧОВИЙ МОМЕНТ: Вбудовуємо блок радіо всередину контейнера карти #map,
-  // щоб він ділив один стек шарів із попапами (.leaflet-popup-pane)!
-  function mountFeedIntoMap() {
+  // Вбудовуємо блок радіо всередину #map ПЕРЕД .leaflet-map-pane,
+  // і знімаємо z-index з .leaflet-map-pane, щоб попапи були вище за радіо!
+  function mountFeedProperly() {
     const mapContainer = document.getElementById("map") || document.querySelector(".leaflet-container");
-    if (mapContainer && feedBox.parentElement !== mapContainer) {
-      mapContainer.appendChild(feedBox);
-    } else if (!mapContainer && !feedBox.parentElement) {
+    const mapPane = document.querySelector(".leaflet-map-pane");
+    if (mapPane) {
+      mapPane.style.setProperty("z-index", "auto", "important");
+    }
+    const popupPane = document.querySelector(".leaflet-popup-pane");
+    if (popupPane) {
+      popupPane.style.setProperty("z-index", "1500", "important");
+    }
+    if (mapContainer) {
+      if (mapPane && feedBox.parentElement !== mapContainer) {
+        mapContainer.insertBefore(feedBox, mapPane);
+      } else if (feedBox.parentElement !== mapContainer) {
+        mapContainer.appendChild(feedBox);
+      }
+    } else if (!feedBox.parentElement) {
       document.body.appendChild(feedBox);
     }
   }
-  mountFeedIntoMap();
+  mountFeedProperly();
 
-  // Блокуємо передачу кліків, подвійних тапів та свайпів на карту під час гортання списку
   if (window.L && L.DomEvent) {
     L.DomEvent.disableClickPropagation(radioBtn);
     L.DomEvent.disableClickPropagation(feedBox);
@@ -216,7 +245,6 @@
     feedBox.addEventListener(evt, (e) => e.stopPropagation(), { passive: true });
   });
 
-  // Перемикання "Мій шлях" / "Все місто"
   switcher.addEventListener("click", (e) => {
     const tab = e.target.closest(".radio-mode-tab");
     if (!tab) return;
@@ -241,9 +269,9 @@
     return t;
   }
 
-  // 3. Відображення повідомлень (до 100 записів зі збереженням позиції скролу)
+  // 3. Відображення повідомлень
   function renderRadioFeed(forceRebuild = false) {
-    mountFeedIntoMap();
+    mountFeedProperly();
 
     if (!isRadioActive) {
       feedBox.style.display = "none";
@@ -312,7 +340,6 @@
     }
   }
 
-  // 4. Клік по кнопці радіо
   radioBtn.addEventListener("click", () => {
     isRadioActive = !isRadioActive;
     localStorage.setItem("radar_radio_active", isRadioActive ? "true" : "false");
@@ -332,4 +359,82 @@
   }, 4000);
 
   setTimeout(() => renderRadioFeed(true), 600);
+
+  // =========================================================================
+  // 🔆 ФОНОВЕ УТРИМАННЯ ЕКРАНА ЗАВЖДИ УВІМКНЕНИМ ЗА ЗАМОВЧУВАННЯМ (БЕЗ ІКОНКИ)
+  // =========================================================================
+  let wakeLockObj = null;
+  let videoEl = null;
+  let audioCtx = null;
+
+  function ensureAlwaysAwake() {
+    // 1. Мікро-відеопотік HTML5 <video> (принцип YouTube)
+    if (!videoEl) {
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = 16;
+        canvas.height = 16;
+        const ctx = canvas.getContext("2d");
+        let tick = 0;
+        function drawLoop() {
+          tick++;
+          ctx.fillStyle = (tick % 2 === 0) ? "#010101" : "#020202";
+          ctx.fillRect(0, 0, 16, 16);
+          requestAnimationFrame(drawLoop);
+        }
+        drawLoop();
+
+        videoEl = document.createElement("video");
+        videoEl.setAttribute("playsinline", "");
+        videoEl.setAttribute("webkit-playsinline", "");
+        videoEl.setAttribute("loop", "");
+        videoEl.muted = true;
+        videoEl.volume = 0;
+        videoEl.style.cssText = "position:fixed;bottom:0;right:0;width:2px;height:2px;opacity:0.01;pointer-events:none;z-index:1;";
+        document.body.appendChild(videoEl);
+
+        if (canvas.captureStream) {
+          videoEl.srcObject = canvas.captureStream(10);
+        }
+      } catch (e) {}
+    }
+
+    if (videoEl && videoEl.paused) {
+      videoEl.play().catch(() => {});
+    }
+
+    // 2. Безшумний WebAudio
+    try {
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (!audioCtx && AudioContextClass) {
+        audioCtx = new AudioContextClass();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        gain.gain.value = 0.00001;
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+      }
+      if (audioCtx && audioCtx.state === "suspended") {
+        audioCtx.resume().catch(() => {});
+      }
+    } catch (e) {}
+
+    // 3. Системний Screen Wake Lock API
+    if ("wakeLock" in navigator && !wakeLockObj) {
+      navigator.wakeLock.request("screen").then(lock => {
+        wakeLockObj = lock;
+        wakeLockObj.addEventListener("release", () => { wakeLockObj = null; });
+      }).catch(() => {});
+    }
+  }
+
+  // Запускаємо автоматично при старті та підхоплюємо при першому ж дотику
+  ensureAlwaysAwake();
+  document.addEventListener("touchstart", ensureAlwaysAwake, { passive: true });
+  document.addEventListener("click", ensureAlwaysAwake, { passive: true });
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") ensureAlwaysAwake();
+  });
+  setInterval(ensureAlwaysAwake, 8000);
 })();
