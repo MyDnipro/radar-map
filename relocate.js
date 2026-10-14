@@ -186,7 +186,9 @@ function finalizeMoveManual() {
   });
 }
 
-// Пошук і підказки в модалці
+// =========================================================================
+// 🔍 ЖИВИЙ ПОШУК І ПІДКАЗКИ: ЛОКАЛЬНА БАЗА + ВЕСЬ ДНІПРО (OSM)
+// =========================================================================
 const trainCustomInput = document.getElementById("trainCustomInput");
 const trainSearchResults = document.getElementById("trainSearchResults");
 let trainSearchDebounceTimer = null;
@@ -200,12 +202,14 @@ if (trainCustomInput && trainSearchResults) {
       trainSearchResults.innerHTML = "";
       return;
     }
-    trainSearchDebounceTimer = setTimeout(() => {
+
+    trainSearchDebounceTimer = setTimeout(async () => {
       const lower = query.toLowerCase();
       trainSearchResults.innerHTML = "";
       const localMatches = [];
       const sortedKeys = Object.keys(DNIPRO_STREETS_MAP).sort((a, b) => b.length - a.length);
 
+      // 1. Пошук по локальному словнику топонімів
       for (const key of sortedKeys) {
         const item = DNIPRO_STREETS_MAP[key];
         if (key.includes(lower) || (item.old && item.old.toLowerCase().includes(lower)) || item.name.toLowerCase().includes(lower)) {
@@ -213,11 +217,6 @@ if (trainCustomInput && trainSearchResults) {
             localMatches.push(item);
           }
         }
-      }
-
-      if (localMatches.length === 0) {
-        trainSearchResults.style.display = "none";
-        return;
       }
 
       localMatches.forEach(item => {
@@ -234,8 +233,33 @@ if (trainCustomInput && trainSearchResults) {
         trainSearchResults.appendChild(div);
       });
 
-      trainSearchResults.style.display = "block";
-    }, 200);
+      // 2. Якщо в словнику мало збігів — підтягуємо всю карту Дніпра (OSM)
+      if (localMatches.length < 4 && query.length >= 3) {
+        try {
+          const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ", Дніпро")}&countrycodes=ua&limit=4`;
+          const res = await fetch(url);
+          const data = await res.json();
+          if (data && data.length > 0) {
+            data.forEach(item => {
+              const name = item.display_name.split(",")[0];
+              if (!localMatches.some(m => m.name.toLowerCase().includes(name.toLowerCase()))) {
+                const div = document.createElement("div");
+                div.className = "search-item";
+                div.innerHTML = `🌐 ${name}`;
+                div.onclick = () => {
+                  trainCustomInput.value = name;
+                  trainSearchResults.style.display = "none";
+                  applyPointRelocation(name, parseFloat(item.lat), parseFloat(item.lon));
+                };
+                trainSearchResults.appendChild(div);
+              }
+            });
+          }
+        } catch(e) {}
+      }
+
+      trainSearchResults.style.display = trainSearchResults.children.length > 0 ? "block" : "none";
+    }, 250);
   });
 
   document.addEventListener("click", (e) => {
