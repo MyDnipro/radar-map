@@ -2,8 +2,7 @@
  * Radar Dnipro — Модуль "Радіо ефір" (ticker.js)
  * - На екрані рівно 4 рядки + плавний скрол пальцем до 100 повідомлень назад
  * - Прозорий міні-перемикач: "Мій шлях" / "Все місто"
- * - Попапи точок і світлофорів лягають ПОВЕРХ тексту (повідомлення не тухнуть)
- * - Вбудований захист від вимкнення екрана смартфона в дорозі (Wake Lock)
+ * - Живе всередині контейнера #map (z-index: 500), тому попапи (z-index: 700) ЗАВЖДИ лягають ПОВЕРХ тексту!
  */
 (function() {
   let isRadioActive = localStorage.getItem("radar_radio_active") === "true";
@@ -61,16 +60,17 @@
       box-shadow: 0 0 18px rgba(0, 243, 255, 0.6) !important;
     }
 
-    /* Контейнер радіо-ефіру */
+    /* Контейнер радіо-ефіру ВСЕРЕДИНІ #map на шарі 500 (нижче попапів 700, але вище карти 200) */
     #radioFeedOverlay {
       position: absolute !important;
       top: 58px !important;
       left: 15px !important;
       right: 15px !important;
-      z-index: 450 !important; /* Нижче за попапи карти, але вище за плитку карти */
+      z-index: 500 !important;
       display: none;
       pointer-events: none;
       user-select: none;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
 
     /* Ненав'язливий напівпрозорий перемикач: Мій шлях | Все місто */
@@ -100,7 +100,7 @@
       color: #ffffff;
     }
 
-    /* Скрол-контейнер: display: block виключає будь-яке сплющування рядків! */
+    /* Скрол-контейнер: display: block виключає сплющування рядків */
     .radio-scroll-list {
       display: block !important;
       height: 96px !important; /* Рівно 4 рядки по 24px */
@@ -163,18 +163,9 @@
       filter: none !important;
     }
 
-    /* Знімаємо ізоляцію шарів карти, щоб попапи точок і світлофорів лягали ПОВЕРХ радіо */
-    #map, .leaflet-container, .leaflet-pane.leaflet-map-pane {
-      z-index: auto !important;
-    }
-    .leaflet-pane.leaflet-popup-pane,
-    .leaflet-popup {
-      z-index: 1800 !important;
-    }
-
-    /* Вікно ШІ поверх усього */
-    #aiPanel, #aiCard, #aiModal, #aiWindow, #aiChat, .ai-panel, .ai-card, #chatContainer {
-      z-index: 2500 !important;
+    /* Попапи точок і світлофорів всередині карти — на шарі 750 (вище за радіо 500!) */
+    .leaflet-pane.leaflet-popup-pane {
+      z-index: 750 !important;
     }
   `;
   document.head.appendChild(style);
@@ -201,17 +192,29 @@
 
   feedBox.appendChild(switcher);
   feedBox.appendChild(scrollList);
-  document.body.appendChild(feedBox);
 
-  // Блокуємо передачу кліків та свайпів на карту під час гортання списку
+  // КЛЮЧОВИЙ МОМЕНТ: Вбудовуємо блок радіо всередину контейнера карти #map,
+  // щоб він ділив один стек шарів із попапами (.leaflet-popup-pane)!
+  function mountFeedIntoMap() {
+    const mapContainer = document.getElementById("map") || document.querySelector(".leaflet-container");
+    if (mapContainer && feedBox.parentElement !== mapContainer) {
+      mapContainer.appendChild(feedBox);
+    } else if (!mapContainer && !feedBox.parentElement) {
+      document.body.appendChild(feedBox);
+    }
+  }
+  mountFeedIntoMap();
+
+  // Блокуємо передачу кліків, подвійних тапів та свайпів на карту під час гортання списку
   if (window.L && L.DomEvent) {
     L.DomEvent.disableClickPropagation(radioBtn);
     L.DomEvent.disableClickPropagation(feedBox);
+    L.DomEvent.disableScrollPropagation(feedBox);
     L.DomEvent.disableScrollPropagation(scrollList);
   }
-  scrollList.addEventListener("touchstart", (e) => e.stopPropagation(), { passive: true });
-  scrollList.addEventListener("touchmove", (e) => e.stopPropagation(), { passive: true });
-  scrollList.addEventListener("wheel", (e) => e.stopPropagation(), { passive: true });
+  ["touchstart", "touchmove", "touchend", "wheel", "mousedown", "dblclick"].forEach(evt => {
+    feedBox.addEventListener(evt, (e) => e.stopPropagation(), { passive: true });
+  });
 
   // Перемикання "Мій шлях" / "Все місто"
   switcher.addEventListener("click", (e) => {
@@ -240,6 +243,8 @@
 
   // 3. Відображення повідомлень (до 100 записів зі збереженням позиції скролу)
   function renderRadioFeed(forceRebuild = false) {
+    mountFeedIntoMap();
+
     if (!isRadioActive) {
       feedBox.style.display = "none";
       radioBtn.classList.remove("active");
@@ -255,7 +260,6 @@
 
     const top100 = filteredPts.slice(0, 100);
 
-    // Перевіряємо, чи змінилися повідомлення, щоб не скидати скрол пальцем
     const newestTime = top100.length > 0 ? getCleanTimestamp(top100[0]) : 0;
     const signature = `${radioMode}_${top100.length}_${newestTime}`;
     if (!forceRebuild && signature === lastDataSignature) {
@@ -328,23 +332,4 @@
   }, 4000);
 
   setTimeout(() => renderRadioFeed(true), 600);
-
-  // 5. МОДУЛЬ УТРИМАННЯ ЕКРАНА УВІМКНЕНИМ В ДОРОЗІ (WAKE LOCK API)
-  let wakeLock = null;
-  async function requestWakeLock() {
-    if ('wakeLock' in navigator) {
-      try {
-        if (!wakeLock) {
-          wakeLock = await navigator.wakeLock.request('screen');
-          wakeLock.addEventListener('release', () => { wakeLock = null; });
-        }
-      } catch (err) {}
-    }
-  }
-  requestWakeLock();
-  document.addEventListener('click', requestWakeLock, { passive: true });
-  document.addEventListener('touchstart', requestWakeLock, { passive: true });
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') requestWakeLock();
-  });
 })();
