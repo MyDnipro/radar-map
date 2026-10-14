@@ -928,19 +928,16 @@
 
   <!-- МОДАЛКА ПЕРЕНОСА ЗА АДРЕСОЮ -->
   <div id="trainModal" class="train-modal-backdrop" onclick="closeTrainModal(event)">
-    <div class="train-modal-card" onclick="event.stopPropagation()">
+    <div class="train-modal-card" style="margin-top: 15px !important; max-height: calc(100vh - 30px);" onclick="event.stopPropagation()">
       <div class="train-header">
         <span>📍 Переміщення за адресою</span>
         <span style="cursor:pointer; font-size:16px; padding:0 4px;" onclick="closeTrainModal()">✕</span>
       </div>
       <div class="train-text-quote" id="trainTextQuote">...</div>
-      <div class="train-suggestions-title">Оберіть відповідну вулицю або ділянку:</div>
-      <div class="train-suggestions-box" id="trainSuggestionsBox"></div>
-      <div class="train-suggestions-title" style="margin-top:4px;">Або введіть свою назву:</div>
-     <div class="train-input-row" style="position: relative;">
-        <input type="text" id="trainCustomInput" class="train-input" placeholder="Вулиця чи орієнтир..." autocomplete="off" onkeydown="if(event.key==='Enter') executeCustomTrain();">
-        <button class="btn-train-search" onclick="executeCustomTrain()">Перемістити</button>
-        <div id="trainSearchResults" class="search-results"></div>
+      <div class="train-input-row" style="position: relative; margin-top: 6px;">
+        <input type="text" id="trainCustomInput" class="train-input" placeholder="🔍 Почніть вводити назву вулиці..." autocomplete="off" onkeydown="if(event.key==='Enter') executeCustomTrain();">
+        <button class="btn-train-search" onclick="executeCustomTrain()">Знайти</button>
+        <div id="trainSearchResults" class="search-results" style="max-height: 200px;"></div>
       </div>
     </div>
   </div>
