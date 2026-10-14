@@ -1,5 +1,5 @@
 // =========================================================================
-// 🚗 МОДУЛЬ GPS-НАВІГАЦІЇ ТА ШТУРМАНА (GPS ENGINE v1.0)
+// 🚗 МОДУЛЬ GPS-НАВІГАЦІЇ ТА ШТУРМАНА (GPS ENGINE v1.1)
 // =========================================================================
 
 (function() {
@@ -28,7 +28,7 @@
         <rect x="13" y="24" width="14" height="20" rx="3" fill="#0369a1"/>
         <!-- Заднє скло -->
         <path d="M13 45 L27 45 L25 51 L15 51 Z" fill="#0f172a"/>
-        <!-- Передні фари (неонові) -->
+        <!-- Передні фари -->
         <circle cx="11" cy="9" r="2.5" fill="#fef08a"/>
         <circle cx="29" cy="9" r="2.5" fill="#fef08a"/>
         <!-- Задні ліхтарі -->
@@ -38,7 +38,7 @@
     </div>
   `;
 
-  // CSS-стилі машинки та кнопок керування в один ряд ліворуч від секундоміра
+  // Створюємо CSS-стилі
   const styleEl = document.createElement("style");
   styleEl.innerHTML = `
     .nav-car-wrapper {
@@ -49,7 +49,7 @@
       align-items: center;
       justify-content: center;
       transform-origin: 50% 50%;
-      transition: transform 0.25s linear;
+      transition: transform 0.2s linear;
     }
     .nav-car-beam {
       position: absolute;
@@ -60,7 +60,7 @@
       background: radial-gradient(ellipse at bottom, rgba(254, 240, 138, 0.45) 0%, rgba(254, 240, 138, 0) 75%);
       pointer-events: none;
     }
-    /* Плаваюча кнопка GPS-навігації (ЛІВОРУЧ від секундоміра) */
+    /* Кнопка GPS (ліворуч від секундоміра) */
     .btn-gps-hud {
       position: fixed;
       right: 68px;
@@ -83,31 +83,13 @@
       user-select: none;
       transition: transform 0.15s ease, background 0.2s, border-color 0.2s;
     }
-    .btn-gps-hud:active {
-      transform: scale(0.92);
-    }
-    .btn-gps-hud.mode-1 {
-      border-color: #38bdf8;
-      box-shadow: 0 0 12px rgba(56, 189, 248, 0.5);
-    }
-    .btn-gps-hud.mode-2 {
-      border-color: #22c55e;
-      background: rgba(6, 78, 59, 0.85);
-      box-shadow: 0 0 14px rgba(34, 197, 94, 0.6);
-    }
-    .btn-gps-hud.mode-3 {
-      border-color: #eab308;
-      background: rgba(113, 63, 18, 0.85);
-      box-shadow: 0 0 16px rgba(234, 179, 8, 0.7);
-    }
-    .btn-gps-hud-label {
-      font-size: 8px;
-      font-weight: 800;
-      color: #94a3b8;
-      margin-top: 1px;
-      text-transform: uppercase;
-    }
-    /* Кнопка "Где я / Повернутися до авто" (ЩЕ ЛІВІШЕ від кнопки GPS) */
+    .btn-gps-hud:active { transform: scale(0.92); }
+    .btn-gps-hud.mode-1 { border-color: #38bdf8; box-shadow: 0 0 12px rgba(56, 189, 248, 0.5); }
+    .btn-gps-hud.mode-2 { border-color: #22c55e; background: rgba(6, 78, 59, 0.85); box-shadow: 0 0 14px rgba(34, 197, 94, 0.6); }
+    .btn-gps-hud.mode-3 { border-color: #eab308; background: rgba(113, 63, 18, 0.85); box-shadow: 0 0 16px rgba(234, 179, 8, 0.7); }
+    .btn-gps-hud-label { font-size: 8px; font-weight: 800; color: #94a3b8; margin-top: 1px; text-transform: uppercase; }
+
+    /* Кнопка повернення до авто */
     .btn-recenter-car {
       position: fixed;
       right: 122px;
@@ -127,11 +109,9 @@
       box-shadow: 0 4px 14px rgba(0,0,0,0.4);
       animation: pulse-gps-btn 1.6s infinite;
     }
-    @keyframes pulse-gps-btn {
-      0%, 100% { transform: scale(1); }
-      50% { transform: scale(1.08); }
-    }
-    /* Спідометр у лівому кутку */
+    @keyframes pulse-gps-btn { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.08); } }
+
+    /* Спідометр */
     .gps-speed-hud {
       position: fixed;
       left: 14px;
@@ -148,7 +128,6 @@
       z-index: 1000;
       backdrop-filter: blur(6px);
     }
-    /* Плавний поворот карти при режимі 3 */
     #map.gps-rotating {
       transition: transform 0.25s linear;
       transform-origin: 50% 50%;
@@ -156,7 +135,6 @@
   `;
   document.head.appendChild(styleEl);
 
-  // Створюємо елементи інтерфейсу
   const btnGps = document.createElement("div");
   btnGps.id = "btnGpsHud";
   btnGps.className = "btn-gps-hud";
@@ -177,7 +155,24 @@
   speedHud.innerText = `0 км/год`;
   document.body.appendChild(speedHud);
 
-  // Обробка ручного переміщення карти користувачем
+  // Розрахунок масштабу машинки залежно від масштабу карти
+  function getDynamicCarScale() {
+    if (!window.map) return 1.0;
+    const z = window.map.getZoom();
+    if (z >= 16.5) return 1.0;
+    // На віддаленні плавно зменшується до 0.35, щоб не захаращувати екран
+    const scale = 1.0 - (16.5 - z) * 0.14;
+    return Math.max(0.35, Math.min(1.0, scale));
+  }
+
+  function applyCarVisuals() {
+    const wrapper = document.getElementById("navCarWrapper");
+    if (!wrapper) return;
+    const rotateDeg = gpsMode === 3 ? 0 : currentHeading;
+    const scale = getDynamicCarScale();
+    wrapper.style.transform = `rotate(${rotateDeg}deg) scale(${scale})`;
+  }
+
   function setupMapInteractionListeners() {
     if (!window.map) {
       setTimeout(setupMapInteractionListeners, 200);
@@ -189,17 +184,26 @@
         btnRecenter.style.display = "flex";
       }
     });
+    // Автоматично масштабуємо машинку при кожному наближенні / віддаленні карти
+    window.map.on('zoom', () => {
+      applyCarVisuals();
+    });
   }
   setupMapInteractionListeners();
 
-  // Циклічне перемикання 0 -> 1 -> 2 -> 3 -> 0
   function toggleGpsMode() {
     gpsMode = (gpsMode + 1) % 4;
     updateGpsButtonUI();
 
     if (gpsMode === 0) {
       stopGps();
-      if (typeof showToast === "function") showToast("⚪ Навігацію вимкнено");
+      // Повернення карти до початкового огляду Днепра при вимкненні
+      if (window.map) {
+        const initCenter = (typeof INITIAL_CENTER !== 'undefined') ? INITIAL_CENTER : [48.484, 34.985];
+        const initZoom = (typeof INITIAL_ZOOM !== 'undefined') ? INITIAL_ZOOM : (window.innerWidth < 768 ? 12 : 13);
+        window.map.flyTo(initCenter, initZoom, { animate: true, duration: 0.8 });
+      }
+      if (typeof showToast === "function") showToast("⚪ Навігацію вимкнено (старт)");
     } else {
       if (!watchId) startGps();
       isUserPanning = false;
@@ -207,14 +211,14 @@
 
       if (gpsMode === 1) {
         resetMapRotation();
-        if (typeof showToast === "function") showToast("📍 Режим: Вільний огляд (машинка їде)");
+        if (typeof showToast === "function") showToast("📍 Режим: Вільний огляд");
       } else if (gpsMode === 2) {
         resetMapRotation();
         recenterCar(16.5);
-        if (typeof showToast === "function") showToast("🧭 Режим: Штурман (карта веде авто)");
+        if (typeof showToast === "function") showToast("🧭 Режим: Штурман");
       } else if (gpsMode === 3) {
         recenterCar(16.5);
-        if (typeof showToast === "function") showToast("🚗 Режим: По курсу (карта обертається)");
+        if (typeof showToast === "function") showToast("🚗 Режим: По курсу");
       }
     }
   }
@@ -314,11 +318,7 @@
       carMarker.setLatLng([lat, lng]);
     }
 
-    const wrapper = document.getElementById("navCarWrapper");
-    if (wrapper) {
-      const rotateDeg = gpsMode === 3 ? 0 : heading;
-      wrapper.style.transform = `rotate(${rotateDeg}deg)`;
-    }
+    applyCarVisuals();
   }
 
   function rotateMapToHeading(heading) {
