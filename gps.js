@@ -38,7 +38,7 @@
     </div>
   `;
 
-  // Додаємо CSS-стилі машинки та кнопок керування на льоту
+  // CSS-стилі машинки та кнопок керування в один ряд ліворуч від секундоміра
   const styleEl = document.createElement("style");
   styleEl.innerHTML = `
     .nav-car-wrapper {
@@ -60,10 +60,10 @@
       background: radial-gradient(ellipse at bottom, rgba(254, 240, 138, 0.45) 0%, rgba(254, 240, 138, 0) 75%);
       pointer-events: none;
     }
-    /* Плаваюча кнопка GPS-навігації */
+    /* Плаваюча кнопка GPS-навігації (ЛІВОРУЧ від секундоміра) */
     .btn-gps-hud {
       position: fixed;
-      right: 14px;
+      right: 68px;
       bottom: 74px;
       width: 46px;
       height: 46px;
@@ -107,20 +107,21 @@
       margin-top: 1px;
       text-transform: uppercase;
     }
-    /* Кнопка "Повернутися до авто" при ручному зсуві */
+    /* Кнопка "Где я / Повернутися до авто" (ЩЕ ЛІВІШЕ від кнопки GPS) */
     .btn-recenter-car {
       position: fixed;
-      right: 14px;
-      bottom: 128px;
-      width: 42px;
-      height: 42px;
+      right: 122px;
+      bottom: 74px;
+      width: 46px;
+      height: 46px;
       border-radius: 50%;
       background: #0284c7;
+      border: 1.5px solid #38bdf8;
       color: #fff;
       display: none;
       align-items: center;
       justify-content: center;
-      font-size: 18px;
+      font-size: 20px;
       cursor: pointer;
       z-index: 1000;
       box-shadow: 0 4px 14px rgba(0,0,0,0.4);
@@ -130,7 +131,7 @@
       0%, 100% { transform: scale(1); }
       50% { transform: scale(1.08); }
     }
-    /* Спідометр у куточку */
+    /* Спідометр у лівому кутку */
     .gps-speed-hud {
       position: fixed;
       left: 14px;
@@ -221,8 +222,6 @@
 
   function updateGpsButtonUI() {
     btnGps.className = "btn-gps-hud";
-    const label = btnGps.querySelector(".btn-gps-hud-label");
-
     if (gpsMode === 0) {
       btnGps.innerHTML = `<span>🧭</span><span class="btn-gps-hud-label">GPS</span>`;
       speedHud.style.display = "none";
@@ -275,26 +274,21 @@
     currentLat = coords.latitude;
     currentLng = coords.longitude;
 
-    // Швидкість у км/год
     if (coords.speed !== null && !isNaN(coords.speed)) {
       currentSpeedKmH = Math.round(coords.speed * 3.6);
       speedHud.innerText = `${currentSpeedKmH} км/год`;
     }
 
-    // Замок курсу на світлофорі (якщо швидкість < 3 км/год — не крутимо хаотично)
     if (coords.heading !== null && !isNaN(coords.heading) && currentSpeedKmH >= 3) {
       currentHeading = Math.round(coords.heading);
     }
 
     updateCarMarker(currentLat, currentLng, currentHeading);
 
-    // Логіка поведінки камери
     if (!isUserPanning && window.map) {
       if (gpsMode === 2) {
-        // Режим 2: слідування за машиною (північ угорі)
         window.map.panTo([currentLat, currentLng], { animate: true, duration: 0.5 });
       } else if (gpsMode === 3) {
-        // Режим 3: поворот карти за курсом авто
         window.map.panTo([currentLat, currentLng], { animate: false });
         rotateMapToHeading(currentHeading);
       }
@@ -320,10 +314,8 @@
       carMarker.setLatLng([lat, lng]);
     }
 
-    // Обертаємо машинку за курсом
     const wrapper = document.getElementById("navCarWrapper");
     if (wrapper) {
-      // Якщо в режимі 3 (карта крутиться) — машинка завжди дивиться строго вгору
       const rotateDeg = gpsMode === 3 ? 0 : heading;
       wrapper.style.transform = `rotate(${rotateDeg}deg)`;
     }
