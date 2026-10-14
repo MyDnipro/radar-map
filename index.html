@@ -3082,5 +3082,45 @@ ${allLiveReportsText || "Повідомлень немає"}
   <script src="timeline.js"></script>
   <script src="ticker.js"></script>
  <script src="keepawake.js"></script> 
+  // Живой фильтр выпадающих вариантов при наборе в модалке переноса
+const trainCustomInput = document.getElementById("trainCustomInput");
+const trainSuggestionsBox = document.getElementById("trainSuggestionsBox");
+
+if (trainCustomInput && trainSuggestionsBox) {
+  trainCustomInput.addEventListener("input", () => {
+    const q = trainCustomInput.value.trim().toLowerCase();
+    trainSuggestionsBox.innerHTML = "";
+
+    const sortedKeys = Object.keys(DNIPRO_STREETS_MAP).sort((a, b) => b.length - a.length);
+    const matchedStreets = [];
+
+    sortedKeys.forEach(key => {
+      const item = DNIPRO_STREETS_MAP[key];
+      if (key.includes(q) || item.name.toLowerCase().includes(q) || (item.old && item.old.toLowerCase().includes(q))) {
+        if (!matchedStreets.some(s => s.name === item.name)) {
+          matchedStreets.push(item);
+        }
+      }
+    });
+
+    const listToRender = matchedStreets.length > 0 ? matchedStreets.slice(0, 8) : [
+      DNIPRO_STREETS_MAP["верх киров"],
+      DNIPRO_STREETS_MAP["низ киров"],
+      DNIPRO_STREETS_MAP["верх рабоч"],
+      DNIPRO_STREETS_MAP["низ рабоч"],
+      DNIPRO_STREETS_MAP["нагорк"],
+      DNIPRO_STREETS_MAP["верх артем"],
+      DNIPRO_STREETS_MAP["гагарин"]
+    ].filter(Boolean);
+
+    listToRender.forEach(st => {
+      const chip = document.createElement("div");
+      chip.className = "train-chip";
+      chip.innerHTML = `📍 ${st.name}` + (st.old ? `<br><span style="font-size:9px; color:#f59e0b;">💡 ${st.old}</span>` : "");
+      chip.onclick = () => applyPointRelocation(st.name, st.lat, st.lng);
+      trainSuggestionsBox.appendChild(chip);
+    });
+  });
+}
 </body>
 </html>
