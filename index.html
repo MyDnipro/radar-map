@@ -1407,7 +1407,6 @@ ${allLiveReportsText || "Повідомлень немає"}
               isLongPress = true;
               if (navigator.vibrate) navigator.vibrate(60);
 
-              // Знаходимо повідомлення, яке зараз керує світлофором
               const matchedNow = allPoints.filter(p => {
                 const t = ((p.raw_text || p.text || "") + " " + (p.address || "")).toLowerCase();
                 return cp.keys.some(k => (k === "стан" ? /\bстан\b/i.test(t) && !/остановил/i.test(t) : new RegExp(k, "i").test(t)));
@@ -1606,11 +1605,9 @@ ${allLiveReportsText || "Повідомлень немає"}
           if (!p || typeof p !== 'object' || !p.lat || !p.lng) return null;
           p._fbKey = key;
 
-          // Склеюємо багаторядковий текст, замінюючи \n на пробіли
           if (p.raw_text) p.raw_text = p.raw_text.replace(/[\r\n]+/g, " ").trim();
           if (p.text) p.text = p.text.replace(/[\r\n]+/g, " ").trim();
 
-          // ПІДТЯГУЄМО РУЧНИЙ ВИБІР З ЛОКАЛЬНОГО КЕШУ
           if (manualPointOverrides[key]) {
             const mo = manualPointOverrides[key];
             p.is_clean = mo.is_clean;
@@ -1818,5 +1815,6 @@ ${allLiveReportsText || "Повідомлень немає"}
   <script src="timeline.js"></script>
   <script src="ticker.js"></script>
   <script src="keepawake.js"></script>
+  <script src="gps.js"></script>
 </body>
 </html>
