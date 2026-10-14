@@ -1,5 +1,5 @@
 // =========================================================================
-// 🚗 МОДУЛЬ GPS-НАВІГАЦІЇ ТА ШТУРМАНА (GPS ENGINE v1.1)
+// 🚗 МОДУЛЬ GPS-НАВІГАЦІЇ ТА ШТУРМАНА (GPS ENGINE v1.2)
 // =========================================================================
 
 (function() {
@@ -13,9 +13,10 @@
   let currentSpeedKmH = 0;
   let isUserPanning = false;
 
-  // Стиль іконки машинки (вид зверху з фарами)
+  // Стиль іконки машинки (вид зверху з фарами та пульсуючим маячком)
   const carIconSvg = `
     <div class="nav-car-wrapper" id="navCarWrapper">
+      <div class="nav-car-pulse"></div>
       <div class="nav-car-beam"></div>
       <svg class="nav-car-svg" viewBox="0 0 40 70" width="28" height="49">
         <!-- Тінь -->
@@ -60,6 +61,40 @@
       background: radial-gradient(ellipse at bottom, rgba(254, 240, 138, 0.45) 0%, rgba(254, 240, 138, 0) 75%);
       pointer-events: none;
     }
+    /* Пульсуючий радарний маячок навколо авто в режимі 1 (Огляд) */
+    .nav-car-pulse {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 54px;
+      height: 54px;
+      margin-top: -27px;
+      margin-left: -27px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(0, 243, 255, 0.4) 10%, rgba(0, 243, 255, 0.05) 70%);
+      border: 2px solid #00f3ff;
+      box-shadow: 0 0 14px rgba(0, 243, 255, 0.8);
+      pointer-events: none;
+      opacity: 0;
+      z-index: -1;
+    }
+    .nav-car-wrapper.is-mode-1 .nav-car-pulse {
+      animation: carBeaconPing 1.7s infinite ease-out;
+    }
+    @keyframes carBeaconPing {
+      0% {
+        transform: scale(0.5);
+        opacity: 0.95;
+      }
+      65% {
+        opacity: 0.45;
+      }
+      100% {
+        transform: scale(4.0);
+        opacity: 0;
+      }
+    }
+
     /* Кнопка GPS (ліворуч від секундоміра) */
     .btn-gps-hud {
       position: fixed;
@@ -160,7 +195,6 @@
     if (!window.map) return 1.0;
     const z = window.map.getZoom();
     if (z >= 16.5) return 1.0;
-    // На віддаленні плавно зменшується до 0.35, щоб не захаращувати екран
     const scale = 1.0 - (16.5 - z) * 0.14;
     return Math.max(0.35, Math.min(1.0, scale));
   }
@@ -171,6 +205,7 @@
     const rotateDeg = gpsMode === 3 ? 0 : currentHeading;
     const scale = getDynamicCarScale();
     wrapper.style.transform = `rotate(${rotateDeg}deg) scale(${scale})`;
+    wrapper.classList.toggle("is-mode-1", gpsMode === 1);
   }
 
   function setupMapInteractionListeners() {
@@ -184,7 +219,6 @@
         btnRecenter.style.display = "flex";
       }
     });
-    // Автоматично масштабуємо машинку при кожному наближенні / віддаленні карти
     window.map.on('zoom', () => {
       applyCarVisuals();
     });
@@ -197,7 +231,6 @@
 
     if (gpsMode === 0) {
       stopGps();
-      // Повернення карти до початкового огляду Днепра при вимкненні
       if (window.map) {
         const initCenter = (typeof INITIAL_CENTER !== 'undefined') ? INITIAL_CENTER : [48.484, 34.985];
         const initZoom = (typeof INITIAL_ZOOM !== 'undefined') ? INITIAL_ZOOM : (window.innerWidth < 768 ? 12 : 13);
@@ -221,6 +254,7 @@
         if (typeof showToast === "function") showToast("🚗 Режим: По курсу");
       }
     }
+    applyCarVisuals();
   }
   window.toggleGpsMode = toggleGpsMode;
 
