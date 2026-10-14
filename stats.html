@@ -225,21 +225,7 @@
     }
     .street-pill-btn.active { opacity: 1 !important; color: #fff !important; box-shadow: 0 0 12px currentColor; }
 
-    .street-time-cards { display: grid; grid-template-columns: 1fr; gap: 8px; margin-top: 14px; }
-    .st-time-card {
-      background: #0f172a; border: 1px solid #1e293b; border-radius: 8px; padding: 10px 12px;
-      display: flex; flex-direction: column; gap: 6px; border-left: 4px solid #00f3ff;
-    }
-    .st-card-head { display: flex; justify-content: space-between; font-size: 12px; font-weight: 800; color: #f1f5f9; }
-    .st-time-row { display: flex; flex-wrap: wrap; gap: 6px; font-size: 10px; margin-top: 2px; }
-    .st-badge {
-      padding: 4px 8px; border-radius: 5px; font-weight: 800; background: #060913; border: 1px solid #334155;
-      cursor: pointer; transition: transform 0.15s, box-shadow 0.15s;
-    }
-    .st-badge:hover { transform: translateY(-2px); box-shadow: 0 0 10px currentColor; }
-    .st-badge.week { border-color: #ec4899; color: #ec4899; }
-
-    /* НОВА ВКЛАДКА "ГОДИНИ ТА ДНІ": ТЕПЛОВА МАТРИЦЯ ТА РАНГ ДНІВ */
+    /* ВКЛАДКА 4: ТЕПЛОВА МАТРИЦЯ ГОДИНИ ТА ДНІ */
     .week-nav-bar {
       display: flex; justify-content: space-between; align-items: center;
       background: #0f172a; border: 1px solid #1e293b; border-radius: 8px;
@@ -295,12 +281,80 @@
     .day-bar-track { width: 100%; height: 8px; background: #060913; border-radius: 4px; overflow: hidden; }
     .day-bar-fill { height: 100%; border-radius: 4px; transition: width 0.3s ease; }
 
-    .year-nav-row { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; }
+    /* =========================================================================
+       📅 ОНОВЛЕНА ВКЛАДКА 5: ПО МІСЯЦЯХ ТА РОКАХ (РІЧНА МАТРИЦЯ + КАЛЕНДАР)
+       ========================================================================= */
+    .year-nav-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
     .btn-year-tab {
       background: #1e293b; border: 1px solid #334155; color: #94a3b8;
-      padding: 6px 16px; border-radius: 7px; font-size: 12px; font-weight: 800; cursor: pointer;
+      padding: 5px 13px; border-radius: 7px; font-size: 11px; font-weight: 900; cursor: pointer; transition: all 0.2s;
     }
-    .btn-year-tab.active { background: #0284c7; border-color: #00f3ff; color: #fff; box-shadow: 0 0 12px rgba(0, 243, 255, 0.4); }
+    .btn-year-tab.active {
+      background: #0284c7; border-color: #00f3ff; color: #fff; box-shadow: 0 0 12px rgba(0, 243, 255, 0.45);
+    }
+
+    /* Річне резюме у 3 компактні плашки */
+    .year-summary-strip {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px;
+    }
+    .year-sum-box {
+      background: #070d1d; border: 1px solid #1e293b; border-radius: 9px; padding: 9px 10px;
+      display: flex; flex-direction: column; gap: 2px; border-top: 2px solid #00f3ff;
+    }
+    .year-sum-lbl { font-size: 9.5px; font-weight: 800; color: #94a3b8; text-transform: uppercase; }
+    .year-sum-val { font-size: 14px; font-weight: 900; color: #f8fafc; }
+
+    /* Сітка 12 місяців року (4×3) */
+    .months-year-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 16px;
+    }
+    .month-tile {
+      background: #070d1d; border: 1.5px solid #1e293b; border-radius: 10px;
+      padding: 9px 10px; cursor: pointer; transition: all 0.18s; position: relative;
+      display: flex; flex-direction: column; gap: 5px;
+    }
+    .month-tile:hover { border-color: #38bdf8; transform: translateY(-1px); }
+    .month-tile.selected {
+      background: rgba(2, 132, 199, 0.18); border-color: #00f3ff;
+      box-shadow: 0 0 14px rgba(0, 243, 255, 0.35);
+    }
+    .month-tile.has-data { border-color: rgba(56, 189, 248, 0.4); }
+    .month-tile-top { display: flex; justify-content: space-between; align-items: center; }
+    .month-tile-name { font-size: 11.5px; font-weight: 900; color: #e2e8f0; }
+    .month-tile.selected .month-tile-name { color: #00f3ff; }
+    .month-tile-badge {
+      font-size: 10px; font-weight: 900; padding: 1px 6px; border-radius: 5px;
+      background: #0f172a; color: #64748b; border: 1px solid #1e293b;
+    }
+    .month-tile.has-data .month-tile-badge {
+      background: rgba(239, 68, 68, 0.2); color: #f87171; border-color: #ef4444;
+    }
+    .month-mini-bar {
+      width: 100%; height: 5px; background: #0f172a; border-radius: 3px; overflow: hidden; display: flex;
+    }
+    .month-tile-sub { font-size: 9.5px; color: #64748b; font-weight: 700; }
+
+    /* Інтерактивний календар вибраного місяця (числа 1..31) */
+    .month-calendar-box {
+      background: #070d1d; border: 1px solid #1e293b; border-radius: 12px;
+      padding: 12px; margin-bottom: 16px;
+    }
+    .cal-weekdays-row {
+      display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-bottom: 6px; text-align: center;
+    }
+    .cal-wd { font-size: 10px; font-weight: 900; color: #64748b; }
+    .cal-days-grid {
+      display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px;
+    }
+    .cal-day-cell {
+      min-height: 44px; border-radius: 7px; padding: 4px 5px;
+      display: flex; flex-direction: column; justify-content: space-between;
+      cursor: pointer; transition: transform 0.12s, box-shadow 0.12s; user-select: none;
+    }
+    .cal-day-cell.empty { background: transparent; border: none; cursor: default; }
+    .cal-day-cell:not(.empty):hover { transform: scale(1.06); box-shadow: 0 0 10px rgba(0, 243, 255, 0.5); z-index: 2; }
+    .cal-day-num { font-size: 10px; font-weight: 900; }
+    .cal-day-cnt { font-size: 9.5px; font-weight: 900; text-align: right; }
 
     .chart-canvas-wrap { position: relative; width: 100%; height: 240px; }
 
@@ -329,6 +383,11 @@
       color: #fca5a5; padding: 2px 6px; border-radius: 4px; font-size: 9px; font-weight: 800; cursor: pointer;
     }
     .btn-del-report:hover { background: #ef4444; color: #fff; }
+
+    @media (max-width: 650px) {
+      .months-year-grid { grid-template-columns: repeat(3, 1fr); }
+      .year-summary-strip { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
@@ -360,7 +419,7 @@
       </button>
     </div>
 
-    <!-- НАВІГАЦІЯ (5 ВКЛАДОК БЕЗ СТОВПЧИКІВ ПО ДНЯХ) -->
+    <!-- НАВІГАЦІЯ (5 ВКЛАДОК) -->
     <div class="tabs-nav">
       <button id="tabBtn1" class="tab-btn active" onclick="setTab(1)">💬 Тексти з каналу</button>
       <button id="tabBtn2" class="tab-btn" onclick="setTab(2)">⏱️ Хронометраж</button>
@@ -430,7 +489,7 @@
       <div id="timelineList"></div>
     </div>
 
-    <!-- ТАБ 4: ГОДИНИ ТА ДНІ (НОВА ЧІТКА МАТРИЦЯ ТА ГРАФІК) -->
+    <!-- ТАБ 4: ГОДИНИ ТА ДНІ -->
     <div id="tabContent4" class="hud-card" style="display:none;">
       <div class="week-nav-bar">
         <button class="btn-nav-week" onclick="changeWeekOffset(-1)">◀ Попередній тиждень</button>
@@ -450,14 +509,12 @@
         <div class="ctrl-streets-row" id="pillsContainerTab4"></div>
       </div>
 
-      <!-- ТЕПЛОВА МАТРИЦЯ: ДНІ ТИЖНЯ × ГОДИНИ ДОБИ -->
       <div class="hud-card-title" style="margin-top:6px; font-size:13px;">
         <span>🔥 Матриця небезпеки (Дні тижня × Години 00:00–23:00):</span>
         <span style="font-size:10px; color:#94a3b8; font-weight:700;">Натисніть на клітинку для перегляду звітів</span>
       </div>
       <div class="heatmap-wrapper" id="weeklyHeatmapBox"></div>
 
-      <!-- ЧИСТИЙ ГРАФІК ПО ГОДИНАХ ОБРАНОГО ДНЯ АБО ТИЖНЯ -->
       <div class="hud-card-title" style="margin-top:12px; font-size:13px;">
         <span id="hourlyChartHeading">🕒 Погодинний профіль (Всі дні тижня):</span>
       </div>
@@ -467,23 +524,25 @@
         <canvas id="canvasRouteHourly"></canvas>
       </div>
 
-      <!-- НАОЧНИЙ РЕЙТИНГ ПО ДНЯХ ТИЖНЯ -->
       <div class="hud-card-title" style="margin-top:18px; font-size:13px;">
         <span>📅 Активність по днях тижня (натисніть на день для фільтрації):</span>
       </div>
       <div class="days-bars-list" id="weeklyDaysBarsList"></div>
     </div>
 
-    <!-- ТАБ 5: ПО МІСЯЦЯХ -->
+    <!-- ТАБ 5: ПО МІСЯЦЯХ ТА РОКАХ (ПОВНІСТЮ ОНОВЛЕНИЙ РІЧНИЙ КОМАНДНИЙ ЦЕНТР) -->
     <div id="tabContent5" class="hud-card" style="display:none;">
       <div class="hud-card-title">
-        <span>📅 Статистика по ваших 7 місцях по місяцях:</span>
+        <span>📅 Річний огляд та календар засад по місяцях:</span>
         <div class="year-nav-row">
+          <button id="btnYear2025" class="btn-year-tab" onclick="setStatsYear(2025)">2025</button>
           <button id="btnYear2026" class="btn-year-tab active" onclick="setStatsYear(2026)">2026 рік</button>
           <button id="btnYear2027" class="btn-year-tab" onclick="setStatsYear(2027)">2027 рік</button>
+          <button id="btnYear2028" class="btn-year-tab" onclick="setStatsYear(2028)">2028</button>
         </div>
       </div>
 
+      <!-- Фільтр вулиць для річної вкладки -->
       <div class="street-control-toolbar">
         <div class="ctrl-modes-row">
           <button id="btnMultiTab5" class="btn-multi-toggle" onclick="toggleMultiSelectMode('tab5')">
@@ -496,14 +555,35 @@
         <div class="ctrl-streets-row" id="pillsContainerTab5"></div>
       </div>
 
-      <div class="chart-canvas-wrap" style="height:260px;">
+      <!-- Річні підсумки (3 плашки) -->
+      <div class="year-summary-strip" id="yearSummaryStrip"></div>
+
+      <!-- 1. Матриця 12 місяців року (Січень – Грудень) -->
+      <div class="hud-card-title" style="font-size:12.5px; margin-bottom:8px;">
+        <span id="yearMatrixHeading">🗓️ Всі 12 місяців року (натисніть на місяць для детального календаря):</span>
+      </div>
+      <div class="months-year-grid" id="monthsYearGrid"></div>
+
+      <!-- 2. Графік динаміки за всі 12 місяців вибраного року -->
+      <div class="hud-card-title" style="font-size:12.5px; margin-bottom:8px;">
+        <span id="yearlyChartTitle">📈 Графік річної динаміки по місяцях:</span>
+      </div>
+      <div class="chart-canvas-wrap" style="height:190px; margin-bottom:18px;">
         <canvas id="canvasYearlyMonths"></canvas>
       </div>
 
-      <div style="font-size:11px; color:#38bdf8; margin: 12px 0 6px; font-weight:700;">
-        📋 Підсумок по місяцях вибраного року:
+      <!-- 3. Інтерактивний тепловий календар вибраного місяця (числа 1..31) -->
+      <div class="hud-card-title" style="font-size:12.5px; margin-bottom:8px;">
+        <span id="selectedMonthCalTitle">🔥 Календар вибраного місяця по числах:</span>
+        <span style="font-size:10px; color:#94a3b8; font-weight:700;">Клік по числу відкриває звіти за день</span>
       </div>
-      <div class="street-time-cards" id="monthlyBreakdownCards"></div>
+      <div class="month-calendar-box" id="selectedMonthCalendarBox"></div>
+
+      <!-- 4. Рейтинг 7 вулиць за вибраний місяць та за рік -->
+      <div class="hud-card-title" style="font-size:12.5px; margin-bottom:8px;">
+        <span id="monthlyStreetRankTitle">🏆 Рейтинг точок маршруту за місяць та рік:</span>
+      </div>
+      <div class="days-bars-list" id="monthlyBreakdownCards"></div>
     </div>
 
     <!-- ТАБ 6: ІНШІ МІСЦЯ ДНІПРА -->
@@ -565,16 +645,17 @@
     let rawArchive = [];
     
     let activeTabNum = parseInt(localStorage.getItem("stats_active_tab") || "1");
-    if (activeTabNum === 3) activeTabNum = 4; // Якщо була збережена видалена 3 вкладка
+    if (activeTabNum === 3) activeTabNum = 4;
 
     let feedPeriod = localStorage.getItem("stats_feed_period") || "today";
     let selectedFeedStreet = localStorage.getItem("stats_feed_street") || "all";
-    // Режими перевірки: 2 (2+ свідків), 5 (5+ свідків — залізобетон), 1 (усі звіти)
     let confirmThreshold = parseInt(localStorage.getItem("stats_confirm_threshold") || "2");
     let timelineDayOffset = parseInt(localStorage.getItem("stats_timeline_day_offset") || "0");
     let currentWeekOffset = 0;
     let selectedDayTimestamp = null;
-    let selectedStatsYear = parseInt(localStorage.getItem("stats_year") || "2026");
+
+    let selectedStatsYear = parseInt(localStorage.getItem("stats_year") || String(new Date().getFullYear()));
+    let selectedStatsMonth = parseInt(localStorage.getItem("stats_month") ?? String(new Date().getMonth()));
 
     let clockMode = localStorage.getItem("stats_clock_mode") || "24h";
     let selectedClockStreet = localStorage.getItem("stats_clock_street") || "all";
@@ -777,8 +858,10 @@ ${recentReports}
       document.getElementById("btnDayYesterday").classList.toggle("active", timelineDayOffset === 1);
       document.getElementById("btnDayWeek").classList.toggle("active", timelineDayOffset === 7);
 
-      document.getElementById("btnYear2026").classList.toggle("active", selectedStatsYear === 2026);
-      document.getElementById("btnYear2027").classList.toggle("active", selectedStatsYear === 2027);
+      [2025, 2026, 2027, 2028].forEach(y => {
+        const b = document.getElementById(`btnYear${y}`);
+        if (b) b.classList.toggle("active", selectedStatsYear === y);
+      });
 
       renderFeedStreetPills();
       renderPillsControls('tab4');
@@ -854,10 +937,18 @@ ${recentReports}
     function setStatsYear(year) {
       selectedStatsYear = year;
       localStorage.setItem("stats_year", year);
-      document.getElementById("btnYear2026").classList.toggle("active", year === 2026);
-      document.getElementById("btnYear2027").classList.toggle("active", year === 2027);
+      [2025, 2026, 2027, 2028].forEach(y => {
+        const b = document.getElementById(`btnYear${y}`);
+        if (b) b.classList.toggle("active", y === year);
+      });
       renderYearlyTab();
     }
+
+    window.selectMonthInYear = function(mIdx) {
+      selectedStatsMonth = mIdx;
+      localStorage.setItem("stats_month", mIdx);
+      renderYearlyTab();
+    };
 
     function changeWeekOffset(delta) {
       currentWeekOffset += delta;
@@ -1018,7 +1109,10 @@ ${recentReports}
         renderRouteTimeCharts(targetSessionsGlobal, todayStart);
         if (routeHourlyChartInstance) routeHourlyChartInstance.resize();
       }
-      if (num === 5 && yearlyMonthsChartInstance) yearlyMonthsChartInstance.resize();
+      if (num === 5) {
+        renderYearlyTab();
+        if (yearlyMonthsChartInstance) yearlyMonthsChartInstance.resize();
+      }
     }
 
     function renderAll() {
@@ -1454,7 +1548,7 @@ ${recentReports}
     }
 
     // =========================================================================
-    // 🔥 НОВА ВКЛАДКА 4: ГОДИНИ ТА ДНІ (ТЕПЛОВА МАТРИЦЯ + ЧИСТИЙ ГРАФІК)
+    // 🔥 ВКЛАДКА 4: ГОДИНИ ТА ДНІ (ТЕПЛОВА МАТРИЦЯ)
     // =========================================================================
     function renderRouteTimeCharts(targetSessionsMap, todayStart) {
       const f = streetFilters.tab4;
@@ -1486,7 +1580,6 @@ ${recentReports}
         const sessions = targetSessionsMap[t.id] || [];
 
         sessions.forEach(s => {
-          // Заповнюємо матрицю 7 днів × 24 години
           days.forEach(dObj => {
             if (s.startTime >= dObj.startTime && s.startTime < dObj.endTime) {
               const h = new Date(s.startTime).getHours();
@@ -1495,7 +1588,6 @@ ${recentReports}
             }
           });
 
-          // Заповнюємо обраний день або весь тиждень для нижнього графіка
           if (selectedDayTimestamp !== null) {
             if (s.startTime >= selectedDayTimestamp && s.startTime < selectedDayTimestamp + 86400000) {
               totalByHour[new Date(s.startTime).getHours()]++;
@@ -1508,7 +1600,6 @@ ${recentReports}
         });
       });
 
-      // 1. РЕНДЕР ТЕПЛОВОЇ МАТРИЦІ (ДНІ × ГОДИНИ)
       const hmBox = document.getElementById("weeklyHeatmapBox");
       if (hmBox) {
         let tableHtml = `<table class="heatmap-table"><thead><tr><th>День</th>`;
@@ -1542,7 +1633,6 @@ ${recentReports}
         hmBox.innerHTML = tableHtml;
       }
 
-      // 2. ПІГУЛКИ ВИБОРУ ДНЯ
       const dayPillsContainer = document.getElementById("daySelectorPills");
       dayPillsContainer.innerHTML = "";
 
@@ -1569,7 +1659,6 @@ ${recentReports}
         headEl.innerText = `🕒 Погодинний профіль — сумарно за вибраний тиждень:`;
       }
 
-      // 3. ЧИСТИЙ ОДНОКОЛІРНИЙ ГРАФІК ПО ГОДИНАХ (БЕЗ КАШІ ТА ЛІНІЙ)
       const maxHourVal = Math.max(1, ...totalByHour);
       const barColors = totalByHour.map(v => {
         if (v === 0) return '#1e293b';
@@ -1614,7 +1703,6 @@ ${recentReports}
         }
       });
 
-      // 4. ГОРИЗОНТАЛЬНІ СМУГИ ПО ДНЯХ ТИЖНЯ
       const barsListEl = document.getElementById("weeklyDaysBarsList");
       if (barsListEl) {
         barsListEl.innerHTML = "";
@@ -1693,37 +1781,123 @@ ${recentReports}
       document.getElementById("detailModal").style.display = "flex";
     };
 
+    // =========================================================================
+    // 📅 ОНОВЛЕНА ВКЛАДКА 5: ПО МІСЯЦЯХ ТА РОКАХ (12 МІСЯЦІВ + КАЛЕНДАР + РЕЙТИНГ)
+    // =========================================================================
     function renderYearlyTab() {
       const f = streetFilters.tab5;
       const isAll = f.selected.has('all');
       const displayedTargets = TARGET_CHECKPOINTS.filter(t => isAll || f.selected.has(t.id));
 
-      const monthNames = ["Січ", "Лют", "Бер", "Кві", "Тра", "Чер", "Лип", "Сер", "Вер", "Жов", "Лис", "Гру"];
-      const monthFullNames = ["Січень", "Лютий", "Березень", "Квітень", "Травень", "Червень", "Липень", "Серпень", "Вересень", "Жовтень", "Листопад", "Грудень"];
+      const monthShort = ["Січ", "Лют", "Бер", "Кві", "Тра", "Чер", "Лип", "Сер", "Вер", "Жов", "Лис", "Гру"];
+      const monthFull = ["Січень", "Лютий", "Березень", "Квітень", "Травень", "Червень", "Липень", "Серпень", "Вересень", "Жовтень", "Листопад", "Грудень"];
 
-      const datasetsMonthly = [];
       const totalByMonth = new Array(12).fill(0);
+      const perStreetByMonth = {};
+      const streetYearTotals = {};
 
       displayedTargets.forEach(t => {
-        const sessions = targetSessionsGlobal[t.id] || [];
-        const monthCounts = new Array(12).fill(0);
+        perStreetByMonth[t.id] = new Array(12).fill(0);
+        streetYearTotals[t.id] = 0;
 
+        const sessions = targetSessionsGlobal[t.id] || [];
         sessions.forEach(s => {
           const d = new Date(s.startTime);
           if (d.getFullYear() === selectedStatsYear) {
             const m = d.getMonth();
-            monthCounts[m]++;
+            perStreetByMonth[t.id][m]++;
             totalByMonth[m]++;
+            streetYearTotals[t.id]++;
           }
         });
-
-        datasetsMonthly.push({ type: 'bar', label: t.name, data: monthCounts, backgroundColor: t.color, borderRadius: 4 });
       });
 
-      datasetsMonthly.unshift({
-        type: 'line', label: '📈 Всього за місяць', data: totalByMonth,
-        borderColor: '#ffffff', borderWidth: 2.5, pointBackgroundColor: '#00f3ff',
-        pointRadius: 4, tension: 0.3, fill: false
+      // Якщо обраний місяць у поточному році порожній, але є інший активний місяць — м'яко підсвічуємо активний при першому відкритті
+      const totalInYear = totalByMonth.reduce((a, b) => a + b, 0);
+      if (totalByMonth[selectedStatsMonth] === 0 && totalInYear > 0) {
+        const firstActiveMonth = totalByMonth.findIndex(c => c > 0);
+        if (firstActiveMonth !== -1) selectedStatsMonth = firstActiveMonth;
+      }
+
+      // 1. РІЧНЕ РЕЗЮМЕ (3 ПЛАШКИ)
+      let peakMonthIdx = -1, peakMonthVal = 0;
+      totalByMonth.forEach((v, idx) => { if (v > peakMonthVal) { peakMonthVal = v; peakMonthIdx = idx; } });
+
+      let topStreetName = "—", topStreetVal = 0;
+      displayedTargets.forEach(t => {
+        if (streetYearTotals[t.id] > topStreetVal) {
+          topStreetVal = streetYearTotals[t.id];
+          topStreetName = t.name;
+        }
+      });
+
+      const summaryEl = document.getElementById("yearSummaryStrip");
+      if (summaryEl) {
+        summaryEl.innerHTML = `
+          <div class="year-sum-box">
+            <span class="year-sum-lbl">Всього за ${selectedStatsYear} рік</span>
+            <span class="year-sum-val" style="color:#00f3ff;">${totalInYear} блокпостів</span>
+          </div>
+          <div class="year-sum-box" style="border-top-color:#f59e0b;">
+            <span class="year-sum-lbl">Піковий місяць ${selectedStatsYear}</span>
+            <span class="year-sum-val" style="color:#fbbf24;">${peakMonthVal > 0 ? `${monthFull[peakMonthIdx]} (${peakMonthVal})` : 'Немає даних'}</span>
+          </div>
+          <div class="year-sum-box" style="border-top-color:#ec4899;">
+            <span class="year-sum-lbl">Найгарячіша точка року</span>
+            <span class="year-sum-val" style="color:#f472b6;">${topStreetVal > 0 ? `${topStreetName} (${topStreetVal})` : '—'}</span>
+          </div>
+        `;
+      }
+
+      // 2. МАТРИЦЯ 12 МІСЯЦІВ РОКУ (КАРТКИ СІЧЕНЬ – ГРУДЕНЬ)
+      const gridEl = document.getElementById("monthsYearGrid");
+      if (gridEl) {
+        gridEl.innerHTML = "";
+        for (let m = 0; m < 12; m++) {
+          const mTotal = totalByMonth[m];
+          const isSel = (m === selectedStatsMonth);
+          const hasData = mTotal > 0;
+
+          let segmentsHtml = "";
+          if (mTotal > 0) {
+            displayedTargets.forEach(t => {
+              const c = perStreetByMonth[t.id][m];
+              if (c > 0) {
+                const wPct = Math.round((c / mTotal) * 100);
+                segmentsHtml += `<div style="width:${wPct}%;height:100%;background:${t.color};"></div>`;
+              }
+            });
+          }
+
+          let topMStreet = "спокійно";
+          let topMVal = 0;
+          displayedTargets.forEach(t => {
+            if (perStreetByMonth[t.id][m] > topMVal) {
+              topMVal = perStreetByMonth[t.id][m];
+              topMStreet = `лідер: ${t.name} (${topMVal})`;
+            }
+          });
+
+          gridEl.innerHTML += `
+            <div class="month-tile ${isSel ? 'selected' : ''} ${hasData ? 'has-data' : ''}" onclick="selectMonthInYear(${m})">
+              <div class="month-tile-top">
+                <span class="month-tile-name">${monthFull[m]}</span>
+                <span class="month-tile-badge">${mTotal} БП</span>
+              </div>
+              <div class="month-mini-bar">${segmentsHtml}</div>
+              <div class="month-tile-sub">${topMStreet}</div>
+            </div>
+          `;
+        }
+      }
+
+      // 3. ЧИСТИЙ РІЧНИЙ ГРАФІК ПО 12 МІСЯЦЯХ
+      document.getElementById("yearlyChartTitle").innerText = `📈 Річна динаміка по місяцях (${selectedStatsYear} рік):`;
+      const maxMVal = Math.max(1, ...totalByMonth);
+      const mColors = totalByMonth.map((v, idx) => {
+        if (idx === selectedStatsMonth && v > 0) return '#00f3ff';
+        if (v === 0) return '#1e293b';
+        return '#a855f7';
       });
 
       const ctxM = document.getElementById('canvasYearlyMonths').getContext('2d');
@@ -1731,55 +1905,192 @@ ${recentReports}
 
       yearlyMonthsChartInstance = new Chart(ctxM, {
         type: 'bar',
-        data: { labels: monthNames, datasets: datasetsMonthly },
+        data: {
+          labels: monthShort,
+          datasets: [{
+            label: `Блокпостів у ${selectedStatsYear} р.`,
+            data: totalByMonth,
+            backgroundColor: mColors,
+            borderRadius: 5
+          }]
+        },
         options: {
           responsive: true, maintainAspectRatio: false,
           plugins: { legend: { display: false } },
           onClick: (e, elements) => {
             if (elements && elements.length > 0) {
-              const mIndex = elements[0].index;
-              openMonthlyDetailModal(selectedStatsYear, mIndex, monthFullNames[mIndex]);
+              selectMonthInYear(elements[0].index);
             }
           },
           scales: {
-            x: { stacked: true, grid: { color: '#1e293b' }, ticks: { color: '#f1f5f9', font: { size: 10, weight: 'bold' } } },
-            y: { stacked: true, grid: { color: '#1e293b' }, ticks: { color: '#94a3b8', stepSize: 1, beginAtZero: true } }
+            x: { grid: { color: '#1e293b' }, ticks: { color: '#f1f5f9', font: { size: 10, weight: 'bold' } } },
+            y: { grid: { color: '#1e293b' }, ticks: { color: '#94a3b8', stepSize: 1, beginAtZero: true } }
           }
         }
       });
 
-      const breakdownBox = document.getElementById("monthlyBreakdownCards");
-      breakdownBox.innerHTML = "";
+      // 4. ТЕПЛОВИЙ КАЛЕНДАР ВИБРАНОГО МІСЯЦЯ ПО ЧИСЛАХ (1..31)
+      document.getElementById("selectedMonthCalTitle").innerText = `🔥 Календар місяця: ${monthFull[selectedStatsMonth]} ${selectedStatsYear} р.`;
+      const calBox = document.getElementById("selectedMonthCalendarBox");
+      if (calBox) {
+        const daysInMonth = new Date(selectedStatsYear, selectedStatsMonth + 1, 0).getDate();
+        let firstDayDow = new Date(selectedStatsYear, selectedStatsMonth, 1).getDay(); // 0=Нд, 1=Пн...
+        const mondayOffset = (firstDayDow === 0) ? 6 : (firstDayDow - 1);
 
-      displayedTargets.forEach(t => {
-        const sessions = targetSessionsGlobal[t.id] || [];
-        const inYear = sessions.filter(s => new Date(s.startTime).getFullYear() === selectedStatsYear);
+        const dayCounts = new Array(daysInMonth + 1).fill(0);
+        displayedTargets.forEach(t => {
+          const sessions = targetSessionsGlobal[t.id] || [];
+          sessions.forEach(s => {
+            const d = new Date(s.startTime);
+            if (d.getFullYear() === selectedStatsYear && d.getMonth() === selectedStatsMonth) {
+              dayCounts[d.getDate()]++;
+            }
+          });
+        });
 
-        let monthsBadgesHtml = "";
-        for (let m = 0; m < 12; m++) {
-          const cnt = inYear.filter(s => new Date(s.startTime).getMonth() === m).length;
-          if (cnt > 0) {
-            monthsBadgesHtml += `
-              <span class="st-badge week" onclick="openMonthlyDetailModal(${selectedStatsYear}, ${m}, '${monthFullNames[m]}')">
-                ${monthNames[m]}: ${cnt} блокп.
-              </span>
-            `;
-          }
-        }
-
-        if (!monthsBadgesHtml) monthsBadgesHtml = `<span style="font-size:10px; color:#64748b;">Блокпостів у ${selectedStatsYear} році не зафіксовано.</span>`;
-
-        breakdownBox.innerHTML += `
-          <div class="st-time-card" style="border-left-color: ${t.color};">
-            <div class="st-card-head">
-              <span style="color:${t.color};">${t.fullName}</span>
-              <span style="color:#94a3b8;">У ${selectedStatsYear} р.: ${inYear.length} блокпостів</span>
-            </div>
-            <div class="st-time-row">${monthsBadgesHtml}</div>
+        let calHtml = `
+          <div class="cal-weekdays-row">
+            <span class="cal-wd">Пн</span><span class="cal-wd">Вт</span><span class="cal-wd">Ср</span>
+            <span class="cal-wd">Чт</span><span class="cal-wd">Пт</span>
+            <span class="cal-wd" style="color:#f59e0b;">Сб</span><span class="cal-wd" style="color:#f59e0b;">Нд</span>
           </div>
+          <div class="cal-days-grid">
         `;
-      });
+
+        for (let e = 0; e < mondayOffset; e++) {
+          calHtml += `<div class="cal-day-cell empty"></div>`;
+        }
+
+        for (let dayNum = 1; dayNum <= daysInMonth; dayNum++) {
+          const cnt = dayCounts[dayNum];
+          let cls = "hm-0";
+          if (cnt === 1) cls = "hm-1";
+          else if (cnt === 2) cls = "hm-2";
+          else if (cnt === 3) cls = "hm-3";
+          else if (cnt >= 4) cls = "hm-4";
+
+          const dateLabel = `${String(dayNum).padStart(2,'0')} ${monthShort[selectedStatsMonth]} ${selectedStatsYear}`;
+          calHtml += `
+            <div class="cal-day-cell ${cls}" onclick="openCalendarDateModal(${selectedStatsYear}, ${selectedStatsMonth}, ${dayNum}, '${dateLabel}')">
+              <span class="cal-day-num">${dayNum}</span>
+              <span class="cal-day-cnt">${cnt > 0 ? cnt + ' БП' : '·'}</span>
+            </div>
+          `;
+        }
+
+        calHtml += `</div>`;
+        calBox.innerHTML = calHtml;
+      }
+
+      // 5. РЕЙТИНГ 7 ТОЧОК МАРШРУТУ ЗА ВИБРАНИЙ МІСЯЦЬ ТА РІК
+      document.getElementById("monthlyStreetRankTitle").innerText = `🏆 Розподіл по вулицях за ${monthFull[selectedStatsMonth]} (та всього за ${selectedStatsYear} рік):`;
+      const breakdownBox = document.getElementById("monthlyBreakdownCards");
+      if (breakdownBox) {
+        breakdownBox.innerHTML = "";
+        const selectedMonthTotal = Math.max(1, totalByMonth[selectedStatsMonth]);
+
+        const sortedTargets = [...displayedTargets].sort((a, b) => {
+          const diffM = perStreetByMonth[b.id][selectedStatsMonth] - perStreetByMonth[a.id][selectedStatsMonth];
+          if (diffM !== 0) return diffM;
+          return streetYearTotals[b.id] - streetYearTotals[a.id];
+        });
+
+        sortedTargets.forEach(t => {
+          const mCnt = perStreetByMonth[t.id][selectedStatsMonth];
+          const yCnt = streetYearTotals[t.id];
+          const mSharePct = totalByMonth[selectedStatsMonth] > 0 ? Math.round((mCnt / selectedMonthTotal) * 100) : 0;
+
+          breakdownBox.innerHTML += `
+            <div class="day-bar-item" style="border-left: 4px solid ${t.color};" onclick="openStreetMonthModal('${t.id}', ${selectedStatsYear}, ${selectedStatsMonth}, '${monthFull[selectedStatsMonth]}')">
+              <div class="day-bar-top">
+                <span style="color:${t.color};">${t.fullName}</span>
+                <span style="color:#f1f5f9;">
+                  <b style="color:#00f3ff;">${mCnt} БП</b> у ${monthShort[selectedStatsMonth]} (${mSharePct}%)
+                  <span style="color:#64748b;margin-left:6px;">| За ${selectedStatsYear} р.: ${yCnt}</span>
+                </span>
+              </div>
+              <div class="day-bar-track">
+                <div class="day-bar-fill" style="width:${mSharePct}%; background:${t.color};"></div>
+              </div>
+            </div>
+          `;
+        });
+      }
     }
+
+    window.openCalendarDateModal = function(year, monthIdx, dayNum, labelStr) {
+      const f = streetFilters.tab5;
+      const isAll = f.selected.has('all');
+      const dayStart = new Date(year, monthIdx, dayNum, 0, 0, 0).getTime();
+      const dayEnd = dayStart + 86400000;
+
+      document.getElementById("modalTitle").innerText = `Дата: ${labelStr}`;
+      document.getElementById("modalSub").innerText = `Усі зафіксовані блокпости за цей день`;
+
+      const reportsBox = document.getElementById("modalReports");
+      reportsBox.innerHTML = "";
+      let foundAny = false;
+
+      TARGET_CHECKPOINTS.forEach(t => {
+        if (!isAll && !f.selected.has(t.id)) return;
+        const sessions = targetSessionsGlobal[t.id] || [];
+        const inDay = sessions.filter(s => s.startTime >= dayStart && s.startTime < dayEnd);
+
+        if (inDay.length > 0) {
+          foundAny = true;
+          inDay.forEach(s => {
+            const st = new Date(s.startTime).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+            const et = new Date(s.endTime).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+            const reportsHtml = s.reports.map(r => `• «${r.text || r.raw_text || ""}» <span onclick="deleteArchiveItem('${r._fbKey}', event)" class="btn-del-report">Видалити</span>`).join("<br>");
+
+            reportsBox.innerHTML += `
+              <div class="modal-report-item" style="border-left: 3px solid ${t.color};">
+                <div class="modal-report-time" style="color:${t.color};">${t.fullName} (${st}–${et} | Свідків: ${s.count})</div>
+                <div>${reportsHtml}</div>
+              </div>
+            `;
+          });
+        }
+      });
+
+      if (!foundAny) reportsBox.innerHTML = `<div style="color:#94a3b8; font-size:12px;">У цей день блокпостів не зафіксовано.</div>`;
+      document.getElementById("detailModal").style.display = "flex";
+    };
+
+    window.openStreetMonthModal = function(streetId, year, monthIdx, monthName) {
+      const target = TARGET_CHECKPOINTS.find(t => t.id === streetId);
+      if (!target) return;
+
+      document.getElementById("modalTitle").innerText = `${target.fullName}`;
+      document.getElementById("modalSub").innerText = `Звіти за ${monthName} ${year} року`;
+
+      const reportsBox = document.getElementById("modalReports");
+      reportsBox.innerHTML = "";
+
+      const sessions = (targetSessionsGlobal[streetId] || []).filter(s => {
+        const d = new Date(s.startTime);
+        return d.getFullYear() === year && d.getMonth() === monthIdx;
+      });
+
+      if (sessions.length === 0) {
+        reportsBox.innerHTML = `<div style="color:#94a3b8; font-size:12px;">За ${monthName} ${year} р. на цій точці блокпостів не зафіксовано.</div>`;
+      } else {
+        sessions.forEach(s => {
+          const dt = new Date(s.startTime).toLocaleDateString([], { day:'2-digit', month:'2-digit' });
+          const st = new Date(s.startTime).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+          const et = new Date(s.endTime).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+          const reportsHtml = s.reports.map(r => `• «${r.text || r.raw_text || ""}» <span onclick="deleteArchiveItem('${r._fbKey}', event)" class="btn-del-report">Видалити</span>`).join("<br>");
+
+          reportsBox.innerHTML += `
+            <div class="modal-report-item" style="border-left: 3px solid ${target.color};">
+              <div class="modal-report-time" style="color:${target.color};">📅 ${dt} (${st}–${et} | Свідків: ${s.count})</div>
+              <div>${reportsHtml}</div>
+            </div>
+          `;
+        });
+      }
+      document.getElementById("detailModal").style.display = "flex";
+    };
 
     function renderOtherSectors() {
       const otherListEl = document.getElementById("otherSectorsList");
@@ -1802,43 +2113,6 @@ ${recentReports}
           </div>
         `;
       });
-    }
-
-    function openMonthlyDetailModal(year, monthIndex, monthName) {
-      document.getElementById("modalTitle").innerText = `Місяць: ${monthName} ${year} року`;
-      document.getElementById("modalSub").innerText = `Блокпости по ваших 7 місцях за цей місяць`;
-      const reportsBox = document.getElementById("modalReports");
-      reportsBox.innerHTML = "";
-      let foundAny = false;
-
-      TARGET_CHECKPOINTS.forEach(t => {
-        const sessions = targetSessionsGlobal[t.id] || [];
-        const inMonth = sessions.filter(s => {
-          const d = new Date(s.startTime);
-          return d.getFullYear() === year && d.getMonth() === monthIndex;
-        });
-
-        if (inMonth.length > 0) {
-          foundAny = true;
-          inMonth.forEach(s => {
-            const dt = new Date(s.startTime).toLocaleDateString([], { day:'2-digit', month:'2-digit' });
-            const st = new Date(s.startTime).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
-            const et = new Date(s.endTime).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
-            
-            const reportsHtml = s.reports.map(r => `• «${r.text || r.raw_text || ""}» <span onclick="deleteArchiveItem('${r._fbKey}', event)" class="btn-del-report">Видалити</span>`).join("<br>");
-
-            reportsBox.innerHTML += `
-              <div class="modal-report-item" style="border-left: 3px solid ${t.color};">
-                <div class="modal-report-time" style="color:${t.color};">${t.fullName} (${dt}, ${st}–${et})</div>
-                <div>${reportsHtml}</div>
-              </div>
-            `;
-          });
-        }
-      });
-
-      if (!foundAny) reportsBox.innerHTML = `<div style="color:#94a3b8; font-size:12px;">У цьому місяці блокпостів на маршруті не було.</div>`;
-      document.getElementById("detailModal").style.display = "flex";
     }
 
     function showSessionModal(targetId, sessionStartTime) {
