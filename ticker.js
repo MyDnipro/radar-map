@@ -1,9 +1,9 @@
 /**
- * Radar Dnipro — Модуль "Радіо ефір" + Фонове утримання екрана (ticker.js)
+ * Radar Dnipro — Модуль "Радіо ефір" з розумним маскуванням (ticker.js)
  * - 4 рядки на екрані + плавний скрол до 100 повідомлень назад
  * - Перемикач: "Мій шлях" / "Все місто"
- * - Геометричне вирізання (clip-path) під відкритим попапом: попап ідеально перекриває текст, а саме радіо НЕ тухне!
- * - Автоматичне утримання екрана (завжди увімкнено, без іконки 🔆)
+ * - Динамічний "ластик": ховаються тільки ті рядки, які реально накриті попапом карти
+ * - Автоматичне утримання екрана (завжди увімкнено)
  */
 (function() {
   let isRadioActive = localStorage.getItem("radar_radio_active") === "true";
@@ -65,15 +65,18 @@
 
     /* Контейнер радіо-ефіру */
     #radioFeedOverlay {
-      position: fixed !important;
+      position: absolute !important;
       top: 58px !important;
       left: 15px !important;
       right: 15px !important;
-      z-index: 800 !important;
+      z-index: 700 !important;
       display: none;
+      flex-direction: column;
+      gap: 3px;
       pointer-events: none;
       user-select: none;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      transition: opacity 0.15s ease;
     }
 
     /* Ненав'язливий напівпрозорий перемикач: Мій шлях | Все місто */
@@ -87,7 +90,8 @@
       border: 1px solid rgba(56, 189, 248, 0.25);
       border-radius: 14px;
       padding: 1px 3px;
-      margin-bottom: 4px;
+      margin-bottom: 2px;
+      align-self: flex-start;
     }
     .radio-mode-tab {
       cursor: pointer;
@@ -133,6 +137,7 @@
       display: flex;
       align-items: center;
       gap: 6px;
+      transition: opacity 0.15s ease;
     }
     .radio-msg-line:active { opacity: 0.6; }
 
@@ -200,62 +205,34 @@
   });
 
   // =========================================================================
-  // 🎯 МАТЕМАТИЧНА МАСКА ПЕРЕКРИТТЯ ПОПАПОМ (CLIP-PATH CUTOUT)
-  // Вирізає в радіо-стрічці точний прямокутник відкритого попапа,
-  // тому попап виглядає на 100% ПОВЕРХ тексту, а решта рядків залишаються видимими!
+  // 🧠 РОЗУМНИЙ ДИНАМІЧНИЙ ЛАСТИК (ПЕРЕВІРКА ПЕРЕРИСУВАННЯ ПОПАПОМ)
   // =========================================================================
-  function updatePopupCutoutMask() {
+  function updateSmartMask() {
     if (!isRadioActive || feedBox.style.display === "none") return;
 
-    const popupWrapper = document.querySelector(".leaflet-popup-content-wrapper");
+    const popupWrapper = document.querySelector(".leaflet-popup");
+    const rows = scrollList.querySelectorAll(".radio-msg-line");
+
     if (!popupWrapper) {
-      if (feedBox.style.clipPath) {
-        feedBox.style.clipPath = "";
-        feedBox.style.webkitClipPath = "";
-      }
+      // Якщо немає попапа — усі рядки видимі на 100%
+      rows.forEach(r => r.style.opacity = "1");
       return;
     }
 
     const pRect = popupWrapper.getBoundingClientRect();
-    const fRect = feedBox.getBoundingClientRect();
 
-    // Якщо попап не перетинається з областю радіо — маска не потрібна
-    if (
-      pRect.width === 0 ||
-      pRect.bottom < fRect.top ||
-      pRect.top > fRect.bottom ||
-      pRect.right < fRect.left ||
-      pRect.left > fRect.right
-    ) {
-      if (feedBox.style.clipPath) {
-        feedBox.style.clipPath = "";
-        feedBox.style.webkitClipPath = "";
-      }
-      return;
-    }
-
-    // Координати вирізу відносно блоку #radioFeedOverlay (з запасом 2px по краях картки)
-    const x1 = Math.max(0, Math.round(pRect.left - fRect.left - 2));
-    const y1 = Math.max(0, Math.round(pRect.top - fRect.top - 2));
-    const x2 = Math.min(Math.round(fRect.width), Math.round(pRect.right - fRect.left + 2));
-    const y2 = Math.min(Math.round(fRect.height + 20), Math.round(pRect.bottom - fRect.top + 8));
-
-    // Полігон із внутрішнім "вікном" під попап
-    const polygonStr = `polygon(
-      0px 0px, 100% 0px, 100% 100%, 0px 100%, 0px 0px,
-      ${x1}px ${y1}px, ${x1}px ${y2}px, ${x2}px ${y2}px, ${x2}px ${y1}px, ${x1}px ${y1}px
-    )`;
-
-    feedBox.style.clipPath = polygonStr;
-    feedBox.style.webkitClipPath = polygonStr;
+    // Порядково перевіряємо: чи накриває попап конкретний рядок радіо
+    rows.forEach(row => {
+      const rRect = row.getBoundingClientRect();
+      // Перетин по вертикалі (з невеликим запасом)
+      const isOverlapped = !(rRect.bottom < pRect.top + 5 || rRect.top > pRect.bottom - 5 || rRect.right < pRect.left || rRect.left > pRect.right);
+      
+      // Якщо рядок під попапом — робимо його повністю прозорим, інакше видимим
+      row.style.opacity = isOverlapped ? "0" : "1";
+    });
   }
 
-  // Оновлюємо маску плавно при будь-якому русі карти або відкритті попапа
-  function startMaskLoop() {
-    updatePopupCutoutMask();
-    requestAnimationFrame(startMaskLoop);
-  }
-  requestAnimationFrame(startMaskLoop);
+  setInterval(updateSmartMask, 100);
 
   switcher.addEventListener("click", (e) => {
     const tab = e.target.closest(".radio-mode-tab");
@@ -289,7 +266,7 @@
       return;
     }
 
-    feedBox.style.display = "block";
+    feedBox.style.display = "flex";
     radioBtn.classList.add("active");
 
     const allPts = (window.allPoints && Array.isArray(window.allPoints)) ? window.allPoints.slice() : [];
@@ -371,7 +348,7 @@
   setTimeout(() => renderRadioFeed(true), 600);
 
   // =========================================================================
-  // 🔆 ФОНОВЕ УТРИМАННЯ ЕКРАНА ЗАВЖДИ УВІМКНЕНИМ ЗА ЗАМОВЧУВАННЯМ (БЕЗ ІКОНКИ)
+  // 🔆 ФОНОВЕ УТРИМАННЯ ЕКРАНА ЗАВЖДИ УВІМКНЕНИМ ЗА ЗАМОВЧУВАННЯМ
   // =========================================================================
   let wakeLockObj = null;
   let videoEl = null;
