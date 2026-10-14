@@ -122,11 +122,11 @@
       font-size: 11.5px; line-height: 1.42; color: #e2e8f0; font-weight: 500;
     }
 
-    /* ЛОАДЕР */
+    /* КОМПАКТНИЙ СТАТУС-БАНЕР БЕЗ ЗАВИСАННЯ */
     .loading-banner {
-      background: #0f172a; border: 1.5px solid #a855f7; border-radius: 10px;
-      padding: 24px; text-align: center; color: #c084fc; font-weight: 800; font-size: 13px;
-      display: none; margin-bottom: 14px; box-shadow: 0 0 20px rgba(168, 85, 247, 0.3);
+      background: rgba(59, 7, 100, 0.45); border: 1px solid #a855f7; border-radius: 9px;
+      padding: 10px 14px; text-align: center; color: #e9d5ff; font-weight: 800; font-size: 11.5px;
+      display: none; margin-bottom: 12px;
     }
 
     @media (max-width: 650px) {
@@ -157,10 +157,10 @@
     <!-- ГОЛОВНИЙ ВЕРДИКТ -->
     <div id="verdictBlock" class="verdict-card">
       <div class="verdict-header">
-        <span id="verdictHeaderTitle">🚦 Загальний тактичний вердикт на сьогодні:</span>
+        <span>🚦 Загальний тактичний вердикт на сьогодні:</span>
         <span id="verdictStatusBadge" style="color:#a855f7; font-size:11px;">ОЧІКУВАННЯ</span>
       </div>
-      <div id="verdictText" class="verdict-body">Завантаження математичної матриці та аналіз...</div>
+      <div id="verdictText" class="verdict-body">Завантаження математичної матриці...</div>
       <div class="verdict-meta">
         <span id="dossierLastUpdated">Останнє оновлення: --:--</span>
         <span id="dossierScopeMeta">Режим: 7 ключових точок маршруту</span>
@@ -168,7 +168,7 @@
     </div>
 
     <div id="loaderBox" class="loading-banner">
-      ⚡ ШІ-Штурман рахує матрицю переміщень, фільтрує звіти 5+ свідків та аналізує спади Вчора/Сьогодні... Зачекайте 5–8 секунд.
+      ⚡ Математичне досьє вже побудовано! Gemini додатково уточнює штурманське зведення (до 10 сек)...
     </div>
 
     <!-- СІТКА КАРТОК ДОСЬЄ -->
@@ -210,7 +210,7 @@
       return [...new Set([...builtins, ...customKeys])];
     }
 
-    let dossierScope = localStorage.getItem("radar_dossier_scope") || "route"; // "route" або "city"
+    let dossierScope = localStorage.getItem("radar_dossier_scope") || "route";
 
     const TARGET_CHECKPOINTS = [
       { id: "pavlova", name: "вул. Павлова", fullName: "вул. Академіка Павлова", regex: /(?:академика\s*павлова|академіка\s*павлова|\bпавлова\b)/i, color: "#00f3ff" },
@@ -244,25 +244,6 @@
       return dossierScope === "city" ? [...TARGET_CHECKPOINTS, ...CITY_SECTORS] : TARGET_CHECKPOINTS;
     }
 
-    function setDossierScope(scope) {
-      if (dossierScope === scope) return;
-      dossierScope = scope;
-      localStorage.setItem("radar_dossier_scope", scope);
-      updateScopeButtonsUI();
-
-      const cacheKey = `radar_ai_dossier_v2_${dossierScope}`;
-      const cached = localStorage.getItem(cacheKey);
-      if (cached) {
-        try {
-          const parsed = JSON.parse(cached);
-          currentMatrixCache = computeTacticalMatrix();
-          renderDossierUI(parsed, true);
-          return;
-        } catch(e) {}
-      }
-      generateDossier(true);
-    }
-
     function updateScopeButtonsUI() {
       document.getElementById("btnScopeRoute").classList.toggle("active", dossierScope === "route");
       document.getElementById("btnScopeCity").classList.toggle("active", dossierScope === "city");
@@ -271,7 +252,14 @@
         : "Режим: 7 ключових точок маршруту";
     }
 
-    // Кластеризація сирих повідомлень у реальні сесії блокпостів
+    function setDossierScope(scope) {
+      if (dossierScope === scope) return;
+      dossierScope = scope;
+      localStorage.setItem("radar_dossier_scope", scope);
+      updateScopeButtonsUI();
+      generateDossier(false);
+    }
+
     function buildSessionsForNode(node) {
       const reports = rawArchive.filter(r => {
         const txt = ((r.text || "") + " " + (r.address || "")).toLowerCase();
@@ -315,7 +303,7 @@
       return sessions;
     }
 
-    // ГЛИБОКИЙ МАТЕМАТИЧНИЙ РОЗРАХУНОК УСІХ 8 ПУНКТІВ ПЕРЕД ШІ
+    // МИТТЄВИЙ МАТЕМАТИЧНИЙ РОЗРАХУНОК УСІХ 8 ПУНКТІВ (ЗА 0.05 СЕК)
     function computeTacticalMatrix() {
       const now = Date.now();
       const nowDate = new Date();
@@ -339,18 +327,17 @@
       });
 
       const matrix = {};
+      let totalBeforeYest = 0, totalYesterday = 0, totalToday = 0, totalSolid5Week = 0;
 
       activeNodes.forEach(n => {
         const allSess = allSessionsByNode[n.id] || [];
         const sessLast7 = allSess.filter(s => s.startTime >= last7Start);
         const sessPrev7 = allSess.filter(s => s.startTime >= prev7Start && s.startTime < last7Start);
 
-        // Тверді дані: 5+ свідків vs 2+ свідків vs Поодинокі вкиди (1 свідок)
         const solid5PlusLast7 = sessLast7.filter(s => s.count >= 5);
         const confirmed2PlusLast7 = sessLast7.filter(s => s.count >= 2);
         const singleNoiseLast7 = sessLast7.filter(s => s.count === 1);
 
-        // Добовий зріз: Позавчора ➔ Вчора ➔ Сьогодні (підтверджені 2+ та 5+)
         const beforeYestCount = confirmed2PlusLast7.filter(s => s.startTime >= beforeYesterdayStart && s.startTime < yesterdayStart).length;
         const yesterdayCount = confirmed2PlusLast7.filter(s => s.startTime >= yesterdayStart && s.startTime < todayStart).length;
         const todayCount = confirmed2PlusLast7.filter(s => s.startTime >= todayStart).length;
@@ -358,14 +345,17 @@
         const yesterdaySolid5 = solid5PlusLast7.filter(s => s.startTime >= yesterdayStart && s.startTime < todayStart).length;
         const todaySolid5 = solid5PlusLast7.filter(s => s.startTime >= todayStart).length;
 
-        // Середня тривалість поста
+        totalBeforeYest += beforeYestCount;
+        totalYesterday += yesterdayCount;
+        totalToday += todayCount;
+        totalSolid5Week += solid5PlusLast7.length;
+
         let avgDurationMin = 30;
         if (confirmed2PlusLast7.length > 0) {
           const totalMin = confirmed2PlusLast7.reduce((acc, s) => acc + Math.max(20, Math.round((s.endTime - s.startTime) / 60000)), 0);
           avgDurationMin = Math.round(totalMin / confirmed2PlusLast7.length);
         }
 
-        // Пікові години та дні
         const hoursMap = {};
         const daysMap = {};
         confirmed2PlusLast7.forEach(s => {
@@ -375,24 +365,31 @@
           daysMap[dName] = (daysMap[dName] || 0) + 1;
         });
 
-        const topHours = Object.entries(hoursMap).sort((a,b) => b[1] - a[1]).slice(0, 3).map(([h, c]) => `${String(h).padStart(2,'0')}:00 (${c})`).join(', ') || "немає виражених піків";
-        const activeDays = Object.entries(daysMap).sort((a,b) => b[1] - a[1]).slice(0, 3).map(([d, c]) => `${d} (${c})`).join(', ') || "поодинокі дні";
+        const sortedHours = Object.entries(hoursMap).sort((a,b) => b[1] - a[1]);
+        const topHours = sortedHours.slice(0, 3).map(([h, c]) => `${String(h).padStart(2,'0')}:00 (${c} разів)`).join(', ') || "немає виражених піків";
+        const activeDays = Object.entries(daysMap).sort((a,b) => b[1] - a[1]).slice(0, 3).map(([d, c]) => `${d} (${c})`).join(', ') || "поодинокі виїзди";
 
-        // Вектор міграції екіпажів (куди переїжджають за 15–45 хв після зняття або звідки приїжджають)
+        // Безпечні вікна
+        const busyHoursSet = new Set(sortedHours.slice(0, 3).map(([h]) => parseInt(h)));
+        let safeWindowStr = "увесь день відносно вільно";
+        if (busyHoursSet.size > 0) {
+          const dangerList = Array.from(busyHoursSet).sort((a,b)=>a-b).map(h => `${String(h).padStart(2,'0')}:00–${String(h+1).padStart(2,'0')}:00`).join(', ');
+          safeWindowStr = `Небезпечні вікна: ${dangerList}. Решта часу — зелений коридор.`;
+        }
+
+        // Вектор міграції
         const migrationLinks = {};
         confirmed2PlusLast7.forEach(mySess => {
           allConfirmedSessionsFlat.forEach(otherSess => {
             if (otherSess.nodeId === n.id) return;
-            // Якщо інший пост стартував через 10-45 хв після завершення нашого
             const diffAfter = (otherSess.startTime - mySess.endTime) / 60000;
             if (diffAfter >= 10 && diffAfter <= 45) {
-              const key = `➔ ${otherSess.nodeName}`;
+              const key = `після зняття переїзд на ${otherSess.nodeName}`;
               migrationLinks[key] = (migrationLinks[key] || 0) + 1;
             }
-            // Якщо наш пост стартував через 10-45 хв після іншого
             const diffBefore = (mySess.startTime - otherSess.endTime) / 60000;
             if (diffBefore >= 10 && diffBefore <= 45) {
-              const key = `від ${otherSess.nodeName} ➔ сюди`;
+              const key = `приїзд екіпажу з ${otherSess.nodeName}`;
               migrationLinks[key] = (migrationLinks[key] || 0) + 1;
             }
           });
@@ -401,10 +398,10 @@
         const topMigrations = Object.entries(migrationLinks)
           .sort((a,b) => b[1] - a[1])
           .slice(0, 2)
-          .map(([k, v]) => `${k} (${v} разів)`)
-          .join('; ') || "незалежні хаотичні виїзди (чіткого маршруту міграції не виявлено)";
+          .map(([k, v]) => `${k} (${v} фікс.)`)
+          .join('; ') || "Незалежні хаотичні виїзди (системного маршруту міграції не виявлено)";
 
-        // Парні синхронні перекриття ("Капкани" в один і той же час)
+        // Парні синхронні капкани
         const parallelTraps = {};
         confirmed2PlusLast7.forEach(mySess => {
           allConfirmedSessionsFlat.forEach(otherSess => {
@@ -419,11 +416,11 @@
         const topTraps = Object.entries(parallelTraps)
           .sort((a,b) => b[1] - a[1])
           .slice(0, 2)
-          .map(([k, v]) => `${k} (${v} синхронних перекриттів)`)
-          .join(', ') || "працює автономно без парних перекриттів";
+          .map(([k, v]) => `синхронно з ${k} (${v} разів)`)
+          .join(', ') || "Працює автономно, паралельні вулиці об'їзду зазвичай чисті";
 
-        // Циклічність та період охолодження після рейдів
-        let cooldownText = "рейдів 5+ за тиждень не було";
+        // Фаза циклу та охолодження
+        let cooldownText = "Масованих облав (5+ свідків) за 7 днів не зафіксовано — точка у спокійній фазі.";
         if (solid5PlusLast7.length > 0) {
           const lastMajorRaid = solid5PlusLast7[solid5PlusLast7.length - 1];
           const hoursSinceLastRaid = Math.round((now - lastMajorRaid.endTime) / 3600000);
@@ -435,11 +432,12 @@
             }
             avgGapHours = Math.round(sumGaps / (solid5PlusLast7.length - 1));
           }
-          cooldownText = `Минуло ${hoursSinceLastRaid} год. після останньої облави 5+ свідків` + (avgGapHours > 0 ? ` (середня пауза між облавами: ${avgGapHours} год.)` : "");
+          const phaseLbl = hoursSinceLastRaid < 6 ? "АКТИВНА ФАЗА" : (hoursSinceLastRaid < 28 ? "ФАЗА СПАДУ / ОХОЛОДЖЕННЯ" : "ОЧІКУВАННЯ ЧЕРГОВОЇ РОТАЦІЇ");
+          cooldownText = `${phaseLbl}: минуло ${hoursSinceLastRaid} год. після останньої облави 5+` + (avgGapHours > 0 ? ` (середній цикл паузи: ${avgGapHours} год.)` : "");
         } else if (confirmed2PlusLast7.length > 0) {
           const lastConf = confirmed2PlusLast7[confirmed2PlusLast7.length - 1];
           const hoursSince = Math.round((now - lastConf.endTime) / 3600000);
-          cooldownText = `Минуло ${hoursSince} год. з моменту останнього поста (2+ свідків)`;
+          cooldownText = `Фаза затишшя: минуло ${hoursSince} год. з моменту останнього поста (2+ свідків).`;
         }
 
         const prev7Confirmed = sessPrev7.filter(s => s.count >= 2).length;
@@ -447,148 +445,223 @@
         if (prev7Confirmed > 0) weekTrendPct = Math.round(((confirmed2PlusLast7.length - prev7Confirmed) / prev7Confirmed) * 100);
         else if (confirmed2PlusLast7.length > 0) weekTrendPct = 100;
 
+        let pulseWord = "СТАБІЛЬНО";
+        if (yesterdayCount < beforeYestCount) pulseWord = `📉 СПАД УЧОРА (${yesterdayCount} проти ${beforeYestCount} позавчора)`;
+        else if (yesterdayCount > beforeYestCount) pulseWord = `📈 РІСТ УЧОРА (${yesterdayCount} проти ${beforeYestCount} позавчора)`;
+        else pulseWord = `Рівно (${yesterdayCount} вчора / ${beforeYestCount} позавчора)`;
+
+        let computedRisk = "НИЗЬКИЙ";
+        if (todayCount >= 2 || yesterdaySolid5 >= 1 || solid5PlusLast7.length >= 2 || confirmed2PlusLast7.length >= 5) computedRisk = "ВИСОКИЙ";
+        else if (todayCount === 1 || yesterdayCount >= 1 || confirmed2PlusLast7.length >= 2) computedRisk = "СЕРЕДНІЙ";
+
+        let charType = "Рідкісні короткочасні виїзди";
+        if (solid5PlusLast7.length >= 2) charType = `Потужний вузол облав (середній час утримання ~${avgDurationMin} хв)`;
+        else if (confirmed2PlusLast7.length >= 3) charType = `Регулярний мобільний пост (стоять у середньому ${avgDurationMin} хв)`;
+        else if (confirmed2PlusLast7.length > 0) charType = `Точкові мобільні наскоки (~${avgDurationMin} хв)`;
+
         matrix[n.id] = {
           name: n.fullName,
-          dailyBreakdown: `Позавчора: ${beforeYestCount} БП ➔ Вчора: ${yesterdayCount} БП (з них 5+ свідків: ${yesterdaySolid5}) ➔ Сьогодні: ${todayCount} БП (5+ свідків: ${todaySolid5})`,
-          yesterdayVsBefore: yesterdayCount < beforeYestCount ? `СПАД учора (${yesterdayCount} проти ${beforeYestCount} позавчора)` : (yesterdayCount > beforeYestCount ? `РІСТ учора (${yesterdayCount} проти ${beforeYestCount})` : `СТАБІЛЬНО (${yesterdayCount})`),
+          risk: computedRisk,
           weekConfirmed2Plus: confirmed2PlusLast7.length,
           weekSolid5Plus: solid5PlusLast7.length,
           weekSingleNoise: singleNoiseLast7.length,
-          weekTrendPct: weekTrendPct > 0 ? `+${weekTrendPct}%` : `${weekTrendPct}%`,
-          avgDurationMin: `${avgDurationMin} хв`,
-          topHours,
-          activeDays,
-          migrationVector: topMigrations,
-          parallelTraps: topTraps,
-          cooldownCycle: cooldownText
+          character: charType,
+          patterns: `Активні дні: ${activeDays}. Пікові години: ${topHours}.`,
+          trend: `${pulseWord}. Сьогодні: ${todayCount} БП (5+ свідків: ${todaySolid5}). За 7 днів: ${confirmed2PlusLast7.length} БП (${weekTrendPct > 0 ? '+'+weekTrendPct : weekTrendPct}% до мин. тижня).`,
+          forecast: safeWindowStr,
+          solid_filter: `Залізобетонних облав (5+ свідків): ${solid5PlusLast7.length} | Підтверджених (2+): ${confirmed2PlusLast7.length} | Поодинокого шуму (1 звіт): ${singleNoiseLast7.length}.`,
+          migration: topMigrations,
+          traps: topTraps,
+          cycle: cooldownText
         };
       });
+
+      let globalPulse = "";
+      if (totalYesterday < totalBeforeYest) {
+        globalPulse = `📉 Фіксується чіткий ДОБОВИЙ СПАД активності: вчора по маршруту було лише ${totalYesterday} підтверджених постів проти ${totalBeforeYest} позавчора (-${Math.round(((totalBeforeYest - totalYesterday)/Math.max(1,totalBeforeYest))*100)}%). `;
+      } else if (totalYesterday > totalBeforeYest) {
+        globalPulse = `📈 Вчора зафіксовано зростання активності: ${totalYesterday} постів проти ${totalBeforeYest} позавчора. `;
+      } else {
+        globalPulse = `📊 Добова активність стабільна: вчора ${totalYesterday} постів, позавчора ${totalBeforeYest}. `;
+      }
+
+      matrix._summaryVerdict = `${globalPulse}Сьогодні з ранку зафіксовано ${totalToday} підтверджених постів. Всього за 7 днів відбулося ${totalSolid5Week} масованих облав (підтверджених 5+ очевидцями). Орієнтуйтесь на матрицю міграції екіпажів та вікна безпеки нижче.`;
 
       return matrix;
     }
 
-    async function executeGeminiPrompt(promptText) {
-      const apiKeys = getDecryptedGeminiPool();
-      if (apiKeys.length === 0) throw new Error("Немає доступних ключів Gemini.");
-
-      const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
-      let lastError = null;
-      for (const k of apiKeys) {
-        for (const m of models) {
-          try {
-            const controller = new AbortController();
-            const tid = setTimeout(() => controller.abort(), 14000);
-            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${k}`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                contents: [{ role: "user", parts: [{ text: promptText }] }],
-                generationConfig: { temperature: 0.15 }
-              }),
-              signal: controller.signal
-            });
-            clearTimeout(tid);
-            if (res.ok) {
-              const data = await res.json();
-              const txt = data.candidates?.[0]?.content?.parts?.[0]?.text;
-              if (txt) return txt;
-            } else {
-              const errJson = await res.json().catch(() => ({}));
-              lastError = errJson.error?.message || `HTTP ${res.status}`;
-            }
-          } catch(e) {
-            lastError = e.message;
-          }
+    // миттєво будує повноцінне досьє з математичної матриці (без очікування ШІ)
+    function buildInstantDossierFromMatrix(matrix) {
+      const pointsObj = {};
+      getActiveTargetsList().forEach(t => {
+        if (matrix[t.id]) {
+          pointsObj[t.id] = { ...matrix[t.id] };
         }
+      });
+      return {
+        general_verdict: matrix._summaryVerdict,
+        points: pointsObj,
+        _timestamp: Date.now(),
+        _scope: dossierScope
+      };
+    }
+
+    // Швидкий запит до Gemini (максимум 3 спроби з таймаутом 10 сек, щоб ніколи не зависало!)
+    async function executeFastGeminiPrompt(promptText) {
+      const apiKeys = getDecryptedGeminiPool();
+      if (apiKeys.length === 0) throw new Error("Немає ключів Gemini.");
+
+      // Перемішуємо ключі, щоб не впиратися в один лімітований перший ключ
+      const shuffledKeys = [...apiKeys].sort(() => Math.random() - 0.5).slice(0, 3);
+      const models = ['gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-2.5-flash'];
+
+      for (let i = 0; i < shuffledKeys.length; i++) {
+        const k = shuffledKeys[i];
+        const m = models[i % models.length];
+        try {
+          const controller = new AbortController();
+          const tid = setTimeout(() => controller.abort(), 10000);
+          const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${k}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [{ role: "user", parts: [{ text: promptText }] }],
+              generationConfig: {
+                temperature: 0.15,
+                responseMimeType: "application/json"
+              }
+            }),
+            signal: controller.signal
+          });
+          clearTimeout(tid);
+          if (res.ok) {
+            const data = await res.json();
+            const txt = data.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (txt) return txt;
+          }
+        } catch(e) {}
       }
-      throw new Error(lastError || "Не вдалося отримати відповідь від ШІ.");
+      throw new Error("Ліміт часу або квоти ключів");
     }
 
     async function generateDossier(forceRefresh = false) {
       updateScopeButtonsUI();
-      const cacheKey = `radar_ai_dossier_v2_${dossierScope}`;
-      const cached = localStorage.getItem(cacheKey);
+      const cacheKey = `radar_ai_dossier_v3_${dossierScope}`;
 
+      // 1. ЗАВЖДИ миттєво рахуємо свіжу математичну матрицю (0.05 сек)
       currentMatrixCache = computeTacticalMatrix();
+      const instantData = buildInstantDossierFromMatrix(currentMatrixCache);
 
-      if (cached && !forceRefresh) {
-        try {
-          const parsed = JSON.parse(cached);
-          renderDossierUI(parsed, true);
-          return;
-        } catch(e) {}
+      if (!forceRefresh) {
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) {
+          try {
+            const parsed = JSON.parse(cached);
+            renderDossierUI(parsed, "КЕШОВАНА ОЦІНКА");
+            return;
+          } catch(e) {}
+        }
       }
 
-      if (!verifyGeminiAuthorization()) {
-        alert("Потрібна авторизація для оновлення ШІ-досьє.");
-        return;
-      }
+      // 2. МИТТЄВО показуємо свіжі розрахункові дані на екрані (жодного зависання!)
+      localStorage.setItem(cacheKey, JSON.stringify(instantData));
+      renderDossierUI(instantData, "ТОЧНИЙ МАТЕМАТИЧНИЙ РОЗРАХУНОК ⚡");
 
-      document.getElementById("loaderBox").style.display = "block";
-      document.getElementById("dossierContainer").style.opacity = "0.3";
-      document.getElementById("verdictStatusBadge").innerText = "ОНОВЛЕННЯ...";
+      if (!forceRefresh) return;
+
+      if (!verifyGeminiAuthorization()) return;
+
+      // 3. Якщо натиснули "Оновити ШІ-досьє" — у фоні (до 10 сек) просимо ШІ дати розширений штурманський вердикт
+      const loader = document.getElementById("loaderBox");
+      loader.style.display = "block";
 
       try {
-        const matrixStr = JSON.stringify(currentMatrixCache, null, 2);
         const activeNodes = getActiveTargetsList();
-        const keysExample = activeNodes.map(n => `"${n.id}"`).join(", ");
+        const compactSummary = {};
+        activeNodes.forEach(n => {
+          const m = currentMatrixCache[n.id];
+          compactSummary[n.id] = {
+            name: m.name,
+            risk: m.risk,
+            trend: m.trend,
+            solid_filter: m.solid_filter,
+            migration: m.migration,
+            traps: m.traps,
+            cycle: m.cycle,
+            patterns: m.patterns
+          };
+        });
 
         const prompt = `
 Ти — начальник оперативної дорожньої розвідки у Дніпрі.
-Сьогодні: ${new Date().toLocaleDateString('uk-UA', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })}.
-Тобі передана точна математична матриця по вузлах (${keysExample}):
-${matrixStr}
+Ось точні розраховані дані по точках на сьогодні (${new Date().toLocaleDateString('uk-UA')}):
+${JSON.stringify(compactSummary)}
 
-КРИТИЧНІ ПРАВИЛА АНАЛІЗУ:
-1. Жодної води та вигадок! Обов'язково вказуй реальну добову динаміку (Позавчора ➔ Вчора ➔ Сьогодні). Якщо вчора або сьогодні був СПАД (наприклад, 0 або 1 БП після активного дня) — прямо пиши про оперативний спад і затишшя!
-2. У пункті 5 чітко розділяй справжні облави (5+ свідків) від підтверджених постів (2+ свідків) та поодинокого панічного шуму (1 звіт).
-3. У пункті 6 вказуй виявлений вектор переміщення екіпажів або констатуй хаотичність.
-4. У пункті 7 вказуй синхронні парні перекриття ("капкани") та безпечні вулиці об'їзду.
-5. У пункті 8 опиши фазу циклу точки прямо зараз (глибокий спад після рейду / очікування накачки / активна ротація).
-
-Поверни ВИНЯТКОВО валідний JSON без markdown-обгорток строго за цією структурою для кожного ключа (${keysExample}):
+Сформуй JSON зі стислим, гострим тактичним вердиктом (general_verdict, 3-4 речення, обов'язково вкажи вчорашній/сьогоднішній спад або ріст, реальні облави 5+ свідків та вектори переміщення) і відшліфуй формулювання 8 пунктів для кожної точки (залишаючи всі точні цифри!):
 {
-  "general_verdict": "Точний тактичний вердикт на сьогодні (3-4 речення): де вчора/сьогодні пішов спад, які вузли в зоні ризику, чи є системна міграція екіпажів по місту, у які години безпечні коридори.",
+  "general_verdict": "...",
   "points": {
     "pavlova": {
-      "risk": "ВИСОКИЙ або СЕРЕДНІЙ або НИЗЬКИЙ",
-      "character": "1. Тип дислокації та середня тривалість утримання точки",
-      "patterns": "2. Дні тижня та точні годинні вікна активності",
-      "trend": "3. Тижневий тренд + ТОЧНИЙ ДОБОВИЙ ЗРІЗ (Позавчора ➔ Вчора ➔ Сьогодні, вказати спад чи ріст)",
-      "forecast": "4. Вікна безпеки на сьогодні та рекомендація проїзду",
-      "solid_filter": "5. Співвідношення: скільки справжніх облав (5+ свідків), скільки 2+ та скільки хибного поодинокого шуму",
-      "migration": "6. Куди переміщуються екіпажі або звідки приїжджають за 15-45 хв (закономірність чи хаос)",
-      "traps": "7. З якими точками перекривається синхронно (капкани) та чи безпечний паралельний об'їзд",
-      "cycle": "8. Скільки годин минуло після останньої облави, середня пауза охолодження та поточна фаза"
+      "risk": "ВИСОКИЙ|СЕРЕДНІЙ|НИЗЬКИЙ",
+      "character": "...",
+      "patterns": "...",
+      "trend": "...",
+      "forecast": "...",
+      "solid_filter": "...",
+      "migration": "...",
+      "traps": "...",
+      "cycle": "..."
     }
   }
 }
 `;
 
-        const reply = await executeGeminiPrompt(prompt);
+        const reply = await executeFastGeminiPrompt(prompt);
         const cleanJson = reply.replace(/```json/gi, '').replace(/```/g, '').trim();
-        const data = JSON.parse(cleanJson);
-        data._timestamp = Date.now();
-        data._scope = dossierScope;
+        const aiData = JSON.parse(cleanJson);
 
-        localStorage.setItem(cacheKey, JSON.stringify(data));
-        renderDossierUI(data, false);
+        // Об'єднуємо відповідь ШІ з нашими залізними математичними даними
+        const mergedData = {
+          general_verdict: aiData.general_verdict || instantData.general_verdict,
+          points: {},
+          _timestamp: Date.now(),
+          _scope: dossierScope
+        };
+
+        activeNodes.forEach(n => {
+          const baseP = instantData.points[n.id] || {};
+          const aiP = (aiData.points && aiData.points[n.id]) ? aiData.points[n.id] : {};
+          mergedData.points[n.id] = {
+            risk: aiP.risk || baseP.risk,
+            character: aiP.character || baseP.character,
+            patterns: aiP.patterns || baseP.patterns,
+            trend: aiP.trend || baseP.trend,
+            forecast: aiP.forecast || baseP.forecast,
+            solid_filter: aiP.solid_filter || baseP.solid_filter,
+            migration: aiP.migration || baseP.migration,
+            traps: aiP.traps || baseP.traps,
+            cycle: aiP.cycle || baseP.cycle
+          };
+        });
+
+        localStorage.setItem(cacheKey, JSON.stringify(mergedData));
+        renderDossierUI(mergedData, "ШІ + МАТЕМАТИКА ОНОВЛЕНО ✅");
       } catch(err) {
-        alert("Помилка генерації досьє: " + err.message);
+        // Якщо ключі Gemini зайняті — на екрані вже залишається свіжий математичний розрахунок!
+        renderDossierUI(instantData, "МАТЕМАТИЧНЕ ЯДРО АКТИВНЕ ✅");
       } finally {
-        document.getElementById("loaderBox").style.display = "none";
-        document.getElementById("dossierContainer").style.opacity = "1";
+        loader.style.display = "none";
       }
     }
 
-    function renderDossierUI(data, isCached = false) {
+    function renderDossierUI(data, badgeLabel = "АКТИВНО") {
       if (!data) return;
 
       const badge = document.getElementById("verdictStatusBadge");
-      badge.innerText = isCached ? "КЕШОВАНА ОЦІНКА" : "СВІЖИЙ РОЗРАХУНОК ⚡";
-      badge.style.color = isCached ? "#a855f7" : "#10b981";
+      badge.innerText = badgeLabel;
+      badge.style.color = badgeLabel.includes("ОНОВЛЕНО") || badgeLabel.includes("ЯДРО") || badgeLabel.includes("РОЗРАХУНОК") ? "#10b981" : "#a855f7";
 
-      document.getElementById("verdictText").innerText = data.general_verdict || "Дані оновлюються...";
+      document.getElementById("verdictText").innerText = data.general_verdict || "Дані оновлено.";
       if (data._timestamp) {
         const d = new Date(data._timestamp);
         document.getElementById("dossierLastUpdated").innerText = `Останнє оновлення: ${d.toLocaleDateString()} ${d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
@@ -600,8 +673,8 @@ ${matrixStr}
       const activeNodes = getActiveTargetsList();
 
       activeNodes.forEach(t => {
-        const info = (data.points && data.points[t.id]) ? data.points[t.id] : null;
         const mStat = currentMatrixCache[t.id] || {};
+        const info = (data.points && data.points[t.id]) ? data.points[t.id] : mStat;
         if (!info) return;
 
         let riskClass = "risk-low";
@@ -615,42 +688,42 @@ ${matrixStr}
           <div class="street-card-head">
             <span class="street-name" style="color:${t.color};">📍 ${t.fullName}</span>
             <div class="head-badges">
-              <span class="stat-mini-pill">🛡️ 5+ свідків: ${mStat.weekSolid5Plus ?? 0} | 2+: ${mStat.weekConfirmed2Plus ?? 0}</span>
-              <span class="risk-badge ${riskClass}">РИЗИК: ${info.risk}</span>
+              <span class="stat-mini-pill">🛡️ 5+ свідків: ${mStat.weekSolid5Plus ?? 0} | 2+: ${mStat.weekConfirmed2Plus ?? 0} | Шум: ${mStat.weekSingleNoise ?? 0}</span>
+              <span class="risk-badge ${riskClass}">РИЗИК: ${info.risk || mStat.risk || "НИЗЬКИЙ"}</span>
             </div>
           </div>
           <div class="blocks-container">
             <div class="block-box">
               <span class="block-title">🎯 1. ХАРАКТЕР ТОЧКИ ТА ТРИВАЛІСТЬ:</span>
-              <span class="block-text">${info.character || "—"}</span>
+              <span class="block-text">${info.character || mStat.character || "—"}</span>
             </div>
             <div class="block-box">
               <span class="block-title">🔍 2. ВИЯВЛЕНІ ЗАКОНОМІРНОСТІ (ДНІ ТА ПІКИ):</span>
-              <span class="block-text">${info.patterns || "—"}</span>
+              <span class="block-text">${info.patterns || mStat.patterns || "—"}</span>
             </div>
             <div class="block-box">
               <span class="block-title">📈 3. ДИНАМІКА (ПОЗАВЧОРА ➔ ВЧОРА ➔ СЬОГОДНІ):</span>
-              <span class="block-text">${info.trend || mStat.dailyBreakdown || "—"}</span>
+              <span class="block-text">${info.trend || mStat.trend || "—"}</span>
             </div>
             <div class="block-box">
               <span class="block-title">🔮 4. ПРОГНОЗ ТА ВІКНА БЕЗПЕКИ:</span>
-              <span class="block-text">${info.forecast || "—"}</span>
+              <span class="block-text">${info.forecast || mStat.forecast || "—"}</span>
             </div>
             <div class="block-box tactical">
               <span class="block-title">🛡️ 5. ТВЕРДІ ДАНІ (ФІЛЬТР 5+ ПРОТИ ШУМУ):</span>
-              <span class="block-text">${info.solid_filter || `Облав 5+ свідків: \${mStat.weekSolid5Plus || 0}, Підтверджених 2+: ${mStat.weekConfirmed2Plus \vert{}\vert{} 0}, Поодинокий шум: ${mStat.weekSingleNoise || 0}`}</span>
+              <span class="block-text">${info.solid_filter || mStat.solid_filter || "—"}</span>
             </div>
             <div class="block-box tactical">
               <span class="block-title">🧭 6. ВЕКТОР ПЕРЕМІЩЕННЯ ЕКІПАЖІВ (МІГРАЦІЯ):</span>
-              <span class="block-text">${info.migration || mStat.migrationVector || "—"}</span>
+              <span class="block-text">${info.migration || mStat.migration || "—"}</span>
             </div>
             <div class="block-box tactical">
               <span class="block-title">🕸️ 7. СИНХРОННІ ПАСТКИ ("КАПКАНИ" НА ОБ'ЇЗДАХ):</span>
-              <span class="block-text">${info.traps || mStat.parallelTraps || "—"}</span>
+              <span class="block-text">${info.traps || mStat.traps || "—"}</span>
             </div>
             <div class="block-box tactical">
               <span class="block-title">🔄 8. ЦИКЛІЧНІСТЬ РЕЙДІВ ТА ФАЗА ВІДКАТУ:</span>
-              <span class="block-text">${info.cycle || mStat.cooldownCycle || "—"}</span>
+              <span class="block-text">${info.cycle || mStat.cycle || "—"}</span>
             </div>
           </div>
         `;
