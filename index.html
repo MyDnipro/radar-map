@@ -215,21 +215,15 @@
     </svg>
   </a>
 
- <!-- НИЖНІ КНОПКИ СПРАВА: ВИСОКЕ ОНОВИТИ + СТОВПЧИК З ДВОХ КВАДРАТІВ -->
+  <!-- КНОПКИ ВНИЗУ СПРАВА: ВЕРТИКАЛЬНЕ ОНОВИТИ ТА КВАДРАТНА НАВІГАЦІЯ -->
   <div class="bottom-right-cluster">
-    <div id="btnRefresh" class="btn-refresh-vertical" onclick="refreshRadarClick()">
+    <div id="btnRefresh" onclick="refreshRadarClick()">
       <span>🔄</span>
       <span>Оновити</span>
     </div>
-    <div class="nav-timer-column">
-      <div id="btnGpsHud" class="btn-gps-square" onclick="toggleGpsMode()" title="Навігація">
-        <span>🧭</span>
-      </div>
+    <div id="btnGpsHud" onclick="toggleGpsMode()" title="Навігація">
+      <span>🧭</span>
     </div>
-  </div>
-  <!-- 5. ОНОВИТИ (СПРАВА НАД НАВІГАЦІЄЮ) -->
-  <div id="btnRefresh" class="btn-refresh" onclick="refreshRadarClick()">
-    <span>🔄</span><span>Оновити</span>
   </div>
 
   <!-- ДИАЛОГ ВЫБОРА ДЕЙСТВИЯ ДЛЯ МЕТКИ -->
@@ -938,8 +932,6 @@
     L.DomEvent.disableClickPropagation(document.getElementById("dashPanel"));
     L.DomEvent.disableClickPropagation(document.getElementById("routeStatusBar"));
     L.DomEvent.disableClickPropagation(document.getElementById("routeSubmenu"));
-    L.DomEvent.disableClickPropagation(document.getElementById("btnRefresh"));
-    L.DomEvent.disableClickPropagation(document.getElementById("btnGpsHud"));
     L.DomEvent.disableClickPropagation(document.getElementById("btnStatsHud"));
     L.DomEvent.disableClickPropagation(document.getElementById("markerActionSheet"));
     L.DomEvent.disableClickPropagation(document.getElementById("trainModal"));
@@ -1660,7 +1652,7 @@ ${allLiveReportsText || "Повідомлень немає"}
       } catch (err) {}
     }
 
-    // 5. РОЗДІЛЬНІ МІТКИ ЗА КОЛЬОРОМ НА ОДНІЙ ЛОКАЦІЇ (ЗАДАЧА 1 - З ЗАХИСТОМ ВІД ЗБОЇВ)
+    // 5. РОЗДІЛЬНІ МІТКИ ЗА КОЛЬОРОМ НА ОДНІЙ ЛОКАЦІЇ (ЗАДАЧА 1)
     function renderMarkers() {
       try {
         markersLayer.clearLayers();
@@ -1739,7 +1731,6 @@ ${allLiveReportsText || "Повідомлень немає"}
             const timeStr = ptTime ? new Date(ptTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "";
             const remMin = Math.floor(Math.max(0, LIFETIME_MS - (now - ptTime)) / 60000);
             const fbKeySafe = pt._fbKey || "";
-            
             let renameNote = "";
             try {
               if (typeof getStreetRenameNote === "function") {
