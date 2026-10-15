@@ -19,9 +19,11 @@ function extractCleanStreetAlias(rawText, fallbackName) {
     // Вирізаємо статуси небезпеки та чистоти
     .replace(/\b(?:чисто|чистенько|пусто|вільно|спокійно|проїзд|проїхав|проехали|норм|добре|ясно|сухо)\b/gi, " ")
     .replace(/\b(?:бп|блокпост|патруль|мент|полиц|поліц|тцк|бусик|зупиня|стоят|облав|мусор)\b/gi, " ")
-    .replace(/[🟢🔴👍👌🤝🌞☀️🌤️❓]/g, " ")
-    // Вирізаємо стоп-слова та прийменники
-    .replace(/\b(?:біля|возле|около|район|на|в\s+сторону|до|угол|перехрестя|перекресток|по)\b/gi, " ")
+    // Вирізаємо напрямки та розмовні суфікси
+    .replace(/\b(?:в\s+обе\s+стороны|в\s+обе\s+к|в\s+сторону|направление|направлении|съезд|заезд|вверх|вниз)\b/gi, " ")
+    .replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}🟢🔴👍👌🤝🌞☀️🌤️❓]/gu, " ")
+    // Вирізаємо прийменники
+    .replace(/\b(?:біля|возле|около|район|на|до|угол|перехрестя|перекресток|по)\b/gi, " ")
     .replace(/[^a-zA-Zа-яА-ЯіІїЇєЄґҐ0-9\s-]/g, " ")
     .replace(/\s+/g, " ")
     .trim()
@@ -149,7 +151,7 @@ function finalizeMoveConfirm(isConfirmed) {
     const rawMsg = point.raw_text || point.text || "";
     const cleanAlias = extractCleanStreetAlias(rawMsg, streetName);
 
-    // 1. Оновлюємо координати поточної точки в Firebase points.json
+    // 1. Оновлюємо поточну точку в Firebase points.json
     if (point._fbKey) {
       fetch(FIREBASE_POINTS_URL.replace(".json", `/${point._fbKey}.json`), {
         method: "PATCH",
@@ -173,7 +175,7 @@ function finalizeMoveConfirm(isConfirmed) {
       body: JSON.stringify(memEntry)
     }).catch(() => {});
 
-    // 3. Також дублюємо в Knowledge Base
+    // 3. Дублюємо в Knowledge Base
     fetch(FIREBASE_KB_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -242,7 +244,7 @@ function finalizeMoveManual() {
 }
 
 // =========================================================================
-// 🔍 ЖИВИЙ ПОШУК І ПІДКАЗКИ: 1. МОЗОК (🧠) ➔ 2. ТОПОНІМИ (📍) ➔ 3. ВЕСЬ ДНІПРО (🌐)
+// 🔍 ЖИВИЙ ПОШУК І ПІДКАЗКИ
 // =========================================================================
 const trainCustomInput = document.getElementById("trainCustomInput");
 const trainSearchResults = document.getElementById("trainSearchResults");
@@ -263,7 +265,7 @@ if (trainCustomInput && trainSearchResults) {
       trainSearchResults.innerHTML = "";
       const matches = [];
 
-      // 1. ПЕРШИЙ ПРІОРИТЕТ: Мозок (правила, навчені користувачем)
+      // 1. Мозок
       if (typeof learnedRules !== "undefined" && Array.isArray(learnedRules)) {
         for (const rule of learnedRules) {
           if (!rule || !rule.lat || !rule.lng) continue;
@@ -285,7 +287,7 @@ if (trainCustomInput && trainSearchResults) {
         }
       }
 
-      // 2. ДРУГИЙ ПРІОРИТЕТ: Локальний словник вулиць та старих назв Дніпра
+      // 2. Словник топонімів
       const sortedKeys = Object.keys(DNIPRO_STREETS_MAP).sort((a, b) => b.length - a.length);
       for (const key of sortedKeys) {
         const item = DNIPRO_STREETS_MAP[key];
@@ -302,7 +304,6 @@ if (trainCustomInput && trainSearchResults) {
         }
       }
 
-      // Рендеримо результати з Мозку та Словника
       matches.forEach(item => {
         const div = document.createElement("div");
         div.className = "search-item";
@@ -317,7 +318,7 @@ if (trainCustomInput && trainSearchResults) {
         trainSearchResults.appendChild(div);
       });
 
-      // 3. ТРЕТІЙ ПРІОРИТЕТ: Онлайн-пошук по всьому Дніпру (OpenStreetMap)
+      // 3. OpenStreetMap
       if (matches.length < 4 && query.length >= 3) {
         try {
           const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ", Дніпро")}&countrycodes=ua&limit=4`;
@@ -359,7 +360,6 @@ async function executeCustomTrain() {
 
   const lower = q.toLowerCase();
 
-  // 1. Перевіряємо в Мозку
   if (typeof learnedRules !== "undefined" && Array.isArray(learnedRules)) {
     const memoryHit = learnedRules.find(r => r && ((r.phrase && r.phrase.toLowerCase().includes(lower)) || (r.address && r.address.toLowerCase().includes(lower))));
     if (memoryHit && memoryHit.lat && memoryHit.lng) {
@@ -368,7 +368,6 @@ async function executeCustomTrain() {
     }
   }
 
-  // 2. Перевіряємо в словнику
   const sortedKeys = Object.keys(DNIPRO_STREETS_MAP).sort((a, b) => b.length - a.length);
   for (const key of sortedKeys) {
     if (lower.includes(key)) {
@@ -378,7 +377,6 @@ async function executeCustomTrain() {
     }
   }
 
-  // 3. Шукаємо в OpenStreetMap
   showToast("🔍 Пошук вулиці у Дніпрі...");
   try {
     const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q + ", Дніпро")}&countrycodes=ua&limit=1`;
