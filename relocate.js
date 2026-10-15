@@ -1,13 +1,22 @@
 // =========================================================================
-// 🎯 МОДУЛЬ ПЕРЕМЕЩЕНИЯ И ОБУЧЕНИЯ МЕТОК (RELOCATE ENGINE v4.1 — SMART MATCH)
+// 🎯 МОДУЛЬ ПЕРЕМЕЩЕНИЯ И ОБУЧЕНИЯ МЕТОК (RELOCATE ENGINE v4.2 — SAFE KEYS)
 // =========================================================================
 
 const FB_CUSTOM_STREETS_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/custom_streets.json";
 
-/**
- * Расчет коэффициента схожести двух строк (Dice Coefficient / Bigrams)
- * Возвращает число от 0.0 до 1.0
- */
+function toSafeDbKey(str) {
+  if (typeof window.toFirebaseKey === "function") {
+    return window.toFirebaseKey(str);
+  }
+  return encodeURIComponent((str || "").trim().toLowerCase())
+    .replace(/%/g, "_")
+    .replace(/\./g, "_")
+    .replace(/\$/g, "_")
+    .replace(/#/g, "_")
+    .replace(/\[/g, "_") .replace(/\]/g, "_")
+    .slice(0, 80);
+}
+
 function getSimilarityScore(str1, str2) {
   const s1 = (str1 || "").toLowerCase().replace(/[^a-zа-яіїєґ0-9]/g, "");
   const s2 = (str2 || "").toLowerCase().replace(/[^a-zа-яіїєґ0-9]/g, "");
@@ -37,15 +46,9 @@ function getSimilarityScore(str1, str2) {
   return (2.0 * intersection) / (b1.size + b2.size);
 }
 
-/**
- * Умное вычленение ключевого топонима.
- * Сравнивает слова сообщения с выбранной улицей (и ее старыми названиями в базе).
- * Автоматически отбрасывает магазины, аварии и мусор, сохраняя только созвучное слово.
- */
 function extractCleanStreetAlias(rawText, targetStreetName) {
   if (!rawText) return (targetStreetName || "").toLowerCase().trim();
 
-  // 1. Очищаем текст от времени, эмодзи и пунктуации
   let cleanText = rawText
     .replace(/[\r\n]+/g, " ")
     .replace(/\b(?:\d{1,2}[:.-]\d{2})\b/g, " ")
@@ -59,7 +62,6 @@ function extractCleanStreetAlias(rawText, targetStreetName) {
   if (words.length === 0) return (targetStreetName || "").toLowerCase().trim();
   if (words.length === 1) return words[0];
 
-  // 2. Собираем базу ключевых слов целевой улицы (включая старые названия из DNIPRO_STREETS_MAP)
   const targetWords = new Set();
   const rawTargetParts = (targetStreetName || "")
     .toLowerCase()
@@ -70,7 +72,6 @@ function extractCleanStreetAlias(rawText, targetStreetName) {
 
   rawTargetParts.forEach(w => targetWords.add(w));
 
-  // Проверяем, есть ли в локальном справочнике синонимы (старые названия улицы)
   if (window.DNIPRO_STREETS_MAP) {
     for (const [key, val] of Object.entries(window.DNIPRO_STREETS_MAP)) {
       const isTarget = targetStreetName.toLowerCase().includes(val.name.toLowerCase()) || 
@@ -84,7 +85,6 @@ function extractCleanStreetAlias(rawText, targetStreetName) {
     }
   }
 
-  // 3. Сравниваем каждое слово текста со словами целевой улицы
   let bestWord = "";
   let bestScore = 0;
 
@@ -98,13 +98,10 @@ function extractCleanStreetAlias(rawText, targetStreetName) {
     }
   }
 
-  // Если нашли четкое созвучие (> 0.45) — возвращаем только это слово!
   if (bestScore >= 0.45 && bestWord) {
     return bestWord;
   }
 
-  // 4. Если созвучия нет (народное название, сленг вроде "водокачка", "бык", "качка")
-  // Отсекаем базовые стоп-слова статуса и берем самое весомое слово
   const stopWords = new Set([
     "чисто", "чистенько", "пусто", "вільно", "спокійно", "проїзд", "норм", "добре", "ясно",
     "бп", "блокпост", "патруль", "мент", "полиц", "поліц", "тцк", "бусик", "стоят", "облав",
@@ -113,7 +110,6 @@ function extractCleanStreetAlias(rawText, targetStreetName) {
 
   const candidates = words.filter(w => !stopWords.has(w));
   if (candidates.length > 0) {
-    // Возвращаем самое длинное слово (как правило, это корень ориентира)
     candidates.sort((a, b) => b.length - a.length);
     return candidates[0];
   }
@@ -204,7 +200,7 @@ async function applyPointRelocation(streetName, lat, lng) {
 
   const banner = document.getElementById("transferBanner");
   if (banner) {
-    banner.innerText = `⏳ Перенесення до ${streetName}...`;
+    banner.innerText = `⏳ Перемещение к ${streetName}...`;
     banner.style.display = "block";
   }
 
@@ -236,11 +232,10 @@ function finalizeMoveConfirm(isConfirmed) {
     point.needs_training = false;
     point.address = streetName;
 
-    // Автоматически вычленяем именно то слово, которое относится к этой улице
     const rawMsg = point.raw_text || point.text || "";
     const cleanAlias = extractCleanStreetAlias(rawMsg, streetName);
 
-    // 1. Обновляем текущую точку в Firebase points.json
+    // 1. Обновляем метку в Firebase points.json
     if (point._fbKey) {
       fetch(FIREBASE_POINTS_URL.replace(".json", `/${point._fbKey}.json`), {
         method: "PATCH",
@@ -249,14 +244,17 @@ function finalizeMoveConfirm(isConfirmed) {
       }).catch(() => {});
     }
 
-    // 2. Сохраняем связку прямо в Мозг (custom_streets.json "А = Б")
+    // 2. Сохраняем в единую таблицу custom_streets.json с безопасным ключом
     const memEntry = {
+      alias: cleanAlias,
+      phrase: cleanAlias,
       name: streetName,
+      address: streetName,
       lat: Number(point.lat.toFixed(5)),
       lng: Number(point.lng.toFixed(5)),
       time: Date.now()
     };
-    const safeKey = encodeURIComponent(cleanAlias).replace(/\./g, "%2E");
+    const safeKey = toSafeDbKey(cleanAlias);
 
     fetch(FB_CUSTOM_STREETS_URL.replace(".json", `/${safeKey}.json`), {
       method: "PUT",
@@ -264,14 +262,7 @@ function finalizeMoveConfirm(isConfirmed) {
       body: JSON.stringify(memEntry)
     }).catch(() => {});
 
-    // 3. Дублируем в Knowledge Base
-    fetch(FIREBASE_KB_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ phrase: cleanAlias, address: streetName, lat: point.lat, lng: point.lng, updated_at: Date.now() })
-    }).catch(() => {});
-
-    // 4. Обновляем локальный словарь топонимов и счетчик Мозга
+    // 3. Обновляем локальный справочник топонимов
     if (window.DNIPRO_STREETS_MAP) {
       window.DNIPRO_STREETS_MAP[cleanAlias] = memEntry;
     }
@@ -281,12 +272,7 @@ function finalizeMoveConfirm(isConfirmed) {
       memBadge.innerText = currentCount + 1;
     }
 
-    if (typeof learnedRules !== "undefined" && Array.isArray(learnedRules)) {
-      learnedRules.push({ phrase: cleanAlias, address: streetName, lat: point.lat, lng: point.lng });
-      localStorage.setItem("radar_learned_rules", JSON.stringify(learnedRules));
-    }
-
-    showToast(`✅ «${cleanAlias} = ${streetName}» збережено в Мозок!`);
+    showToast(`✅ «${cleanAlias} = ${streetName}» сохранено в память!`);
     pendingRelocation = null;
     renderMarkers();
     renderTrafficLights();
@@ -296,7 +282,7 @@ function finalizeMoveConfirm(isConfirmed) {
     point.lng = startPos.lng;
     if (marker) marker.setLatLng(startPos);
     window.map.flyTo(originalCenter, originalZoom, { animate: true, duration: 0.8 });
-    showToast("↩️ Перенесення скасовано");
+    showToast("↩️ Перемещение отменено");
     pendingRelocation = null;
     renderMarkers();
   }
@@ -317,24 +303,21 @@ function finalizeMoveManual() {
   const circleEl = marker.getElement()?.querySelector('.radar-circle');
   if (circleEl) circleEl.classList.add('moving-super-marker');
 
-  showToast("✋ Підтягніть мітку пальцем точно на потрібне місце!");
+  showToast("✋ Подтяните метку пальцем на точное место!");
 
   marker.once('dragend', (e) => {
     marker.dragging.disable();
     if (circleEl) circleEl.classList.remove('moving-super-marker');
     const pos = e.target.getLatLng();
     pendingRelocation.targetPos = pos;
-    pendingRelocation.streetName = "Встановлено користувачем (ручне)";
+    pendingRelocation.streetName = "Установлено вручную";
 
     const nameEl = document.getElementById("confirmStreetName");
-    if (nameEl) nameEl.innerText = "📍 Встановлено користувачем (ручне)";
+    if (nameEl) nameEl.innerText = "📍 Установлено вручную";
     if (confirmBox) confirmBox.style.display = "block";
   });
 }
 
-// =========================================================================
-// 🔍 ЖИВОЙ ПОИСК И ПОДСКАЗКИ
-// =========================================================================
 const trainCustomInput = document.getElementById("trainCustomInput");
 const trainSearchResults = document.getElementById("trainSearchResults");
 let trainSearchDebounceTimer = null;
@@ -354,29 +337,6 @@ if (trainCustomInput && trainSearchResults) {
       trainSearchResults.innerHTML = "";
       const matches = [];
 
-      // 1. Мозг
-      if (typeof learnedRules !== "undefined" && Array.isArray(learnedRules)) {
-        for (const rule of learnedRules) {
-          if (!rule || !rule.lat || !rule.lng) continue;
-          const phraseMatch = rule.phrase && rule.phrase.toLowerCase().includes(lower);
-          const addrMatch = rule.address && rule.address.toLowerCase().includes(lower);
-          
-          if (phraseMatch || addrMatch) {
-            const ruleName = rule.address || rule.phrase;
-            if (!matches.some(m => m.name === ruleName)) {
-              matches.push({
-                name: ruleName,
-                lat: rule.lat,
-                lng: rule.lng,
-                badge: "🧠",
-                subtext: rule.phrase && rule.address && rule.phrase !== rule.address ? `(з пам'яті: ${rule.phrase})` : ""
-              });
-            }
-          }
-        }
-      }
-
-      // 2. Словарь топонимов
       const sortedKeys = Object.keys(DNIPRO_STREETS_MAP).sort((a, b) => b.length - a.length);
       for (const key of sortedKeys) {
         const item = DNIPRO_STREETS_MAP[key];
@@ -387,7 +347,7 @@ if (trainCustomInput && trainSearchResults) {
               lat: item.lat,
               lng: item.lng,
               badge: "📍",
-              subtext: item.old ? `(колишня: ${item.old})` : ""
+              subtext: item.old ? `(бывшая: ${item.old})` : ""
             });
           }
         }
@@ -407,7 +367,6 @@ if (trainCustomInput && trainSearchResults) {
         trainSearchResults.appendChild(div);
       });
 
-      // 3. OpenStreetMap
       if (matches.length < 4 && query.length >= 3) {
         try {
           const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ", Дніпро")}&countrycodes=ua&limit=4`;
@@ -449,14 +408,6 @@ async function executeCustomTrain() {
 
   const lower = q.toLowerCase();
 
-  if (typeof learnedRules !== "undefined" && Array.isArray(learnedRules)) {
-    const memoryHit = learnedRules.find(r => r && ((r.phrase && r.phrase.toLowerCase().includes(lower)) || (r.address && r.address.toLowerCase().includes(lower))));
-    if (memoryHit && memoryHit.lat && memoryHit.lng) {
-      applyPointRelocation(memoryHit.address || memoryHit.phrase, memoryHit.lat, memoryHit.lng);
-      return;
-    }
-  }
-
   const sortedKeys = Object.keys(DNIPRO_STREETS_MAP).sort((a, b) => b.length - a.length);
   for (const key of sortedKeys) {
     if (lower.includes(key)) {
@@ -466,7 +417,7 @@ async function executeCustomTrain() {
     }
   }
 
-  showToast("🔍 Пошук вулиці у Дніпрі...");
+  showToast("🔍 Поиск улицы в Днепре...");
   try {
     const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q + ", Дніпро")}&countrycodes=ua&limit=1`;
     const res = await fetch(url);
@@ -478,5 +429,5 @@ async function executeCustomTrain() {
     }
   } catch(e) {}
 
-  showToast(`⚠️ Не знайдено координат для «${q}».`);
+  showToast(`⚠️ Не найдено координат для «${q}».`);
 }
