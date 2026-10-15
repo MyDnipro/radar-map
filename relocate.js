@@ -1,35 +1,124 @@
 // =========================================================================
-// 🎯 МОДУЛЬ ПЕРЕМІЩЕННЯ ТА НАВЧАННЯ МІТОК (RELOCATE ENGINE v4.0)
+// 🎯 МОДУЛЬ ПЕРЕМЕЩЕНИЯ И ОБУЧЕНИЯ МЕТОК (RELOCATE ENGINE v4.1 — SMART MATCH)
 // =========================================================================
 
 const FB_CUSTOM_STREETS_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/custom_streets.json";
 
 /**
- * Інтелектуальне вичленення назви вулиці / топоніму з повідомлення
- * Вирізає час, статуси, смайлики та стоп-слова, залишаючи чисте ядро.
+ * Расчет коэффициента схожести двух строк (Dice Coefficient / Bigrams)
+ * Возвращает число от 0.0 до 1.0
  */
-function extractCleanStreetAlias(rawText, fallbackName) {
-  if (!rawText) return (fallbackName || "").toLowerCase().trim();
+function getSimilarityScore(str1, str2) {
+  const s1 = (str1 || "").toLowerCase().replace(/[^a-zа-яіїєґ0-9]/g, "");
+  const s2 = (str2 || "").toLowerCase().replace(/[^a-zа-яіїєґ0-9]/g, "");
+  if (!s1 || !s2) return 0;
+  if (s1 === s2) return 1.0;
+  if (s1.includes(s2) || s2.includes(s1)) {
+    const minLen = Math.min(s1.length, s2.length);
+    const maxLen = Math.max(s1.length, s2.length);
+    if (minLen >= 4) return minLen / maxLen;
+  }
+  if (s1.length < 2 || s2.length < 2) return 0;
 
-  let t = rawText
+  const getBigrams = str => {
+    const bigrams = new Set();
+    for (let i = 0; i < str.length - 1; i++) {
+      bigrams.add(str.substring(i, i + 2));
+    }
+    return bigrams;
+  };
+
+  const b1 = getBigrams(s1);
+  const b2 = getBigrams(s2);
+  let intersection = 0;
+  for (const item of b1) {
+    if (b2.has(item)) intersection++;
+  }
+  return (2.0 * intersection) / (b1.size + b2.size);
+}
+
+/**
+ * Умное вычленение ключевого топонима.
+ * Сравнивает слова сообщения с выбранной улицей (и ее старыми названиями в базе).
+ * Автоматически отбрасывает магазины, аварии и мусор, сохраняя только созвучное слово.
+ */
+function extractCleanStreetAlias(rawText, targetStreetName) {
+  if (!rawText) return (targetStreetName || "").toLowerCase().trim();
+
+  // 1. Очищаем текст от времени, эмодзи и пунктуации
+  let cleanText = rawText
     .replace(/[\r\n]+/g, " ")
-    // Вирізаємо час (16:20, 16-20, на 16.20 тощо)
     .replace(/\b(?:\d{1,2}[:.-]\d{2})\b/g, " ")
-    .replace(/\b(?:на\s+зараз|на\s+сейчас|тільки\s+що|только\s+что)\b/gi, " ")
-    // Вирізаємо статуси небезпеки та чистоти
-    .replace(/\b(?:чисто|чистенько|пусто|вільно|спокійно|проїзд|проїхав|проехали|норм|добре|ясно|сухо)\b/gi, " ")
-    .replace(/\b(?:бп|блокпост|патруль|мент|полиц|поліц|тцк|бусик|зупиня|стоят|облав|мусор)\b/gi, " ")
-    // Вирізаємо напрямки та розмовні суфікси
-    .replace(/\b(?:в\s+обе\s+стороны|в\s+обе\s+к|в\s+сторону|направление|направлении|съезд|заезд|вверх|вниз)\b/gi, " ")
     .replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}🟢🔴👍👌🤝🌞☀️🌤️❓]/gu, " ")
-    // Вирізаємо прийменники
-    .replace(/\b(?:біля|возле|около|район|на|до|угол|перехрестя|перекресток|по)\b/gi, " ")
     .replace(/[^a-zA-Zа-яА-ЯіІїЇєЄґҐ0-9\s-]/g, " ")
     .replace(/\s+/g, " ")
     .trim()
     .toLowerCase();
 
-  return t.length >= 3 ? t : (fallbackName || "").toLowerCase().trim();
+  const words = cleanText.split(" ").filter(w => w.length >= 3);
+  if (words.length === 0) return (targetStreetName || "").toLowerCase().trim();
+  if (words.length === 1) return words[0];
+
+  // 2. Собираем базу ключевых слов целевой улицы (включая старые названия из DNIPRO_STREETS_MAP)
+  const targetWords = new Set();
+  const rawTargetParts = (targetStreetName || "")
+    .toLowerCase()
+    .replace(/\b(вул|вулиця|проспект|просп|провулок|шосе|тупик|набережна|площа|майдан|street|st)\b/gi, " ")
+    .replace(/[^a-zA-Zа-яА-ЯіІїЇєЄґҐ0-9\s]/g, " ")
+    .split(/\s+/)
+    .filter(w => w.length >= 3);
+
+  rawTargetParts.forEach(w => targetWords.add(w));
+
+  // Проверяем, есть ли в локальном справочнике синонимы (старые названия улицы)
+  if (window.DNIPRO_STREETS_MAP) {
+    for (const [key, val] of Object.entries(window.DNIPRO_STREETS_MAP)) {
+      const isTarget = targetStreetName.toLowerCase().includes(val.name.toLowerCase()) || 
+                       val.name.toLowerCase().includes(targetStreetName.toLowerCase());
+      if (isTarget) {
+        targetWords.add(key.toLowerCase());
+        if (val.old) {
+          val.old.toLowerCase().split(/[\s,]+/).filter(w => w.length >= 3).forEach(w => targetWords.add(w));
+        }
+      }
+    }
+  }
+
+  // 3. Сравниваем каждое слово текста со словами целевой улицы
+  let bestWord = "";
+  let bestScore = 0;
+
+  for (const w of words) {
+    for (const tw of targetWords) {
+      const score = getSimilarityScore(w, tw);
+      if (score > bestScore) {
+        bestScore = score;
+        bestWord = w;
+      }
+    }
+  }
+
+  // Если нашли четкое созвучие (> 0.45) — возвращаем только это слово!
+  if (bestScore >= 0.45 && bestWord) {
+    return bestWord;
+  }
+
+  // 4. Если созвучия нет (народное название, сленг вроде "водокачка", "бык", "качка")
+  // Отсекаем базовые стоп-слова статуса и берем самое весомое слово
+  const stopWords = new Set([
+    "чисто", "чистенько", "пусто", "вільно", "спокійно", "проїзд", "норм", "добре", "ясно",
+    "бп", "блокпост", "патруль", "мент", "полиц", "поліц", "тцк", "бусик", "стоят", "облав",
+    "дтп", "авария", "пробка", "тягучка", "съезд", "заезд", "сторону", "возле", "около"
+  ]);
+
+  const candidates = words.filter(w => !stopWords.has(w));
+  if (candidates.length > 0) {
+    // Возвращаем самое длинное слово (как правило, это корень ориентира)
+    candidates.sort((a, b) => b.length - a.length);
+    return candidates[0];
+  }
+
+  return cleanText;
 }
 
 function openTrainingModal(point, marker) {
@@ -147,11 +236,11 @@ function finalizeMoveConfirm(isConfirmed) {
     point.needs_training = false;
     point.address = streetName;
 
-    // Вичленяємо чисту назву вулиці з тексту повідомлення
+    // Автоматически вычленяем именно то слово, которое относится к этой улице
     const rawMsg = point.raw_text || point.text || "";
     const cleanAlias = extractCleanStreetAlias(rawMsg, streetName);
 
-    // 1. Оновлюємо поточну точку в Firebase points.json
+    // 1. Обновляем текущую точку в Firebase points.json
     if (point._fbKey) {
       fetch(FIREBASE_POINTS_URL.replace(".json", `/${point._fbKey}.json`), {
         method: "PATCH",
@@ -160,7 +249,7 @@ function finalizeMoveConfirm(isConfirmed) {
       }).catch(() => {});
     }
 
-    // 2. ЗБЕРІГАЄМО ПРЯМО В МОЗОК (custom_streets.json "А = Б")
+    // 2. Сохраняем связку прямо в Мозг (custom_streets.json "А = Б")
     const memEntry = {
       name: streetName,
       lat: Number(point.lat.toFixed(5)),
@@ -175,14 +264,14 @@ function finalizeMoveConfirm(isConfirmed) {
       body: JSON.stringify(memEntry)
     }).catch(() => {});
 
-    // 3. Дублюємо в Knowledge Base
+    // 3. Дублируем в Knowledge Base
     fetch(FIREBASE_KB_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ phrase: cleanAlias, address: streetName, lat: point.lat, lng: point.lng, updated_at: Date.now() })
     }).catch(() => {});
 
-    // 4. Оновлюємо локальний словник топонімів та лічильник Мозку
+    // 4. Обновляем локальный словарь топонимов и счетчик Мозга
     if (window.DNIPRO_STREETS_MAP) {
       window.DNIPRO_STREETS_MAP[cleanAlias] = memEntry;
     }
@@ -244,7 +333,7 @@ function finalizeMoveManual() {
 }
 
 // =========================================================================
-// 🔍 ЖИВИЙ ПОШУК І ПІДКАЗКИ
+// 🔍 ЖИВОЙ ПОИСК И ПОДСКАЗКИ
 // =========================================================================
 const trainCustomInput = document.getElementById("trainCustomInput");
 const trainSearchResults = document.getElementById("trainSearchResults");
@@ -265,7 +354,7 @@ if (trainCustomInput && trainSearchResults) {
       trainSearchResults.innerHTML = "";
       const matches = [];
 
-      // 1. Мозок
+      // 1. Мозг
       if (typeof learnedRules !== "undefined" && Array.isArray(learnedRules)) {
         for (const rule of learnedRules) {
           if (!rule || !rule.lat || !rule.lng) continue;
@@ -287,7 +376,7 @@ if (trainCustomInput && trainSearchResults) {
         }
       }
 
-      // 2. Словник топонімів
+      // 2. Словарь топонимов
       const sortedKeys = Object.keys(DNIPRO_STREETS_MAP).sort((a, b) => b.length - a.length);
       for (const key of sortedKeys) {
         const item = DNIPRO_STREETS_MAP[key];
