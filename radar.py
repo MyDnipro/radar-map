@@ -7,7 +7,7 @@ import requests
 from urllib.parse import unquote
 
 # =========================================================================
-# ⚙️ НАСТРОЙКИ И API КЛЮЧИ GEMINI
+# ⚙️ НАЛАШТУВАННЯ ТА API КЛЮЧІ GEMINI
 # =========================================================================
 RAW_GEMINI_KEYS = os.environ.get("GEMINI_KEY", "").strip() or os.environ.get("GEMINI_KEYS", "").strip()
 GEMINI_KEYS = [k.strip() for k in re.split(r'[,;\s]+', RAW_GEMINI_KEYS) if len(k.strip()) > 15]
@@ -15,7 +15,7 @@ GEMINI_KEYS = [k.strip() for k in re.split(r'[,;\s]+', RAW_GEMINI_KEYS) if len(k
 current_key_index = 0
 SUPPORTED_MODELS = ["gemini-2.5-flash", "gemini-1.5-flash"]
 
-# Базовый URL Firebase Realtime Database
+# Базовий URL Firebase Realtime Database
 FIREBASE_URL = os.environ.get("FIREBASE_URL", "").strip()
 if FIREBASE_URL and not FIREBASE_URL.endswith(".json"):
     BASE_FB_URL = FIREBASE_URL.rstrip("/")
@@ -28,7 +28,7 @@ STATS_ARCHIVE_URL = f"{BASE_FB_URL}/stats_archive.json" if BASE_FB_URL else ""
 CUSTOM_STREETS_URL = f"{BASE_FB_URL}/custom_streets.json" if BASE_FB_URL else ""
 SPAM_FILTERS_URL = f"{BASE_FB_URL}/spam_filters.json" if BASE_FB_URL else ""
 
-LIFETIME_MS = 40 * 60 * 1000  # 40 минут для актуальных меток
+LIFETIME_MS = 40 * 60 * 1000  # 40 хвилин для актуальних міток
 CHANNEL_BASE_URL = "https://t.me/s/dnepr_bez_tck"
 
 PROCESSED_POST_IDS = set()
@@ -54,7 +54,7 @@ def rotate_to_next_key():
     return get_active_gemini_key()
 
 # =========================================================================
-# 🚫 ФИЛЬТРАЦИЯ СПАМА И РЕКЛАМЫ (СТАТИЧЕСКАЯ + ОБЛАЧНАЯ ИЗ КАРТЫ)
+# 🚫 ФІЛЬТРАЦІЯ СПАМУ ТА РЕКЛАМИ
 # =========================================================================
 AD_FILTER_REGEX = re.compile(
     r'(?:'
@@ -108,10 +108,9 @@ def is_ad_or_spam(text):
     return False
 
 # =========================================================================
-# 📍 ГЕНЕРАЛЬНАЯ БАЗА ТОПОНИМОВ И УЧАСТКОВ ДНЕПРА (РАСШИРЕННАЯ)
+# 📍 БАЗА ТОПОНІМІВ ДНІПРА
 # =========================================================================
 LOCAL_STREETS_DB = [
-    # --- НАРОДНЫЕ РЫНКИ, ВОКЗАЛЫ И ОРИЕНТИРЫ ---
     {"keys": ["славянк", "словянк"], "addr": "ТЦ Слов'янський (Слов'янка)", "lat": 48.4715, "lng": 35.0135},
     {"keys": ["озерк"], "addr": "Ринок Озерка", "lat": 48.4715, "lng": 35.0215},
     {"keys": ["курчатовск.*рынок", "курчатовськ.*ринок", "курчатовск", "курчатовськ", "128.*бригад"], "addr": "вул. 128-ї Бригади (Курчатовський)", "lat": 48.4740, "lng": 35.0140},
@@ -120,7 +119,6 @@ LOCAL_STREETS_DB = [
     {"keys": ["південн.*вокзал", "южн.*вокзал"], "addr": "Південний вокзал (вул. Лоцманська)", "lat": 48.4390, "lng": 35.0800},
     {"keys": ["старомостов", "островськ", "островск"], "addr": "пл. Старомостова (Островського)", "lat": 48.4770, "lng": 35.0220},
 
-    # --- ДИЕВКА, ПАРУС, ТРОФИМОВЫХ ---
     {"keys": ["парус.*стрилиц", "парус.*стрелиц", "стрилиц", "стрелиц"], "addr": "ж/м Парус (Стрелиця / коса)", "lat": 48.4870, "lng": 34.9120},
     {"keys": ["трофимов", "трофімов"], "addr": "вул. Велика Діївська (Братів Трофімових)", "lat": 48.4840, "lng": 34.9180},
     {"keys": ["диевк", "діївк", "диевка 1", "диевка 2", "діївська"], "addr": "ж/м Діївка", "lat": 48.4810, "lng": 34.8980},
@@ -130,21 +128,18 @@ LOCAL_STREETS_DB = [
     {"keys": ["червон.*кам", "красный камень"], "addr": "ж/м Червоний Камінь", "lat": 48.4830, "lng": 34.9520},
     {"keys": ["західн", "западн"], "addr": "ж/м Західний", "lat": 48.4650, "lng": 34.9350},
 
-    # --- КОСМИЧЕСКАЯ И ВЫСОКОВОЛЬТНАЯ ---
     {"keys": ["космичк", "космічк", "космическ", "космічн"], "addr": "вул. Космічна", "lat": 48.4180, "lng": 35.0450},
     {"keys": ["низ космическ", "низ космічн", "низ космичк"], "addr": "вул. Космічна (Низ, Набережна)", "lat": 48.4240, "lng": 35.0740},
     {"keys": ["верх космическ", "верх космічн", "верх космичк"], "addr": "вул. Космічна (Верх, Запорізьке шосе)", "lat": 48.4060, "lng": 35.0410},
     {"keys": ["тещин.*язик", "тещин.*язык"], "addr": "Тьощин язик (вул. Космічна)", "lat": 48.4140, "lng": 35.0510},
     {"keys": ["высоковольтн.*ям", "високовольтн.*ям", "высоковольтн", "високовольтн"], "addr": "вул. Високовольтна (р-н Ями / Гагаріна)", "lat": 48.4270, "lng": 35.0450},
 
-    # --- ШИННАЯ, МИРНЫЙ, 12 КВАРТАЛ ---
     {"keys": ["шинн", "шинная"], "addr": "вул. Шинна", "lat": 48.4180, "lng": 35.0150},
     {"keys": ["мирный", "мирний", "пос.*мирн"], "addr": "пос. Мирний (Сурсько-Литовське шосе)", "lat": 48.3980, "lng": 34.9850},
     {"keys": ["переезд.*мирн", "переїзд.*мирн"], "addr": "Переїзд Мирний (Краснопілля)", "lat": 48.3980, "lng": 34.9850},
     {"keys": ["12.*квартал", "12 квартал", "квартал"], "addr": "12 Квартал (просп. Б. Хмельницького)", "lat": 48.4120, "lng": 35.0150},
     {"keys": ["кротов", "гальченк"], "addr": "вул. Бориса Кротова / Гальченка", "lat": 48.4030, "lng": 35.0060},
 
-    # --- ОСТРОВА, СЛОБОЖАНСКИЙ, ЛЕВЫЙ БЕРЕГ ---
     {"keys": ["остров.*слобожан", "острова.*правд", "остров", "острови"], "addr": "ж/м Смарагдовий (Острови, Слобожанське)", "lat": 48.5320, "lng": 35.0850},
     {"keys": ["слобожанск", "слобожанськ", "правд"], "addr": "просп. Слобожанський (Правди)", "lat": 48.5000, "lng": 35.0680},
     {"keys": ["бык", "бик"], "addr": "Пост «Бик» (Підгородне)", "lat": 48.5350, "lng": 35.1020},
@@ -157,7 +152,6 @@ LOCAL_STREETS_DB = [
     {"keys": ["отечествен", "вітчизнян"], "addr": "вул. Вітчизняна (АНД)", "lat": 48.5050, "lng": 35.0350},
     {"keys": ["гринченк"], "addr": "вул. Миколи Грінченка", "lat": 48.5020, "lng": 35.0420},
 
-    # --- ЦЕНТР, ПОЛЯ, РАБОЧАЯ, НАУКИ ---
     {"keys": ["низ киров", "низ кіров", "низ поля"], "addr": "просп. Олександра Поля (Низ, сквер Героїв)", "lat": 48.4610, "lng": 35.0310},
     {"keys": ["середина киров", "середина кіров", "середина поля"], "addr": "просп. Олександра Поля (Середина, Славутич)", "lat": 48.4480, "lng": 35.0240},
     {"keys": ["верх киров", "верх кіров", "верх поля"], "addr": "просп. Олександра Поля (Верх, Титова)", "lat": 48.4340, "lng": 35.0160},
@@ -179,8 +173,83 @@ LOCAL_STREETS_DB = [
     {"keys": ["речпорт", "річпорт"], "addr": "Річпорт (Набережна Заводська)", "lat": 48.4805, "lng": 35.0210},
     {"keys": ["водокачк"], "addr": "Водокачка (Набережна Заводська)", "lat": 48.4910, "lng": 34.9480},
     {"keys": ["кайдак", "з'їзд.*кайдак"], "addr": "Кайдацький міст / з'їзд", "lat": 48.4925, "lng": 34.9625},
+    {"keys": ["качка"], "addr": "вул. Каруни (Качка / з'їзд)", "lat": 48.4960, "lng": 35.0480},
     {"keys": ["боровск", "молодогвард"], "addr": "вул. Молодогвардійська (під мостами)", "lat": 48.4680, "lng": 35.1220}
 ]
+
+CLEAN_KEYWORDS = [
+    "чисто", "чистенько", "пусто", "вільно", "спокійно", "проїзд",
+    "без бп", "сонечко", "солнечно", "солнце", "ясно", "сухо",
+    "знялися", "пролітайте", "все чисто", "зелено", "🌞", "☀️", "🌤️"
+]
+
+NEGATION_WORDS = [
+    "нет", "немає", "убрали", "прибрали", "сняли", "зняли",
+    "поехали", "поїхали", "уехали", "пропали", "немає вже"
+]
+
+DANGER_KEYWORDS = [
+    "мент", "полиц", "поліц", "бп", "блокпост", "патруль",
+    "тормоз", "стоят", "облав", "тцк", "бусик", "мусор", "зупиня", "шмонал"
+]
+
+def is_message_clean(text):
+    t = text.lower()
+    has_danger = any(w in t for w in DANGER_KEYWORDS)
+    has_negation = any(nw in t for nw in NEGATION_WORDS)
+
+    if has_danger:
+        if has_negation:
+            return True
+        return False
+
+    for kw in CLEAN_KEYWORDS:
+        if kw in t and "не чисто" not in t and "не пусто" not in t:
+            return True
+    return False
+
+# =========================================================================
+# 🔄 РОЗУМНИЙ БАГАТОРАДКОВИЙ ПАРСИНГ
+# =========================================================================
+def split_multiline_reports(raw_post_text):
+    if not raw_post_text:
+        return []
+
+    lines = [l.strip() for l in raw_post_text.split('\n') if l.strip()]
+    if not lines:
+        return []
+
+    if len(lines) == 1:
+        return [raw_post_text.strip()]
+
+    parsed_reports = []
+    # Визначаємо статус першого рядка як контекст на випадок зведеного списку
+    first_clean = is_message_clean(lines[0])
+    fallback_status = "чисто" if first_clean else None
+
+    for line in lines:
+        if is_ad_or_spam(line) or len(line) < 3:
+            continue
+
+        # Зрізаємо таймкод напочатку (напр. 14:46)
+        clean_line = re.sub(r'^\d{1,2}[:.]\d{2}\s*', '', line).strip()
+        if not clean_line or len(clean_line) < 3:
+            continue
+
+        # Якщо рядок містить ТІЛЬКИ статус ("чисто", "спокійно") без локації — пропускаємо недогризок
+        stripped_status = re.sub(r'(?:' + '|'.join(CLEAN_KEYWORDS) + r')\b', '', clean_line, flags=re.I).strip(' .,!?:;-')
+        if len(stripped_status) < 3:
+            continue
+
+        # Якщо в рядку немає явно статусу, але перший рядок задавав загальний статус
+        has_local_clean = is_message_clean(clean_line)
+        has_local_danger = any(w in clean_line.lower() for w in DANGER_KEYWORDS)
+        if not has_local_clean and not has_local_danger and fallback_status:
+            clean_line = f"{clean_line} {fallback_status}"
+
+        parsed_reports.append(clean_line)
+
+    return parsed_reports if parsed_reports else [raw_post_text.strip()]
 
 def sync_cloud_knowledge_and_spam():
     global CUSTOM_STREETS_CACHE, DYNAMIC_SPAM_WORDS, LAST_CLOUD_SYNC
@@ -210,7 +279,6 @@ def sync_cloud_knowledge_and_spam():
         log(f"⚠️ Помилка синхронізації з хмарою знань: {e}")
 
 def geocode_local(text):
-    # АВТОЗАМЕНА БУКВЫ Ё НА Е
     clean_t = text.lower().replace('ё', 'е')
     t = " " + clean_t + " "
 
@@ -246,7 +314,7 @@ def geocode_osm_fallback(text):
             continue
         try:
             url = f"https://nominatim.openstreetmap.org/search?format=json&q={requests.utils.quote(query + ', Дніпро')}&countrycodes=ua&limit=1"
-            headers = {"User-Agent": "DniproRadarMap/3.9"}
+            headers = {"User-Agent": "DniproRadarMap/4.0"}
             r = requests.get(url, headers=headers, timeout=5)
             if r.status_code == 200:
                 data = r.json()
@@ -259,37 +327,6 @@ def geocode_osm_fallback(text):
         except Exception:
             pass
     return None, None, None
-
-CLEAN_KEYWORDS = [
-    "чисто", "чистенько", "пусто", "вільно", "спокійно", "проїзд",
-    "без бп", "сонечко", "солнечно", "солнце", "ясно", "сухо",
-    "знялися", "пролітайте", "все чисто", "зелено", "🌞", "☀️", "🌤️"
-]
-
-NEGATION_WORDS = [
-    "нет", "немає", "убрали", "прибрали", "сняли", "зняли",
-    "поехали", "поїхали", "уехали", "пропали", "чисто", "немає вже"
-]
-
-DANGER_KEYWORDS = [
-    "мент", "полиц", "поліц", "бп", "блокпост", "патруль",
-    "тормоз", "стоят", "облав", "тцк", "бусик", "мусор", "зупиня", "шмонал"
-]
-
-def is_message_clean(text):
-    t = text.lower()
-    has_danger = any(w in t for w in DANGER_KEYWORDS)
-    has_negation = any(nw in t for nw in NEGATION_WORDS)
-
-    if has_danger:
-        if has_negation:
-            return True
-        return False
-
-    for kw in CLEAN_KEYWORDS:
-        if kw in t and "не чисто" not in t and "не пусто" not in t:
-            return True
-    return False
 
 def get_knowledge_base():
     if not KNOWLEDGE_BASE_URL:
@@ -391,10 +428,12 @@ def fetch_channel_messages():
             if is_ad_or_spam(clean):
                 continue
 
-            lines = [l.strip() for l in clean.split('\n') if len(l.strip()) >= 3]
-            for line in lines:
-                if not is_ad_or_spam(line):
-                    results.append((post_id, line))
+            # Розбираємо багаторядковий пост на самостійні повідомлення
+            sub_reports = split_multiline_reports(clean)
+            for idx, report_line in enumerate(sub_reports):
+                if not is_ad_or_spam(report_line):
+                    sub_post_id = f"{post_id}_{idx}" if len(sub_reports) > 1 else post_id
+                    results.append((sub_post_id, report_line))
 
         return results
     except Exception as e:
@@ -522,7 +561,7 @@ def sync_cycle():
     now_ms = int(time.time() * 1000)
     unresolved_queue = []
 
-    # 1. Локальный проход со всеми новыми улицами и автозаменой "ё"
+    # 1. Локальний прохід
     for unique_key, msg in new_items:
         PROCESSED_POST_IDS.add(unique_key)
 
@@ -533,7 +572,7 @@ def sync_cycle():
         is_clean = is_message_clean(msg)
         parsed_result = None
 
-        # Локальная база (с автозаменой ё)
+        # Локальна база
         addr, lat, lng = geocode_local(msg)
         if addr and lat and lng:
             parsed_result = {
@@ -545,7 +584,7 @@ def sync_cycle():
             }
             log(f"⚡ [ЛОКАЛЬНО / ДІЛЯНКА]: '{msg[:45]}' ➔ {addr}")
 
-        # База знаний Firebase
+        # База знань Firebase
         if not parsed_result:
             matched_kb = match_knowledge_base(msg, kb_list)
             if matched_kb and matched_kb.get("lat") and matched_kb.get("lng"):
@@ -571,13 +610,13 @@ def sync_cycle():
                 }
                 log(f"🗺️ [OSM КАРТА]: '{msg[:45]}' ➔ {osm_addr}")
 
-        # СРАЗУ СОХРАНЯЕМ НА СУШУ
+        # Зберігаємо знайдені точки
         if parsed_result:
             save_point_to_firebase(msg, parsed_result, is_clean, now_ms)
         else:
             unresolved_queue.append((msg, is_clean))
 
-    # 2. Неизвестные — одним пакетом в Gemini
+    # 2. Невідомі — пакетом до Gemini
     if unresolved_queue:
         gemini_items = [{"id": i, "text": item[0]} for i, item in enumerate(unresolved_queue)]
         log(f"🚀 Відправка пакету з {len(gemini_items)} невідомих точок до Gemini...")
@@ -617,7 +656,7 @@ def sync_cycle():
             save_point_to_firebase(msg, parsed_result, is_clean, now_ms)
 
 if __name__ == "__main__":
-    log(f"🚀 Запуск оновленого радара 24/7 v3.9 (Завантажено {len(GEMINI_KEYS)} API ключів)...")
+    log(f"🚀 Запуск оновленого радара 24/7 v4.0 (Завантажено {len(GEMINI_KEYS)} API ключів)...")
     start_time = time.time()
     MAX_RUNTIME_SEC = 5 * 3600 + 40 * 60
 
