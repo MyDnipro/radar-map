@@ -456,12 +456,12 @@ html.dash-collapsed #collapsibleBody { display: none; }
   transform: translateX(-50%) scale(0.92) !important;
 }
 
-/* ПРЯМОКУТНА КНОПКА НАВІГАЦІЇ (СПРАВА ПІД ШКАЛОЮ ЧАСУ) */
+/* ПРЯМОКУТНА КНОПКА НАВІГАЦІЇ — над таймером праворуч */
 .btn-gps-rect {
   position: absolute !important;
-  bottom: 70px !important;
+  bottom: 80px !important;
   right: 15px !important;
-  z-index: 1000;
+  z-index: 2500 !important;
   height: 38px;
   box-sizing: border-box;
   background: rgba(15, 23, 42, 0.94);
@@ -474,7 +474,7 @@ html.dash-collapsed #collapsibleBody { display: none; }
   font-size: 11px;
   font-weight: 800;
   box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
-  display: inline-flex;
+  display: inline-flex !important;
   align-items: center;
   justify-content: center;
   gap: 5px;
@@ -484,20 +484,20 @@ html.dash-collapsed #collapsibleBody { display: none; }
 }
 .btn-gps-rect:active { transform: scale(0.94); }
 .btn-gps-rect.active {
-  border-color: #eab308;
-  color: #fff;
-  background: rgba(113, 63, 18, 0.85);
-  box-shadow: 0 0 14px rgba(234, 179, 8, 0.6);
+  border-color: #eab308 !important;
+  color: #fff !important;
+  background: rgba(113, 63, 18, 0.9) !important;
+  box-shadow: 0 0 14px rgba(234, 179, 8, 0.7) !important;
 }
 
-/* КОМПАКТНА КНОПКА ОНОВИТИ */
+/* КНОПКА ОНОВИТИ — над кнопкою навігації праворуч */
 .btn-refresh {
   position: absolute !important;
-  bottom: 25px !important;
+  bottom: 128px !important;
   right: 15px !important;
   left: auto !important;
   top: auto !important;
-  z-index: 1000;
+  z-index: 2500 !important;
   height: 38px;
   box-sizing: border-box;
   background: rgba(15, 23, 42, 0.94);
@@ -510,7 +510,7 @@ html.dash-collapsed #collapsibleBody { display: none; }
   font-size: 11px;
   font-weight: 800;
   box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
-  display: inline-flex;
+  display: inline-flex !important;
   align-items: center;
   justify-content: center;
   gap: 5px;
