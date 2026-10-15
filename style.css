@@ -456,48 +456,21 @@ html.dash-collapsed #collapsibleBody { display: none; }
   transform: translateX(-50%) scale(0.92) !important;
 }
 
-/* ПРЯМОКУТНА КНОПКА НАВІГАЦІЇ — над таймером праворуч */
-.btn-gps-rect {
+/* КЛАСТЕР КНОПОК ВНИЗУ СПРАВА (ОНОВИТИ + КВАДРАТ НАВИГАЦИИ) */
+.bottom-right-cluster {
   position: absolute !important;
-  bottom: 80px !important;
-  right: 15px !important;
-  z-index: 2500 !important;
-  height: 38px;
-  box-sizing: border-box;
-  background: rgba(15, 23, 42, 0.94);
-  backdrop-filter: blur(10px);
-  color: #cbd5e1;
-  border: 1.5px solid #334155;
-  padding: 0 10px;
-  border-radius: 12px;
-  cursor: pointer;
-  font-size: 11px;
-  font-weight: 800;
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
-  display: inline-flex !important;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  user-select: none;
-  white-space: nowrap;
-  transition: border-color 0.2s ease, background 0.2s ease, transform 0.15s ease;
-}
-.btn-gps-rect:active { transform: scale(0.94); }
-.btn-gps-rect.active {
-  border-color: #eab308 !important;
-  color: #fff !important;
-  background: rgba(113, 63, 18, 0.9) !important;
-  box-shadow: 0 0 14px rgba(234, 179, 8, 0.7) !important;
-}
-
-/* КНОПКА ОНОВИТИ — над кнопкою навігації праворуч */
-.btn-refresh {
-  position: absolute !important;
-  bottom: 128px !important;
+  bottom: 25px !important;
   right: 15px !important;
   left: auto !important;
   top: auto !important;
   z-index: 2500 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+/* КОМПАКТНАЯ КНОПКА «ОНОВИТИ» */
+.btn-refresh-compact {
   height: 38px;
   box-sizing: border-box;
   background: rgba(15, 23, 42, 0.94);
@@ -510,15 +483,41 @@ html.dash-collapsed #collapsibleBody { display: none; }
   font-size: 11px;
   font-weight: 800;
   box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
-  display: inline-flex !important;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 5px;
   user-select: none;
   white-space: nowrap;
-  transition: transform 0.15s ease;
+  transition: transform 0.15s ease, background 0.2s ease;
 }
-.btn-refresh:active { transform: scale(0.94); }
+.btn-refresh-compact:active { transform: scale(0.94); }
+
+/* КВАДРАТНАЯ КНОПКА НАВИГАЦИИ БЕЗ ТЕКСТА */
+.btn-gps-square {
+  width: 38px;
+  height: 38px;
+  box-sizing: border-box;
+  background: rgba(15, 23, 42, 0.94);
+  backdrop-filter: blur(10px);
+  color: #cbd5e1;
+  border: 1.5px solid #334155;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 17px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  transition: border-color 0.2s ease, background 0.2s ease, transform 0.15s ease;
+}
+.btn-gps-square:active { transform: scale(0.92); }
+.btn-gps-square.active {
+  border-color: #eab308 !important;
+  background: rgba(113, 63, 18, 0.9) !important;
+  box-shadow: 0 0 14px rgba(234, 179, 8, 0.7) !important;
+}
 
 .subtitle { font-size: 10px; color: #94a3b8; margin-bottom: 8px; }
 .btn-secondary {
