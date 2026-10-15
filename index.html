@@ -215,6 +215,11 @@
     </svg>
   </a>
 
+  <!-- ПРЯМОКУТНА КНОПКА НАВІГАЦІЇ (СПРАВА ПІД ШКАЛОЮ ЧАСУ) -->
+  <div id="btnGpsHud" class="btn-gps-rect" onclick="toggleGpsMode()">
+    <span>🧭</span><span>Навігація</span>
+  </div>
+
   <!-- 5. ОНОВИТИ (НИЗ ПРАВОРУЧ) -->
   <div id="btnRefresh" class="btn-refresh" onclick="refreshRadarClick()">
     <span>🔄</span><span>Оновити</span>
@@ -561,7 +566,7 @@
       closeMarkerActionSheet();
     });
 
-    // 1. ЗАЛІЗНА ПЕРЕВІРКА СТАТУСУ (З ПРІОРИТЕТОМ РУЧНОГО ВИБОРУ, СКЛЕЙКОЮ РЯДКІВ ТА СМАЙЛИКАМИ)
+    // 1. ЗАЛІЗНА ПЕРЕВІРКА СТАТУСУ
     function isCleanPoint(p) {
       if (p.is_clean === true || p.status === "чисто" || p.color === "green") return true;
       if (p.is_clean === false || p.status === "опасно" || p.color === "red") return false;
@@ -663,7 +668,7 @@
       return found;
     }
 
-    // 2. ПРЯМЕ ПЕРЕМИКАННЯ СТАТУСУ (ЧИСТО / БЛОКПОСТ) З МИТТЄВИМ ПЕРЕМАЛЬОВУВАННЯМ
+    // 2. ПРЯМЕ ПЕРЕМИКАННЯ СТАТУСУ (ЧИСТО / БЛОКПОСТ)
     window.setPointVerdictDirect = async function(fbKey, isClean, btnEl) {
       const p = allPoints.find(x => x._fbKey === fbKey);
       if (!p) return;
@@ -672,7 +677,6 @@
       p.color = isClean ? "green" : "red";
       p.status = isClean ? "чисто" : "опасно";
 
-      // Зберігаємо вибір користувача намертво в локальний кеш від затирання фоновим таймером
       manualPointOverrides[fbKey] = { is_clean: isClean, color: p.color, status: p.status, time: Date.now() };
       localStorage.setItem("radar_point_overrides", JSON.stringify(manualPointOverrides));
 
@@ -686,7 +690,6 @@
         }
       }
 
-      // Відправляємо статус у Firebase
       if (fbKey) {
         fetch(FIREBASE_POINTS_URL.replace(".json", `/${fbKey}.json`), {
           method: "PATCH",
@@ -709,7 +712,6 @@
 
       showToast(isClean ? "🟢 Встановлено: ЧИСТО!" : "🔴 Встановлено: БЛОКПОСТ!");
       
-      // МИТТЄВО перемальовуємо і маркери, і світлофори на карті!
       renderMarkers();
       renderTrafficLights();
       updateRouteStatus();
@@ -930,6 +932,7 @@
     L.DomEvent.disableClickPropagation(document.getElementById("routeStatusBar"));
     L.DomEvent.disableClickPropagation(document.getElementById("routeSubmenu"));
     L.DomEvent.disableClickPropagation(document.getElementById("btnRefresh"));
+    L.DomEvent.disableClickPropagation(document.getElementById("btnGpsHud"));
     L.DomEvent.disableClickPropagation(document.getElementById("btnStatsHud"));
     L.DomEvent.disableClickPropagation(document.getElementById("markerActionSheet"));
     L.DomEvent.disableClickPropagation(document.getElementById("trainModal"));
@@ -1117,7 +1120,7 @@ ${allLiveReportsText || "Повідомлень немає"}
 
 КОМАНДИ:
 1. ПЕРЕМІЩЕННЯ: <<<ACTION:MOVE:{"key":"KEY_ТОЧКИ","street":"Назва вулиці або перехрестя","lat":48.XXXXX,"lng":34.XXXXX}>>>
-2. СТАТУС: <<<ACTION:STATUS:{"key":"KEY_ТОЧКИ","clean":true}>>> (true - чисто, false - блокпост)
+​2. СТАТУС: <<<ACTION:STATUS:{"key":"KEY_ТОЧКИ","clean":true}>>> (true - чисто, false - блокпост)
 3. АНАЛІТИКА: <<<ACTION:NAVIGATE:{"url":"stats.html"}>>>
 
 Завжди викликай <<<ACTION:...>>>, коли користувач дає вказівку змінити карту!
@@ -1201,11 +1204,7 @@ ${allLiveReportsText || "Повідомлень немає"}
       try {
         const res = await fetch("https://api.github.com/repos/MyDnipro/radar-map/actions/workflows/radar.yml/dispatches", {
           method: "POST",
-          headers: {
-            "Accept": "application/vnd.github.v3+json",
-            "Authorization": `Bearer ${token.trim()}`,
-            "Content-Type": "application/json"
-          },
+          headers: { "Accept": "application/vnd.github.v3+json", "Authorization": `Bearer ${token.trim()}`, "Content-Type": "application/json" },
           body: JSON.stringify({ ref: "main" })
         });
 
@@ -1310,7 +1309,7 @@ ${allLiveReportsText || "Повідомлень немає"}
       localStorage.setItem("dnepr_radar_checkpoints_v2", JSON.stringify(checkpoints));
     }
 
-    // 3. РОЗУМНІ СВІТЛОФОРИ З КОМПАКТНОЮ ПЛАШКОЮ ШВИДКОГО ПЕРЕКЛЮЧЕННЯ
+    // 3. РОЗУМНІ СВІТЛОФОРИ
     function renderTrafficLights() {
       if (!showTrafficLights) return;
 
@@ -1403,7 +1402,6 @@ ${allLiveReportsText || "Повідомлень немає"}
             await syncCheckpointsToCloud();
           });
 
-          // ОБРОБКА ДОВГОГО НАТИСКАННЯ: ВІДКРИТТЯ КОМПАКТНОЇ ПЛАШКИ НАД СВІТЛОФОРОМ
           let pressTimer = null;
           let isLongPress = false;
           let startX = 0, startY = 0;
@@ -1597,7 +1595,7 @@ ${allLiveReportsText || "Повідомлень немає"}
       if (!e.target.closest(".search-box")) searchResults.style.display = "none";
     });
 
-    // 4. ЗАВАНТАЖЕННЯ ТОЧОК ІЗ ЗАХИСТОМ РУЧНИХ ЗМІН ВІД ЗАТИРАННЯ
+    // 4. ЗАВАНТАЖЕННЯ ТОЧОК
     async function loadPoints() {
       if (pendingRelocation) return;
       try {
@@ -1655,13 +1653,14 @@ ${allLiveReportsText || "Повідомлень немає"}
       } catch (err) {}
     }
 
-    // 5. ЄДИНА СТАБІЛЬНА ТОЧКА НА ПЕРЕХРЕСТІ (БЕЗ РОЗДВОЄННЯ МАРКЕРІВ)
+    // 5. РОЗДІЛЬНІ МІТКИ ЗА КОЛЬОРОМ НА ОДНІЙ ЛОКАЦІЇ (ЗАДАЧА 1)
     function renderMarkers() {
       markersLayer.clearLayers();
       const now = Date.now();
       let visibleCount = 0;
 
       const clusters = {};
+      const coordCounts = {};
 
       allPoints.forEach(p => {
         const time = p.time || p.timestamp || 0;
@@ -1669,12 +1668,16 @@ ${allLiveReportsText || "Повідомлень немає"}
         if (diff > LIFETIME_MS) return;
         if (!isPointInActiveSectors(p)) return;
 
-        const groupKey = `${p.lat.toFixed(4)}_${p.lng.toFixed(4)}`;
+        const isClean = isCleanPoint(p);
+        const baseCoordKey = `${p.lat.toFixed(4)}_${p.lng.toFixed(4)}`;
+        const groupKey = `${baseCoordKey}_${isClean ? 'green' : 'red'}`;
 
         if (!clusters[groupKey]) {
           clusters[groupKey] = {
+            baseCoordKey: baseCoordKey,
             lat: p.lat,
             lng: p.lng,
+            isClean: isClean,
             points: [],
             isFresh: false,
             needsTraining: false
@@ -1685,9 +1688,12 @@ ${allLiveReportsText || "Повідомлень немає"}
         if (p.needs_training) clusters[groupKey].needsTraining = true;
       });
 
+      Object.values(clusters).forEach(c => {
+        coordCounts[c.baseCoordKey] = (coordCounts[c.baseCoordKey] || 0) + 1;
+      });
+
       Object.values(clusters).forEach(cluster => {
-        const hasDanger = cluster.points.some(pt => !isCleanPoint(pt));
-        const clean = !hasDanger;
+        const clean = cluster.isClean;
 
         if (clean && !filterShowGreen) return;
         if (!clean && !filterShowRed) return;
@@ -1706,22 +1712,33 @@ ${allLiveReportsText || "Повідомлень немає"}
           iconSize: [18, 18], iconAnchor: [9, 9]
         });
 
+        let renderLat = cluster.lat;
+        let renderLng = cluster.lng;
+        if (coordCounts[cluster.baseCoordKey] > 1) {
+          const offset = 0.00028;
+          if (clean) {
+            renderLat -= offset * 0.7;
+            renderLng += offset;
+          } else {
+            renderLat += offset * 0.7;
+            renderLng -= offset;
+          }
+        }
+
         let listHtml = "";
         cluster.points.sort((a,b) => (b.time||b.timestamp||0) - (a.time||a.timestamp||0)).forEach(pt => {
           const ptTime = pt.time || pt.timestamp || 0;
           const timeStr = ptTime ? new Date(ptTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "";
           const remMin = Math.floor(Math.max(0, LIFETIME_MS - (now - ptTime)) / 60000);
           const fbKeySafe = pt._fbKey || "";
-          const renameNote = getStreetRenameNote(pt.text || pt.raw_text || pt.address || "");
+          const renameNote = typeof getStreetRenameNote === "function" ? getStreetRenameNote(pt.text || pt.raw_text || pt.address || "") : "";
 
           listHtml += `
             <div class="report-row-item" style="border-bottom: 1px solid #334155; padding-bottom: 7px; margin-bottom: 7px;">
-              <div class="report-status-title" style="font-weight:700; font-size:12px; color:#0f172a; line-height:1.35;">${isCleanPoint(pt) ? "🟢" : "🔴"} ${pt.text || pt.raw_text || ""}</div>
+              <div class="report-status-title" style="font-weight:700; font-size:12px; color:#0f172a; line-height:1.35;">${clean ? "🟢" : "🔴"} ${pt.text || pt.raw_text || ""}</div>
               <div style="font-size:10px; color:#64748b; margin-top:2px;">🕒 ${timeStr} | Зникне через: ${remMin} хв</div>
               
-              <div style="font-size:10px; color:#0284c7; margin-top:4px; background:#f0f9ff; padding:3px 6px; border-radius:4px; border:1px solid #bae6fd;">
-                ${renameNote}
-              </div>
+              ${renameNote ? `<div style="font-size:10px; color:#0284c7; margin-top:4px; background:#f0f9ff; padding:3px 6px; border-radius:4px; border:1px solid #bae6fd;">\${renameNote}</div>` : ''}
 
               <div style="display:flex; gap:4px; margin-top:6px;">
                 <button onclick="event.stopPropagation(); setPointVerdictDirect('${fbKeySafe}', true, this)" style="flex:1; background:#059669; border:none; color:#fff; padding:5px 3px; border-radius:5px; font-size:10px; font-weight:800; cursor:pointer;">🟢 Чисто</button>
@@ -1738,14 +1755,14 @@ ${allLiveReportsText || "Повідомлень немає"}
 
         const popupContent = `
           <div style="padding:4px; font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif; min-width:215px; max-height:245px; overflow-y:auto;">
-            <div style="font-weight:800; font-size:11px; color:#0284c7; margin-bottom:6px; border-bottom:1px solid #cbd5e1; padding-bottom:3px;">
-              📍 Повідомлень у точці: ${cluster.points.length}
+            <div style="font-weight:800; font-size:11px; color:${clean ? '#16a34a' : '#dc2626'}; margin-bottom:6px; border-bottom:1px solid #cbd5e1; padding-bottom:3px;">
+              ${clean ? '🟢 ЧИСТО' : '🔴 БЛОКПОСТ'} (повідомлень: ${cluster.points.length})
             </div>
             ${listHtml}
           </div>
         `;
 
-        const marker = L.marker([cluster.lat, cluster.lng], {
+        const marker = L.marker([renderLat, renderLng], {
           icon: dotIcon,
           draggable: false
         });
