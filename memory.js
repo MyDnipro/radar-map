@@ -1,13 +1,24 @@
 /**
- * Radar Dnipro — Модуль пам'яті топонімів ("А = Б")
- * Автономний віджет нижньої панелі [ 🧠 ]
+ * Radar Dnipro — Модуль памяти топонимов ("А = Б")
+ * Автономный виджет нижней панели [ 🧠 ]
  */
 (function() {
   const FB_CUSTOM_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/custom_streets.json";
   let cloudRules = {};
   let selectedTargetCoords = null;
 
-  // 1. Стилі
+  function toFirebaseKey(str) {
+    if (!str) return "key_" + Date.now();
+    return encodeURIComponent(str.trim().toLowerCase())
+      .replace(/%/g, "_")
+      .replace(/\./g, "_")
+      .replace(/\$/g, "_")
+      .replace(/#/g, "_")
+      .replace(/\[/g, "_") .replace(/\]/g, "_")
+      .slice(0, 80);
+  }
+
+  // 1. Стили
   const style = document.createElement("style");
   style.textContent = `
     #memWidget {
@@ -218,30 +229,30 @@
   `;
   document.head.appendChild(style);
 
-  // 2. Розмітка
+  // 2. Разметка
   const widget = document.createElement("div");
   widget.id = "memWidget";
   widget.innerHTML = `
-    <div id="memBtn" title="Пам'ять топонімів (А = Б)">🧠</div>
+    <div id="memBtn" title="Память топонимов (А = Б)">🧠</div>
 
     <div id="memCard">
       <div class="mem-header">
-        <span>🧠 Пам'ять топонімів ("А = Б")</span>
+        <span>🧠 Память топонимов ("А = Б")</span>
         <span id="memCloseBtn" style="cursor:pointer; font-size:16px; padding:0 4px;">✕</span>
       </div>
       <div class="mem-row">
         <div class="mem-input-wrap">
-          <input type="text" id="memAlias" class="mem-input" placeholder="Що шукати (напр. оброзцова)" autocomplete="off">
+          <input type="text" id="memAlias" class="mem-input" placeholder="Что искать (напр. образцова)" autocomplete="off">
         </div>
         <span style="font-weight:900; color:#c084fc;">=</span>
         <div class="mem-input-wrap">
-          <input type="text" id="memTarget" class="mem-input" placeholder="Куди вести (напр. Зразкова)" autocomplete="off">
+          <input type="text" id="memTarget" class="mem-input" placeholder="Куда вести (напр. Зразкова)" autocomplete="off">
           <div id="memTargetResults"></div>
         </div>
       </div>
-      <button class="btn-mem-save" id="memSaveBtn">💾 Зберегти в пам'ять</button>
+      <button class="btn-mem-save" id="memSaveBtn">💾 Сохранить в память</button>
       <button class="btn-mem-view-all" id="memViewAllBtn">
-        <span>📋 Збережені прив'язки:</span>
+        <span>📋 Сохраненные правила:</span>
         <b id="memCountBadge" style="color:#c084fc;">0</b>
       </button>
     </div>
@@ -252,11 +263,11 @@
   fullModal.id = "memFullModal";
   fullModal.innerHTML = `
     <div class="mem-full-header">
-      <span>📚 Журнал прив'язок ШІ</span>
+      <span>📚 Журнал привязок ИИ</span>
       <span id="memFullCloseBtn" style="cursor:pointer; font-size:20px; padding:0 8px; color:#94a3b8;">✕</span>
     </div>
     <div id="memFullList" class="mem-full-list">
-      <span style="font-size:12px; color:#64748b; text-align:center; margin-top:20px;">Завантаження...</span>
+      <span style="font-size:12px; color:#64748b; text-align:center; margin-top:20px;">Загрузка...</span>
     </div>
   `;
   document.body.appendChild(fullModal);
@@ -312,9 +323,10 @@
     if (query.length < 2) return;
 
     aliasDebounceTimer = setTimeout(() => {
-      for (const [rawKey, rule] of Object.entries(cloudRules)) {
-        const key = decodeURIComponent(rawKey).toLowerCase();
-        if (key === query || query.includes(key) || key.includes(query)) {
+      for (const rule of Object.values(cloudRules)) {
+        if (!rule || !rule.name) continue;
+        const phrase = (rule.alias || rule.phrase || "").toLowerCase();
+        if (phrase === query || query.includes(phrase) || phrase.includes(query)) {
           targetInput.value = rule.name;
           targetInput.classList.add("autofilled");
           selectedTargetCoords = { lat: rule.lat, lng: rule.lng, name: rule.name };
@@ -353,18 +365,18 @@
       targetResults.innerHTML = "";
       const matches = [];
 
-      for (const [rawKey, rule] of Object.entries(cloudRules)) {
+      for (const rule of Object.values(cloudRules)) {
         if (!rule || !rule.lat || !rule.lng) continue;
-        const key = decodeURIComponent(rawKey).toLowerCase();
+        const phrase = (rule.alias || rule.phrase || "").toLowerCase();
         const nameLower = (rule.name || "").toLowerCase();
-        if (nameLower.includes(lower) || key.includes(lower)) {
+        if (nameLower.includes(lower) || phrase.includes(lower)) {
           if (!matches.some(m => m.name === rule.name)) {
             matches.push({
               name: rule.name,
               lat: rule.lat,
               lng: rule.lng,
               badge: "🧠",
-              subtext: `(пам'ять: ${key})`
+              subtext: phrase ? `(память: ${phrase})` : ""
             });
           }
         }
@@ -381,7 +393,7 @@
                 lat: item.lat,
                 lng: item.lng,
                 badge: "📍",
-                subtext: item.old ? `(колишня: ${item.old})` : ""
+                subtext: item.old ? `(бывшая: ${item.old})` : ""
               });
             }
           }
@@ -437,7 +449,7 @@
   });
 
   function formatDateTime(ts) {
-    if (!ts) return "Час не вказано";
+    if (!ts) return "Время не указано";
     const d = new Date(ts);
     const day = String(d.getDate()).padStart(2, '0');
     const month = String(d.getMonth() + 1).padStart(2, '0');
@@ -454,9 +466,10 @@
         const data = await res.json();
         if (data && typeof data === "object") {
           cloudRules = data;
-          Object.entries(data).forEach(([rawKey, item]) => {
+          Object.entries(data).forEach(([key, item]) => {
             if (item && item.lat && item.lng && window.DNIPRO_STREETS_MAP) {
-              window.DNIPRO_STREETS_MAP[decodeURIComponent(rawKey).toLowerCase()] = item;
+              const aliasName = (item.alias || item.phrase || key).toLowerCase();
+              window.DNIPRO_STREETS_MAP[aliasName] = item;
             }
           });
           updateCountBadge();
@@ -479,81 +492,83 @@
     updateCountBadge();
 
     if (entries.length === 0) {
-      box.innerHTML = '<span style="font-size:12px; color:#64748b; text-align:center; margin-top:30px;">Немає збережених зв\'язок</span>';
+      box.innerHTML = '<span style="font-size:12px; color:#64748b; text-align:center; margin-top:30px;">Нет сохраненных правил</span>';
       return;
     }
 
     entries.sort((a, b) => (b[1].time || 0) - (a[1].time || 0));
 
-    entries.forEach(([rawKey, item]) => {
-      const key = decodeURIComponent(rawKey);
+    entries.forEach(([fbKey, item]) => {
+      const aliasName = item.alias || item.phrase || fbKey;
       const timeStr = formatDateTime(item.time);
 
       const row = document.createElement("div");
       row.className = "mem-full-card";
       row.innerHTML = `
         <div class="mem-full-info">
-          <div class="mem-full-rule">«${key}» ➔ <span style="color:#38bdf8;">${item.name}</span></div>
+          <div class="mem-full-rule">«${aliasName}» ➔ <span style="color:#38bdf8;">${item.name || item.address}</span></div>
           <div class="mem-full-time">${timeStr} <span style="color:#64748b;">(${Number(item.lat).toFixed(4)}, ${Number(item.lng).toFixed(4)})</span></div>
         </div>
         <div class="mem-full-acts">
-          <button class="btn-mem-edit" title="Редагувати">✏️</button>
-          <button class="btn-mem-del" title="Видалити">🗑️</button>
+          <button class="btn-mem-edit" title="Редактировать">✏️</button>
+          <button class="btn-mem-del" title="Удалить">🗑️</button>
         </div>
       `;
 
-      row.querySelector(".btn-mem-edit").addEventListener("click", () => editRule(rawKey, item));
-      row.querySelector(".btn-mem-del").addEventListener("click", () => deleteRule(rawKey));
+      row.querySelector(".btn-mem-edit").addEventListener("click", () => editRule(fbKey, item));
+      row.querySelector(".btn-mem-del").addEventListener("click", () => deleteRule(fbKey));
       box.appendChild(row);
     });
   }
 
-  // ✏️ РЕДАГУВАННЯ ЗАПИСУ В МОЗКУ
-  async function editRule(rawKey, item) {
-    const oldKey = decodeURIComponent(rawKey);
-    const newAlias = prompt("🔑 Пошукове слово/фраза «А»:", oldKey);
+  async function editRule(fbKey, item) {
+    const oldAlias = item.alias || item.phrase || fbKey;
+    const newAlias = prompt("🔑 Поисковое слово/фраза «А»:", oldAlias);
     if (newAlias === null) return;
 
-    const newTarget = prompt("📍 Цільова назва вулиці «Б»:", item.name);
+    const newTarget = prompt("📍 Целевое название улицы «Б»:", item.name || item.address || "");
     if (newTarget === null) return;
 
-    const newCoords = prompt("🌐 Координати (lat, lng):", `${item.lat}, ${item.lng}`);
+    const newCoords = prompt("🌐 Координаты (lat, lng):", `${item.lat}, ${item.lng}`);
     if (newCoords === null) return;
 
     const parts = newCoords.split(',').map(s => parseFloat(s.trim()));
     if (parts.length !== 2 || isNaN(parts[0]) || isNaN(parts[1])) {
-      alert("❌ Некоректні координати! Приклад: 48.4840, 34.9850");
+      alert("❌ Некорректные координаты! Пример: 48.4840, 34.9850");
       return;
     }
 
     const cleanNewAlias = newAlias.trim().toLowerCase();
     const cleanNewTarget = newTarget.trim();
+    const newFbKey = toFirebaseKey(cleanNewAlias);
+
     const updatedEntry = {
+      alias: cleanNewAlias,
+      phrase: cleanNewAlias,
       name: cleanNewTarget,
+      address: cleanNewTarget,
       lat: Number(parts[0].toFixed(5)),
       lng: Number(parts[1].toFixed(5)),
       time: Date.now()
     };
 
-    // Якщо змінили ключ — видаляємо старий із Firebase
-    const newSafeKey = encodeURIComponent(cleanNewAlias).replace(/\./g, "%2E");
-    if (newSafeKey !== rawKey) {
-      delete cloudRules[rawKey];
-      fetch(FB_CUSTOM_URL.replace(".json", `/${rawKey}.json`), { method: "DELETE" }).catch(() => {});
-      if (window.DNIPRO_STREETS_MAP) delete window.DNIPRO_STREETS_MAP[oldKey.toLowerCase()];
+    if (newFbKey !== fbKey) {
+      delete cloudRules[fbKey];
+      fetch(FB_CUSTOM_URL.replace(".json", `/${fbKey}.json`), { method: "DELETE" }).catch(() => {});
+      if (window.DNIPRO_STREETS_MAP) delete window.DNIPRO_STREETS_MAP[oldAlias.toLowerCase()];
     }
 
-    cloudRules[newSafeKey] = updatedEntry;
+    cloudRules[newFbKey] = updatedEntry;
     if (window.DNIPRO_STREETS_MAP) window.DNIPRO_STREETS_MAP[cleanNewAlias] = updatedEntry;
 
-    fetch(FB_CUSTOM_URL.replace(".json", `/${newSafeKey}.json`), {
+    await fetch(FB_CUSTOM_URL.replace(".json", `/${newFbKey}.json`), {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(updatedEntry)
     }).catch(() => {});
 
     renderFullList();
-    if (typeof window.showToast === "function") window.showToast("✅ Прив'язку в Мозку оновлено!");
+    if (typeof window.showToast === "function") window.showToast("✅ Правило обновлено!");
   }
 
   async function saveRule() {
@@ -561,7 +576,7 @@
     const target = targetInput.value.trim();
 
     if (!alias || !target) {
-      alert("Заповніть обидва поля: [Що шукати] = [Куди вести]");
+      alert("Заполните оба поля: [Что искать] = [Куда вести]");
       return;
     }
 
@@ -590,19 +605,27 @@
     }
 
     if (!lat || !lng) {
-      alert(`Не вдалося визначити координати для «${target}». Оберіть варіант зі списку підказок.`);
+      alert(`Не удалось определить координаты для «${target}». Выберите вариант из списка подсказок.`);
       return;
     }
 
-    const entry = { name: realName, lat: Number(lat.toFixed(5)), lng: Number(lng.toFixed(5)), time: Date.now() };
-    const safeKey = encodeURIComponent(alias).replace(/\./g, "%2E");
+    const safeKey = toFirebaseKey(alias);
+    const entry = {
+      alias: alias,
+      phrase: alias,
+      name: realName,
+      address: realName,
+      lat: Number(lat.toFixed(5)),
+      lng: Number(lng.toFixed(5)),
+      time: Date.now()
+    };
 
     cloudRules[safeKey] = entry;
     if (window.DNIPRO_STREETS_MAP) {
       window.DNIPRO_STREETS_MAP[alias] = entry;
     }
 
-    fetch(FB_CUSTOM_URL.replace(".json", `/${safeKey}.json`), {
+    await fetch(FB_CUSTOM_URL.replace(".json", `/${safeKey}.json`), {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(entry)
@@ -630,21 +653,26 @@
     selectedTargetCoords = null;
     targetResults.style.display = "none";
     updateCountBadge();
-    if (typeof window.showToast === "function") window.showToast(`✅ Зв'язку «${alias} = ${realName}» збережено!`);
+    if (typeof window.showToast === "function") window.showToast(`✅ «${alias} = ${realName}» сохранено!`);
   }
 
   saveBtn.addEventListener("click", saveRule);
 
-  async function deleteRule(rawKey) {
-    if (!confirm("Видалити цю прив'язку з пам'яті?")) return;
-    delete cloudRules[rawKey];
+  async function deleteRule(fbKey) {
+    if (!confirm("Удалить это правило из памяти?")) return;
+    const item = cloudRules[fbKey];
+    const aliasName = (item?.alias || item?.phrase || fbKey).toLowerCase();
+
+    delete cloudRules[fbKey];
     if (window.DNIPRO_STREETS_MAP) {
-      delete window.DNIPRO_STREETS_MAP[decodeURIComponent(rawKey).toLowerCase()];
+      delete window.DNIPRO_STREETS_MAP[aliasName];
     }
-    fetch(FB_CUSTOM_URL.replace(".json", `/${rawKey}.json`), { method: "DELETE" }).catch(() => {});
+
+    await fetch(FB_CUSTOM_URL.replace(".json", `/${fbKey}.json`), { method: "DELETE" }).catch(() => {});
     renderFullList();
-    if (typeof window.showToast === "function") window.showToast("🗑️ Прив'язку видалено!");
+    if (typeof window.showToast === "function") window.showToast("🗑️ Правило удалено!");
   }
 
+  window.toFirebaseKey = toFirebaseKey;
   setTimeout(loadCloudRules, 1000);
 })();
