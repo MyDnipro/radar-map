@@ -463,7 +463,7 @@ html.dash-collapsed #collapsibleBody { display: none; }
   right: 15px !important;
   left: auto !important;
   top: auto !important;
-  z-index: 2500 !important;
+  z-index: 2100 !important;
   display: flex !important;
   flex-direction: row !important;
   align-items: flex-end !important;
