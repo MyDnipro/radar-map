@@ -215,16 +215,18 @@
     </svg>
   </a>
 
- <!-- НИЖНІ КНОПКИ СПРАВА: ОНОВИТИ ТА КВАДРАТНА НАВІГАЦІЯ -->
+ <!-- НИЖНІ КНОПКИ СПРАВА: ВИСОКЕ ОНОВИТИ + СТОВПЧИК З ДВОХ КВАДРАТІВ -->
   <div class="bottom-right-cluster">
-    <div id="btnRefresh" class="btn-refresh-compact" onclick="refreshRadarClick()">
-      <span>🔄</span><span>Оновити</span>
+    <div id="btnRefresh" class="btn-refresh-vertical" onclick="refreshRadarClick()">
+      <span>🔄</span>
+      <span>Оновити</span>
     </div>
-    <div id="btnGpsHud" class="btn-gps-square" onclick="toggleGpsMode()" title="Навігація">
-      <span>🧭</span>
+    <div class="nav-timer-column">
+      <div id="btnGpsHud" class="btn-gps-square" onclick="toggleGpsMode()" title="Навігація">
+        <span>🧭</span>
+      </div>
     </div>
   </div>
-
   <!-- 5. ОНОВИТИ (СПРАВА НАД НАВІГАЦІЄЮ) -->
   <div id="btnRefresh" class="btn-refresh" onclick="refreshRadarClick()">
     <span>🔄</span><span>Оновити</span>
