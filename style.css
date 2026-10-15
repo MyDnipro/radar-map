@@ -456,7 +456,7 @@ html.dash-collapsed #collapsibleBody { display: none; }
   transform: translateX(-50%) scale(0.92) !important;
 }
 
-/* КЛАСТЕР КНОПОК ВНИЗУ СПРАВА */
+/* --- КЛАСТЕР НИЖНИХ КНОПОК СПРАВА --- */
 .bottom-right-cluster {
   position: absolute !important;
   bottom: 25px !important;
@@ -465,70 +465,73 @@ html.dash-collapsed #collapsibleBody { display: none; }
   top: auto !important;
   z-index: 2500 !important;
   display: flex !important;
+  flex-direction: row !important;
   align-items: flex-end !important;
   gap: 7px !important;
 }
 
-/* ВЕРТИКАЛЬНАЯ ВЫСОКАЯ КНОПКА «ОНОВИТИ» ВРОВЕНЬ С ДВУМЯ КВАДРАТАМИ (38 + 7 + 38 = 83px) */
-.btn-refresh-vertical {
-  width: 44px;
-  height: 83px;
-  box-sizing: border-box;
-  background: rgba(15, 23, 42, 0.94);
-  backdrop-filter: blur(10px);
-  color: #f8fafc;
-  border: 1.5px solid #334155;
-  border-radius: 12px;
-  cursor: pointer;
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
+/* ВЕРТИКАЛЬНАЯ КНОПКА «ОНОВИТИ» ВЫСОТОЙ 83px (РОВНО ПО ВЫСОТЕ НАВИГАЦИИ + СЕКУНДОМЕРА) */
+#btnRefresh {
+  width: 44px !important;
+  height: 83px !important;
+  min-height: 83px !important;
+  max-height: 83px !important;
+  box-sizing: border-box !important;
+  background: #0f172a !important; /* плотный монолитный графитовый фон */
+  border: 1.5px solid #334155 !important;
+  border-radius: 12px !important;
+  color: #f8fafc !important;
+  cursor: pointer !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.7) !important;
   display: flex !important;
   flex-direction: column !important;
   align-items: center !important;
   justify-content: center !important;
-  gap: 4px;
-  user-select: none;
-  font-size: 9px;
-  font-weight: 800;
-  padding: 4px 2px;
-  text-align: center;
-  transition: transform 0.15s ease, background 0.2s ease, border-color 0.2s ease;
+  gap: 4px !important;
+  user-select: none !important;
+  padding: 4px 2px !important;
+  margin: 0 !important;
+  position: static !important;
+  transition: transform 0.15s ease, background 0.2s ease, border-color 0.2s ease !important;
 }
-.btn-refresh-vertical span:first-child {
-  font-size: 16px;
-  line-height: 1;
+#btnRefresh span:first-child {
+  font-size: 16px !important;
+  line-height: 1 !important;
 }
-.btn-refresh-vertical:active { transform: scale(0.94); }
+#btnRefresh span:last-child {
+  font-size: 8.5px !important;
+  font-weight: 800 !important;
+  line-height: 1.1 !important;
+  text-align: center !important;
+}
+#btnRefresh:active { transform: scale(0.94) !important; }
 
-/* ПРАВЫЙ СТОЛБИК: КВАДРАТ НАВИГАЦИИ */
-.nav-timer-column {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
+/* КВАДРАТ НАВИГАЦИИ (38x38) В САМОМ НИЖНЕМ ПРАВОМ УГЛУ */
+#btnGpsHud {
+  width: 38px !important;
+  height: 38px !important;
+  min-height: 38px !important;
+  max-height: 38px !important;
+  box-sizing: border-box !important;
+  background: #0f172a !important; /* плотный монолитный фон */
+  border: 1.5px solid #334155 !important;
+  border-radius: 12px !important;
+  color: #cbd5e1 !important;
+  cursor: pointer !important;
+  font-size: 17px !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.7) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  user-select: none !important;
+  position: static !important;
+  margin: 0 !important;
+  transition: border-color 0.2s ease, background 0.2s ease, transform 0.15s ease !important;
 }
-
-/* КВАДРАТНАЯ КНОПКА НАВИГАЦИИ (38x38) */
-.btn-gps-square {
-  width: 38px;
-  height: 38px;
-  box-sizing: border-box;
-  background: rgba(15, 23, 42, 0.94);
-  backdrop-filter: blur(10px);
-  color: #cbd5e1;
-  border: 1.5px solid #334155;
-  border-radius: 12px;
-  cursor: pointer;
-  font-size: 17px;
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  user-select: none;
-  transition: border-color 0.2s ease, background 0.2s ease, transform 0.15s ease;
-}
-.btn-gps-square:active { transform: scale(0.92); }
-.btn-gps-square.active {
+#btnGpsHud:active { transform: scale(0.92) !important; }
+#btnGpsHud.active {
   border-color: #eab308 !important;
-  background: rgba(113, 63, 18, 0.9) !important;
+  background: #713f12 !important;
   box-shadow: 0 0 14px rgba(234, 179, 8, 0.7) !important;
 }
 
