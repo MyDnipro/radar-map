@@ -456,7 +456,7 @@ html.dash-collapsed #collapsibleBody { display: none; }
   transform: translateX(-50%) scale(0.92) !important;
 }
 
-/* КЛАСТЕР КНОПОК ВНИЗУ СПРАВА (ОНОВИТИ + КВАДРАТ НАВИГАЦИИ) */
+/* КЛАСТЕР КНОПОК ВНИЗУ СПРАВА (ОНОВИТИ + КВАДРАТ НАВІГАЦІЇ) */
 .bottom-right-cluster {
   position: absolute !important;
   bottom: 25px !important;
@@ -466,10 +466,10 @@ html.dash-collapsed #collapsibleBody { display: none; }
   z-index: 2500 !important;
   display: flex !important;
   align-items: center !important;
-  gap: 8px !important;
+  gap: 6px !important;
 }
 
-/* КОМПАКТНАЯ КНОПКА «ОНОВИТИ» */
+/* КОМПАКТНА КНОПКА «ОНОВИТИ» */
 .btn-refresh-compact {
   height: 38px;
   box-sizing: border-box;
@@ -493,7 +493,7 @@ html.dash-collapsed #collapsibleBody { display: none; }
 }
 .btn-refresh-compact:active { transform: scale(0.94); }
 
-/* КВАДРАТНАЯ КНОПКА НАВИГАЦИИ БЕЗ ТЕКСТА */
+/* КВАДРАТНА КНОПКА НАВІГАЦІЇ БЕЗ ТЕКСТУ */
 .btn-gps-square {
   width: 38px;
   height: 38px;
