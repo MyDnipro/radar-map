@@ -215,12 +215,12 @@
     </svg>
   </a>
 
-  <!-- ПРЯМОКУТНА КНОПКА НАВІГАЦІЇ (СПРАВА ПІД ШКАЛОЮ ЧАСУ) -->
+  <!-- ПРЯМОКУТНА КНОПКА НАВІГАЦІЇ (СПРАВА НАД ТАЙМЕРОМ) -->
   <div id="btnGpsHud" class="btn-gps-rect" onclick="toggleGpsMode()">
     <span>🧭</span><span>Навігація</span>
   </div>
 
-  <!-- 5. ОНОВИТИ (НИЗ ПРАВОРУЧ) -->
+  <!-- 5. ОНОВИТИ (СПРАВА НАД НАВІГАЦІЄЮ) -->
   <div id="btnRefresh" class="btn-refresh" onclick="refreshRadarClick()">
     <span>🔄</span><span>Оновити</span>
   </div>
@@ -1653,179 +1653,189 @@ ${allLiveReportsText || "Повідомлень немає"}
       } catch (err) {}
     }
 
-    // 5. РОЗДІЛЬНІ МІТКИ ЗА КОЛЬОРОМ НА ОДНІЙ ЛОКАЦІЇ (ЗАДАЧА 1)
+    // 5. РОЗДІЛЬНІ МІТКИ ЗА КОЛЬОРОМ НА ОДНІЙ ЛОКАЦІЇ (ЗАДАЧА 1 - З ЗАХИСТОМ ВІД ЗБОЇВ)
     function renderMarkers() {
-      markersLayer.clearLayers();
-      const now = Date.now();
-      let visibleCount = 0;
+      try {
+        markersLayer.clearLayers();
+        const now = Date.now();
+        let visibleCount = 0;
 
-      const clusters = {};
-      const coordCounts = {};
+        const clusters = {};
+        const coordCounts = {};
 
-      allPoints.forEach(p => {
-        const time = p.time || p.timestamp || 0;
-        const diff = now - time;
-        if (diff > LIFETIME_MS) return;
-        if (!isPointInActiveSectors(p)) return;
+        allPoints.forEach(p => {
+          const time = p.time || p.timestamp || 0;
+          const diff = now - time;
+          if (diff > LIFETIME_MS) return;
+          if (!isPointInActiveSectors(p)) return;
 
-        const isClean = isCleanPoint(p);
-        const baseCoordKey = `${p.lat.toFixed(4)}_${p.lng.toFixed(4)}`;
-        const groupKey = `${baseCoordKey}_${isClean ? 'green' : 'red'}`;
+          const isClean = isCleanPoint(p);
+          const baseCoordKey = `${p.lat.toFixed(4)}_${p.lng.toFixed(4)}`;
+          const groupKey = `${baseCoordKey}_${isClean ? 'green' : 'red'}`;
 
-        if (!clusters[groupKey]) {
-          clusters[groupKey] = {
-            baseCoordKey: baseCoordKey,
-            lat: p.lat,
-            lng: p.lng,
-            isClean: isClean,
-            points: [],
-            isFresh: false,
-            needsTraining: false
-          };
-        }
-        clusters[groupKey].points.push(p);
-        if (diff <= FRESH_THRESHOLD_MS) clusters[groupKey].isFresh = true;
-        if (p.needs_training) clusters[groupKey].needsTraining = true;
-      });
-
-      Object.values(clusters).forEach(c => {
-        coordCounts[c.baseCoordKey] = (coordCounts[c.baseCoordKey] || 0) + 1;
-      });
-
-      Object.values(clusters).forEach(cluster => {
-        const clean = cluster.isClean;
-
-        if (clean && !filterShowGreen) return;
-        if (!clean && !filterShowRed) return;
-
-        const isFresh = cluster.isFresh;
-        const trainingClass = cluster.needsTraining ? "needs-training" : "";
-        const colorClass = clean ? "color-green" : "color-red";
-        const freshClass = isFresh ? "fresh" : "";
-        const sizeClass = cluster.points.length > 1 ? "clustered" : "";
-
-        const markerHtml = `<div class="radar-circle ${colorClass} ${freshClass} ${trainingClass} ${sizeClass}"></div>`;
-        
-        const dotIcon = L.divIcon({
-          className: 'custom-dot-marker',
-          html: markerHtml,
-          iconSize: [18, 18], iconAnchor: [9, 9]
+          if (!clusters[groupKey]) {
+            clusters[groupKey] = {
+              baseCoordKey: baseCoordKey,
+              lat: p.lat,
+              lng: p.lng,
+              isClean: isClean,
+              points: [],
+              isFresh: false,
+              needsTraining: false
+            };
+          }
+          clusters[groupKey].points.push(p);
+          if (diff <= FRESH_THRESHOLD_MS) clusters[groupKey].isFresh = true;
+          if (p.needs_training) clusters[groupKey].needsTraining = true;
         });
 
-        let renderLat = cluster.lat;
-        let renderLng = cluster.lng;
-        if (coordCounts[cluster.baseCoordKey] > 1) {
-          const offset = 0.00028;
-          if (clean) {
-            renderLat -= offset * 0.7;
-            renderLng += offset;
-          } else {
-            renderLat += offset * 0.7;
-            renderLng -= offset;
+        Object.values(clusters).forEach(c => {
+          coordCounts[c.baseCoordKey] = (coordCounts[c.baseCoordKey] || 0) + 1;
+        });
+
+        Object.values(clusters).forEach(cluster => {
+          const clean = cluster.isClean;
+
+          if (clean && !filterShowGreen) return;
+          if (!clean && !filterShowRed) return;
+
+          const isFresh = cluster.isFresh;
+          const trainingClass = cluster.needsTraining ? "needs-training" : "";
+          const colorClass = clean ? "color-green" : "color-red";
+          const freshClass = isFresh ? "fresh" : "";
+          const sizeClass = cluster.points.length > 1 ? "clustered" : "";
+
+          const markerHtml = `<div class="radar-circle ${colorClass} ${freshClass} ${trainingClass} ${sizeClass}"></div>`;
+          
+          const dotIcon = L.divIcon({
+            className: 'custom-dot-marker',
+            html: markerHtml,
+            iconSize: [18, 18], iconAnchor: [9, 9]
+          });
+
+          let renderLat = cluster.lat;
+          let renderLng = cluster.lng;
+          if (coordCounts[cluster.baseCoordKey] > 1) {
+            const offset = 0.00028;
+            if (clean) {
+              renderLat -= offset * 0.7;
+              renderLng += offset;
+            } else {
+              renderLat += offset * 0.7;
+              renderLng -= offset;
+            }
           }
-        }
 
-        let listHtml = "";
-        cluster.points.sort((a,b) => (b.time||b.timestamp||0) - (a.time||a.timestamp||0)).forEach(pt => {
-          const ptTime = pt.time || pt.timestamp || 0;
-          const timeStr = ptTime ? new Date(ptTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "";
-          const remMin = Math.floor(Math.max(0, LIFETIME_MS - (now - ptTime)) / 60000);
-          const fbKeySafe = pt._fbKey || "";
-          const renameNote = typeof getStreetRenameNote === "function" ? getStreetRenameNote(pt.text || pt.raw_text || pt.address || "") : "";
+          let listHtml = "";
+          cluster.points.sort((a,b) => (b.time||b.timestamp||0) - (a.time||a.timestamp||0)).forEach(pt => {
+            const ptTime = pt.time || pt.timestamp || 0;
+            const timeStr = ptTime ? new Date(ptTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "";
+            const remMin = Math.floor(Math.max(0, LIFETIME_MS - (now - ptTime)) / 60000);
+            const fbKeySafe = pt._fbKey || "";
+            
+            let renameNote = "";
+            try {
+              if (typeof getStreetRenameNote === "function") {
+                renameNote = getStreetRenameNote(pt.text || pt.raw_text || pt.address || "");
+              }
+            } catch(e) {}
 
-          listHtml += `
-            <div class="report-row-item" style="border-bottom: 1px solid #334155; padding-bottom: 7px; margin-bottom: 7px;">
-              <div class="report-status-title" style="font-weight:700; font-size:12px; color:#0f172a; line-height:1.35;">${clean ? "🟢" : "🔴"} ${pt.text || pt.raw_text || ""}</div>
-              <div style="font-size:10px; color:#64748b; margin-top:2px;">🕒 ${timeStr} | Зникне через: ${remMin} хв</div>
-              
-              ${renameNote ? `<div style="font-size:10px; color:#0284c7; margin-top:4px; background:#f0f9ff; padding:3px 6px; border-radius:4px; border:1px solid #bae6fd;">\${renameNote}</div>` : ''}
+            listHtml += `
+              <div class="report-row-item" style="border-bottom: 1px solid #334155; padding-bottom: 7px; margin-bottom: 7px;">
+                <div class="report-status-title" style="font-weight:700; font-size:12px; color:#0f172a; line-height:1.35;">${clean ? "🟢" : "🔴"} ${pt.text || pt.raw_text || ""}</div>
+                <div style="font-size:10px; color:#64748b; margin-top:2px;">🕒 ${timeStr} | Зникне через: ${remMin} хв</div>
+                
+                ${renameNote ? `<div style="font-size:10px; color:#0284c7; margin-top:4px; background:#f0f9ff; padding:3px 6px; border-radius:4px; border:1px solid #bae6fd;">\${renameNote}</div>` : ''}
 
-              <div style="display:flex; gap:4px; margin-top:6px;">
-                <button onclick="event.stopPropagation(); setPointVerdictDirect('${fbKeySafe}', true, this)" style="flex:1; background:#059669; border:none; color:#fff; padding:5px 3px; border-radius:5px; font-size:10px; font-weight:800; cursor:pointer;">🟢 Чисто</button>
-                <button onclick="event.stopPropagation(); setPointVerdictDirect('${fbKeySafe}', false, this)" style="flex:1; background:#dc2626; border:none; color:#fff; padding:5px 3px; border-radius:5px; font-size:10px; font-weight:800; cursor:pointer;">🔴 Блокпост</button>
+                <div style="display:flex; gap:4px; margin-top:6px;">
+                  <button onclick="event.stopPropagation(); setPointVerdictDirect('${fbKeySafe}', true, this)" style="flex:1; background:#059669; border:none; color:#fff; padding:5px 3px; border-radius:5px; font-size:10px; font-weight:800; cursor:pointer;">🟢 Чисто</button>
+                  <button onclick="event.stopPropagation(); setPointVerdictDirect('${fbKeySafe}', false, this)" style="flex:1; background:#dc2626; border:none; color:#fff; padding:5px 3px; border-radius:5px; font-size:10px; font-weight:800; cursor:pointer;">🔴 Блокпост</button>
+                </div>
+
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:5px;">
+                  <span onclick="event.stopPropagation(); notifyAiAboutPoint('${fbKeySafe}')" style="color:#0284c7; font-weight:800; font-size:9.5px; cursor:pointer;" title="Передати мітку ШІ">🤖 Повідомити ШІ</span>
+                  <span onclick="event.stopPropagation(); deleteSinglePoint('${fbKeySafe}')" style="color:#ef4444; font-weight:800; font-size:9.5px; cursor:pointer;" title="Видалити повідомлення">🗑️ Видалити</span>
+                </div>
               </div>
+            `;
+          });
 
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-top:5px;">
-                <span onclick="event.stopPropagation(); notifyAiAboutPoint('${fbKeySafe}')" style="color:#0284c7; font-weight:800; font-size:9.5px; cursor:pointer;" title="Передати мітку ШІ">🤖 Повідомити ШІ</span>
-                <span onclick="event.stopPropagation(); deleteSinglePoint('${fbKeySafe}')" style="color:#ef4444; font-weight:800; font-size:9.5px; cursor:pointer;" title="Видалити повідомлення">🗑️ Видалити</span>
+          const popupContent = `
+            <div style="padding:4px; font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif; min-width:215px; max-height:245px; overflow-y:auto;">
+              <div style="font-weight:800; font-size:11px; color:${clean ? '#16a34a' : '#dc2626'}; margin-bottom:6px; border-bottom:1px solid #cbd5e1; padding-bottom:3px;">
+                ${clean ? '🟢 ЧИСТО' : '🔴 БЛОКПОСТ'} (повідомлень: ${cluster.points.length})
               </div>
+              ${listHtml}
             </div>
           `;
-        });
 
-        const popupContent = `
-          <div style="padding:4px; font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif; min-width:215px; max-height:245px; overflow-y:auto;">
-            <div style="font-weight:800; font-size:11px; color:${clean ? '#16a34a' : '#dc2626'}; margin-bottom:6px; border-bottom:1px solid #cbd5e1; padding-bottom:3px;">
-              ${clean ? '🟢 ЧИСТО' : '🔴 БЛОКПОСТ'} (повідомлень: ${cluster.points.length})
-            </div>
-            ${listHtml}
-          </div>
-        `;
+          const marker = L.marker([renderLat, renderLng], {
+            icon: dotIcon,
+            draggable: false
+          });
 
-        const marker = L.marker([renderLat, renderLng], {
-          icon: dotIcon,
-          draggable: false
-        });
+          marker.bindPopup(popupContent, { autoClose: true, closeOnClick: true });
 
-        marker.bindPopup(popupContent, { autoClose: true, closeOnClick: true });
+          let pressTimer = null;
+          let isLongTap = false;
+          let startX = 0, startY = 0;
 
-        let pressTimer = null;
-        let isLongTap = false;
-        let startX = 0, startY = 0;
-
-        function startPress(clientX, clientY) {
-          isLongTap = false;
-          startX = clientX; startY = clientY;
-          pressTimer = setTimeout(() => {
-            isLongTap = true;
-            pressTimer = null;
-            if (navigator.vibrate) navigator.vibrate(50);
-            openMarkerActionSheet(cluster.points[0], marker);
-          }, 450);
-        }
-
-        function cancelPress(clientX, clientY) {
-          if (pressTimer && Math.hypot(clientX - startX, clientY - startY) > 8) {
-            clearTimeout(pressTimer); pressTimer = null;
+          function startPress(clientX, clientY) {
+            isLongTap = false;
+            startX = clientX; startY = clientY;
+            pressTimer = setTimeout(() => {
+              isLongTap = true;
+              pressTimer = null;
+              if (navigator.vibrate) navigator.vibrate(50);
+              openMarkerActionSheet(cluster.points[0], marker);
+            }, 450);
           }
-        }
 
-        marker.on('click', () => {
-          if (!isLongTap) marker.openPopup();
-        });
-
-        marker.on('add', () => {
-          const el = marker.getElement();
-          if (!el) return;
-
-          el.addEventListener('touchstart', (e) => {
-            startPress(e.touches[0].clientX, e.touches[0].clientY);
-          }, { passive: true });
-
-          el.addEventListener('touchmove', (e) => {
-            cancelPress(e.touches[0].clientX, e.touches[0].clientY);
-          }, { passive: true });
-
-          el.addEventListener('touchend', (e) => {
-            if (isLongTap) {
-              if (e.cancelable) e.preventDefault();
-              e.stopPropagation();
+          function cancelPress(clientX, clientY) {
+            if (pressTimer && Math.hypot(clientX - startX, clientY - startY) > 8) {
+              clearTimeout(pressTimer); pressTimer = null;
             }
-            if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
+          }
+
+          marker.on('click', () => {
+            if (!isLongTap) marker.openPopup();
           });
 
-          el.addEventListener('mousedown', (e) => { startPress(e.clientX, e.clientY); });
-          el.addEventListener('mousemove', (e) => {
-            if (pressTimer && Math.hypot(e.clientX - startX, e.clientY - startY) > 8) cancelPress();
+          marker.on('add', () => {
+            const el = marker.getElement();
+            if (!el) return;
+
+            el.addEventListener('touchstart', (e) => {
+              startPress(e.touches[0].clientX, e.touches[0].clientY);
+            }, { passive: true });
+
+            el.addEventListener('touchmove', (e) => {
+              cancelPress(e.touches[0].clientX, e.touches[0].clientY);
+            }, { passive: true });
+
+            el.addEventListener('touchend', (e) => {
+              if (isLongTap) {
+                if (e.cancelable) e.preventDefault();
+                e.stopPropagation();
+              }
+              if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
+            });
+
+            el.addEventListener('mousedown', (e) => { startPress(e.clientX, e.clientY); });
+            el.addEventListener('mousemove', (e) => {
+              if (pressTimer && Math.hypot(e.clientX - startX, e.clientY - startY) > 8) cancelPress();
+            });
+            el.addEventListener('mouseup', () => { if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } });
           });
-          el.addEventListener('mouseup', () => { if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } });
+
+          markersLayer.addLayer(marker);
+          visibleCount += cluster.points.length;
         });
 
-        markersLayer.addLayer(marker);
-        visibleCount += cluster.points.length;
-      });
-
-      document.getElementById('countText').innerHTML = `<span>Точок: ${visibleCount}</span>`;
+        document.getElementById('countText').innerHTML = `<span>Точок: ${visibleCount}</span>`;
+      } catch(err) {
+        console.error("Помилка renderMarkers:", err);
+      }
     }
 
     loadCheckpointsFromCloud().then(() => {
