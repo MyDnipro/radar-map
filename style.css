@@ -456,7 +456,7 @@ html.dash-collapsed #collapsibleBody { display: none; }
   transform: translateX(-50%) scale(0.92) !important;
 }
 
-/* КЛАСТЕР КНОПОК ВНИЗУ СПРАВА (ОНОВИТИ + КВАДРАТ НАВІГАЦІЇ) */
+/* КЛАСТЕР КНОПОК ВНИЗУ СПРАВА */
 .bottom-right-cluster {
   position: absolute !important;
   bottom: 25px !important;
@@ -465,35 +465,48 @@ html.dash-collapsed #collapsibleBody { display: none; }
   top: auto !important;
   z-index: 2500 !important;
   display: flex !important;
-  align-items: center !important;
-  gap: 6px !important;
+  align-items: flex-end !important;
+  gap: 7px !important;
 }
 
-/* КОМПАКТНА КНОПКА «ОНОВИТИ» */
-.btn-refresh-compact {
-  height: 38px;
+/* ВЕРТИКАЛЬНАЯ ВЫСОКАЯ КНОПКА «ОНОВИТИ» ВРОВЕНЬ С ДВУМЯ КВАДРАТАМИ (38 + 7 + 38 = 83px) */
+.btn-refresh-vertical {
+  width: 44px;
+  height: 83px;
   box-sizing: border-box;
   background: rgba(15, 23, 42, 0.94);
   backdrop-filter: blur(10px);
   color: #f8fafc;
   border: 1.5px solid #334155;
-  padding: 0 10px;
   border-radius: 12px;
   cursor: pointer;
-  font-size: 11px;
-  font-weight: 800;
   box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 4px;
   user-select: none;
-  white-space: nowrap;
-  transition: transform 0.15s ease, background 0.2s ease;
+  font-size: 9px;
+  font-weight: 800;
+  padding: 4px 2px;
+  text-align: center;
+  transition: transform 0.15s ease, background 0.2s ease, border-color 0.2s ease;
 }
-.btn-refresh-compact:active { transform: scale(0.94); }
+.btn-refresh-vertical span:first-child {
+  font-size: 16px;
+  line-height: 1;
+}
+.btn-refresh-vertical:active { transform: scale(0.94); }
 
-/* КВАДРАТНА КНОПКА НАВІГАЦІЇ БЕЗ ТЕКСТУ */
+/* ПРАВЫЙ СТОЛБИК: КВАДРАТ НАВИГАЦИИ */
+.nav-timer-column {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+/* КВАДРАТНАЯ КНОПКА НАВИГАЦИИ (38x38) */
 .btn-gps-square {
   width: 38px;
   height: 38px;
