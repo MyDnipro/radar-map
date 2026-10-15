@@ -5,7 +5,7 @@
 (function() {
   const FB_CUSTOM_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/custom_streets.json";
   let cloudRules = {};
-  let selectedTargetCoords = null; // Кеш координат обраної з підказок точки
+  let selectedTargetCoords = null;
 
   // 1. Стилі
   const style = document.createElement("style");
@@ -146,7 +146,6 @@
     }
     .btn-mem-view-all:hover { border-color: #c084fc; color: #c084fc; }
 
-    /* Повноекранний журнал */
     #memFullModal {
       display: none;
       position: fixed !important;
@@ -190,9 +189,21 @@
       align-items: center;
       gap: 8px;
     }
-    .mem-full-info { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+    .mem-full-info { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1; }
     .mem-full-rule { font-size: 12px; color: #f8fafc; font-weight: 700; word-break: break-word; line-height: 1.35; }
     .mem-full-time { font-size: 10px; color: #94a3b8; display: flex; align-items: center; gap: 5px; font-weight: 600; }
+    .mem-full-acts { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+    .btn-mem-edit {
+      background: #0284c7;
+      border: 1px solid #38bdf8;
+      color: #fff;
+      padding: 6px 10px;
+      border-radius: 7px;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
     .btn-mem-del {
       background: #7f1d1d;
       border: 1px solid #ef4444;
@@ -203,7 +214,6 @@
       font-size: 11px;
       font-weight: 800;
       white-space: nowrap;
-      flex-shrink: 0;
     }
   `;
   document.head.appendChild(style);
@@ -251,7 +261,6 @@
   `;
   document.body.appendChild(fullModal);
 
-  // 3. Захист від передачі кліків на карту
   if (window.L && L.DomEvent) {
     L.DomEvent.disableClickPropagation(widget);
     L.DomEvent.disableScrollPropagation(widget);
@@ -294,10 +303,6 @@
   viewAllBtn.addEventListener("click", openFullModal);
   fullCloseBtn.addEventListener("click", closeFullModal);
 
-  // =========================================================================
-  // 🔍 ЛОГІКА ДВОХ ПОЛІВ:
-  // 1. Поле «А»: якщо слово вже відоме — самостійно заповнює поле «Б»
-  // =========================================================================
   let aliasDebounceTimer = null;
   aliasInput.addEventListener("input", () => {
     clearTimeout(aliasDebounceTimer);
@@ -307,7 +312,6 @@
     if (query.length < 2) return;
 
     aliasDebounceTimer = setTimeout(() => {
-      // 1. Шукаємо в Мозку (cloudRules)
       for (const [rawKey, rule] of Object.entries(cloudRules)) {
         const key = decodeURIComponent(rawKey).toLowerCase();
         if (key === query || query.includes(key) || key.includes(query)) {
@@ -318,7 +322,6 @@
         }
       }
 
-      // 2. Шукаємо в словнику топонімів (DNIPRO_STREETS_MAP)
       if (window.DNIPRO_STREETS_MAP) {
         for (const [key, item] of Object.entries(window.DNIPRO_STREETS_MAP)) {
           if (query.includes(key) || key.includes(query)) {
@@ -332,9 +335,6 @@
     }, 250);
   });
 
-  // =========================================================================
-  // 2. Поле «Б»: випадаючий список із трьома градаціями (🧠 ➔ 📍 ➔ 🌐)
-  // =========================================================================
   let targetDebounceTimer = null;
   targetInput.addEventListener("input", () => {
     clearTimeout(targetDebounceTimer);
@@ -353,7 +353,6 @@
       targetResults.innerHTML = "";
       const matches = [];
 
-      // 1. Мозок (🧠) — раніше збережені зв'язки
       for (const [rawKey, rule] of Object.entries(cloudRules)) {
         if (!rule || !rule.lat || !rule.lng) continue;
         const key = decodeURIComponent(rawKey).toLowerCase();
@@ -371,7 +370,6 @@
         }
       }
 
-      // 2. Словник (📍) — офіційні назви вулиць Дніпра
       if (window.DNIPRO_STREETS_MAP) {
         const sortedKeys = Object.keys(window.DNIPRO_STREETS_MAP).sort((a, b) => b.length - a.length);
         for (const k of sortedKeys) {
@@ -390,7 +388,6 @@
         }
       }
 
-      // Рендер підказок Мозку та Словника
       matches.forEach(item => {
         const div = document.createElement("div");
         div.className = "mem-search-item";
@@ -405,7 +402,6 @@
         targetResults.appendChild(div);
       });
 
-      // 3. Онлайн-карта Дніпра (🌐) — якщо мало локальних збігів
       if (matches.length < 4 && query.length >= 3) {
         try {
           const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ", Дніпро")}&countrycodes=ua&limit=3`;
@@ -451,7 +447,6 @@
     return `📅 ${day}.${month}.${year} 🕒 ${hours}:${minutes}`;
   }
 
-  // Завантаження правил із Firebase
   async function loadCloudRules() {
     try {
       const res = await fetch(`${FB_CUSTOM_URL}?t=${Date.now()}`);
@@ -499,17 +494,68 @@
       row.innerHTML = `
         <div class="mem-full-info">
           <div class="mem-full-rule">«${key}» ➔ <span style="color:#38bdf8;">${item.name}</span></div>
-          <div class="mem-full-time">${timeStr}</div>
+          <div class="mem-full-time">${timeStr} <span style="color:#64748b;">(${Number(item.lat).toFixed(4)}, ${Number(item.lng).toFixed(4)})</span></div>
         </div>
-        <button class="btn-mem-del" title="Видалити">🗑️</button>
+        <div class="mem-full-acts">
+          <button class="btn-mem-edit" title="Редагувати">✏️</button>
+          <button class="btn-mem-del" title="Видалити">🗑️</button>
+        </div>
       `;
 
+      row.querySelector(".btn-mem-edit").addEventListener("click", () => editRule(rawKey, item));
       row.querySelector(".btn-mem-del").addEventListener("click", () => deleteRule(rawKey));
       box.appendChild(row);
     });
   }
 
-  // Збереження правила
+  // ✏️ РЕДАГУВАННЯ ЗАПИСУ В МОЗКУ
+  async function editRule(rawKey, item) {
+    const oldKey = decodeURIComponent(rawKey);
+    const newAlias = prompt("🔑 Пошукове слово/фраза «А»:", oldKey);
+    if (newAlias === null) return;
+
+    const newTarget = prompt("📍 Цільова назва вулиці «Б»:", item.name);
+    if (newTarget === null) return;
+
+    const newCoords = prompt("🌐 Координати (lat, lng):", `${item.lat}, ${item.lng}`);
+    if (newCoords === null) return;
+
+    const parts = newCoords.split(',').map(s => parseFloat(s.trim()));
+    if (parts.length !== 2 || isNaN(parts[0]) || isNaN(parts[1])) {
+      alert("❌ Некоректні координати! Приклад: 48.4840, 34.9850");
+      return;
+    }
+
+    const cleanNewAlias = newAlias.trim().toLowerCase();
+    const cleanNewTarget = newTarget.trim();
+    const updatedEntry = {
+      name: cleanNewTarget,
+      lat: Number(parts[0].toFixed(5)),
+      lng: Number(parts[1].toFixed(5)),
+      time: Date.now()
+    };
+
+    // Якщо змінили ключ — видаляємо старий із Firebase
+    const newSafeKey = encodeURIComponent(cleanNewAlias).replace(/\./g, "%2E");
+    if (newSafeKey !== rawKey) {
+      delete cloudRules[rawKey];
+      fetch(FB_CUSTOM_URL.replace(".json", `/${rawKey}.json`), { method: "DELETE" }).catch(() => {});
+      if (window.DNIPRO_STREETS_MAP) delete window.DNIPRO_STREETS_MAP[oldKey.toLowerCase()];
+    }
+
+    cloudRules[newSafeKey] = updatedEntry;
+    if (window.DNIPRO_STREETS_MAP) window.DNIPRO_STREETS_MAP[cleanNewAlias] = updatedEntry;
+
+    fetch(FB_CUSTOM_URL.replace(".json", `/${newSafeKey}.json`), {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updatedEntry)
+    }).catch(() => {});
+
+    renderFullList();
+    if (typeof window.showToast === "function") window.showToast("✅ Прив'язку в Мозку оновлено!");
+  }
+
   async function saveRule() {
     const alias = aliasInput.value.trim().toLowerCase();
     const target = targetInput.value.trim();
@@ -521,7 +567,6 @@
 
     let lat = null, lng = null, realName = target;
 
-    // Якщо користувач обрав пункт із підказок — координати вже готові
     if (selectedTargetCoords && selectedTargetCoords.name === target) {
       lat = selectedTargetCoords.lat;
       lng = selectedTargetCoords.lng;
@@ -563,7 +608,6 @@
       body: JSON.stringify(entry)
     }).catch(() => {});
 
-    // Оновлюємо мітки на карті, якщо вони містять це слово
     if (Array.isArray(window.allPoints)) {
       window.allPoints.forEach(p => {
         const t = ((p.raw_text || p.text || "") + " " + (p.address || "")).toLowerCase();
@@ -591,7 +635,6 @@
 
   saveBtn.addEventListener("click", saveRule);
 
-  // Видалення правила
   async function deleteRule(rawKey) {
     if (!confirm("Видалити цю прив'язку з пам'яті?")) return;
     delete cloudRules[rawKey];
