@@ -215,9 +215,14 @@
     </svg>
   </a>
 
-  <!-- ПРЯМОКУТНА КНОПКА НАВІГАЦІЇ (СПРАВА НАД ТАЙМЕРОМ) -->
-  <div id="btnGpsHud" class="btn-gps-rect" onclick="toggleGpsMode()">
-    <span>🧭</span><span>Навігація</span>
+ <!-- НИЖНІ КНОПКИ СПРАВА: ОНОВИТИ ТА КВАДРАТНА НАВІГАЦІЯ -->
+  <div class="bottom-right-cluster">
+    <div id="btnRefresh" class="btn-refresh-compact" onclick="refreshRadarClick()">
+      <span>🔄</span><span>Оновити</span>
+    </div>
+    <div id="btnGpsHud" class="btn-gps-square" onclick="toggleGpsMode()" title="Навігація">
+      <span>🧭</span>
+    </div>
   </div>
 
   <!-- 5. ОНОВИТИ (СПРАВА НАД НАВІГАЦІЄЮ) -->
