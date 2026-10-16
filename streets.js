@@ -264,13 +264,12 @@ const DNIPRO_STREETS_MAP = {
 };
 
 function resolveLocationFromText(rawText) {
-  // Очищаем HTML-сущности и мусорные коды вроде &#33;
   const clean = (rawText || "")
     .replace(/&#\d+;/g, " ")
     .replace(/&[a-z]+;/gi, " ");
   
   const lower = clean.toLowerCase();
-  const isIntersection = /(?:на\s+перехрест|на\s+перетині|перетин|перехрестя|угол|на\s+углу|кут\s+вулиць)/i.test(lower);
+  const isIntersection = /(?:перехрест|перетин|угол|кут|съезд|съезжать|спуск|подъем|підйом|поворот|з['’]їзд|\/|\\|\+|\bс\b.*?\bна\b|\bз\b.*?\bна\b)/i.test(lower);
   
   const sortedKeys = Object.keys(DNIPRO_STREETS_MAP).sort((a, b) => b.length - a.length);
   const matches = [];
@@ -284,12 +283,14 @@ function resolveLocationFromText(rawText) {
     }
   }
 
-  if (isIntersection && matches.length >= 2) {
+  if (matches.length >= 2) {
     return {
-      name: `${matches[0].name} / ${matches[1].name} (перехрестя)`,
+      name: `${matches[0].name} / ${matches[1].name} (розв'язка)`,
       lat: Number(((matches[0].lat + matches[1].lat) / 2).toFixed(5)),
       lng: Number(((matches[0].lng + matches[1].lng) / 2).toFixed(5)),
-      isIntersection: true
+      isIntersection: true,
+      street1: matches[0].name,
+      street2: matches[1].name
     };
   }
 
