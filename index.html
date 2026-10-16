@@ -587,14 +587,18 @@
         return false;
       }
 
-      for (const rule of learnedRules) {
+     for (const rule of learnedRules) {
         if (rule && rule.phrase && rawCombined.includes(rule.phrase.toLowerCase())) {
           return rule.is_clean;
         }
       }
 
-   if (/(?:👍|👌|💚|🌻|☀️|чисто|чистенько|пусто|вільно|спокійно|проїзд|проїхав|проехали|норм|добре|без\s+бп|сонце|сонечк
-      return true;
+      // Перевірка на пряме заперечення норми ("не норм", "не чисто")
+      if (/(?:не\s*норм|не\s*чисто|не\s*спок|не\s*тихо)/i.test(rawCombined)) return false;
+
+      // Перевірка на чистий статус (з точними межами слів для норм / нормально)
+      if (/(?:👍|👌|💚|🌻|☀️|🌞|\b(?:чисто|чистенько|пусто|вільно|спокійно|спокойно|проїзд|проїхав|проехали|норм|нормально|нормик|добре|зелено)\b|без\s*бп|все\s*чисто|все\s*норм|всё\s*норм)/i.test(rawCombined)) {
+        return true;
       }
       return false;
     }
@@ -1045,8 +1049,7 @@
       if (apiKeys.length === 0) {
         throw new Error("Немає доступних ключів Gemini.");
       }
-
-      const models = ['gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-3.8-flash'];
+const models = ['gemini-3.8-flash', 'gemini-3.5-flash-lite', 'gemini-3.5-flash'];
       let lastErr = null;
 
       for (const k of apiKeys) {
