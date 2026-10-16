@@ -1706,10 +1706,18 @@ ${allLiveReportsText || "Повідомлень немає"}
 
           const resolved = resolveLocationFromText(fullText);
           if (resolved) {
-            p.lat = resolved.lat;
-            p.lng = resolved.lng;
-            p.address = resolved.name;
+            // Если координаты еще не были уточнены через Overpass/ИИ или вручную, берем базовые
+            if (!p.geo_refined && !manualPointOverrides[key]) {
+              p.lat = resolved.lat;
+              p.lng = resolved.lng;
+              p.address = resolved.name;
+            }
             p.needs_training = false;
+          }
+
+          // Запускаем фоновое уточнение (Overpass -> Gemini)
+          if (!p.geo_refined && !manualPointOverrides[key]) {
+            autoRefinePointCoordinates(p, fullText, resolved);
           }
 
           return p;
