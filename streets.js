@@ -326,3 +326,223 @@ function getStreetRenameNote(text) {
   }
   return `💡 Міський орієнтир`;
 }
+// =========================================================================
+// 🌐 ПОИСК ПЕРЕСЕЧЕНИЯ ДВУХ УЛИЦ ЧЕРЕЗ OVERPASS API (OSM)
+// =========================================================================
+const INTERSECTION_CACHE = {};
+
+function sanitizeStreetNameForOSM(name) {
+  return (name || "")
+    .replace(/\b(вул\.|просп\.|вулиця|проспект|шосе|набережна|площа|провулок|street)\b/gi, "")
+    .replace(/\(.*?\)/g, "")
+    .trim();
+}
+
+async function findIntersectionOnline(streetName1, streetName2) {
+  const s1 = sanitizeStreetNameForOSM(streetName1);
+  const s2 = sanitizeStreetNameForOSM(streetName2);
+
+  if (!s1 || !s2 || s1.toLowerCase() === s2.toLowerCase()) return null;
+
+  const cacheKey = [s1.toLowerCase(), s2.toLowerCase()].sort().join("___");
+  if (INTERSECTION_CACHE[cacheKey]) {
+    return INTERSECTION_CACHE[cacheKey];
+  }
+
+  const overpassQuery = `[out:json][timeout:5];
+(
+  way["highway"]["name"~"${s1}",i](48.33,34.80,48.58,35.20)->.w1;
+  way["highway"]["name"~"${s2}",i](48.33,34.80,48.58,35.20)->.w2;
+);
+node(w.w1)(w.w2);
+out 1;`;
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4000);
+
+    const res = await fetch("https://overpass-api.de/api/interpreter", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: "data=" + encodeURIComponent(overpassQuery),
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+
+    if (res.ok) {
+      const data = await res.json();
+      if (data.elements && data.elements.length > 0) {
+        const point = {
+          lat: Number(data.elements[0].lat.toFixed(5)),
+          lng: Number(data.elements[0].lon.toFixed(5))
+        };
+        INTERSECTION_CACHE[cacheKey] = point;
+        return point;
+      }
+    }
+  } catch (e) {
+    try {
+      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent("Дніпро перехрестя " + s1 + " " + s2)}&limit=1`;
+      const res2 = await fetch(url);
+      const data2 = await res2.json();
+      if (data2 && data2.length > 0) {
+        const point = {
+          lat: Number(parseFloat(data2[0].lat).toFixed(5)),
+          lng: Number(parseFloat(data2[0].lon).toFixed(5))
+        };
+        INTERSECTION_CACHE[cacheKey] = point;
+        return point;
+      }
+    } catch (err) {}
+  }
+
+  return null;
+}
+// =========================================================================
+// 🌐 ПОИСК ПЕРЕСЕЧЕНИЯ ДВУХ УЛИЦ ЧЕРЕЗ OVERPASS API (OSM)
+// =========================================================================
+const INTERSECTION_CACHE = {};
+
+function sanitizeStreetNameForOSM(name) {
+  return (name || "")
+    .replace(/\b(вул\.|просп\.|вулиця|проспект|шосе|набережна|площа|провулок|street)\b/gi, "")
+    .replace(/\(.*?\)/g, "")
+    .trim();
+}
+
+async function findIntersectionOnline(streetName1, streetName2) {
+  const s1 = sanitizeStreetNameForOSM(streetName1);
+  const s2 = sanitizeStreetNameForOSM(streetName2);
+
+  if (!s1 || !s2 || s1.toLowerCase() === s2.toLowerCase()) return null;
+
+  const cacheKey = [s1.toLowerCase(), s2.toLowerCase()].sort().join("___");
+  if (INTERSECTION_CACHE[cacheKey]) {
+    return INTERSECTION_CACHE[cacheKey];
+  }
+
+  const overpassQuery = `[out:json][timeout:5];
+(
+  way["highway"]["name"~"${s1}",i](48.33,34.80,48.58,35.20)->.w1;
+  way["highway"]["name"~"${s2}",i](48.33,34.80,48.58,35.20)->.w2;
+);
+node(w.w1)(w.w2);
+out 1;`;
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4000);
+
+    const res = await fetch("https://overpass-api.de/api/interpreter", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: "data=" + encodeURIComponent(overpassQuery),
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+
+    if (res.ok) {
+      const data = await res.json();
+      if (data.elements && data.elements.length > 0) {
+        const point = {
+          lat: Number(data.elements[0].lat.toFixed(5)),
+          lng: Number(data.elements[0].lon.toFixed(5))
+        };
+        INTERSECTION_CACHE[cacheKey] = point;
+        return point;
+      }
+    }
+  } catch (e) {
+    try {
+      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent("Дніпро перехрестя " + s1 + " " + s2)}&limit=1`;
+      const res2 = await fetch(url);
+      const data2 = await res2.json();
+      if (data2 && data2.length > 0) {
+        const point = {
+          lat: Number(parseFloat(data2[0].lat).toFixed(5)),
+          lng: Number(parseFloat(data2[0].lon).toFixed(5))
+        };
+        INTERSECTION_CACHE[cacheKey] = point;
+        return point;
+      }
+    } catch (err) {}
+  }
+
+  return null;
+}
+
+// =========================================================================
+// 🌐 ПОИСК ПЕРЕСЕЧЕНИЯ ДВУХ УЛИЦ ЧЕРЕЗ OVERPASS API (OSM)
+// =========================================================================
+const INTERSECTION_CACHE = {};
+
+function sanitizeStreetNameForOSM(name) {
+  return (name || "")
+    .replace(/\b(вул\.|просп\.|вулиця|проспект|шосе|набережна|площа|провулок|street)\b/gi, "")
+    .replace(/\(.*?\)/g, "")
+    .trim();
+}
+
+async function findIntersectionOnline(streetName1, streetName2) {
+  const s1 = sanitizeStreetNameForOSM(streetName1);
+  const s2 = sanitizeStreetNameForOSM(streetName2);
+
+  if (!s1 || !s2 || s1.toLowerCase() === s2.toLowerCase()) return null;
+
+  const cacheKey = [s1.toLowerCase(), s2.toLowerCase()].sort().join("___");
+  if (INTERSECTION_CACHE[cacheKey]) {
+    return INTERSECTION_CACHE[cacheKey];
+  }
+
+  const overpassQuery = `[out:json][timeout:5];
+(
+  way["highway"]["name"~"${s1}",i](48.33,34.80,48.58,35.20)->.w1;
+  way["highway"]["name"~"${s2}",i](48.33,34.80,48.58,35.20)->.w2;
+);
+node(w.w1)(w.w2);
+out 1;`;
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4000);
+
+    const res = await fetch("https://overpass-api.de/api/interpreter", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: "data=" + encodeURIComponent(overpassQuery),
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+
+    if (res.ok) {
+      const data = await res.json();
+      if (data.elements && data.elements.length > 0) {
+        const point = {
+          lat: Number(data.elements[0].lat.toFixed(5)),
+          lng: Number(data.elements[0].lon.toFixed(5))
+        };
+        INTERSECTION_CACHE[cacheKey] = point;
+        return point;
+      }
+    }
+  } catch (e) {
+    try {
+      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent("Дніпро перехрестя " + s1 + " " + s2)}&limit=1`;
+      const res2 = await fetch(url);
+      const data2 = await res2.json();
+      if (data2 && data2.length > 0) {
+        const point = {
+          lat: Number(parseFloat(data2[0].lat).toFixed(5)),
+          lng: Number(parseFloat(data2[0].lon).toFixed(5))
+        };
+        INTERSECTION_CACHE[cacheKey] = point;
+        return point;
+      }
+    } catch (err) {}
+  }
+
+  return null;
+}
+
+window.findIntersectionOnline = findIntersectionOnline;
+
