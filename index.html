@@ -1595,6 +1595,83 @@ ${allLiveReportsText || "Повідомлень немає"}
     });
 
     // 4. ЗАВАНТАЖЕННЯ ТОЧОК
+    // Фоновое уточнение координат: 1. Overpass (стык улиц) -> 2. Gemini AI (ориентиры)
+    const _pendingGeocodeKeys = new Set();
+
+    async function autoRefinePointCoordinates(p, fullText, resolved) {
+      if (!p || !p._fbKey || _pendingGeocodeKeys.has(p._fbKey)) return;
+      if (p.geo_refined) return;
+
+      _pendingGeocodeKeys.add(p._fbKey);
+
+      // 1. Если это связка двух улиц — ищем реальный узел через Overpass API
+      if (resolved && resolved.isIntersection && typeof window.findIntersectionOnline === "function") {
+        try {
+          const exactPos = await window.findIntersectionOnline(resolved.street1, resolved.street2);
+          if (exactPos && exactPos.lat && exactPos.lng) {
+            p.lat = exactPos.lat;
+            p.lng = exactPos.lng;
+            p.address = resolved.name;
+            p.geo_refined = true;
+            p.needs_training = false;
+
+            fetch(FIREBASE_POINTS_URL.replace(".json", `/${p._fbKey}.json`), {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ lat: p.lat, lng: p.lng, address: p.address, geo_refined: true, needs_training: false })
+            }).catch(() => {});
+
+            renderMarkers();
+            renderTrafficLights();
+            updateRouteStatus();
+            return;
+          }
+        } catch(e) {}
+      }
+
+      // 2. Если Overpass не нашел или в тексте сложный ориентир (парк, училище и т.д.) — подключаем Gemini
+      const isComplex = /(?:парк|училищ|больниц|лікарн|міст|тупик|напротив|біля|в сторону|направление)/i.test(fullText);
+      const isAuth = localStorage.getItem("radar_gemini_unlocked") === SECRET_KEY_HASH;
+
+      if ((!resolved || isComplex) && isAuth && typeof executeGeminiRequestPool === "function") {
+        try {
+          const promptPayload = {
+            contents: [{
+              role: "user",
+              parts: [{
+                text: `Ты GPS-геокодер города Днепр. Определи точные координаты [lat, lng] и краткий адрес для сообщения о блокпосте: "${fullText}". 
+Ответь ТОЛЬКО валидным JSON без markdown: {"lat": 48.xxxxx, "lng": 34.xxxxx, "street": "Название места"}. Координаты строго в пределах Днепра.`
+              }]
+            }],
+            generationConfig: { temperature: 0.1 }
+          };
+
+          const resObj = await executeGeminiRequestPool(promptPayload);
+          const rawTxt = resObj?.data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+          const matchJson = rawTxt.match(/\{[\s\S]*\}/);
+          if (matchJson) {
+            const parsed = JSON.parse(matchJson[0]);
+            if (parsed.lat && parsed.lng && parsed.lat > 48.2 && parsed.lat < 48.7) {
+              p.lat = Number(Number(parsed.lat).toFixed(5));
+              p.lng = Number(Number(parsed.lng).toFixed(5));
+              p.address = parsed.street || "Уточнено ШІ";
+              p.geo_refined = true;
+              p.needs_training = false;
+
+              fetch(FIREBASE_POINTS_URL.replace(".json", `/${p._fbKey}.json`), {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ lat: p.lat, lng: p.lng, address: p.address, geo_refined: true, needs_training: false })
+              }).catch(() => {});
+
+              renderMarkers();
+              renderTrafficLights();
+              updateRouteStatus();
+            }
+          }
+        } catch(e) {}
+      }
+    }
     async function loadPoints() {
       if (pendingRelocation) return;
       try {
