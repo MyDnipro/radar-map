@@ -1,12 +1,42 @@
 /**
- * Radar Dnipro — Модуль памяти топонимов ("А = Б")
- * Автономный виджет нижней панели [ 🧠 ]
+ * Radar Dnipro — Модуль памяти топонимов ("А = Б") v5.0
+ * Мгновенный поиск Укр/Рус + Photon API + Кэш + Безопасные ключи Firebase
  */
 (function() {
   const FB_CUSTOM_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/custom_streets.json";
   let cloudRules = {};
   let selectedTargetCoords = null;
+  let searchAbortController = null;
+  const netSearchCache = new Map();
 
+  // Встроенные народные ориентиры и мосты Днепра (0 мс отклик)
+  constBUILTIN_LANDMARKS = [
+    { name: "Центральний міст (Новий міст)", old: "Новый мост, Новий міст, Центральный мост", lat: 48.47750, lng: 35.05680 },
+    { name: "Амурський міст (Старий міст)", old: "Старый мост, Старий міст, Амурский мост", lat: 48.48820, lng: 35.02750 },
+    { name: "Кайдацький міст", old: "Кайдакский мост, Кайдацкий мост", lat: 48.49750, lng: 34.96880 },
+    { name: "Південний міст", old: "Южный мост, Південний міст", lat: 48.41080, lng: 35.09750 },
+    { name: "Усть-Самарський міст", old: "Усть-Самарский мост, Малиновского мост", lat: 48.46320, lng: 35.11950 },
+    { name: "Самарський міст", old: "Самарский мост, Игреньский мост", lat: 48.48350, lng: 35.15820 },
+    { name: "вул. Космічна", old: "Космическая, Космичка, Космічна", lat: 48.41920, lng: 35.04850 },
+    { name: "просп. Слобожанський", old: "Правда, проспект Правды, Слобожанский", lat: 48.50850, lng: 35.08250 },
+    { name: "просп. Науки (Гагаріна)", old: "Гагарина, проспект Гагаріна, Нагорка, Подстанция", lat: 48.43550, lng: 35.04120 },
+    { name: "просп. Богдана Хмельницького", old: "Героев Сталинграда, Сталинграда, 12 квартал, Развилка", lat: 48.42650, lng: 35.01550 },
+    { name: "просп. Олександра Поля", old: "Кирова, проспект Кирова, Олександра Поля", lat: 48.44850, lng: 35.02350 },
+    { name: "просп. Лесі Українки", old: "Пушкина, проспект Пушкіна", lat: 48.46520, lng: 35.02100 },
+    { name: "вул. Січових Стрільців", old: "Артема, вулиця Артема, Сечевых Стрельцов", lat: 48.45650, lng: 35.03950 },
+    { name: "вул. В'ячеслава Чорновола", old: "Савченко, Юрия Савченко, Вячеслава Черновола", lat: 48.45820, lng: 35.01150 },
+    { name: "вул. Калинова", old: "Калиновая, Калинова", lat: 48.51850, lng: 35.07550 },
+    { name: "вул. Робоча", old: "Рабочая, Робоча", lat: 48.44800, lng: 34.99650 },
+    { name: "ТРЦ Караван (Нижньодніпровська)", old: "Караван, Березинка, Донецкое шоссе", lat: 48.52850, lng: 35.03350 },
+    { name: "ТРЦ Дафі (Підстанція)", old: "Дафи, Подстанция, Зоряний", lat: 48.42620, lng: 35.02150 },
+    { name: "Ринок Озерка", old: "Озерка, Озёрка, Шмидта, Степана Бандери", lat: 48.47150, lng: 35.02250 },
+    { name: "вул. Степана Бандери (Шмідта)", old: "Шмидта, вулиця Шмідта, Бандеры", lat: 48.46850, lng: 35.02150 },
+    { name: "Набережна Перемоги", old: "Набережная Победы, Победа 1-6, Кольцо Победы", lat: 48.43150, lng: 35.06950 },
+    { name: "Січеславська Набережна", old: "Набережная Ленина, Сичеславская Набережная, Цирк", lat: 48.46950, lng: 35.05450 },
+    { name: "Набережна Заводська", old: "Заводская Набережная, Речпорт, Річпорт, Парус, Красный Камень", lat: 48.48550, lng: 34.97550 }
+  ];
+
+  // Безопасный ключ для Firebase
   function toFirebaseKey(str) {
     if (!str) return "key_" + Date.now();
     return encodeURIComponent(str.trim().toLowerCase())
@@ -18,7 +48,39 @@
       .slice(0, 80);
   }
 
-  // 1. Стили
+  // Нормализация Укр/Рус/Суржик для слепого поиска
+  function normalizeSearchText(str) {
+    if (!str) return "";
+    return str
+      .toLowerCase()
+      .replace(/['’`ʼ"]/g, "")
+      .replace(/\b(вул|вулиця|ул|улица|просп|проспект|пр-т|пров|провулок|пер|тупик|пл|площа|площадь|наб|набережна|набережная|шосе|шоссе|міст|мост)\b\.?/gi, " ")
+      .replace(/[іїы]/g, "и")
+      .replace(/[єэ]/g, "е")
+      .replace(/ґ/g, "г")
+      .replace(/щ/g, "шч")
+      .replace(/[^a-zа-я0-9\s]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  function isSmartMatch(query, targetStr) {
+    if (!query || !targetStr) return false;
+    const rawQ = query.toLowerCase().trim();
+    const rawT = targetStr.toLowerCase();
+    if (rawT.includes(rawQ)) return true;
+
+    const normQ = normalizeSearchText(query);
+    const normT = normalizeSearchText(targetStr);
+    if (!normQ) return false;
+    if (normT.includes(normQ)) return true;
+
+    const qWords = normQ.split(" ").filter(w => w.length >= 2);
+    if (qWords.length > 0 && qWords.every(w => normT.includes(w))) return true;
+    return false;
+  }
+
+  // Стили
   const style = document.createElement("style");
   style.textContent = `
     #memWidget {
@@ -106,16 +168,16 @@
       top: 100%;
       left: 0;
       width: 100%;
-      min-width: 200px;
+      min-width: 210px;
       background: #0f172a;
       border: 1.5px solid #a855f7;
       border-radius: 8px;
-      max-height: 190px;
+      max-height: 200px;
       overflow-y: auto;
       z-index: 10005;
       display: none;
       margin-top: 4px;
-      box-shadow: 0 8px 25px rgba(0,0,0,0.8);
+      box-shadow: 0 8px 25px rgba(0,0,0,0.85);
     }
     .mem-search-item {
       padding: 7px 9px;
@@ -229,7 +291,7 @@
   `;
   document.head.appendChild(style);
 
-  // 2. Разметка
+  // Разметка
   const widget = document.createElement("div");
   widget.id = "memWidget";
   widget.innerHTML = `
@@ -314,45 +376,127 @@
   viewAllBtn.addEventListener("click", openFullModal);
   fullCloseBtn.addEventListener("click", closeFullModal);
 
-  let aliasDebounceTimer = null;
+  // Мгновенный поиск для поля А
   aliasInput.addEventListener("input", () => {
-    clearTimeout(aliasDebounceTimer);
-    const query = aliasInput.value.trim().toLowerCase();
+    const query = aliasInput.value.trim();
     targetInput.classList.remove("autofilled");
-
     if (query.length < 2) return;
 
-    aliasDebounceTimer = setTimeout(() => {
-      for (const rule of Object.values(cloudRules)) {
-        if (!rule || !rule.name) continue;
-        const phrase = (rule.alias || rule.phrase || "").toLowerCase();
-        if (phrase === query || query.includes(phrase) || phrase.includes(query)) {
-          targetInput.value = rule.name;
+    for (const rule of Object.values(cloudRules)) {
+      if (!rule || !rule.name) continue;
+      const phrase = rule.alias || rule.phrase || "";
+      if (isSmartMatch(query, phrase)) {
+        targetInput.value = rule.name;
+        targetInput.classList.add("autofilled");
+        selectedTargetCoords = { lat: rule.lat, lng: rule.lng, name: rule.name };
+        return;
+      }
+    }
+
+    for (const lm of BUILTIN_LANDMARKS) {
+      if (isSmartMatch(query, lm.name + " " + (lm.old || ""))) {
+        targetInput.value = lm.name;
+        targetInput.classList.add("autofilled");
+        selectedTargetCoords = { lat: lm.lat, lng: lm.lng, name: lm.name };
+        return;
+      }
+    }
+
+    if (window.DNIPRO_STREETS_MAP) {
+      for (const [key, item] of Object.entries(window.DNIPRO_STREETS_MAP)) {
+        if (isSmartMatch(query, key + " " + (item.name || "") + " " + (item.old || ""))) {
+          targetInput.value = item.name;
           targetInput.classList.add("autofilled");
-          selectedTargetCoords = { lat: rule.lat, lng: rule.lng, name: rule.name };
+          selectedTargetCoords = { lat: item.lat, lng: item.lng, name: item.name };
           return;
         }
       }
-
-      if (window.DNIPRO_STREETS_MAP) {
-        for (const [key, item] of Object.entries(window.DNIPRO_STREETS_MAP)) {
-          if (query.includes(key) || key.includes(query)) {
-            targetInput.value = item.name;
-            targetInput.classList.add("autofilled");
-            selectedTargetCoords = { lat: item.lat, lng: item.lng, name: item.name };
-            return;
-          }
-        }
-      }
-    }, 250);
+    }
   });
 
-  let targetDebounceTimer = null;
-  targetInput.addEventListener("input", () => {
-    clearTimeout(targetDebounceTimer);
+  // Универсальный интернет-поиск (Photon + Nominatim fallback + Кэш)
+  async function fetchOnlineLocations(query, signal) {
+    const cacheKey = normalizeSearchText(query) || query.toLowerCase().trim();
+    if (netSearchCache.has(cacheKey)) {
+      return netSearchCache.get(cacheKey);
+    }
+
+    const results = [];
+    // 1. Photon API (Komoot) — быстрый автокомплит внутри bbox Днепра
+    try {
+      const photonUrl = `https://photon.komoot.io/api/?q=\${encodeURIComponent(query)}&lat=48.4647&lon=35.0462&bbox=34.75,48.30,35.35,48.65&limit=5`;
+      const res = await fetch(photonUrl, { signal });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && Array.isArray(data.features)) {
+          data.features.forEach(f => {
+            const p = f.properties || {};
+            const coords = f.geometry && f.geometry.coordinates;
+            const rawName = p.name || p.street || "";
+            if (rawName && coords && coords.length === 2) {
+              const label = p.street && p.name && p.street !== p.name ? `${p.name} (${p.street})` : rawName;
+              if (!results.some(r => r.name.toLowerCase() === label.toLowerCase())) {
+                results.push({ name: label, lat: parseFloat(coords[1]), lng: parseFloat(coords[0]) });
+              }
+            }
+          });
+        }
+      }
+    } catch (e) {
+      if (e.name === "AbortError") throw e;
+    }
+
+    // 2. Fallback на Nominatim (если Photon вернул пусто)
+    if (results.length === 0) {
+      try {
+        const nomUrl = `https://nominatim.openstreetmap.org/search?format=json&q=\${encodeURIComponent(query)}&viewbox=34.75,48.65,35.35,48.30&bounded=1&accept-language=uk,ru&countrycodes=ua&limit=4`;
+        const res = await fetch(nomUrl, { signal });
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data)) {
+            data.forEach(item => {
+              const name = (item.display_name || "").split(",")[0].trim();
+              if (name && !results.some(r => r.name.toLowerCase() === name.toLowerCase())) {
+                results.push({ name: name, lat: parseFloat(item.lat), lng: parseFloat(item.lon) });
+              }
+            });
+          }
+        }
+      } catch (e) {
+        if (e.name === "AbortError") throw e;
+      }
+    }
+
+    if (results.length > 0) {
+      netSearchCache.set(cacheKey, results);
+    }
+    return results;
+  }
+
+  function appendSearchRow(container, item) {
+    const div = document.createElement("div");
+    div.className = "mem-search-item";
+    div.innerHTML = item.subtext
+      ? `${item.badge} <b>${item.name}</b><br><span style="color:#f59e0b; font-size:10px;">\${item.subtext}</span>`
+      : `${item.badge} <b>${item.name}</b>`;
+    div.onclick = () => {
+      targetInput.value = item.name;
+      selectedTargetCoords = { lat: item.lat, lng: item.lng, name: item.name };
+      targetResults.style.display = "none";
+    };
+    container.appendChild(div);
+  }
+
+  // Двухпоточный поиск для поля Б (0 мс локально + фоновая сеть)
+  targetInput.addEventListener("input", async () => {
     selectedTargetCoords = null;
     targetInput.classList.remove("autofilled");
     const query = targetInput.value.trim();
+
+    if (searchAbortController) {
+      searchAbortController.abort();
+      searchAbortController = null;
+    }
 
     if (query.length < 2) {
       targetResults.style.display = "none";
@@ -360,86 +504,90 @@
       return;
     }
 
-    targetDebounceTimer = setTimeout(async () => {
-      const lower = query.toLowerCase();
-      targetResults.innerHTML = "";
-      const matches = [];
+    // ПОТОК 1: Мгновенная локальная выдача (0 мс)
+    targetResults.innerHTML = "";
+    const matches = [];
 
-      for (const rule of Object.values(cloudRules)) {
-        if (!rule || !rule.lat || !rule.lng) continue;
-        const phrase = (rule.alias || rule.phrase || "").toLowerCase();
-        const nameLower = (rule.name || "").toLowerCase();
-        if (nameLower.includes(lower) || phrase.includes(lower)) {
-          if (!matches.some(m => m.name === rule.name)) {
+    // 1.1 Память ИИ
+    for (const rule of Object.values(cloudRules)) {
+      if (!rule || !rule.lat || !rule.lng) continue;
+      const phrase = rule.alias || rule.phrase || "";
+      const nameStr = rule.name || "";
+      if (isSmartMatch(query, nameStr + " " + phrase)) {
+        if (!matches.some(m => m.name === nameStr)) {
+          matches.push({
+            name: nameStr,
+            lat: rule.lat,
+            lng: rule.lng,
+            badge: "🧠",
+            subtext: phrase ? `(память: \${phrase})` : ""
+          });
+        }
+      }
+    }
+
+    // 1.2 Встроенные мосты и ориентиры
+    for (const lm of BUILTIN_LANDMARKS) {
+      if (isSmartMatch(query, lm.name + " " + (lm.old || ""))) {
+        if (!matches.some(m => m.name === lm.name)) {
+          matches.push({
+            name: lm.name,
+            lat: lm.lat,
+            lng: lm.lng,
+            badge: "🌉",
+            subtext: lm.old ? `(\${lm.old})` : ""
+          });
+        }
+      }
+    }
+
+    // 1.3 Локальный словарь улиц Днепра
+    if (window.DNIPRO_STREETS_MAP) {
+      const sortedKeys = Object.keys(window.DNIPRO_STREETS_MAP).sort((a, b) => b.length - a.length);
+      for (const k of sortedKeys) {
+        const item = window.DNIPRO_STREETS_MAP[k];
+        if (!item || !item.name) continue;
+        const fullTarget = `\${k} ${item.name}${item.old || ""}`;
+        if (isSmartMatch(query, fullTarget)) {
+          if (!matches.some(m => m.name === item.name)) {
             matches.push({
-              name: rule.name,
-              lat: rule.lat,
-              lng: rule.lng,
-              badge: "🧠",
-              subtext: phrase ? `(память: ${phrase})` : ""
+              name: item.name,
+              lat: item.lat,
+              lng: item.lng,
+              badge: "📍",
+              subtext: item.old ? `(бывшая: \${item.old})` : ""
             });
           }
         }
+        if (matches.length >= 12) break;
       }
+    }
 
-      if (window.DNIPRO_STREETS_MAP) {
-        const sortedKeys = Object.keys(window.DNIPRO_STREETS_MAP).sort((a, b) => b.length - a.length);
-        for (const k of sortedKeys) {
-          const item = window.DNIPRO_STREETS_MAP[k];
-          if (k.includes(lower) || (item.old && item.old.toLowerCase().includes(lower)) || item.name.toLowerCase().includes(lower)) {
-            if (!matches.some(m => m.name === item.name)) {
-              matches.push({
-                name: item.name,
-                lat: item.lat,
-                lng: item.lng,
-                badge: "📍",
-                subtext: item.old ? `(бывшая: ${item.old})` : ""
-              });
-            }
-          }
-        }
-      }
+    matches.forEach(item => appendSearchRow(targetResults, item));
+    targetResults.style.display = matches.length > 0 ? "block" : "none";
 
-      matches.forEach(item => {
-        const div = document.createElement("div");
-        div.className = "mem-search-item";
-        div.innerHTML = item.subtext 
-          ? `${item.badge} <b>${item.name}</b><br><span style="color:#f59e0b; font-size:10px;">${item.subtext}</span>` 
-          : `${item.badge} <b>${item.name}</b>`;
-        div.onclick = () => {
-          targetInput.value = item.name;
-          selectedTargetCoords = { lat: item.lat, lng: item.lng, name: item.name };
-          targetResults.style.display = "none";
-        };
-        targetResults.appendChild(div);
-      });
-
-      if (matches.length < 4 && query.length >= 3) {
-        try {
-          const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ", Дніпро")}&countrycodes=ua&limit=3`;
-          const res = await fetch(url);
-          const data = await res.json();
-          if (data && data.length > 0) {
-            data.forEach(osmItem => {
-              const name = osmItem.display_name.split(",")[0];
-              if (!matches.some(m => m.name.toLowerCase().includes(name.toLowerCase()))) {
-                const div = document.createElement("div");
-                div.className = "mem-search-item";
-                div.innerHTML = `🌐 ${name}`;
-                div.onclick = () => {
-                  targetInput.value = name;
-                  selectedTargetCoords = { lat: parseFloat(osmItem.lat), lng: parseFloat(osmItem.lon), name: name };
-                  targetResults.style.display = "none";
-                };
-                targetResults.appendChild(div);
-              }
+    // ПОТОК 2: Фоновая подгрузка из интернета (без блокировки ввода)
+    if (query.length >= 2) {
+      searchAbortController = new AbortController();
+      const signal = searchAbortController.signal;
+      try {
+        const onlineItems = await fetchOnlineLocations(query, signal);
+        if (signal.aborted) return;
+        onlineItems.forEach(netItem => {
+          if (!matches.some(m => isSmartMatch(netItem.name, m.name))) {
+            matches.push(netItem);
+            appendSearchRow(targetResults, {
+              name: netItem.name,
+              lat: netItem.lat,
+              lng: netItem.lng,
+              badge: "🌐",
+              subtext: "Карта Днепра (онлайн)"
             });
           }
-        } catch(e) {}
-      }
-
-      targetResults.style.display = targetResults.children.length > 0 ? "block" : "none";
-    }, 200);
+        });
+        targetResults.style.display = targetResults.children.length > 0 ? "block" : "none";
+      } catch (e) {}
+    }
   });
 
   document.addEventListener("click", (e) => {
@@ -456,10 +604,16 @@
     const year = d.getFullYear();
     const hours = String(d.getHours()).padStart(2, '0');
     const minutes = String(d.getMinutes()).padStart(2, '0');
-    return `📅 ${day}.${month}.${year} 🕒 ${hours}:${minutes}`;
+    return `📅 \${day}.${month}.${year} 🕒 ${hours}:${minutes}`;
   }
 
   async function loadCloudRules() {
+    // Сначала регистрируем встроенные ориентиры в глобальной карте
+    if (window.DNIPRO_STREETS_MAP) {
+      BUILTIN_LANDMARKS.forEach(lm => {
+        window.DNIPRO_STREETS_MAP[lm.name.toLowerCase()] = lm;
+      });
+    }
     try {
       const res = await fetch(`${FB_CUSTOM_URL}?t=${Date.now()}`);
       if (res.ok) {
@@ -506,8 +660,8 @@
       row.className = "mem-full-card";
       row.innerHTML = `
         <div class="mem-full-info">
-          <div class="mem-full-rule">«${aliasName}» ➔ <span style="color:#38bdf8;">${item.name || item.address}</span></div>
-          <div class="mem-full-time">${timeStr} <span style="color:#64748b;">(${Number(item.lat).toFixed(4)}, ${Number(item.lng).toFixed(4)})</span></div>
+          <div class="mem-full-rule">«\${aliasName}» ➔ <span style="color:#38bdf8;">\${item.name || item.address}</span></div>
+          <div class="mem-full-time">\${timeStr} <span style="color:#64748b;">(${Number(item.lat).toFixed(4)},${Number(item.lng).toFixed(4)})</span></div>
         </div>
         <div class="mem-full-acts">
           <button class="btn-mem-edit" title="Редактировать">✏️</button>
@@ -529,7 +683,7 @@
     const newTarget = prompt("📍 Целевое название улицы «Б»:", item.name || item.address || "");
     if (newTarget === null) return;
 
-    const newCoords = prompt("🌐 Координаты (lat, lng):", `${item.lat}, ${item.lng}`);
+    const newCoords = prompt("🌐 Координаты (lat, lng):", `${item.lat},${item.lng}`);
     if (newCoords === null) return;
 
     const parts = newCoords.split(',').map(s => parseFloat(s.trim()));
@@ -554,14 +708,14 @@
 
     if (newFbKey !== fbKey) {
       delete cloudRules[fbKey];
-      fetch(FB_CUSTOM_URL.replace(".json", `/${fbKey}.json`), { method: "DELETE" }).catch(() => {});
+      fetch(FB_CUSTOM_URL.replace(".json", `/\${fbKey}.json`), { method: "DELETE" }).catch(() => {});
       if (window.DNIPRO_STREETS_MAP) delete window.DNIPRO_STREETS_MAP[oldAlias.toLowerCase()];
     }
 
     cloudRules[newFbKey] = updatedEntry;
     if (window.DNIPRO_STREETS_MAP) window.DNIPRO_STREETS_MAP[cleanNewAlias] = updatedEntry;
 
-    await fetch(FB_CUSTOM_URL.replace(".json", `/${newFbKey}.json`), {
+    await fetch(FB_CUSTOM_URL.replace(".json", `/\${newFbKey}.json`), {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(updatedEntry)
@@ -586,26 +740,27 @@
       lat = selectedTargetCoords.lat;
       lng = selectedTargetCoords.lng;
     } else {
-      if (typeof window.resolveLocationFromText === "function") {
+      for (const lm of BUILTIN_LANDMARKS) {
+        if (isSmartMatch(target, lm.name + " " + (lm.old || ""))) {
+          lat = lm.lat; lng = lm.lng; realName = lm.name; break;
+        }
+      }
+      if (!lat && typeof window.resolveLocationFromText === "function") {
         const res = window.resolveLocationFromText(target);
         if (res) { lat = res.lat; lng = res.lng; realName = res.name; }
       }
-
       if (!lat || !lng) {
-        try {
-          const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(target + ", Дніпро")}&countrycodes=ua&limit=1`);
-          const data = await r.json();
-          if (data && data[0]) {
-            lat = parseFloat(data[0].lat);
-            lng = parseFloat(data[0].lon);
-            realName = data[0].display_name.split(",")[0];
-          }
-        } catch(e) {}
+        const netRes = await fetchOnlineLocations(target);
+        if (netRes && netRes[0]) {
+          lat = netRes[0].lat;
+          lng = netRes[0].lng;
+          realName = netRes[0].name;
+        }
       }
     }
 
     if (!lat || !lng) {
-      alert(`Не удалось определить координаты для «${target}». Выберите вариант из списка подсказок.`);
+      alert(`Не удалось определить координаты для «\${target}». Выберите вариант из выпадающего списка.`);
       return;
     }
 
@@ -625,7 +780,7 @@
       window.DNIPRO_STREETS_MAP[alias] = entry;
     }
 
-    await fetch(FB_CUSTOM_URL.replace(".json", `/${safeKey}.json`), {
+    await fetch(FB_CUSTOM_URL.replace(".json", `/\${safeKey}.json`), {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(entry)
@@ -653,7 +808,7 @@
     selectedTargetCoords = null;
     targetResults.style.display = "none";
     updateCountBadge();
-    if (typeof window.showToast === "function") window.showToast(`✅ «${alias} = ${realName}» сохранено!`);
+    if (typeof window.showToast === "function") window.showToast(`✅ «${alias} =${realName}» сохранено!`);
   }
 
   saveBtn.addEventListener("click", saveRule);
@@ -668,11 +823,17 @@
       delete window.DNIPRO_STREETS_MAP[aliasName];
     }
 
-    await fetch(FB_CUSTOM_URL.replace(".json", `/${fbKey}.json`), { method: "DELETE" }).catch(() => {});
+    await fetch(FB_CUSTOM_URL.replace(".json", `/\${fbKey}.json`), { method: "DELETE" }).catch(() => {});
     renderFullList();
     if (typeof window.showToast === "function") window.showToast("🗑️ Правило удалено!");
   }
 
+  // Экспортируем общие хелперы для relocate.js
   window.toFirebaseKey = toFirebaseKey;
-  setTimeout(loadCloudRules, 1000);
+  window.normalizeRadarSearch = normalizeSearchText;
+  window.isRadarSmartMatch = isSmartMatch;
+  window.fetchRadarOnlineLocations = fetchOnlineLocations;
+  window.RADAR_BUILTIN_LANDMARKS = BUILTIN_LANDMARKS;
+
+  setTimeout(loadCloudRules, 800);
 })();
