@@ -10,7 +10,7 @@
   const netSearchCache = new Map();
 
   // Встроенные народные ориентиры и мосты Днепра (0 мс отклик)
-  constBUILTIN_LANDMARKS = [
+  const BUILTIN_LANDMARKS = [
     { name: "Центральний міст (Новий міст)", old: "Новый мост, Новий міст, Центральный мост", lat: 48.47750, lng: 35.05680 },
     { name: "Амурський міст (Старий міст)", old: "Старый мост, Старий міст, Амурский мост", lat: 48.48820, lng: 35.02750 },
     { name: "Кайдацький міст", old: "Кайдакский мост, Кайдацкий мост", lat: 48.49750, lng: 34.96880 },
@@ -424,7 +424,7 @@
     const results = [];
     // 1. Photon API (Komoot) — быстрый автокомплит внутри bbox Днепра
     try {
-      const photonUrl = `https://photon.komoot.io/api/?q=\${encodeURIComponent(query)}&lat=48.4647&lon=35.0462&bbox=34.75,48.30,35.35,48.65&limit=5`;
+      const photonUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&lat=48.4647&lon=35.0462&bbox=34.75,48.30,35.35,48.65&limit=5`;
       const res = await fetch(photonUrl, { signal });
       if (res.ok) {
         const data = await res.json();
@@ -449,7 +449,7 @@
     // 2. Fallback на Nominatim (если Photon вернул пусто)
     if (results.length === 0) {
       try {
-        const nomUrl = `https://nominatim.openstreetmap.org/search?format=json&q=\${encodeURIComponent(query)}&viewbox=34.75,48.65,35.35,48.30&bounded=1&accept-language=uk,ru&countrycodes=ua&limit=4`;
+        const nomUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&viewbox=34.75,48.65,35.35,48.30&bounded=1&accept-language=uk,ru&countrycodes=ua&limit=4`;
         const res = await fetch(nomUrl, { signal });
         if (res.ok) {
           const data = await res.json();
@@ -477,7 +477,7 @@
     const div = document.createElement("div");
     div.className = "mem-search-item";
     div.innerHTML = item.subtext
-      ? `${item.badge} <b>${item.name}</b><br><span style="color:#f59e0b; font-size:10px;">\${item.subtext}</span>`
+      ? `${item.badge} <b>${item.name}</b><br><span style="color:#f59e0b; font-size:10px;">${item.subtext}</span>`
       : `${item.badge} <b>${item.name}</b>`;
     div.onclick = () => {
       targetInput.value = item.name;
@@ -520,7 +520,7 @@
             lat: rule.lat,
             lng: rule.lng,
             badge: "🧠",
-            subtext: phrase ? `(память: \${phrase})` : ""
+            subtext: phrase ? `(память: ${phrase})` : ""
           });
         }
       }
@@ -535,7 +535,7 @@
             lat: lm.lat,
             lng: lm.lng,
             badge: "🌉",
-            subtext: lm.old ? `(\${lm.old})` : ""
+            subtext: lm.old ? `(${lm.old})` : ""
           });
         }
       }
@@ -547,7 +547,7 @@
       for (const k of sortedKeys) {
         const item = window.DNIPRO_STREETS_MAP[k];
         if (!item || !item.name) continue;
-        const fullTarget = `\${k} ${item.name}${item.old || ""}`;
+        const fullTarget = `${k} ${item.name}${item.old || ""}`;
         if (isSmartMatch(query, fullTarget)) {
           if (!matches.some(m => m.name === item.name)) {
             matches.push({
@@ -555,7 +555,7 @@
               lat: item.lat,
               lng: item.lng,
               badge: "📍",
-              subtext: item.old ? `(бывшая: \${item.old})` : ""
+              subtext: item.old ? `(бывшая: ${item.old})` : ""
             });
           }
         }
@@ -604,7 +604,7 @@
     const year = d.getFullYear();
     const hours = String(d.getHours()).padStart(2, '0');
     const minutes = String(d.getMinutes()).padStart(2, '0');
-    return `📅 \${day}.${month}.${year} 🕒 ${hours}:${minutes}`;
+    return `📅 ${day}.${month}.${year} 🕒 ${hours}:${minutes}`;
   }
 
   async function loadCloudRules() {
@@ -660,8 +660,8 @@
       row.className = "mem-full-card";
       row.innerHTML = `
         <div class="mem-full-info">
-          <div class="mem-full-rule">«\${aliasName}» ➔ <span style="color:#38bdf8;">\${item.name || item.address}</span></div>
-          <div class="mem-full-time">\${timeStr} <span style="color:#64748b;">(${Number(item.lat).toFixed(4)},${Number(item.lng).toFixed(4)})</span></div>
+          <div class="mem-full-rule">«${aliasName}» ➔ <span style="color:#38bdf8;">${item.name || item.address}</span></div>
+          <div class="mem-full-time">${timeStr} <span style="color:#64748b;">(${Number(item.lat).toFixed(4)},${Number(item.lng).toFixed(4)})</span></div>
         </div>
         <div class="mem-full-acts">
           <button class="btn-mem-edit" title="Редактировать">✏️</button>
@@ -708,14 +708,14 @@
 
     if (newFbKey !== fbKey) {
       delete cloudRules[fbKey];
-      fetch(FB_CUSTOM_URL.replace(".json", `/\${fbKey}.json`), { method: "DELETE" }).catch(() => {});
+      fetch(FB_CUSTOM_URL.replace(".json", `/${fbKey}.json`), { method: "DELETE" }).catch(() => {});
       if (window.DNIPRO_STREETS_MAP) delete window.DNIPRO_STREETS_MAP[oldAlias.toLowerCase()];
     }
 
     cloudRules[newFbKey] = updatedEntry;
     if (window.DNIPRO_STREETS_MAP) window.DNIPRO_STREETS_MAP[cleanNewAlias] = updatedEntry;
 
-    await fetch(FB_CUSTOM_URL.replace(".json", `/\${newFbKey}.json`), {
+    await fetch(FB_CUSTOM_URL.replace(".json", `/${newFbKey}.json`), {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(updatedEntry)
@@ -760,7 +760,7 @@
     }
 
     if (!lat || !lng) {
-      alert(`Не удалось определить координаты для «\${target}». Выберите вариант из выпадающего списка.`);
+      alert(`Не удалось определить координаты для «${target}». Выберите вариант из выпадающего списка.`);
       return;
     }
 
@@ -780,7 +780,7 @@
       window.DNIPRO_STREETS_MAP[alias] = entry;
     }
 
-    await fetch(FB_CUSTOM_URL.replace(".json", `/\${safeKey}.json`), {
+    await fetch(FB_CUSTOM_URL.replace(".json", `/${safeKey}.json`), {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(entry)
@@ -808,7 +808,7 @@
     selectedTargetCoords = null;
     targetResults.style.display = "none";
     updateCountBadge();
-    if (typeof window.showToast === "function") window.showToast(`✅ «${alias} =${realName}» сохранено!`);
+    if (typeof window.showToast === "function") window.showToast(`✅ «${alias} = ${realName}» сохранено!`);
   }
 
   saveBtn.addEventListener("click", saveRule);
@@ -823,7 +823,7 @@
       delete window.DNIPRO_STREETS_MAP[aliasName];
     }
 
-    await fetch(FB_CUSTOM_URL.replace(".json", `/\${fbKey}.json`), { method: "DELETE" }).catch(() => {});
+    await fetch(FB_CUSTOM_URL.replace(".json", `/${fbKey}.json`), { method: "DELETE" }).catch(() => {});
     renderFullList();
     if (typeof window.showToast === "function") window.showToast("🗑️ Правило удалено!");
   }
