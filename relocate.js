@@ -1,5 +1,5 @@
 // =========================================================================
-// 🎯 МОДУЛЬ ПЕРЕМЕЩЕНИЯ И ОБУЧЕНИЯ МЕТОК (RELOCATE ENGINE v5.0 — FAST SEARCH)
+// 🎯 МОДУЛЬ ПЕРЕМЕЩЕНИЯ И ОБУЧЕНИЯ МЕТОК (RELOCATE ENGINE v5.1 — 4-TIER SEARCH)
 // =========================================================================
 
 const FB_CUSTOM_STREETS_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/custom_streets.json";
@@ -14,7 +14,7 @@ function toSafeDbKey(str) {
     .replace(/\./g, "_")
     .replace(/\$/g, "_")
     .replace(/#/g, "_")
-    .replace(/\[/g, "_") .replace(/\]/g, "_")
+    .replace(/\[/g, "_").replace(/\]/g, "_")
     .slice(0, 80);
 }
 
@@ -337,30 +337,52 @@ if (trainCustomInput && trainSearchResults) {
       return;
     }
 
-    // ПОТОК 1: Мгновенный локальный поиск (0 мс)
+    // ПОТОК 1: Мгновенная локальная выдача (0 мс)
     trainSearchResults.innerHTML = "";
     const matches = [];
 
+    const matchFn = (q, target) => {
+      if (typeof window.isRadarSmartMatch === "function") {
+        return window.isRadarSmartMatch(q, target);
+      }
+      return target.toLowerCase().includes(q.toLowerCase());
+    };
+
+    // 1.1 ПРОВЕРКА ОРИЕНТИРОВ И МОСТОВ (🌉)
+    const landmarks = window.RADAR_BUILTIN_LANDMARKS || [];
+    for (const lm of landmarks) {
+      if (matchFn(query, lm.name + " " + (lm.old || ""))) {
+        if (!matches.some(m => m.name === lm.name)) {
+          matches.push({
+            name: lm.name,
+            lat: lm.lat,
+            lng: lm.lng,
+            badge: "🌉",
+            subtext: lm.old ? `(${lm.old})` : ""
+          });
+        }
+      }
+    }
+
+    // 1.2 ПРОВЕРКА ЛОКАЛЬНОГО СЛОВАРЯ УЛИЦ И ПАМЯТИ (📍 / 🧠)
     if (window.DNIPRO_STREETS_MAP) {
       const sortedKeys = Object.keys(window.DNIPRO_STREETS_MAP).sort((a, b) => b.length - a.length);
       for (const key of sortedKeys) {
         const item = window.DNIPRO_STREETS_MAP[key];
         if (!item || !item.name) continue;
-        const fullTarget = `${key} ${item.name}${item.old || ""}`;
-        
-        // Используем глобальный «слепой» поиск, если он задан в памяти, иначе локальный smartMatch
-        const isMatch = typeof window.isRadarSmartMatch === "function" 
-          ? window.isRadarSmartMatch(query, fullTarget)
-          : fullTarget.toLowerCase().includes(query.toLowerCase());
 
-        if (isMatch) {
+        const phrase = item.alias || item.phrase || "";
+        const fullTarget = `${key} ${item.name} ${item.old || ""} ${phrase}`;
+
+        if (matchFn(query, fullTarget)) {
           if (!matches.some(m => m.name === item.name)) {
+            const isBrain = !!(item.alias || item.phrase);
             matches.push({
               name: item.name,
               lat: item.lat,
               lng: item.lng,
-              badge: "📍",
-              subtext: item.old ? `(бывшая: ${item.old})` : ""
+              badge: isBrain ? "🧠" : "📍",
+              subtext: isBrain ? `(память: ${item.alias || key})` : (item.old ? `(бывшая: ${item.old})` : "")
             });
           }
         }
@@ -368,6 +390,7 @@ if (trainCustomInput && trainSearchResults) {
       }
     }
 
+    // Отрисовываем мгновенные локальные совпадения
     matches.forEach(item => {
       const div = document.createElement("div");
       div.className = "search-item";
@@ -384,7 +407,7 @@ if (trainCustomInput && trainSearchResults) {
 
     trainSearchResults.style.display = matches.length > 0 ? "block" : "none";
 
-    // ПОТОК 2: Фоновая подгрузка из сети (Photon + Nominatim fallback)
+    // ПОТОК 2: Фоновая подгрузка из интернета (Photon + Nominatim)
     if (query.length >= 2) {
       trainSearchAbortController = new AbortController();
       const signal = trainSearchAbortController.signal;
@@ -392,29 +415,12 @@ if (trainCustomInput && trainSearchResults) {
         let onlineItems = [];
         if (typeof window.fetchRadarOnlineLocations === "function") {
           onlineItems = await window.fetchRadarOnlineLocations(query, signal);
-        } else {
-          // Запасной прямой запрос к Photon, если хелпер еще не подгружен
-          const photonUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&lat=48.4647&lon=35.0462&bbox=34.75,48.30,35.35,48.65&limit=4`;
-          const res = await fetch(photonUrl, { signal });
-          if (res.ok) {
-            const data = await res.json();
-            if (data && Array.isArray(data.features)) {
-              data.features.forEach(f => {
-                const p = f.properties || {};
-                const coords = f.geometry && f.geometry.coordinates;
-                const rawName = p.name || p.street || "";
-                if (rawName && coords && coords.length === 2) {
-                  onlineItems.push({ name: rawName, lat: parseFloat(coords[1]), lng: parseFloat(coords[0]) });
-                }
-              });
-            }
-          }
         }
 
         if (signal.aborted) return;
 
         onlineItems.forEach(netItem => {
-          if (!matches.some(m => m.name.toLowerCase() === netItem.name.toLowerCase())) {
+          if (!matches.some(m => matchFn(netItem.name, m.name))) {
             matches.push(netItem);
             const div = document.createElement("div");
             div.className = "search-item";
@@ -444,18 +450,37 @@ async function executeCustomTrain() {
   const q = document.getElementById("trainCustomInput").value.trim();
   if (!q) return;
 
-  // Проверяем по точным ключам или памяти
+  const matchFn = (query, target) => {
+    if (typeof window.isRadarSmartMatch === "function") {
+      return window.isRadarSmartMatch(query, target);
+    }
+    return target.toLowerCase().includes(query.toLowerCase());
+  };
+
+  // 1. Проверяем мосты и ориентиры
+  const landmarks = window.RADAR_BUILTIN_LANDMARKS || [];
+  for (const lm of landmarks) {
+    if (matchFn(q, lm.name + " " + (lm.old || ""))) {
+      applyPointRelocation(lm.name, lm.lat, lm.lng);
+      return;
+    }
+  }
+
+  // 2. Проверяем словарь улиц и память
   if (window.DNIPRO_STREETS_MAP) {
     const sortedKeys = Object.keys(window.DNIPRO_STREETS_MAP).sort((a, b) => b.length - a.length);
     for (const key of sortedKeys) {
-      if (q.toLowerCase().includes(key)) {
-        const val = window.DNIPRO_STREETS_MAP[key];
-        applyPointRelocation(val.name, val.lat, val.lng);
+      const item = window.DNIPRO_STREETS_MAP[key];
+      if (!item || !item.name) continue;
+      const fullTarget = `${key} ${item.name} ${item.old || ""}`;
+      if (matchFn(q, fullTarget)) {
+        applyPointRelocation(item.name, item.lat, item.lng);
         return;
       }
     }
   }
 
+  // 3. Фоллбэк в онлайн-поиск
   showToast("🔍 Поиск улицы в Днепре...");
   try {
     const netRes = typeof window.fetchRadarOnlineLocations === "function" 
