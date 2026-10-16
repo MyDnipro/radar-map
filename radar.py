@@ -13,7 +13,8 @@ RAW_GEMINI_KEYS = os.environ.get("GEMINI_KEY", "").strip() or os.environ.get("GE
 GEMINI_KEYS = [k.strip() for k in re.split(r'[,;\s]+', RAW_GEMINI_KEYS) if len(k.strip()) > 15]
 
 current_key_index = 0
-SUPPORTED_MODELS = ["gemini-2.5-flash", "gemini-1.5-flash"]
+# Пріоритетна зв'язка моделей: надшвидкий Lite -> потужний 3.8 Flash -> резервний 3.5 Flash
+SUPPORTED_MODELS = ["gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-3.5-flash"]
 
 # Базовий URL Firebase Realtime Database
 FIREBASE_URL = os.environ.get("FIREBASE_URL", "").strip()
@@ -177,15 +178,26 @@ LOCAL_STREETS_DB = [
     {"keys": ["боровск", "молодогвард"], "addr": "вул. Молодогвардійська (під мостами)", "lat": 48.4680, "lng": 35.1220}
 ]
 
-# Утвержденные правила фильтрации по эмодзи и статусам
+# Правила фільтрації по емодзі та статусах
 QUESTION_EMOJIS = ['?', '❓', '❔', '⁉️', '🤔', '🧐', '🙏']
 CLOUD_PRECIP_EMOJIS = ['🌤️', '⛅', '🌥️', '🌦️', '☁️', '🌧️', '⛈️', '🌩️', '🌨️', '🌪️', '🌫️', '☔', '💧', '💦']
 SUN_ONLY_EMOJIS = ['☀️', '🌞', '🌈']
 
 CLEAN_KEYWORDS = [
-    "чисто", "чистенько", "пусто", "вільно", "спокійно", "проїзд",
-    "без бп", "ясно", "сухо", "знялися", "пролітайте", "все чисто", "зелено"
+    "чисто", "чистенько", "пусто", "вільно", "спокійно", "спокойно", "проїзд",
+    "без бп", "ясно", "сухо", "знялися", "пролітайте", "все чисто", "зелено",
+    "норм", "нормально", "нормик", "все норм", "всё норм"
 ]
+
+CLEAN_REGEX = re.compile(
+    r'(?:\b(?:чисто|чистенько|пусто|вільно|спокійно|спокойно|проїзд|ясно|сухо|знялися|пролітайте|зелено|норм|нормально|нормик)\b|без\s*бп|все\s*чисто|все\s*норм|всё\s*норм)',
+    re.IGNORECASE
+)
+
+CLEAN_NEGATION_REGEX = re.compile(
+    r'(?:не\s*норм|не\s*чисто|не\s*пусто|не\s*спок|не\s*тихо)',
+    re.IGNORECASE
+)
 
 NEGATION_WORDS = [
     "нет", "немає", "убрали", "прибрали", "сняли", "зняли",
@@ -198,38 +210,36 @@ DANGER_KEYWORDS = [
 ]
 
 def is_ignored_question(text):
-    """Пункт №1: Игнор-лист для вопросов и сомнений."""
+    """Ігнор-лист для питань і сумнівів."""
     return any(q in text for q in QUESTION_EMOJIS)
 
 def is_message_clean(text):
     """
-    Пункт №1:
-    - Зеленая зона: ТОЛЬКО при чистом солнце без туч и наличии признаков чистоты.
-    - Красная зона: Абсолютный приоритет у тучек, осадков и опасных ключевых слов.
+    - Зелена зона: сонце або слова чистоти/норми (якщо немає заперечень).
+    - Червона зона: хмари, опади або небезпечні ключові слова.
     """
     t = text.lower()
     
-    # 1. Если есть знаки вопросов/сомнений — игнорируем
+    # 1. Знаки питань / сумніви — ігноруємо
     if is_ignored_question(text):
-        return None # Сигнал для полного пропуска (игнор)
+        return None
 
-    # 2. Проверяем наличие опасных факторов (тучки, осадки, тревожные слова)
+    # 2. Перевіряємо небезпечні фактори (хмари, опади, небезпечні слова)
     has_danger_words = any(w in t for w in DANGER_KEYWORDS)
     has_cloud_or_precip = any(ce in text for ce in CLOUD_PRECIP_EMOJIS)
     
-    # Угроза или тучи с осадками имеют приоритет -> Красная зона (не чисто)
     if has_danger_words or has_cloud_or_precip:
         has_negation = any(nw in t for nw in NEGATION_WORDS)
         if has_danger_words and has_negation:
             return True
         return False
 
-    # 3. Проверяем чистую зеленую зону (требуется чистое солнце или явные слова чистоты)
+    # 3. Перевіряємо зелену зону ("норм", "чисто", сонце)
     has_pure_sun = any(se in text for se in SUN_ONLY_EMOJIS)
-    has_clean_word = any(kw in t for kw in CLEAN_KEYWORDS)
+    has_clean_word = bool(CLEAN_REGEX.search(t))
 
     if has_pure_sun or has_clean_word:
-        if "не чисто" not in t and "не пусто" not in t:
+        if not CLEAN_NEGATION_REGEX.search(t):
             return True
 
     return False
@@ -260,7 +270,6 @@ def split_multiline_reports(raw_post_text):
         if not clean_line or len(clean_line) < 3:
             continue
 
-        # Пропускаем, если строка попала в игнор-лист (вопросы)
         if is_ignored_question(clean_line):
             continue
 
@@ -329,7 +338,7 @@ def geocode_local(text):
     return None, None, None
 
 def geocode_osm_fallback(text):
-    clean = re.sub(r'(?:чисто|пусто|вільно|спокійно|бп|блокпост|патруль|роздають|хмари|сині|дощ|сонце|сонечко|🌞|☀️)\b', '', text, flags=re.I).strip()
+    clean = re.sub(r'(?:чисто|пусто|вільно|спокійно|спокойно|норм|нормально|бп|блокпост|патруль|роздають|хмари|сині|дощ|сонце|сонечко|🌞|☀️)\b', '', text, flags=re.I).strip()
     words = [w for w in re.split(r'[,+\n/]', clean) if len(w.strip()) >= 4]
     if not words:
         words = [clean]
@@ -505,7 +514,7 @@ def parse_batch_with_gemini(items_to_parse):
                     data_list = json.loads(raw)
                     if isinstance(data_list, list):
                         result_map = {res["id"]: res for res in data_list if isinstance(res, dict) and "id" in res}
-                        log(f"📦 [GEMINI BATCH]: Успішно розпізнано пакет із {len(result_map)} точок!")
+                        log(f"📦 [GEMINI BATCH]: Успішно розпізнано пакет із {len(result_map)} точок за допомогою {model}!")
                         return result_map
                 elif r.status_code in [429, 403]:
                     rotate_to_next_key()
@@ -524,7 +533,8 @@ def save_point_to_firebase(msg, parsed_result, is_clean, now_ms):
     status_clean = (parsed_result["status"] == "чисто" or is_clean is True)
     color = "green" if status_clean else "red"
     display_text = msg
-    if status_clean and "чисто" not in msg.lower():
+    
+    if status_clean and not re.search(r'\b(?:чисто|норм|нормально)\b', msg, re.I):
         display_text = f"{msg} (чисто)"
 
     point_data = {
@@ -596,7 +606,7 @@ def sync_cycle():
 
         is_clean = is_message_clean(msg)
         if is_clean is None:
-            continue # Пропускаємо питання (ігнор-лист)
+            continue  # Пропускаємо питання (ігнор-лист)
 
         parsed_result = None
 
@@ -610,7 +620,7 @@ def sync_cycle():
                 "status": "чисто" if is_clean else "опасно",
                 "needs_training": False
             }
-            log(f"⚡ [ЛОКАЛЬНО / ДІЛЯНКА]: '{msg[:45]}' ➔ {addr}")
+            log(f"⚡ [ЛОКАЛЬНО / ДІЛЯНКА]: '{msg[:45]}' ➔ {addr} ({'ЗЕЛЕНА' if is_clean else 'ЧЕРВОНА'})")
 
         # База знань Firebase
         if not parsed_result:
@@ -663,7 +673,7 @@ def sync_cycle():
                         "address": addr,
                         "lat": round(lat, 5),
                         "lng": round(lng, 5),
-                        "status": ai_data.get("status", "опасно"),
+                        "status": "чисто" if is_clean else ai_data.get("status", "опасно"),
                         "needs_training": False
                     }
                     log(f"🤖 [GEMINI AI]: '{msg[:45]}' ➔ {addr}")
