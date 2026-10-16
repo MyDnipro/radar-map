@@ -163,7 +163,7 @@ LOCAL_STREETS_DB = [
     {"keys": ["низ науки", "низ гагарин", "низ гагарін"], "addr": "просп. Науки (Низ, Нагірка)", "lat": 48.4510, "lng": 35.0590},
     {"keys": ["середина науки", "середина гагарин", "середина гагарін"], "addr": "просп. Науки (Середина, ДІІТ / Казакова)", "lat": 48.4350, "lng": 35.0420},
     {"keys": ["верх науки", "верх гагарин", "верх гагарін"], "addr": "просп. Науки (Верх, Підстанція / Дафі)", "lat": 48.4230, "lng": 35.0320},
-    {"keys": ["гагарин", "гагарін", "науки"], "addr": "просп. Науки (Гагаріна)", "lat": 48.4350, "lng": 35.0420},
+    {"keys": ["гагарин", "гагарін", "науки"], "addr": "просp. Науки (Гагаріна)", "lat": 48.4350, "lng": 35.0420},
     {"keys": ["підстанці", "подстанци", "дафі", "дафи"], "addr": "Підстанція (ТРЦ Дафі)", "lat": 48.4250, "lng": 35.0220},
     {"keys": ["титов", "независимост", "незалежност"], "addr": "вул. Незалежності (Титова)", "lat": 48.4340, "lng": 35.0150},
     {"keys": ["карла маркс", "яворниц", "яворницьк"], "addr": "просп. Дмитра Яворницького (К. Маркса)", "lat": 48.4650, "lng": 35.0350},
@@ -177,10 +177,14 @@ LOCAL_STREETS_DB = [
     {"keys": ["боровск", "молодогвард"], "addr": "вул. Молодогвардійська (під мостами)", "lat": 48.4680, "lng": 35.1220}
 ]
 
+# Утвержденные правила фильтрации по эмодзи и статусам
+QUESTION_EMOJIS = ['?', '❓', '❔', '⁉️', '🤔', '🧐', '🙏']
+CLOUD_PRECIP_EMOJIS = ['🌤️', '⛅', '🌥️', '🌦️', '☁️', '🌧️', '⛈️', '🌩️', '🌨️', '🌪️', '🌫️', '☔', '💧', '💦']
+SUN_ONLY_EMOJIS = ['☀️', '🌞', '🌈']
+
 CLEAN_KEYWORDS = [
     "чисто", "чистенько", "пусто", "вільно", "спокійно", "проїзд",
-    "без бп", "сонечко", "солнечно", "солнце", "ясно", "сухо",
-    "знялися", "пролітайте", "все чисто", "зелено", "🌞", "☀️", "🌤️"
+    "без бп", "ясно", "сухо", "знялися", "пролітайте", "все чисто", "зелено"
 ]
 
 NEGATION_WORDS = [
@@ -193,19 +197,41 @@ DANGER_KEYWORDS = [
     "тормоз", "стоят", "облав", "тцк", "бусик", "мусор", "зупиня", "шмонал"
 ]
 
-def is_message_clean(text):
-    t = text.lower()
-    has_danger = any(w in t for w in DANGER_KEYWORDS)
-    has_negation = any(nw in t for nw in NEGATION_WORDS)
+def is_ignored_question(text):
+    """Пункт №1: Игнор-лист для вопросов и сомнений."""
+    return any(q in text for q in QUESTION_EMOJIS)
 
-    if has_danger:
-        if has_negation:
+def is_message_clean(text):
+    """
+    Пункт №1:
+    - Зеленая зона: ТОЛЬКО при чистом солнце без туч и наличии признаков чистоты.
+    - Красная зона: Абсолютный приоритет у тучек, осадков и опасных ключевых слов.
+    """
+    t = text.lower()
+    
+    # 1. Если есть знаки вопросов/сомнений — игнорируем
+    if is_ignored_question(text):
+        return None # Сигнал для полного пропуска (игнор)
+
+    # 2. Проверяем наличие опасных факторов (тучки, осадки, тревожные слова)
+    has_danger_words = any(w in t for w in DANGER_KEYWORDS)
+    has_cloud_or_precip = any(ce in text for ce in CLOUD_PRECIP_EMOJIS)
+    
+    # Угроза или тучи с осадками имеют приоритет -> Красная зона (не чисто)
+    if has_danger_words or has_cloud_or_precip:
+        has_negation = any(nw in t for nw in NEGATION_WORDS)
+        if has_danger_words and has_negation:
             return True
         return False
 
-    for kw in CLEAN_KEYWORDS:
-        if kw in t and "не чисто" not in t and "не пусто" not in t:
+    # 3. Проверяем чистую зеленую зону (требуется чистое солнце или явные слова чистоты)
+    has_pure_sun = any(se in text for se in SUN_ONLY_EMOJIS)
+    has_clean_word = any(kw in t for kw in CLEAN_KEYWORDS)
+
+    if has_pure_sun or has_clean_word:
+        if "не чисто" not in t and "не пусто" not in t:
             return True
+
     return False
 
 # =========================================================================
@@ -223,28 +249,28 @@ def split_multiline_reports(raw_post_text):
         return [raw_post_text.strip()]
 
     parsed_reports = []
-    # Визначаємо статус першого рядка як контекст на випадок зведеного списку
     first_clean = is_message_clean(lines[0])
-    fallback_status = "чисто" if first_clean else None
+    fallback_status = "чисто" if first_clean is True else None
 
     for line in lines:
         if is_ad_or_spam(line) or len(line) < 3:
             continue
 
-        # Зрізаємо таймкод напочатку (напр. 14:46)
         clean_line = re.sub(r'^\d{1,2}[:.]\d{2}\s*', '', line).strip()
         if not clean_line or len(clean_line) < 3:
             continue
 
-        # Якщо рядок містить ТІЛЬКИ статус ("чисто", "спокійно") без локації — пропускаємо недогризок
+        # Пропускаем, если строка попала в игнор-лист (вопросы)
+        if is_ignored_question(clean_line):
+            continue
+
         stripped_status = re.sub(r'(?:' + '|'.join(CLEAN_KEYWORDS) + r')\b', '', clean_line, flags=re.I).strip(' .,!?:;-')
         if len(stripped_status) < 3:
             continue
 
-        # Якщо в рядку немає явно статусу, але перший рядок задавав загальний статус
         has_local_clean = is_message_clean(clean_line)
-        has_local_danger = any(w in clean_line.lower() for w in DANGER_KEYWORDS)
-        if not has_local_clean and not has_local_danger and fallback_status:
+        has_local_danger = any(w in clean_line.lower() for w in DANGER_KEYWORDS) or any(ce in clean_line for ce in CLOUD_PRECIP_EMOJIS)
+        if has_local_clean is False and not has_local_danger and fallback_status:
             clean_line = f"{clean_line} {fallback_status}"
 
         parsed_reports.append(clean_line)
@@ -425,13 +451,12 @@ def fetch_channel_messages():
             clean = re.sub(r'<[^>]+>', '', clean)
             clean = clean.replace('&quot;', '"').replace('&amp;', '&').replace('&lt;', '<').replace('&gt;', '>').strip()
 
-            if is_ad_or_spam(clean):
+            if is_ad_or_spam(clean) or is_ignored_question(clean):
                 continue
 
-            # Розбираємо багаторядковий пост на самостійні повідомлення
             sub_reports = split_multiline_reports(clean)
             for idx, report_line in enumerate(sub_reports):
-                if not is_ad_or_spam(report_line):
+                if not is_ad_or_spam(report_line) and not is_ignored_question(report_line):
                     sub_post_id = f"{post_id}_{idx}" if len(sub_reports) > 1 else post_id
                     results.append((sub_post_id, report_line))
 
@@ -496,7 +521,7 @@ def parse_batch_with_gemini(items_to_parse):
     return {}
 
 def save_point_to_firebase(msg, parsed_result, is_clean, now_ms):
-    status_clean = (parsed_result["status"] == "чисто" or is_clean)
+    status_clean = (parsed_result["status"] == "чисто" or is_clean is True)
     color = "green" if status_clean else "red"
     display_text = msg
     if status_clean and "чисто" not in msg.lower():
@@ -565,11 +590,14 @@ def sync_cycle():
     for unique_key, msg in new_items:
         PROCESSED_POST_IDS.add(unique_key)
 
-        if is_ad_or_spam(msg):
-            log(f"🚫 [РЕКЛАМА/СПАМ ПРОПУЩЕНО]: '{msg[:45]}'")
+        if is_ad_or_spam(msg) or is_ignored_question(msg):
+            log(f"🚫 [СПАМ / ПИТАННЯ ПРОПУЩЕНО]: '{msg[:45]}'")
             continue
 
         is_clean = is_message_clean(msg)
+        if is_clean is None:
+            continue # Пропускаємо питання (ігнор-лист)
+
         parsed_result = None
 
         # Локальна база
