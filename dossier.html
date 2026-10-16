@@ -76,6 +76,58 @@
       border-top: 1px solid #334155; padding-top: 6px; flex-wrap: wrap; gap: 6px;
     }
 
+    /* ІНТЕРАКТИВНИЙ ДІАЛОГ З ШІ-ШТУРМАНОМ */
+    .chat-section {
+      margin-top: 12px; padding-top: 12px; border-top: 1px dashed rgba(168, 85, 247, 0.4);
+    }
+    .chat-quick-tags {
+      display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px;
+    }
+    .quick-tag {
+      background: rgba(59, 7, 100, 0.5); border: 1px solid #a855f7; color: #e9d5ff;
+      font-size: 10px; font-weight: 700; padding: 4px 9px; border-radius: 6px;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .quick-tag:hover {
+      background: #7e22ce; color: #fff; box-shadow: 0 0 10px rgba(168, 85, 247, 0.5);
+    }
+    .chat-history {
+      max-height: 240px; overflow-y: auto; display: flex; flex-direction: column;
+      gap: 8px; margin-bottom: 10px; padding-right: 4px;
+    }
+    .chat-history::-webkit-scrollbar { width: 4px; }
+    .chat-history::-webkit-scrollbar-thumb { background: #3b0764; border-radius: 4px; }
+    .chat-bubble {
+      padding: 8px 11px; border-radius: 9px; font-size: 11.5px; line-height: 1.45; max-width: 92%;
+      word-break: break-word;
+    }
+    .chat-bubble.user {
+      align-self: flex-end; background: #1e293b; border: 1px solid #475569; color: #38bdf8;
+      border-bottom-right-radius: 2px;
+    }
+    .chat-bubble.assistant {
+      align-self: flex-start; background: rgba(59, 7, 100, 0.35); border: 1px solid #a855f7; color: #f1f5f9;
+      border-bottom-left-radius: 2px;
+    }
+    .chat-bubble.assistant b { color: #c084fc; }
+    .chat-input-bar {
+      display: flex; gap: 8px; align-items: center;
+    }
+    .chat-input {
+      flex: 1; background: #070d1d; border: 1px solid #334155; border-radius: 8px;
+      padding: 9px 12px; font-size: 12px; color: #fff; outline: none; transition: all 0.2s;
+    }
+    .chat-input:focus {
+      border-color: #a855f7; box-shadow: 0 0 10px rgba(168, 85, 247, 0.3);
+    }
+    .btn-send-chat {
+      background: linear-gradient(135deg, #7e22ce 0%, #0284c7 100%);
+      color: #fff; border: 1px solid #c084fc; padding: 9px 15px; border-radius: 8px;
+      font-size: 11.5px; font-weight: 900; cursor: pointer; transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .btn-send-chat:disabled { opacity: 0.5; cursor: not-allowed; }
+
     /* СІТКА КАРТОК ДОСЬЄ */
     .dossier-grid {
       display: flex; flex-direction: column; gap: 14px;
@@ -122,7 +174,7 @@
       font-size: 11.5px; line-height: 1.42; color: #e2e8f0; font-weight: 500;
     }
 
-    /* КОМПАКТНИЙ СТАТУС-БАНЕР БЕЗ ЗАВИСАННЯ */
+    /* КОМПАКТНИЙ СТАТУС-БАНЕР */
     .loading-banner {
       background: rgba(59, 7, 100, 0.45); border: 1px solid #a855f7; border-radius: 9px;
       padding: 10px 14px; text-align: center; color: #e9d5ff; font-weight: 800; font-size: 11.5px;
@@ -154,16 +206,38 @@
       </div>
     </div>
 
-    <!-- ГОЛОВНИЙ ВЕРДИКТ -->
+    <!-- ГОЛОВНИЙ ВЕРДИКТ + ІНТЕРАКТИВНИЙ ДІАЛОГ -->
     <div id="verdictBlock" class="verdict-card">
       <div class="verdict-header">
         <span>🚦 Загальний тактичний вердикт на сьогодні:</span>
         <span id="verdictStatusBadge" style="color:#a855f7; font-size:11px;">ОЧІКУВАННЯ</span>
       </div>
       <div id="verdictText" class="verdict-body">Завантаження математичної матриці...</div>
+      
       <div class="verdict-meta">
         <span id="dossierLastUpdated">Останнє оновлення: --:--</span>
         <span id="dossierScopeMeta">Режим: 7 ключових точок маршруту</span>
+      </div>
+
+      <!-- ІНТЕРАКТИВНИЙ ШТУРМАН (ДІАЛОГ) -->
+      <div class="chat-section">
+        <div class="chat-quick-tags">
+          <span class="quick-tag" onclick="askQuickPrompt('Як зараз краще об\'їхати Павлова і Краснозаводську?')">🚗 Як об'їхати Павлова?</span>
+          <span class="quick-tag" onclick="askQuickPrompt('Коли сьогодні найбезпечніші вікна для виїзду?')">⏰ Безпечні вікна</span>
+          <span class="quick-tag" onclick="askQuickPrompt('Яка ситуація по правому берегу і чи є активні облави?')">🏙️ Правий берег</span>
+          <span class="quick-tag" onclick="askQuickPrompt('Чи є ризик синхронних капканів на моєму маршруті?')">🕸️ Синхронні капкани</span>
+        </div>
+
+        <div id="dossierChatHistory" class="chat-history">
+          <div class="chat-bubble assistant">
+            👋 <b>ШІ-Штурман на зв'язку.</b> Математичне досьє та матриця розвідки підключені. Запитуйте про деталі зведення, об'їзди або оцінку часу!
+          </div>
+        </div>
+
+        <div class="chat-input-bar">
+          <input type="text" id="dossierChatInput" class="chat-input" placeholder="Запитайте у ШІ деталі про зведення чи маршрут..." onkeydown="if(event.key==='Enter') sendDossierQuestion()">
+          <button id="btnSendDossierChat" class="btn-send-chat" onclick="sendDossierQuestion()">Запитати ➔</button>
+        </div>
       </div>
     </div>
 
@@ -490,7 +564,6 @@
       return matrix;
     }
 
-    // миттєво будує повноцінне досьє з математичної матриці (без очікування ШІ)
     function buildInstantDossierFromMatrix(matrix) {
       const pointsObj = {};
       getActiveTargetsList().forEach(t => {
@@ -506,14 +579,13 @@
       };
     }
 
-    // Швидкий запит до Gemini (максимум 3 спроби з таймаутом 10 сек, щоб ніколи не зависало!)
+    // Швидкий запит до Gemini для JSON генерації досьє
     async function executeFastGeminiPrompt(promptText) {
       const apiKeys = getDecryptedGeminiPool();
       if (apiKeys.length === 0) throw new Error("Немає ключів Gemini.");
 
-      // Перемішуємо ключі, щоб не впиратися в один лімітований перший ключ
       const shuffledKeys = [...apiKeys].sort(() => Math.random() - 0.5).slice(0, 3);
-      const models = ['gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-2.5-flash'];
+      const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
 
       for (let i = 0; i < shuffledKeys.length; i++) {
         const k = shuffledKeys[i];
@@ -544,6 +616,124 @@
       throw new Error("Ліміт часу або квоти ключів");
     }
 
+    // Інтерактивний запит для спілкування в чаті (приймає вільний текст українською)
+    async function executeDossierChatPrompt(promptText) {
+      const apiKeys = getDecryptedGeminiPool();
+      if (apiKeys.length === 0) throw new Error("Будь ласка, авторизуйтесь у ШІ за допомогою кнопки Оновити ШІ-досьє.");
+
+      const shuffledKeys = [...apiKeys].sort(() => Math.random() - 0.5).slice(0, 3);
+      const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+
+      for (let i = 0; i < shuffledKeys.length; i++) {
+        const k = shuffledKeys[i];
+        const m = models[i % models.length];
+        try {
+          const controller = new AbortController();
+          const tid = setTimeout(() => controller.abort(), 12000);
+          const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${k}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [{ role: "user", parts: [{ text: promptText }] }],
+              generationConfig: { temperature: 0.2 }
+            }),
+            signal: controller.signal
+          });
+          clearTimeout(tid);
+          if (res.ok) {
+            const data = await res.json();
+            const txt = data.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (txt) return txt;
+          }
+        } catch(e) {}
+      }
+      throw new Error("Не вдалося отримати відповідь від ШІ. Спробуйте ще раз за мить.");
+    }
+
+    // ВІДПРАВКА ЗАПИТАННЯ ШТУРМАНУ
+    async function sendDossierQuestion(customText = null) {
+      const input = document.getElementById("dossierChatInput");
+      const question = (customText || input.value || "").trim();
+      if (!question) return;
+
+      if (!verifyGeminiAuthorization()) return;
+
+      const historyBox = document.getElementById("dossierChatHistory");
+      const sendBtn = document.getElementById("btnSendDossierChat");
+
+      // Додаємо повідомлення користувача
+      const userBubble = document.createElement("div");
+      userBubble.className = "chat-bubble user";
+      userBubble.innerText = question;
+      historyBox.appendChild(userBubble);
+      input.value = "";
+      historyBox.scrollTop = historyBox.scrollHeight;
+
+      // Індикатор завантаження
+      const aiBubble = document.createElement("div");
+      aiBubble.className = "chat-bubble assistant";
+      aiBubble.innerHTML = "⏳ <i>Аналізую статистичну матрицю та формую тактичну відповідь...</i>";
+      historyBox.appendChild(aiBubble);
+      historyBox.scrollTop = historyBox.scrollHeight;
+
+      sendBtn.disabled = true;
+
+      try {
+        const activeNodes = getActiveTargetsList();
+        const compactMatrix = {};
+        activeNodes.forEach(n => {
+          const m = currentMatrixCache[n.id];
+          if (m) {
+            compactMatrix[m.name] = {
+              "Ризик": m.risk,
+              "Характер": m.character,
+              "Пікові години": m.patterns,
+              "Динаміка": m.trend,
+              "Вікна": m.forecast,
+              "Облав 5+": m.solid_filter,
+              "Міграція": m.migration,
+              "Капкани": m.traps
+            };
+          }
+        });
+
+        const generalVerdict = document.getElementById("verdictText").innerText || "";
+
+        const fullPrompt = `
+Ти — військовий/дорожній ШІ-штурман та аналітик дорожньої розвідки у Дніпрі.
+Користувач задає питання щодо ситуації з блокпостами та безпеки пересування.
+
+КОНТЕКСТ РОЗВІДКИ ТА МАТЕМАТИЧНОГО ДОСЬЄ НА СЬОГОДНІ:
+- Поточний час: ${new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}, дата: ${new Date().toLocaleDateString('uk-UA')}
+- Загальний вердикт на сьогодні: "${generalVerdict}"
+- Повна аналітична матриця точок (за 7 днів):
+${JSON.stringify(compactMatrix, null, 2)}
+
+ЗАПИТАННЯ КОРИСТУВАЧА:
+"${question}"
+
+ІНСТРУКЦІЯ:
+1. Дай лаконічну, чітку, практичну тактичну відповідь українською мовою (до 3-5 речень).
+2. Спирайся виключно на наведені тверді факти (рівні ризику, вікна безпеки, пікові години, вектори міграції).
+3. Якщо запитують про об'їзд чи час — дай пряму практичну пораду.
+4. Використовуй жирний шрифт для ключових назв вулиць та годин.
+`;
+
+        const reply = await executeDossierChatPrompt(fullPrompt);
+        aiBubble.innerHTML = reply.replace(/\n/g, "<br>").replace(/\*\*(.*?)\*\*/g, "<b>\$1</b>");
+      } catch(err) {
+        aiBubble.innerHTML = `⚠️ <span style="color:#ef4444;">${err.message || "Помилка зв'язку з ШІ."}</span>`;
+      } finally {
+        sendBtn.disabled = false;
+        historyBox.scrollTop = historyBox.scrollHeight;
+      }
+    }
+
+    function askQuickPrompt(text) {
+      document.getElementById("dossierChatInput").value = text;
+      sendDossierQuestion(text);
+    }
+
     async function generateDossier(forceRefresh = false) {
       updateScopeButtonsUI();
       const cacheKey = `radar_ai_dossier_v3_${dossierScope}`;
@@ -563,7 +753,7 @@
         }
       }
 
-      // 2. МИТТЄВО показуємо свіжі розрахункові дані на екрані (жодного зависання!)
+      // 2. МИТТЄВО показуємо свіжі розрахункові дані на екрані
       localStorage.setItem(cacheKey, JSON.stringify(instantData));
       renderDossierUI(instantData, "ТОЧНИЙ МАТЕМАТИЧНИЙ РОЗРАХУНОК ⚡");
 
@@ -571,7 +761,7 @@
 
       if (!verifyGeminiAuthorization()) return;
 
-      // 3. Якщо натиснули "Оновити ШІ-досьє" — у фоні (до 10 сек) просимо ШІ дати розширений штурманський вердикт
+      // 3. Якщо натиснули "Оновити ШІ-досьє" — у фоні просимо ШІ дати розширений вердикт
       const loader = document.getElementById("loaderBox");
       loader.style.display = "block";
 
@@ -620,7 +810,6 @@ ${JSON.stringify(compactSummary)}
         const cleanJson = reply.replace(/```json/gi, '').replace(/```/g, '').trim();
         const aiData = JSON.parse(cleanJson);
 
-        // Об'єднуємо відповідь ШІ з нашими залізними математичними даними
         const mergedData = {
           general_verdict: aiData.general_verdict || instantData.general_verdict,
           points: {},
@@ -647,7 +836,6 @@ ${JSON.stringify(compactSummary)}
         localStorage.setItem(cacheKey, JSON.stringify(mergedData));
         renderDossierUI(mergedData, "ШІ + МАТЕМАТИКА ОНОВЛЕНО ✅");
       } catch(err) {
-        // Якщо ключі Gemini зайняті — на екрані вже залишається свіжий математичний розрахунок!
         renderDossierUI(instantData, "МАТЕМАТИЧНЕ ЯДРО АКТИВНЕ ✅");
       } finally {
         loader.style.display = "none";
