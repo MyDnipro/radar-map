@@ -76,29 +76,18 @@
       border-top: 1px solid #334155; padding-top: 6px; flex-wrap: wrap; gap: 6px;
     }
 
-    /* ІНТЕРАКТИВНИЙ ДІАЛОГ З ШІ-ШТУРМАНОМ */
+    /* ТАКТИЧНИЙ ТЕРМІНАЛ ДІАЛОГУ З ШІ */
     .chat-section {
       margin-top: 12px; padding-top: 12px; border-top: 1px dashed rgba(168, 85, 247, 0.4);
     }
-    .chat-quick-tags {
-      display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px;
-    }
-    .quick-tag {
-      background: rgba(59, 7, 100, 0.5); border: 1px solid #a855f7; color: #e9d5ff;
-      font-size: 10px; font-weight: 700; padding: 4px 9px; border-radius: 6px;
-      cursor: pointer; transition: all 0.2s;
-    }
-    .quick-tag:hover {
-      background: #7e22ce; color: #fff; box-shadow: 0 0 10px rgba(168, 85, 247, 0.5);
-    }
     .chat-history {
-      max-height: 240px; overflow-y: auto; display: flex; flex-direction: column;
-      gap: 8px; margin-bottom: 10px; padding-right: 4px;
+      max-height: 280px; overflow-y: auto; display: flex; flex-direction: column;
+      gap: 9px; margin-bottom: 11px; padding-right: 4px;
     }
     .chat-history::-webkit-scrollbar { width: 4px; }
     .chat-history::-webkit-scrollbar-thumb { background: #3b0764; border-radius: 4px; }
     .chat-bubble {
-      padding: 8px 11px; border-radius: 9px; font-size: 11.5px; line-height: 1.45; max-width: 92%;
+      padding: 9px 12px; border-radius: 9px; font-size: 12px; line-height: 1.5; max-width: 94%;
       word-break: break-word;
     }
     .chat-bubble.user {
@@ -115,15 +104,15 @@
     }
     .chat-input {
       flex: 1; background: #070d1d; border: 1px solid #334155; border-radius: 8px;
-      padding: 9px 12px; font-size: 12px; color: #fff; outline: none; transition: all 0.2s;
+      padding: 10px 13px; font-size: 12px; color: #fff; outline: none; transition: all 0.2s;
     }
     .chat-input:focus {
-      border-color: #a855f7; box-shadow: 0 0 10px rgba(168, 85, 247, 0.3);
+      border-color: #a855f7; box-shadow: 0 0 10px rgba(168, 85, 247, 0.35);
     }
     .btn-send-chat {
       background: linear-gradient(135deg, #7e22ce 0%, #0284c7 100%);
-      color: #fff; border: 1px solid #c084fc; padding: 9px 15px; border-radius: 8px;
-      font-size: 11.5px; font-weight: 900; cursor: pointer; transition: all 0.2s;
+      color: #fff; border: 1px solid #c084fc; padding: 10px 16px; border-radius: 8px;
+      font-size: 12px; font-weight: 900; cursor: pointer; transition: all 0.2s;
       white-space: nowrap;
     }
     .btn-send-chat:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -206,7 +195,7 @@
       </div>
     </div>
 
-    <!-- ГОЛОВНИЙ ВЕРДИКТ + ІНТЕРАКТИВНИЙ ДІАЛОГ -->
+    <!-- ГОЛОВНИЙ ВЕРДИКТ ТА ТАКТИЧНИЙ ТЕРМІНАЛ -->
     <div id="verdictBlock" class="verdict-card">
       <div class="verdict-header">
         <span>🚦 Загальний тактичний вердикт на сьогодні:</span>
@@ -219,24 +208,17 @@
         <span id="dossierScopeMeta">Режим: 7 ключових точок маршруту</span>
       </div>
 
-      <!-- ІНТЕРАКТИВНИЙ ШТУРМАН (ДІАЛОГ) -->
+      <!-- ТАКТИЧНИЙ ТЕРМІНАЛ ШІ-ШТУРМАНА -->
       <div class="chat-section">
-        <div class="chat-quick-tags">
-          <span class="quick-tag" onclick="askQuickPrompt('Як зараз краще об\'їхати Павлова і Краснозаводську?')">🚗 Як об'їхати Павлова?</span>
-          <span class="quick-tag" onclick="askQuickPrompt('Коли сьогодні найбезпечніші вікна для виїзду?')">⏰ Безпечні вікна</span>
-          <span class="quick-tag" onclick="askQuickPrompt('Яка ситуація по правому берегу і чи є активні облави?')">🏙️ Правий берег</span>
-          <span class="quick-tag" onclick="askQuickPrompt('Чи є ризик синхронних капканів на моєму маршруті?')">🕸️ Синхронні капкани</span>
-        </div>
-
         <div id="dossierChatHistory" class="chat-history">
           <div class="chat-bubble assistant">
-            👋 <b>ШІ-Штурман на зв'язку.</b> Математичне досьє та матриця розвідки підключені. Запитуйте про деталі зведення, об'їзди або оцінку часу!
+            🛰️ <b>Тактичний ШІ-аналітик готовий до розвідки.</b> Підключено повну базу архіву міста та всі сектори. Запитуйте детальний аналіз: піки по годинах, порівняння районів, оцінку затишшя чи прогноз на день.
           </div>
         </div>
 
         <div class="chat-input-bar">
-          <input type="text" id="dossierChatInput" class="chat-input" placeholder="Запитайте у ШІ деталі про зведення чи маршрут..." onkeydown="if(event.key==='Enter') sendDossierQuestion()">
-          <button id="btnSendDossierChat" class="btn-send-chat" onclick="sendDossierQuestion()">Запитати ➔</button>
+          <input type="text" id="dossierChatInput" class="chat-input" placeholder="Задайте питання щодо обстановки у місті..." onkeydown="if(event.key==='Enter') sendDossierQuestion()">
+          <button id="btnSendDossierChat" class="btn-send-chat" onclick="sendDossierQuestion()">Аналіз ➔</button>
         </div>
       </div>
     </div>
@@ -314,6 +296,13 @@
       return ["поддержите", "покупка бота", "репост", "t.me/", "http://", "https://", "пробный доступ"].some(w => t.includes(w));
     }
 
+    function checkIsReportClean(rep) {
+      if (rep.is_clean === true) return true;
+      const txt = (rep.text || rep.raw_text || "").toLowerCase();
+      if (/(?:не\s*норм|не\s*чисто|не\s*спок)/i.test(txt)) return false;
+      return /(?:чисто|спокійно|спокойно|зелено|вільно|свободно|пусто|\bнорм\b|\bнормально\b|\bнормик\b)/i.test(txt);
+    }
+
     function getActiveTargetsList() {
       return dossierScope === "city" ? [...TARGET_CHECKPOINTS, ...CITY_SECTORS] : TARGET_CHECKPOINTS;
     }
@@ -344,7 +333,8 @@
       const SESSION_TIMEOUT_MS = 50 * 60 * 1000;
 
       reports.forEach(rep => {
-        if (rep.is_clean) {
+        const isClean = checkIsReportClean(rep);
+        if (isClean) {
           if (sessions.length > 0) {
             const last = sessions[sessions.length - 1];
             if (rep.time - last.endTime <= SESSION_TIMEOUT_MS) {
@@ -584,76 +574,76 @@
       const apiKeys = getDecryptedGeminiPool();
       if (apiKeys.length === 0) throw new Error("Немає ключів Gemini.");
 
-      const shuffledKeys = [...apiKeys].sort(() => Math.random() - 0.5).slice(0, 3);
-      const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+      const shuffledKeys = [...apiKeys].sort(() => Math.random() - 0.5);
+      const models = ['gemini-2.0-flash', 'gemini-1.5-flash'];
 
-      for (let i = 0; i < shuffledKeys.length; i++) {
-        const k = shuffledKeys[i];
-        const m = models[i % models.length];
-        try {
-          const controller = new AbortController();
-          const tid = setTimeout(() => controller.abort(), 10000);
-          const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${k}`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              contents: [{ role: "user", parts: [{ text: promptText }] }],
-              generationConfig: {
-                temperature: 0.15,
-                responseMimeType: "application/json"
-              }
-            }),
-            signal: controller.signal
-          });
-          clearTimeout(tid);
-          if (res.ok) {
-            const data = await res.json();
-            const txt = data.candidates?.[0]?.content?.parts?.[0]?.text;
-            if (txt) return txt;
-          }
-        } catch(e) {}
+      for (const k of shuffledKeys) {
+        for (const m of models) {
+          try {
+            const controller = new AbortController();
+            const tid = setTimeout(() => controller.abort(), 10000);
+            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${k}`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                contents: [{ role: "user", parts: [{ text: promptText }] }],
+                generationConfig: {
+                  temperature: 0.15,
+                  responseMimeType: "application/json"
+                }
+              }),
+              signal: controller.signal
+            });
+            clearTimeout(tid);
+            if (res.ok) {
+              const data = await res.json();
+              const txt = data.candidates?.[0]?.content?.parts?.[0]?.text;
+              if (txt) return txt;
+            }
+          } catch(e) {}
+        }
       }
       throw new Error("Ліміт часу або квоти ключів");
     }
 
-    // Інтерактивний запит для спілкування в чаті (приймає вільний текст українською)
+    // Інтерактивний запит для спілкування в чаті
     async function executeDossierChatPrompt(promptText) {
       const apiKeys = getDecryptedGeminiPool();
-      if (apiKeys.length === 0) throw new Error("Будь ласка, авторизуйтесь у ШІ за допомогою кнопки Оновити ШІ-досьє.");
+      if (apiKeys.length === 0) throw new Error("Немає активних ключів ШІ. Будь ласка, натисніть «Оновити ШІ-досьє» для активації.");
 
-      const shuffledKeys = [...apiKeys].sort(() => Math.random() - 0.5).slice(0, 3);
-      const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+      const models = ['gemini-2.0-flash', 'gemini-1.5-flash'];
+      const shuffledKeys = [...apiKeys].sort(() => Math.random() - 0.5);
 
-      for (let i = 0; i < shuffledKeys.length; i++) {
-        const k = shuffledKeys[i];
-        const m = models[i % models.length];
-        try {
-          const controller = new AbortController();
-          const tid = setTimeout(() => controller.abort(), 12000);
-          const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${k}`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              contents: [{ role: "user", parts: [{ text: promptText }] }],
-              generationConfig: { temperature: 0.2 }
-            }),
-            signal: controller.signal
-          });
-          clearTimeout(tid);
-          if (res.ok) {
-            const data = await res.json();
-            const txt = data.candidates?.[0]?.content?.parts?.[0]?.text;
-            if (txt) return txt;
-          }
-        } catch(e) {}
+      for (const k of shuffledKeys) {
+        for (const m of models) {
+          try {
+            const controller = new AbortController();
+            const tid = setTimeout(() => controller.abort(), 14000);
+            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${k}`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                contents: [{ role: "user", parts: [{ text: promptText }] }],
+                generationConfig: { temperature: 0.2 }
+              }),
+              signal: controller.signal
+            });
+            clearTimeout(tid);
+            if (res.ok) {
+              const data = await res.json();
+              const txt = data.candidates?.[0]?.content?.parts?.[0]?.text;
+              if (txt) return txt;
+            }
+          } catch(e) {}
+        }
       }
-      throw new Error("Не вдалося отримати відповідь від ШІ. Спробуйте ще раз за мить.");
+      throw new Error("Сервери ШІ тимчасово перевантажені лімітами запитів. Зачекайте 20–30 секунд.");
     }
 
-    // ВІДПРАВКА ЗАПИТАННЯ ШТУРМАНУ
-    async function sendDossierQuestion(customText = null) {
+    // ВІДПРАВКА ЗАПИТАННЯ ШТУРМАНУ (З ПОВНИМ ОХОПЛЕННЯМ КАРТИ ТА МІСТА)
+    async function sendDossierQuestion() {
       const input = document.getElementById("dossierChatInput");
-      const question = (customText || input.value || "").trim();
+      const question = (input.value || "").trim();
       if (!question) return;
 
       if (!verifyGeminiAuthorization()) return;
@@ -672,27 +662,36 @@
       // Індикатор завантаження
       const aiBubble = document.createElement("div");
       aiBubble.className = "chat-bubble assistant";
-      aiBubble.innerHTML = "⏳ <i>Аналізую статистичну матрицю та формую тактичну відповідь...</i>";
+      aiBubble.innerHTML = "⏳ <i>Сканую повний 7-денний архів Дніпра та формую тактичний аналіз...</i>";
       historyBox.appendChild(aiBubble);
       historyBox.scrollTop = historyBox.scrollHeight;
 
       sendBtn.disabled = true;
 
       try {
-        const activeNodes = getActiveTargetsList();
-        const compactMatrix = {};
-        activeNodes.forEach(n => {
-          const m = currentMatrixCache[n.id];
+        // Збираємо погодинну картину за 7 днів по всьому місту (6:00 - 23:00)
+        const hourlyStats = {};
+        for (let h = 6; h <= 23; h++) hourlyStats[h] = 0;
+
+        const allReports = rawArchive.filter(r => !checkIsReportClean(r) && r.time > Date.now() - 7 * 86400000);
+        allReports.forEach(r => {
+          const h = new Date(r.time).getHours();
+          if (hourlyStats[h] !== undefined) hourlyStats[h]++;
+        });
+
+        // Повний огляд по всіх секторах та точках міста
+        const sectorsDigest = {};
+        const allTargets = [...TARGET_CHECKPOINTS, ...CITY_SECTORS];
+        allTargets.forEach(t => {
+          const m = currentMatrixCache[t.id];
           if (m) {
-            compactMatrix[m.name] = {
-              "Ризик": m.risk,
-              "Характер": m.character,
+            sectorsDigest[m.name] = {
+              "Рівень ризику": m.risk,
+              "Облав 5+ свідків": m.weekSolid5Plus || 0,
+              "Підтверджених (2+)": m.weekConfirmed2Plus || 0,
               "Пікові години": m.patterns,
-              "Динаміка": m.trend,
-              "Вікна": m.forecast,
-              "Облав 5+": m.solid_filter,
-              "Міграція": m.migration,
-              "Капкани": m.traps
+              "Вектори міграції": m.migration,
+              "Безпечні вікна": m.forecast
             };
           }
         });
@@ -700,23 +699,27 @@
         const generalVerdict = document.getElementById("verdictText").innerText || "";
 
         const fullPrompt = `
-Ти — військовий/дорожній ШІ-штурман та аналітик дорожньої розвідки у Дніпрі.
-Користувач задає питання щодо ситуації з блокпостами та безпеки пересування.
+Ти — провідний тактичний штурман та військовий аналітик дорожньої розвідки міста Дніпро.
+Твоє завдання — надати вичерпну, глибоку і структуровану аналітичну відповідь водієві на основі повного масиву фактів.
 
-КОНТЕКСТ РОЗВІДКИ ТА МАТЕМАТИЧНОГО ДОСЬЄ НА СЬОГОДНІ:
-- Поточний час: ${new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}, дата: ${new Date().toLocaleDateString('uk-UA')}
-- Загальний вердикт на сьогодні: "${generalVerdict}"
-- Повна аналітична матриця точок (за 7 днів):
-${JSON.stringify(compactMatrix, null, 2)}
+ОБ'ЄКТИВНІ ДАНІ РОЗВІДКИ ПО ДНІПРУ ЗА ОСТАННІ 7 ДНІВ:
+1. Загальний добовий розподіл активності зафіксованих постів/рейдів по годинах доби (формат "година: кількість фіксацій"):
+${JSON.stringify(hourlyStats)}
 
-ЗАПИТАННЯ КОРИСТУВАЧА:
+2. Повний стан усіх ключових артерій та секторів міста:
+${JSON.stringify(sectorsDigest, null, 2)}
+
+3. Загальний поточний вердикт системи: "${generalVerdict}"
+4. Поточний час запиту: ${new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}, дата: ${new Date().toLocaleDateString('uk-UA')}
+
+ЗАПИТАННЯ ВОДІЯ:
 "${question}"
 
-ІНСТРУКЦІЯ:
-1. Дай лаконічну, чітку, практичну тактичну відповідь українською мовою (до 3-5 речень).
-2. Спирайся виключно на наведені тверді факти (рівні ризику, вікна безпеки, пікові години, вектори міграції).
-3. Якщо запитують про об'їзд чи час — дай пряму практичну пораду.
-4. Використовуй жирний шрифт для ключових назв вулиць та годин.
+ВИМОГИ ДО ВІДПОВІДІ:
+1. Відповідай українською мовою. Стиль: стриманий, професійний, військово-тактичний аналіз.
+2. Не давай «води» та загальних фраз — спирайся на конкретні години, піки, затишшя та райони з наданих даних.
+3. Якщо користувач запитує погодинне розбиття — структуруй відповідь чіткими блоками: «Ранішній пік», «Денне вікно затишшя», «Вечірній сплеск», «Ніч/ранок».
+4. Виділяй ключові години, вулиці та висновки **жирним шрифтом**.
 `;
 
         const reply = await executeDossierChatPrompt(fullPrompt);
@@ -727,11 +730,6 @@ ${JSON.stringify(compactMatrix, null, 2)}
         sendBtn.disabled = false;
         historyBox.scrollTop = historyBox.scrollHeight;
       }
-    }
-
-    function askQuickPrompt(text) {
-      document.getElementById("dossierChatInput").value = text;
-      sendDossierQuestion(text);
     }
 
     async function generateDossier(forceRefresh = false) {
