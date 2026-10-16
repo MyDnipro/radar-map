@@ -1,8 +1,9 @@
 // =========================================================================
-// 🎯 МОДУЛЬ ПЕРЕМЕЩЕНИЯ И ОБУЧЕНИЯ МЕТОК (RELOCATE ENGINE v4.2 — SAFE KEYS)
+// 🎯 МОДУЛЬ ПЕРЕМЕЩЕНИЯ И ОБУЧЕНИЯ МЕТОК (RELOCATE ENGINE v5.0 — FAST SEARCH)
 // =========================================================================
 
 const FB_CUSTOM_STREETS_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/custom_streets.json";
+let trainSearchAbortController = null;
 
 function toSafeDbKey(str) {
   if (typeof window.toFirebaseKey === "function") {
@@ -320,27 +321,39 @@ function finalizeMoveManual() {
 
 const trainCustomInput = document.getElementById("trainCustomInput");
 const trainSearchResults = document.getElementById("trainSearchResults");
-let trainSearchDebounceTimer = null;
 
 if (trainCustomInput && trainSearchResults) {
-  trainCustomInput.addEventListener("input", () => {
-    clearTimeout(trainSearchDebounceTimer);
+  trainCustomInput.addEventListener("input", async () => {
     const query = trainCustomInput.value.trim();
+
+    if (trainSearchAbortController) {
+      trainSearchAbortController.abort();
+      trainSearchAbortController = null;
+    }
+
     if (query.length < 2) {
       trainSearchResults.style.display = "none";
       trainSearchResults.innerHTML = "";
       return;
     }
 
-    trainSearchDebounceTimer = setTimeout(async () => {
-      const lower = query.toLowerCase();
-      trainSearchResults.innerHTML = "";
-      const matches = [];
+    // ПОТОК 1: Мгновенный локальный поиск (0 мс)
+    trainSearchResults.innerHTML = "";
+    const matches = [];
 
-      const sortedKeys = Object.keys(DNIPRO_STREETS_MAP).sort((a, b) => b.length - a.length);
+    if (window.DNIPRO_STREETS_MAP) {
+      const sortedKeys = Object.keys(window.DNIPRO_STREETS_MAP).sort((a, b) => b.length - a.length);
       for (const key of sortedKeys) {
-        const item = DNIPRO_STREETS_MAP[key];
-        if (key.includes(lower) || (item.old && item.old.toLowerCase().includes(lower)) || item.name.toLowerCase().includes(lower)) {
+        const item = window.DNIPRO_STREETS_MAP[key];
+        if (!item || !item.name) continue;
+        const fullTarget = `${key} ${item.name}${item.old || ""}`;
+        
+        // Используем глобальный «слепой» поиск, если он задан в памяти, иначе локальный smartMatch
+        const isMatch = typeof window.isRadarSmartMatch === "function" 
+          ? window.isRadarSmartMatch(query, fullTarget)
+          : fullTarget.toLowerCase().includes(query.toLowerCase());
+
+        if (isMatch) {
           if (!matches.some(m => m.name === item.name)) {
             matches.push({
               name: item.name,
@@ -351,48 +364,73 @@ if (trainCustomInput && trainSearchResults) {
             });
           }
         }
+        if (matches.length >= 10) break;
       }
+    }
 
-      matches.forEach(item => {
-        const div = document.createElement("div");
-        div.className = "search-item";
-        div.innerHTML = item.subtext 
-          ? `${item.badge} <b>${item.name}</b><br><span style="color:#f59e0b; font-size:10px;">${item.subtext}</span>` 
-          : `${item.badge} <b>${item.name}</b>`;
-        div.onclick = () => {
-          trainCustomInput.value = item.name;
-          trainSearchResults.style.display = "none";
-          applyPointRelocation(item.name, item.lat, item.lng);
-        };
-        trainSearchResults.appendChild(div);
-      });
+    matches.forEach(item => {
+      const div = document.createElement("div");
+      div.className = "search-item";
+      div.innerHTML = item.subtext 
+        ? `${item.badge} <b>${item.name}</b><br><span style="color:#f59e0b; font-size:10px;">${item.subtext}</span>` 
+        : `${item.badge} <b>${item.name}</b>`;
+      div.onclick = () => {
+        trainCustomInput.value = item.name;
+        trainSearchResults.style.display = "none";
+        applyPointRelocation(item.name, item.lat, item.lng);
+      };
+      trainSearchResults.appendChild(div);
+    });
 
-      if (matches.length < 4 && query.length >= 3) {
-        try {
-          const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ", Дніпро")}&countrycodes=ua&limit=4`;
-          const res = await fetch(url);
-          const data = await res.json();
-          if (data && data.length > 0) {
-            data.forEach(osmItem => {
-              const name = osmItem.display_name.split(",")[0];
-              if (!matches.some(m => m.name.toLowerCase().includes(name.toLowerCase()))) {
-                const div = document.createElement("div");
-                div.className = "search-item";
-                div.innerHTML = `🌐 ${name}`;
-                div.onclick = () => {
-                  trainCustomInput.value = name;
-                  trainSearchResults.style.display = "none";
-                  applyPointRelocation(name, parseFloat(osmItem.lat), parseFloat(osmItem.lon));
-                };
-                trainSearchResults.appendChild(div);
-              }
-            });
+    trainSearchResults.style.display = matches.length > 0 ? "block" : "none";
+
+    // ПОТОК 2: Фоновая подгрузка из сети (Photon + Nominatim fallback)
+    if (query.length >= 2) {
+      trainSearchAbortController = new AbortController();
+      const signal = trainSearchAbortController.signal;
+      try {
+        let onlineItems = [];
+        if (typeof window.fetchRadarOnlineLocations === "function") {
+          onlineItems = await window.fetchRadarOnlineLocations(query, signal);
+        } else {
+          // Запасной прямой запрос к Photon, если хелпер еще не подгружен
+          const photonUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&lat=48.4647&lon=35.0462&bbox=34.75,48.30,35.35,48.65&limit=4`;
+          const res = await fetch(photonUrl, { signal });
+          if (res.ok) {
+            const data = await res.json();
+            if (data && Array.isArray(data.features)) {
+              data.features.forEach(f => {
+                const p = f.properties || {};
+                const coords = f.geometry && f.geometry.coordinates;
+                const rawName = p.name || p.street || "";
+                if (rawName && coords && coords.length === 2) {
+                  onlineItems.push({ name: rawName, lat: parseFloat(coords[1]), lng: parseFloat(coords[0]) });
+                }
+              });
+            }
           }
-        } catch(e) {}
-      }
+        }
 
-      trainSearchResults.style.display = trainSearchResults.children.length > 0 ? "block" : "none";
-    }, 250);
+        if (signal.aborted) return;
+
+        onlineItems.forEach(netItem => {
+          if (!matches.some(m => m.name.toLowerCase() === netItem.name.toLowerCase())) {
+            matches.push(netItem);
+            const div = document.createElement("div");
+            div.className = "search-item";
+            div.innerHTML = `🌐 <b>${netItem.name}</b><br><span style="color:#94a3b8; font-size:10px;">Карта Днепра (онлайн)</span>`;
+            div.onclick = () => {
+              trainCustomInput.value = netItem.name;
+              trainSearchResults.style.display = "none";
+              applyPointRelocation(netItem.name, netItem.lat, netItem.lng);
+            };
+            trainSearchResults.appendChild(div);
+          }
+        });
+
+        trainSearchResults.style.display = trainSearchResults.children.length > 0 ? "block" : "none";
+      } catch (e) {}
+    }
   });
 
   document.addEventListener("click", (e) => {
@@ -406,25 +444,26 @@ async function executeCustomTrain() {
   const q = document.getElementById("trainCustomInput").value.trim();
   if (!q) return;
 
-  const lower = q.toLowerCase();
-
-  const sortedKeys = Object.keys(DNIPRO_STREETS_MAP).sort((a, b) => b.length - a.length);
-  for (const key of sortedKeys) {
-    if (lower.includes(key)) {
-      const val = DNIPRO_STREETS_MAP[key];
-      applyPointRelocation(val.name, val.lat, val.lng);
-      return;
+  // Проверяем по точным ключам или памяти
+  if (window.DNIPRO_STREETS_MAP) {
+    const sortedKeys = Object.keys(window.DNIPRO_STREETS_MAP).sort((a, b) => b.length - a.length);
+    for (const key of sortedKeys) {
+      if (q.toLowerCase().includes(key)) {
+        const val = window.DNIPRO_STREETS_MAP[key];
+        applyPointRelocation(val.name, val.lat, val.lng);
+        return;
+      }
     }
   }
 
   showToast("🔍 Поиск улицы в Днепре...");
   try {
-    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q + ", Дніпро")}&countrycodes=ua&limit=1`;
-    const res = await fetch(url);
-    const data = await res.json();
-    if (data && data.length > 0) {
-      const item = data[0];
-      applyPointRelocation(item.display_name.split(",")[0], parseFloat(item.lat), parseFloat(item.lon));
+    const netRes = typeof window.fetchRadarOnlineLocations === "function" 
+      ? await window.fetchRadarOnlineLocations(q)
+      : null;
+
+    if (netRes && netRes.length > 0) {
+      applyPointRelocation(netRes[0].name, netRes[0].lat, netRes[0].lng);
       return;
     }
   } catch(e) {}
