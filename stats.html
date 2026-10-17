@@ -282,7 +282,7 @@
     .day-bar-fill { height: 100%; border-radius: 4px; transition: width 0.3s ease; }
 
     /* =========================================================================
-       📅 ОНОВЛЕНА ВКЛАДКА 5: ПО МІСЯЦЯХ ТА РОКАХ (РІЧНА МАТРИЦЯ + КАЛЕНДАР)
+       📅 ВКЛАДКА 5: ПО МІСЯЦЯХ ТА РОКАХ
        ========================================================================= */
     .year-nav-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
     .btn-year-tab {
@@ -293,7 +293,6 @@
       background: #0284c7; border-color: #00f3ff; color: #fff; box-shadow: 0 0 12px rgba(0, 243, 255, 0.45);
     }
 
-    /* Річне резюме у 3 компактні плашки */
     .year-summary-strip {
       display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px;
     }
@@ -304,7 +303,6 @@
     .year-sum-lbl { font-size: 9.5px; font-weight: 800; color: #94a3b8; text-transform: uppercase; }
     .year-sum-val { font-size: 14px; font-weight: 900; color: #f8fafc; }
 
-    /* Сітка 12 місяців року (4×3) */
     .months-year-grid {
       display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 16px;
     }
@@ -334,7 +332,6 @@
     }
     .month-tile-sub { font-size: 9.5px; color: #64748b; font-weight: 700; }
 
-    /* Інтерактивний календар вибраного місяця (числа 1..31) */
     .month-calendar-box {
       background: #070d1d; border: 1px solid #1e293b; border-radius: 12px;
       padding: 12px; margin-bottom: 16px;
@@ -530,7 +527,7 @@
       <div class="days-bars-list" id="weeklyDaysBarsList"></div>
     </div>
 
-    <!-- ТАБ 5: ПО МІСЯЦЯХ ТА РОКАХ (ПОВНІСТЮ ОНОВЛЕНИЙ РІЧНИЙ КОМАНДНИЙ ЦЕНТР) -->
+    <!-- ТАБ 5: ПО МІСЯЦЯХ ТА РОКАХ -->
     <div id="tabContent5" class="hud-card" style="display:none;">
       <div class="hud-card-title">
         <span>📅 Річний огляд та календар засад по місяцях:</span>
@@ -542,7 +539,6 @@
         </div>
       </div>
 
-      <!-- Фільтр вулиць для річної вкладки -->
       <div class="street-control-toolbar">
         <div class="ctrl-modes-row">
           <button id="btnMultiTab5" class="btn-multi-toggle" onclick="toggleMultiSelectMode('tab5')">
@@ -555,16 +551,13 @@
         <div class="ctrl-streets-row" id="pillsContainerTab5"></div>
       </div>
 
-      <!-- Річні підсумки (3 плашки) -->
       <div class="year-summary-strip" id="yearSummaryStrip"></div>
 
-      <!-- 1. Матриця 12 місяців року (Січень – Грудень) -->
       <div class="hud-card-title" style="font-size:12.5px; margin-bottom:8px;">
         <span id="yearMatrixHeading">🗓️ Всі 12 місяців року (натисніть на місяць для детального календаря):</span>
       </div>
       <div class="months-year-grid" id="monthsYearGrid"></div>
 
-      <!-- 2. Графік динаміки за всі 12 місяців вибраного року -->
       <div class="hud-card-title" style="font-size:12.5px; margin-bottom:8px;">
         <span id="yearlyChartTitle">📈 Графік річної динаміки по місяцях:</span>
       </div>
@@ -572,14 +565,12 @@
         <canvas id="canvasYearlyMonths"></canvas>
       </div>
 
-      <!-- 3. Інтерактивний тепловий календар вибраного місяця (числа 1..31) -->
       <div class="hud-card-title" style="font-size:12.5px; margin-bottom:8px;">
         <span id="selectedMonthCalTitle">🔥 Календар вибраного місяця по числах:</span>
         <span style="font-size:10px; color:#94a3b8; font-weight:700;">Клік по числу відкриває звіти за день</span>
       </div>
       <div class="month-calendar-box" id="selectedMonthCalendarBox"></div>
 
-      <!-- 4. Рейтинг 7 вулиць за вибраний місяць та за рік -->
       <div class="hud-card-title" style="font-size:12.5px; margin-bottom:8px;">
         <span id="monthlyStreetRankTitle">🏆 Рейтинг точок маршруту за місяць та рік:</span>
       </div>
@@ -714,6 +705,15 @@
       return spamWords.some(w => t.includes(w));
     }
 
+    // НАДІЙНА ПЕРЕВІРКА СТАТУСУ З РОЗПІЗНАВАННЯМ «НОРМ / НОРМАЛЬНО» ТА ЗАПЕРЕЧЕНЬ
+    function checkIsReportClean(rep) {
+      if (!rep) return false;
+      if (rep.is_clean === true) return true;
+      const txt = (rep.text || rep.raw_text || "").toLowerCase();
+      if (/(?:не\s*норм|не\s*чисто|не\s*спок)/i.test(txt)) return false;
+      return /(?:чисто|спокійно|спокойно|зелено|вільно|свободно|пусто|\bнорм\b|\bнормально\b|\bнормик\b)/i.test(txt);
+    }
+
     function sendCustomAiStatsQuestion() {
       const input = document.getElementById("aiStatsCustomInput");
       const val = input.value.trim();
@@ -731,7 +731,7 @@
       const apiKeys = getDecryptedGeminiPool();
       if (apiKeys.length === 0) throw new Error("Немає доступних ключів Gemini.");
 
-      const candidateModels = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+      const candidateModels = ['gemini-3.8-flash', 'gemini-3.5-flash-lite', 'gemini-3.5-flash'];
       let lastErr = null;
 
       for (const k of apiKeys) {
@@ -790,7 +790,7 @@
 
       const recentReports = rawArchive.slice(-30).reverse().map(r => {
         const d = new Date(r.time).toLocaleString([], { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
-        return `[${d}] ${r.is_clean ? 'ЧИСТО' : 'БП/УВАГА'}: "${r.text || ''}"`;
+        return `[${d}] ${checkIsReportClean(r) ? 'ЧИСТО' : 'БП/УВАГА'}: "${r.text || ''}"`;
       }).join('\n');
 
       const fullPrompt = `
@@ -1053,7 +1053,8 @@ ${recentReports}
       const SESSION_TIMEOUT_MS = 50 * 60 * 1000;
 
       reports.forEach(rep => {
-        if (rep.is_clean) {
+        const isClean = checkIsReportClean(rep);
+        if (isClean) {
           if (sessions.length > 0) {
             const last = sessions[sessions.length - 1];
             if (rep.time - last.endTime <= SESSION_TIMEOUT_MS) {
@@ -1445,7 +1446,7 @@ ${recentReports}
             const d = new Date(m.time);
             const timeStr = String(d.getHours()).padStart(2, '0') + ":" + String(d.getMinutes()).padStart(2, '0');
             const dateStr = d.toLocaleDateString([], { day:'2-digit', month:'2-digit' });
-            const isClean = m.is_clean;
+            const isClean = checkIsReportClean(m);
             const badgeClass = isClean ? "feed-badge-green" : "feed-badge-red";
             const badgeText = isClean ? "🟢 ЧИСТО" : "🔴 УВАГА";
             const msgText = m.text || m.raw_text || "";
@@ -1782,7 +1783,7 @@ ${recentReports}
     };
 
     // =========================================================================
-    // 📅 ОНОВЛЕНА ВКЛАДКА 5: ПО МІСЯЦЯХ ТА РОКАХ (12 МІСЯЦІВ + КАЛЕНДАР + РЕЙТИНГ)
+    // 📅 ВКЛАДКА 5: ПО МІСЯЦЯХ ТА РОКАХ
     // =========================================================================
     function renderYearlyTab() {
       const f = streetFilters.tab5;
@@ -1812,14 +1813,12 @@ ${recentReports}
         });
       });
 
-      // Якщо обраний місяць у поточному році порожній, але є інший активний місяць — м'яко підсвічуємо активний при першому відкритті
       const totalInYear = totalByMonth.reduce((a, b) => a + b, 0);
       if (totalByMonth[selectedStatsMonth] === 0 && totalInYear > 0) {
         const firstActiveMonth = totalByMonth.findIndex(c => c > 0);
         if (firstActiveMonth !== -1) selectedStatsMonth = firstActiveMonth;
       }
 
-      // 1. РІЧНЕ РЕЗЮМЕ (3 ПЛАШКИ)
       let peakMonthIdx = -1, peakMonthVal = 0;
       totalByMonth.forEach((v, idx) => { if (v > peakMonthVal) { peakMonthVal = v; peakMonthIdx = idx; } });
 
@@ -1849,7 +1848,6 @@ ${recentReports}
         `;
       }
 
-      // 2. МАТРИЦЯ 12 МІСЯЦІВ РОКУ (КАРТКИ СІЧЕНЬ – ГРУДЕНЬ)
       const gridEl = document.getElementById("monthsYearGrid");
       if (gridEl) {
         gridEl.innerHTML = "";
@@ -1891,7 +1889,6 @@ ${recentReports}
         }
       }
 
-      // 3. ЧИСТИЙ РІЧНИЙ ГРАФІК ПО 12 МІСЯЦЯХ
       document.getElementById("yearlyChartTitle").innerText = `📈 Річна динаміка по місяцях (${selectedStatsYear} рік):`;
       const maxMVal = Math.max(1, ...totalByMonth);
       const mColors = totalByMonth.map((v, idx) => {
@@ -1929,12 +1926,11 @@ ${recentReports}
         }
       });
 
-      // 4. ТЕПЛОВИЙ КАЛЕНДАР ВИБРАНОГО МІСЯЦЯ ПО ЧИСЛАХ (1..31)
       document.getElementById("selectedMonthCalTitle").innerText = `🔥 Календар місяця: ${monthFull[selectedStatsMonth]} ${selectedStatsYear} р.`;
       const calBox = document.getElementById("selectedMonthCalendarBox");
       if (calBox) {
         const daysInMonth = new Date(selectedStatsYear, selectedStatsMonth + 1, 0).getDate();
-        let firstDayDow = new Date(selectedStatsYear, selectedStatsMonth, 1).getDay(); // 0=Нд, 1=Пн...
+        let firstDayDow = new Date(selectedStatsYear, selectedStatsMonth, 1).getDay();
         const mondayOffset = (firstDayDow === 0) ? 6 : (firstDayDow - 1);
 
         const dayCounts = new Array(daysInMonth + 1).fill(0);
@@ -1982,7 +1978,6 @@ ${recentReports}
         calBox.innerHTML = calHtml;
       }
 
-      // 5. РЕЙТИНГ 7 ТОЧОК МАРШРУТУ ЗА ВИБРАНИЙ МІСЯЦЬ ТА РІК
       document.getElementById("monthlyStreetRankTitle").innerText = `🏆 Розподіл по вулицях за ${monthFull[selectedStatsMonth]} (та всього за ${selectedStatsYear} рік):`;
       const breakdownBox = document.getElementById("monthlyBreakdownCards");
       if (breakdownBox) {
@@ -2095,7 +2090,7 @@ ${recentReports}
     function renderOtherSectors() {
       const otherListEl = document.getElementById("otherSectorsList");
       otherListEl.innerHTML = "";
-      const validReports = rawArchive.filter(r => !r.is_clean);
+      const validReports = rawArchive.filter(r => !checkIsReportClean(r));
 
       OTHER_SECTORS.forEach(sec => {
         const matches = validReports.filter(p => sec.regex.test(((p.text || "") + " " + (p.address || "")).toLowerCase()));
