@@ -14,34 +14,33 @@
   <link rel="stylesheet" href="style.css" />
   <style>
     /* =========================================================================
-       1. КОНТРАСТНА НІЧНА ТЕМА КАРТИ (БЕЗ КИСЛОТНОЇ ЗЕЛЕНІ ТА МУТІ)
+       1. КОНТРАСТНА ЧИТАБЕЛЬНА НІЧНА ТЕМА КАРТИ (БЕЗ ГЛУХОЇ ТЕМРЯВИ)
        ========================================================================= */
     #map.night-mode .leaflet-tile-pane {
-      filter: invert(100%) hue-rotate(180deg) contrast(130%) brightness(74%) saturate(75%) !important;
+      filter: invert(90%) hue-rotate(180deg) contrast(108%) brightness(96%) saturate(85%) !important;
     }
 
     /* =========================================================================
-       2. БІЛИЙ КОНТРАСТНИЙ ТЕКСТ РАДІО ТА ПОВІДОМЛЕНЬ У ТЕМНОМУ РЕЖИМІ
+       2. ПРИМУСОВИЙ БІЛИЙ ТЕКСТ РАДІО ТА ЕФІРУ В НІЧНОМУ РЕЖИМІ
        ========================================================================= */
-    .night-mode [class*="ticker"],
-    .night-mode [class*="ticker"] *,
-    .night-mode [id*="ticker"],
-    .night-mode [id*="ticker"] *,
-    .night-mode [class*="radio"],
-    .night-mode [class*="radio"] *,
-    .night-mode [id*="radio"],
-    .night-mode [id*="radio"] *,
-    .night-mode .report-row-item,
-    .night-mode .report-status-title,
-    .night-mode .live-report-row,
-    .night-mode .live-feed-item,
-    .night-mode .live-feed-text,
-    .night-mode .feed-msg-item,
-    .night-mode .feed-msg-top,
-    .night-mode .points-count span,
-    .night-mode #dashHeader span {
+    body.night-mode [class*="ticker"],
+    body.night-mode [class*="ticker"] *,
+    body.night-mode [id*="ticker"],
+    body.night-mode [id*="ticker"] *,
+    body.night-mode [class*="radio"],
+    body.night-mode [class*="radio"] *,
+    body.night-mode [id*="radio"],
+    body.night-mode [id*="radio"] *,
+    body.night-mode [class*="feed"],
+    body.night-mode [class*="feed"] *,
+    body.night-mode [class*="stream"],
+    body.night-mode [id*="stream"],
+    body.night-mode .report-row-item,
+    body.night-mode .report-status-title,
+    body.night-mode .points-count span,
+    body.night-mode #dashHeader span {
       color: #ffffff !important;
-      text-shadow: 0 1px 4px rgba(0, 0, 0, 0.95), 0 0 8px rgba(0, 0, 0, 0.8) !important;
+      text-shadow: 0 1px 4px rgba(0, 0, 0, 0.95), 0 0 8px rgba(0, 0, 0, 0.9) !important;
     }
 
     /* =========================================================================
@@ -80,6 +79,7 @@
       display: none !important;
     }
 
+    /* Вікно за замовчуванням згорнуте у режимі розробника */
     #dashPanel.collapsed {
       width: auto !important;
       height: 38px !important;
@@ -193,40 +193,6 @@
       z-index: 3500;
     }
 
-    .tl-quick-bubble {
-      padding: 4px 6px;
-      display: flex;
-      flex-direction: column;
-      gap: 5px;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      min-width: 140px;
-    }
-    .tl-quick-title {
-      font-size: 11px;
-      font-weight: 800;
-      color: #0284c7;
-      border-bottom: 1px solid #cbd5e1;
-      padding-bottom: 3px;
-      text-align: center;
-    }
-    .tl-quick-btns {
-      display: flex;
-      gap: 5px;
-    }
-    .btn-tl-quick {
-      flex: 1;
-      border: none;
-      color: #fff;
-      padding: 6px 4px;
-      border-radius: 6px;
-      font-size: 11px;
-      font-weight: 800;
-      cursor: pointer;
-    }
-    .btn-tl-quick.green { background: #059669; }
-    .btn-tl-quick.red { background: #dc2626; }
-
-    /* Плаваючий банер активного об'їзду від ШІ */
     .nav-route-banner {
       position: absolute;
       top: 65px;
@@ -281,15 +247,15 @@
 
   <div id="transferBanner" class="transfer-banner">⏳ Виконується перенесення мітки...</div>
 
-  <!-- 1. ДАШБОРД (ВІКНО ТОЧОК) — ЗА ЗАМОВЧУВАННЯМ ЗАВЖДИ ЗГОРНУТИЙ -->
+  <!-- 1. ДАШБОРД (ВІКНО ТОЧОК) — ЗА ЗАМОВЧУВАННЯМ ЗГОРНУТИЙ -->
   <div id="dashPanel" class="dashboard collapsed">
     <div id="dashHeader" class="dash-header">
       <div class="points-count" id="countText" title="Точки на карті">
         <span>Точок: 0</span>
       </div>
       
-      <!-- Кнопка 3 режимів теми: ☀️ День -> 🌙 Ніч -> 🏙️ 2.5D -->
-      <button id="btnThemeHeader" class="btn-theme-inline" onclick="toggleMapTheme()" title="Зміна теми (День / Ніч / 2.5D)">
+      <!-- Кнопка День / Ніч -->
+      <button id="btnThemeHeader" class="btn-theme-inline" onclick="toggleMapTheme()" title="Зміна теми (День / Ніч)">
         <span id="themeHeaderIcon">☀️</span>
       </button>
 
@@ -297,7 +263,6 @@
         ⚙️
       </button>
 
-      <!-- Стрілка спочатку показує ▼, оскільки вікно згорнуте -->
       <button class="btn-toggle" id="btnToggle" onclick="togglePanelCollapse(event)" title="Згорнути / Розгорнути вікно">▼</button>
     </div>
 
@@ -690,20 +655,12 @@
       zoomSnap: 0.1
     }).setView(INITIAL_CENTER, INITIAL_ZOOM);
 
-    // =========================================================================
-    // 🗺️ ШАРИ КАРТИ: GOOGLE MAPS ТА 2.5D АРХІТЕКТУРНИЙ (КАРТА З БУДИНКАМИ)
-    // =========================================================================
+    // Єдина надійна підложка Google Maps
     const googleMapLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
       subdomains: ['0', '1', '2', '3'],
       maxZoom: 20,
       attribution: 'Google Maps'
-    });
-
-    const arch25DLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-      subdomains: ['a', 'b', 'c', 'd'],
-      maxZoom: 20,
-      attribution: 'CartoDB 2.5D / OpenStreetMap'
-    });
+    }).addTo(map);
 
     let mapTheme = localStorage.getItem("radar_map_theme") || "day";
 
@@ -716,42 +673,20 @@
       document.documentElement.classList.remove("night-mode");
 
       if (theme === "night") {
-        if (map.hasLayer(arch25DLayer)) map.removeLayer(arch25DLayer);
-        if (!map.hasLayer(googleMapLayer)) map.addLayer(googleMapLayer);
         mapEl.classList.add("night-mode");
         document.body.classList.add("night-mode");
         document.documentElement.classList.add("night-mode");
         if (icon) icon.innerText = "🌙";
-      } else if (theme === "2.5d") {
-        if (map.hasLayer(googleMapLayer)) map.removeLayer(googleMapLayer);
-        if (!map.hasLayer(arch25DLayer)) map.addLayer(arch25DLayer);
-        if (icon) icon.innerText = "🏙️";
       } else {
-        // "day"
-        if (map.hasLayer(arch25DLayer)) map.removeLayer(arch25DLayer);
-        if (!map.hasLayer(googleMapLayer)) map.addLayer(googleMapLayer);
         if (icon) icon.innerText = "☀️";
       }
     }
 
     function toggleMapTheme() {
-      if (mapTheme === "day") {
-        mapTheme = "night";
-      } else if (mapTheme === "night") {
-        mapTheme = "2.5d";
-      } else {
-        mapTheme = "day";
-      }
-
+      mapTheme = (mapTheme === "day") ? "night" : "day";
       localStorage.setItem("radar_map_theme", mapTheme);
       applyMapTheme(mapTheme);
-
-      const labels = {
-        "day": "☀️ Денна карта (Google)",
-        "night": "🌙 Нічна контрастна карта",
-        "2.5d": "🏙️ 2.5D Архітектурна карта (Будинки)"
-      };
-      showToast(labels[mapTheme]);
+      showToast(mapTheme === "night" ? "🌙 Увімкнено нічну тему" : "☀️ Увімкнено денну тему");
     }
 
     applyMapTheme(mapTheme);
@@ -1387,6 +1322,9 @@ ${allLiveReportsText || "Повідомлень немає"}
       requestAdminLogin();
     }
 
+    // =========================================================================
+    // 🚦 НАДІЙНЕ КЕРУВАННЯ СВІТЛОФОРАМИ (ПРИХОВУВАННЯ / ПОКАЗ БЕЗ ЗБОЇВ)
+    // =========================================================================
     function toggleTrafficLights() {
       showTrafficLights = !showTrafficLights;
       localStorage.setItem("radar_tl_visible", showTrafficLights);
@@ -1396,7 +1334,6 @@ ${allLiveReportsText || "Повідомлень немає"}
         renderTrafficLights();
         showToast("🚦 Світлофори увімкнено!");
       } else {
-        trafficLightLayer.clearLayers();
         if (map.hasLayer(trafficLightLayer)) map.removeLayer(trafficLightLayer);
         showToast("🙈 Світлофори приховано!");
       }
@@ -1452,10 +1389,16 @@ ${allLiveReportsText || "Повідомлень немає"}
       } catch (e) {}
     }
 
+    // =========================================================================
+    // 🚦 ВІДОБРАЖЕННЯ ТА ІНТЕРАКТИВНИЙ ПОПАП СВІТЛОФОРІВ
+    // =========================================================================
     function renderTrafficLights() {
       if (!showTrafficLights || currentUiMode === "simple") {
-        trafficLightLayer.clearLayers();
+        if (map.hasLayer(trafficLightLayer)) map.removeLayer(trafficLightLayer);
         return;
+      }
+      if (!map.hasLayer(trafficLightLayer)) {
+        map.addLayer(trafficLightLayer);
       }
 
       checkpoints.forEach(cp => {
@@ -1475,8 +1418,10 @@ ${allLiveReportsText || "Повідомлень немає"}
         }
 
         let redClass = "tl-lamp off", greenClass = "tl-lamp off", statusTitle = "⚪ Очікування";
+        let isClean = false;
         if (latest) {
-          if (isCleanPoint(latest)) {
+          isClean = isCleanPoint(latest);
+          if (isClean) {
             redClass = "tl-lamp red-dim"; greenClass = "tl-lamp green-active"; statusTitle = "🟢 ЧИСТО";
           } else {
             redClass = "tl-lamp red-active"; greenClass = "tl-lamp green-dim"; statusTitle = "🔴 УВАГА";
@@ -1486,14 +1431,52 @@ ${allLiveReportsText || "Повідомлень немає"}
         const iconHtml = `<div class="traffic-pill ${isEditMode ? 'draggable-mode' : ''}"><div class="${redClass}"></div><div class="${greenClass}"></div></div>`;
         const tlIcon = L.divIcon({ className: 'traffic-marker-icon', html: iconHtml, iconSize: [20, 36], iconAnchor: [10, 18] });
 
+        // Інтерактивний попап з кнопками зміни стану
+        let popupHtml = `
+          <div style="padding:6px 8px; font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif; min-width:190px;">
+            <div style="font-weight:900; font-size:12.5px; color:#0284c7; margin-bottom:4px; border-bottom:1px solid #cbd5e1; padding-bottom:3px;">
+              🚦 ${cp.name}
+            </div>
+            <div style="font-size:11px; font-weight:800; margin-bottom:6px; color:${latest ? (isClean ? '#16a34a' : '#dc2626') : '#64748b'};">
+              Поточний стан: ${statusTitle}
+            </div>
+        `;
+
+        if (latest) {
+          const timeStr = latest.time ? new Date(latest.time).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' }) : '';
+          const msgQuote = (latest.text || latest.raw_text || '').replace(/[\r\n]+/g, ' ').slice(0, 90);
+          const fbKeySafe = latest._fbKey || '';
+
+          popupHtml += `
+            <div style="font-size:10.5px; color:#475569; margin-bottom:6px; line-height:1.35; background:#f8fafc; padding:4px 6px; border-radius:5px; border:1px solid #e2e8f0;">
+              🕒 <b>${timeStr}</b>: «${msgQuote}»
+            </div>
+            <div style="display:flex; gap:5px; margin-top:6px;">
+              <button onclick="event.stopPropagation(); setPointVerdictDirect('${fbKeySafe}', true); map.closePopup();" style="flex:1; background:#059669; border:none; color:#fff; padding:6px 4px; border-radius:5px; font-size:10.5px; font-weight:900; cursor:pointer;">🟢 Чисто</button>
+              <button onclick="event.stopPropagation(); setPointVerdictDirect('${fbKeySafe}', false); map.closePopup();" style="flex:1; background:#dc2626; border:none; color:#fff; padding:6px 4px; border-radius:5px; font-size:10.5px; font-weight:900; cursor:pointer;">🔴 Блокпост</button>
+            </div>
+          `;
+        } else {
+          popupHtml += `
+            <div style="font-size:10.5px; color:#64748b; margin-bottom:6px;">
+              Немає свіжих звітів за останні 40 хв.
+            </div>
+          `;
+        }
+        popupHtml += `</div>`;
+
         let marker = trafficMarkersMap[cp.id];
         if (marker) {
           marker.setIcon(tlIcon);
+          marker.setPopupContent(popupHtml);
+          if (!trafficLightLayer.hasLayer(marker)) {
+            trafficLightLayer.addLayer(marker);
+          }
           if (isEditMode) marker.dragging.enable();
           else marker.dragging.disable();
         } else {
           marker = L.marker([cp.lat, cp.lng], { icon: tlIcon, zIndexOffset: 1000, draggable: isEditMode });
-          marker.bindPopup(`<div style="font-weight:800; font-size:12px; color:#0284c7;">🚦 ${cp.name}</div><div style="font-size:11px; font-weight:800;">${statusTitle}</div>`);
+          marker.bindPopup(popupHtml);
           marker.on('dragend', async (e) => {
             const pos = e.target.getLatLng();
             cp.lat = Number(pos.lat.toFixed(5)); cp.lng = Number(pos.lng.toFixed(5));
