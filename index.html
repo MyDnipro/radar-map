@@ -14,14 +14,38 @@
   <link rel="stylesheet" href="style.css" />
   <style>
     /* =========================================================================
-       1. КОНТРАСТНА НІЧНА ТЕМА КАРТИ
+       1. КОНТРАСТНА НІЧНА ТЕМА КАРТИ (БЕЗ КИСЛОТНОЇ ЗЕЛЕНІ ТА МУТІ)
        ========================================================================= */
     #map.night-mode .leaflet-tile-pane {
-      filter: invert(100%) hue-rotate(180deg) contrast(115%) brightness(82%) saturate(130%) !important;
+      filter: invert(100%) hue-rotate(180deg) contrast(130%) brightness(74%) saturate(75%) !important;
     }
 
     /* =========================================================================
-       2. ПЕРЕМИКАННЯ РЕЖИМІВ (ПРОСТИЙ ВОДІЙСЬКИЙ / ПОВНИЙ РОЗРОБНИК)
+       2. БІЛИЙ КОНТРАСТНИЙ ТЕКСТ РАДІО ТА ПОВІДОМЛЕНЬ У ТЕМНОМУ РЕЖИМІ
+       ========================================================================= */
+    .night-mode [class*="ticker"],
+    .night-mode [class*="ticker"] *,
+    .night-mode [id*="ticker"],
+    .night-mode [id*="ticker"] *,
+    .night-mode [class*="radio"],
+    .night-mode [class*="radio"] *,
+    .night-mode [id*="radio"],
+    .night-mode [id*="radio"] *,
+    .night-mode .report-row-item,
+    .night-mode .report-status-title,
+    .night-mode .live-report-row,
+    .night-mode .live-feed-item,
+    .night-mode .live-feed-text,
+    .night-mode .feed-msg-item,
+    .night-mode .feed-msg-top,
+    .night-mode .points-count span,
+    .night-mode #dashHeader span {
+      color: #ffffff !important;
+      text-shadow: 0 1px 4px rgba(0, 0, 0, 0.95), 0 0 8px rgba(0, 0, 0, 0.8) !important;
+    }
+
+    /* =========================================================================
+       3. ПЕРЕМИКАННЯ РЕЖИМІВ (ПРОСТИЙ ВОДІЙСЬКИЙ / ПОВНИЙ РОЗРОБНИК)
        ========================================================================= */
     html.mode-simple #aiPillPanel,
     html.mode-simple #routeStatusBar,
@@ -257,14 +281,15 @@
 
   <div id="transferBanner" class="transfer-banner">⏳ Виконується перенесення мітки...</div>
 
-  <!-- 1. ДАШБОРД (ВІКНО ТОЧОК) -->
-  <div id="dashPanel" class="dashboard">
+  <!-- 1. ДАШБОРД (ВІКНО ТОЧОК) — ЗА ЗАМОВЧУВАННЯМ ЗАВЖДИ ЗГОРНУТИЙ -->
+  <div id="dashPanel" class="dashboard collapsed">
     <div id="dashHeader" class="dash-header">
       <div class="points-count" id="countText" title="Точки на карті">
         <span>Точок: 0</span>
       </div>
       
-      <button id="btnThemeHeader" class="btn-theme-inline" onclick="toggleMapTheme()" title="Зміна теми (День / Ніч)">
+      <!-- Кнопка 3 режимів теми: ☀️ День -> 🌙 Ніч -> 🏙️ 2.5D -->
+      <button id="btnThemeHeader" class="btn-theme-inline" onclick="toggleMapTheme()" title="Зміна теми (День / Ніч / 2.5D)">
         <span id="themeHeaderIcon">☀️</span>
       </button>
 
@@ -272,7 +297,8 @@
         ⚙️
       </button>
 
-      <button class="btn-toggle" id="btnToggle" onclick="togglePanelCollapse(event)" title="Згорнути / Розгорнути вікно">▲</button>
+      <!-- Стрілка спочатку показує ▼, оскільки вікно згорнуте -->
+      <button class="btn-toggle" id="btnToggle" onclick="togglePanelCollapse(event)" title="Згорнути / Розгорнути вікно">▼</button>
     </div>
 
     <div id="collapsibleBody" class="collapsible-body">
@@ -508,9 +534,11 @@
           window.map.removeLayer(trafficLightLayer);
         }
       } else {
+        // У повному режимі ЗАВЖДИ згортаємо панель на старті
+        dashPanel.classList.add("collapsed");
         if (btnToggle) {
           btnToggle.style.display = "inline-flex";
-          btnToggle.innerText = dashPanel.classList.contains("collapsed") ? "▼" : "▲";
+          btnToggle.innerText = "▼";
         }
         if (btnDevIcon) btnDevIcon.style.display = "none";
       }
@@ -579,7 +607,6 @@
       const isNowCollapsed = panel.classList.toggle("collapsed");
       const btn = document.getElementById("btnToggle");
       if (btn) btn.innerText = isNowCollapsed ? "▼" : "▲";
-      localStorage.setItem("radar_dash_collapsed", isNowCollapsed ? "true" : "false");
       setTimeout(() => { if (map) map.invalidateSize(); }, 120);
     }
 
@@ -663,31 +690,68 @@
       zoomSnap: 0.1
     }).setView(INITIAL_CENTER, INITIAL_ZOOM);
 
+    // =========================================================================
+    // 🗺️ ШАРИ КАРТИ: GOOGLE MAPS ТА 2.5D АРХІТЕКТУРНИЙ (КАРТА З БУДИНКАМИ)
+    // =========================================================================
     const googleMapLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
       subdomains: ['0', '1', '2', '3'],
       maxZoom: 20,
       attribution: 'Google Maps'
-    }).addTo(map);
+    });
+
+    const arch25DLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+      subdomains: ['a', 'b', 'c', 'd'],
+      maxZoom: 20,
+      attribution: 'CartoDB 2.5D / OpenStreetMap'
+    });
 
     let mapTheme = localStorage.getItem("radar_map_theme") || "day";
 
     function applyMapTheme(theme) {
       const mapEl = document.getElementById("map");
       const icon = document.getElementById("themeHeaderIcon");
+      
+      mapEl.classList.remove("night-mode");
+      document.body.classList.remove("night-mode");
+      document.documentElement.classList.remove("night-mode");
+
       if (theme === "night") {
+        if (map.hasLayer(arch25DLayer)) map.removeLayer(arch25DLayer);
+        if (!map.hasLayer(googleMapLayer)) map.addLayer(googleMapLayer);
         mapEl.classList.add("night-mode");
+        document.body.classList.add("night-mode");
+        document.documentElement.classList.add("night-mode");
         if (icon) icon.innerText = "🌙";
+      } else if (theme === "2.5d") {
+        if (map.hasLayer(googleMapLayer)) map.removeLayer(googleMapLayer);
+        if (!map.hasLayer(arch25DLayer)) map.addLayer(arch25DLayer);
+        if (icon) icon.innerText = "🏙️";
       } else {
-        mapEl.classList.remove("night-mode");
+        // "day"
+        if (map.hasLayer(arch25DLayer)) map.removeLayer(arch25DLayer);
+        if (!map.hasLayer(googleMapLayer)) map.addLayer(googleMapLayer);
         if (icon) icon.innerText = "☀️";
       }
     }
 
     function toggleMapTheme() {
-      mapTheme = (mapTheme === "day") ? "night" : "day";
+      if (mapTheme === "day") {
+        mapTheme = "night";
+      } else if (mapTheme === "night") {
+        mapTheme = "2.5d";
+      } else {
+        mapTheme = "day";
+      }
+
       localStorage.setItem("radar_map_theme", mapTheme);
       applyMapTheme(mapTheme);
-      showToast(mapTheme === "night" ? "🌙 Увімкнено нічну тему" : "☀️ Увімкнено денну тему");
+
+      const labels = {
+        "day": "☀️ Денна карта (Google)",
+        "night": "🌙 Нічна контрастна карта",
+        "2.5d": "🏙️ 2.5D Архітектурна карта (Будинки)"
+      };
+      showToast(labels[mapTheme]);
     }
 
     applyMapTheme(mapTheme);
@@ -1448,331 +1512,4 @@ ${allLiveReportsText || "Повідомлень немає"}
     streetSearchInput.addEventListener("input", () => {
       const query = streetSearchInput.value.trim();
       searchClearBtn.style.display = query.length > 0 ? "block" : "none";
-      if (query.length < 2) { searchResults.style.display = "none"; return; }
-      executeSmartSearch(query);
-    });
-
-    function clearStreetSearch() {
-      streetSearchInput.value = "";
-      searchClearBtn.style.display = "none";
-      searchResults.style.display = "none";
-    }
-
-    function executeSmartSearch(query) {
-      if (!query) return;
-      const lower = query.toLowerCase();
-      searchResults.innerHTML = "";
-      const localMatches = [];
-      for (const [key, item] of Object.entries(DNIPRO_STREETS_MAP)) {
-        if (key.includes(lower) || (item.old && item.old.toLowerCase().includes(lower)) || item.name.toLowerCase().includes(lower)) {
-          if (!localMatches.some(m => m.name === item.name)) localMatches.push(item);
-        }
-      }
-      localMatches.slice(0, 6).forEach(item => {
-        const div = document.createElement("div");
-        div.className = "search-item";
-        div.innerHTML = `📍 <b>${item.name}</b>`;
-        div.onclick = () => {
-          map.flyTo([item.lat, item.lng], 16, { animate: true, duration: 1 });
-          searchResults.style.display = "none";
-        };
-        searchResults.appendChild(div);
-      });
-      searchResults.style.display = localMatches.length > 0 ? "block" : "none";
-    }
-
-    async function loadPoints() {
-      if (pendingRelocation) return;
-      try {
-        const res = await fetch(`${FIREBASE_POINTS_URL}?t=${Date.now()}`);
-        if (!res.ok) return;
-        const data = await res.json();
-        if (!data) { allPoints = []; renderMarkers(); renderTrafficLights(); updateRouteStatus(); return; }
-        const now = Date.now();
-
-        allPoints = Object.entries(data).map(([key, p]) => {
-          if (!p || typeof p !== 'object' || !p.lat || !p.lng) return null;
-          p._fbKey = key;
-          if (p.raw_text) p.raw_text = p.raw_text.replace(/[\r\n]+/g, " ").trim();
-          if (p.text) p.text = p.text.replace(/[\r\n]+/g, " ").trim();
-
-          if (manualPointOverrides[key]) {
-            p.is_clean = manualPointOverrides[key].is_clean;
-            p.color = manualPointOverrides[key].color;
-            p.status = manualPointOverrides[key].status;
-          }
-
-          const fullText = (p.text || "") + " " + (p.raw_text || "");
-          if (isSpamMessage(fullText)) return null;
-
-          const isWater = (p.lat >= 48.498 && p.lat <= 48.506 && p.lng >= 34.922 && p.lng <= 34.934);
-          if ((p.needs_training || isWater) && !p.geo_refined && !manualPointOverrides[key]) {
-            const resolved = resolveLocationFromText(fullText);
-            if (resolved) {
-              p.lat = resolved.lat; p.lng = resolved.lng; p.address = resolved.name;
-              p.needs_training = false;
-            }
-          }
-          return p;
-        }).filter(p => p && (now - (p.time || p.timestamp || 0)) <= LIFETIME_MS);
-
-        renderMarkers();
-        renderTrafficLights();
-        updateRouteStatus();
-        window.allPoints = allPoints;
-        window.dispatchEvent(new CustomEvent('radar:pointsUpdated', { detail: allPoints }));
-      } catch (err) {}
-    }
-
-    function renderMarkers() {
-      try {
-        markersLayer.clearLayers();
-        const now = Date.now();
-        let visibleCount = 0;
-        const isSimple = (currentUiMode === "simple");
-
-        const clusters = {};
-        const coordCounts = {};
-
-        allPoints.forEach(p => {
-          const time = p.time || p.timestamp || 0;
-          if (now - time > LIFETIME_MS) return;
-          if (!isPointInActiveSectors(p)) return;
-
-          const isClean = isCleanPoint(p);
-          const baseCoordKey = `${p.lat.toFixed(4)}_${p.lng.toFixed(4)}`;
-          const groupKey = `${baseCoordKey}_${isClean ? 'green' : 'red'}`;
-
-          if (!clusters[groupKey]) {
-            clusters[groupKey] = {
-              baseCoordKey: baseCoordKey,
-              lat: p.lat,
-              lng: p.lng,
-              isClean: isClean,
-              points: [],
-              isFresh: (now - time <= FRESH_THRESHOLD_MS),
-              needsTraining: !!p.needs_training
-            };
-          }
-          clusters[groupKey].points.push(p);
-        });
-
-        Object.values(clusters).forEach(c => {
-          coordCounts[c.baseCoordKey] = (coordCounts[c.baseCoordKey] || 0) + 1;
-        });
-
-        Object.values(clusters).forEach(cluster => {
-          const clean = cluster.isClean;
-          if (clean && !filterShowGreen) return;
-          if (!clean && !filterShowRed) return;
-
-          const trainingClass = cluster.needsTraining ? "needs-training" : "";
-          const colorClass = clean ? "color-green" : "color-red";
-          const freshClass = cluster.isFresh ? "fresh" : "";
-          const sizeClass = cluster.points.length > 1 ? "clustered" : "";
-
-          const markerHtml = `<div class="radar-circle ${colorClass} ${freshClass} ${trainingClass} ${sizeClass}"></div>`;
-          const dotIcon = L.divIcon({ className: 'custom-dot-marker', html: markerHtml, iconSize: [18, 18], iconAnchor: [9, 9] });
-
-          let renderLat = cluster.lat;
-          let renderLng = cluster.lng;
-          if (coordCounts[cluster.baseCoordKey] > 1) {
-            const offset = 0.00028;
-            if (clean) { renderLat -= offset * 0.7; renderLng += offset; }
-            else { renderLat += offset * 0.7; renderLng -= offset; }
-          }
-
-          let listHtml = "";
-          cluster.points.sort((a,b) => (b.time||0) - (a.time||0)).forEach(pt => {
-            const ptTime = pt.time || pt.timestamp || 0;
-            const timeStr = ptTime ? new Date(ptTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "";
-            const remMin = Math.floor(Math.max(0, LIFETIME_MS - (now - ptTime)) / 60000);
-            const fbKeySafe = pt._fbKey || "";
-            let renameNote = "";
-            try {
-              if (typeof getStreetRenameNote === "function") {
-                renameNote = getStreetRenameNote(pt.text || pt.raw_text || pt.address || "");
-              }
-            } catch(e) {}
-
-            if (isSimple) {
-              listHtml += `
-                <div class="report-row-item" style="border-bottom: 1px solid #334155; padding-bottom: 5px; margin-bottom: 5px;">
-                  <div class="report-status-title" style="font-weight:800; font-size:12px; color:#0f172a; line-height:1.35;">${clean ? "🟢" : "🔴"} ${pt.text || pt.raw_text || ""}</div>
-                  <div style="font-size:10px; color:#64748b; margin-top:2px;">🕒 ${timeStr} | Зникне через: ${remMin} хв</div>
-                  ${renameNote ? ('<div style="font-size:10px; color:#0284c7; margin-top:4px; background:#f0f9ff; padding:3px 6px; border-radius:4px; border:1px solid #bae6fd;">' + renameNote + '</div>') : ''}
-                </div>
-              `;
-            } else {
-              listHtml += `
-                <div class="report-row-item" style="border-bottom: 1px solid #334155; padding-bottom: 7px; margin-bottom: 7px;">
-                  <div class="report-status-title" style="font-weight:700; font-size:12px; color:#0f172a; line-height:1.35;">${clean ? "🟢" : "🔴"} ${pt.text || pt.raw_text || ""}</div>
-                  <div style="font-size:10px; color:#64748b; margin-top:2px;">🕒 ${timeStr} | Зникне через: ${remMin} хв</div>
-                  ${renameNote ? ('<div style="font-size:10px; color:#0284c7; margin-top:4px; background:#f0f9ff; padding:3px 6px; border-radius:4px; border:1px solid #bae6fd;">' + renameNote + '</div>') : ''}
-                  <div style="display:flex; gap:4px; margin-top:6px;">
-                    <button onclick="event.stopPropagation(); setPointVerdictDirect('${fbKeySafe}', true, this)" style="flex:1; background:#059669; border:none; color:#fff; padding:5px 3px; border-radius:5px; font-size:10px; font-weight:800; cursor:pointer;">🟢 Чисто</button>
-                    <button onclick="event.stopPropagation(); setPointVerdictDirect('${fbKeySafe}', false, this)" style="flex:1; background:#dc2626; border:none; color:#fff; padding:5px 3px; border-radius:5px; font-size:10px; font-weight:800; cursor:pointer;">🔴 Блокпост</button>
-                  </div>
-                  <div style="display:flex; justify-content:space-between; align-items:center; margin-top:5px;">
-                    <span onclick="event.stopPropagation(); notifyAiAboutPoint('${fbKeySafe}')" style="color:#0284c7; font-weight:800; font-size:9.5px; cursor:pointer;" title="Передати мітку ШІ">🤖 Повідомити ШІ</span>
-                    <span onclick="event.stopPropagation(); deleteSinglePoint('${fbKeySafe}')" style="color:#ef4444; font-weight:800; font-size:9.5px; cursor:pointer;" title="Видалити повідомлення">🗑️ Видалити</span>
-                  </div>
-                </div>
-              `;
-            }
-          });
-
-          const popupContent = `
-            <div style="padding:4px; font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif; min-width:200px; max-height:220px; overflow-y:auto;">
-              <div style="font-weight:800; font-size:11px; color:${clean ? '#16a34a' : '#dc2626'}; margin-bottom:6px; border-bottom:1px solid #cbd5e1; padding-bottom:3px;">
-                ${clean ? '🟢 ЧИСТО' : '🔴 БЛОКПОСТ'} (повідомлень: ${cluster.points.length})
-              </div>
-              ${listHtml}
-            </div>
-          `;
-
-          const marker = L.marker([renderLat, renderLng], { icon: dotIcon, draggable: false });
-          marker.bindPopup(popupContent, { autoClose: true, closeOnClick: true });
-
-          if (!isSimple) {
-            let pressTimer = null;
-            let startX = 0, startY = 0;
-            marker.on('add', () => {
-              const el = marker.getElement();
-              if (!el) return;
-              el.addEventListener('touchstart', (e) => {
-                startX = e.touches[0].clientX; startY = e.touches[0].clientY;
-                pressTimer = setTimeout(() => {
-                  if (navigator.vibrate) navigator.vibrate(50);
-                  openMarkerActionSheet(cluster.points[0], marker);
-                }, 450);
-              }, { passive: true });
-              el.addEventListener('touchmove', (e) => {
-                if (pressTimer && Math.hypot(e.touches[0].clientX - startX, e.touches[0].clientY - startY) > 8) {
-                  clearTimeout(pressTimer); pressTimer = null;
-                }
-              }, { passive: true });
-              el.addEventListener('touchend', () => { if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } });
-            });
-          }
-
-          markersLayer.addLayer(marker);
-          visibleCount += cluster.points.length;
-        });
-
-        document.getElementById('countText').innerHTML = `<span>Точок: ${visibleCount}</span>`;
-      } catch(err) {
-        console.error("Помилка renderMarkers:", err);
-      }
-    }
-
-    applyUiMode(currentUiMode);
-
-    if (localStorage.getItem("radar_dash_collapsed") === "true" && currentUiMode === "full") {
-      const panel = document.getElementById("dashPanel");
-      if (panel) {
-        panel.classList.add("collapsed");
-        const btn = document.getElementById("btnToggle");
-        if (btn) btn.innerText = "▼";
-      }
-    }
-
-    loadCheckpointsFromCloud().then(() => {
-      loadPoints();
-    });
-    setInterval(loadPoints, 15000);
-
-    // =========================================================================
-    // 🛣️ ВІДОБРАЖЕННЯ ОБ'ЇЗДУ ВІД ШІ-ШТУРМАНА (З ДОСЬЄ)
-    // =========================================================================
-    const navRouteLayer = L.layerGroup().addTo(map);
-
-    async function checkAndDrawNavRoute() {
-      const rawRoute = localStorage.getItem("radar_active_nav_route");
-      if (!rawRoute) return;
-
-      try {
-        const routeData = JSON.parse(rawRoute);
-        if (!routeData || !Array.isArray(routeData.points) || routeData.points.length < 2) return;
-
-        navRouteLayer.clearLayers();
-
-        let latLngs = routeData.points;
-        try {
-          const coordStr = routeData.points.map(p => `${p[1]},${p[0]}`).join(';');
-          const controller = new AbortController();
-          const tId = setTimeout(() => controller.abort(), 2500);
-          const osrmRes = await fetch(`https://router.project-osrm.org/route/v1/driving/${coordStr}?overview=full&geometries=geojson`, { signal: controller.signal });
-          clearTimeout(tId);
-          if (osrmRes.ok) {
-            const osrmData = await osrmRes.json();
-            if (osrmData.routes && osrmData.routes[0] && osrmData.routes[0].geometry) {
-              latLngs = osrmData.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
-            }
-          }
-        } catch(e) {
-          latLngs = routeData.points;
-        }
-
-        const polyGlow = L.polyline(latLngs, {
-          color: '#00f3ff',
-          weight: 5.5,
-          opacity: 0.28,
-          lineCap: 'round',
-          lineJoin: 'round'
-        }).addTo(navRouteLayer);
-
-        const polyMain = L.polyline(latLngs, {
-          color: '#38bdf8',
-          weight: 2.8,
-          opacity: 0.95,
-          lineCap: 'round',
-          lineJoin: 'round'
-        }).addTo(navRouteLayer);
-
-        const startHtml = '<div style="width:12px; height:12px; border-radius:50%; background:#10b981; border:2px solid #fff; box-shadow:0 0 8px #10b981;"></div>';
-        const endHtml = '<div style="width:12px; height:12px; border-radius:50%; background:#00f3ff; border:2px solid #fff; box-shadow:0 0 8px #00f3ff;"></div>';
-
-        const startIcon = L.divIcon({ className: 'custom-dot-marker', html: startHtml, iconSize: [12, 12], iconAnchor: [6, 6] });
-        const endIcon = L.divIcon({ className: 'custom-dot-marker', html: endHtml, iconSize: [12, 12], iconAnchor: [6, 6] });
-
-        L.marker(latLngs[0], { icon: startIcon }).addTo(navRouteLayer);
-        L.marker(latLngs[latLngs.length - 1], { icon: endIcon }).addTo(navRouteLayer);
-
-        map.fitBounds(polyMain.getBounds(), { padding: [60, 60], maxZoom: 16 });
-
-        let banner = document.getElementById("navRouteFloatingBanner");
-        if (!banner) {
-          banner = document.createElement("div");
-          banner.id = "navRouteFloatingBanner";
-          banner.className = "nav-route-banner";
-          document.body.appendChild(banner);
-        }
-        banner.innerHTML = `
-          <span>🛣️ <b>Об'їзд:</b> ${routeData.title || 'Маршрут'}</span>
-          <button onclick="clearNavRoute()">✕ Скинути</button>
-        `;
-        banner.style.display = "flex";
-      } catch(e) {}
-    }
-
-    window.clearNavRoute = function() {
-      localStorage.removeItem("radar_active_nav_route");
-      navRouteLayer.clearLayers();
-      const banner = document.getElementById("navRouteFloatingBanner");
-      if (banner) banner.style.display = "none";
-      if (typeof showToast === "function") showToast("🛣️ Маршрут об'їзду прибрано");
-    };
-
-    setTimeout(checkAndDrawNavRoute, 400);
-  </script>
-
-  <!-- МОДУЛІ ДОДАТКА -->
-  <script src="relocate.js"></script>
-  <script src="memory.js"></script>
-  <script src="timeline.js"></script>
-  <script src="ticker.js"></script>
-  <script src="keepawake.js"></script>
-  <script src="gps.js"></script>
-</body>
-</html>
+      if (query.length < 2) { searchResults.
