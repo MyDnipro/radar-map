@@ -15,7 +15,7 @@
     }
     .container { max-width: 980px; margin: 0 auto; }
 
-    /* ШАПКА */
+    /* 1. ШАПКА */
     .hud-header {
       display: flex;
       justify-content: space-between;
@@ -69,7 +69,7 @@
     }
     .btn-head-nav:hover { background: #0284c7; color: #fff; }
 
-    /* МАСШТАБ РОЗВІДКИ В ОДИН РЯДОК */
+    /* 2. МАСШТАБ РОЗВІДКИ В ОДИН РЯДОК */
     .scale-bar {
       display: flex;
       align-items: center;
@@ -114,7 +114,7 @@
       box-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
     }
 
-    /* ВЕРХНЄ ВІКНО ВИСНОВКУ ШІ */
+    /* 3. ВЕРХНЄ ВІКНО ВИСНОВКУ ШІ */
     .verdict-banner {
       background: rgba(15, 23, 42, 0.96);
       border: 1.5px solid #00f3ff;
@@ -211,7 +211,7 @@
       gap: 4px;
     }
 
-    /* ДІАЛОГ */
+    /* 4. ОПЕРАТИВНИЙ ДІАЛОГ */
     .dossier-chat-card {
       background: #0b1120;
       border: 1.5px solid #1e293b;
@@ -230,8 +230,8 @@
       padding: 0 2px;
     }
     .chat-head-title {
-      font-size: 11px;
-      font-weight: 800;
+      font-size: 11.5px;
+      font-weight: 900;
       color: #38bdf8;
       display: flex;
       align-items: center;
@@ -342,16 +342,66 @@
     }
     .btn-chat-send:active { transform: scale(0.95); }
 
-    /* КАРТКИ 8 ТОЧОК */
+    /* 5. ФІЛЬТР-СЕЛЕКТОР ТА КАРТКИ 8 ТОЧОК */
     .section-head-title {
       font-size: 12.5px;
       font-weight: 900;
       color: #38bdf8;
-      margin: 12px 0 8px;
+      margin: 12px 0 6px;
       display: flex;
       justify-content: space-between;
       align-items: center;
+      flex-wrap: wrap;
+      gap: 4px;
     }
+    .sort-indicator-badge {
+      font-size: 9.5px;
+      color: #f59e0b;
+      font-weight: 800;
+      background: rgba(245, 158, 11, 0.15);
+      border: 1px solid rgba(245, 158, 11, 0.35);
+      padding: 2px 7px;
+      border-radius: 5px;
+    }
+
+    /* Рядок вибору точок (фільтр-селектор) */
+    .cp-filter-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-bottom: 10px;
+      background: #0b1120;
+      border: 1px solid #1e293b;
+      padding: 6px 8px;
+      border-radius: 10px;
+    }
+    .cp-chip-btn {
+      background: #0f172a;
+      border: 1px solid #334155;
+      color: #94a3b8;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 10px;
+      font-weight: 800;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+      user-select: none;
+    }
+    .cp-chip-btn:hover { color: #f8fafc; border-color: #64748b; }
+    .cp-chip-btn.active {
+      background: #0284c7;
+      border-color: #38bdf8;
+      color: #ffffff;
+      box-shadow: 0 0 8px rgba(56, 189, 248, 0.5);
+    }
+    .cp-chip-btn.chip-all.active {
+      background: #0284c7;
+      border-color: #00f3ff;
+      color: #ffffff;
+      box-shadow: 0 0 10px rgba(0, 243, 255, 0.5);
+    }
+
     .checkpoint-cards-list {
       display: flex;
       flex-direction: column;
@@ -367,6 +417,7 @@
       flex-direction: column;
       gap: 8px;
       box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+      transition: transform 0.15s ease;
     }
     .cp-card-top {
       display: flex;
@@ -377,8 +428,23 @@
       border-bottom: 1px solid #1e293b;
       padding-bottom: 6px;
     }
+    .cp-card-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .cp-rank-badge {
+      font-size: 9.5px;
+      font-weight: 900;
+      background: #1e293b;
+      color: #94a3b8;
+      border: 1px solid #334155;
+      padding: 1px 5px;
+      border-radius: 4px;
+    }
     .cp-card-title {
-      font-size: 13.5px;
+      font-size: 13px;
       font-weight: 900;
       color: #f8fafc;
     }
@@ -421,6 +487,7 @@
 </head>
 <body>
   <div class="container">
+    <!-- 1. ШАПКА -->
     <div class="hud-header">
       <div class="hud-title">🧠 ШІ-ШТУРМАН: ТАКТИЧНЕ ДОСЬЄ</div>
       <div class="head-actions">
@@ -430,6 +497,7 @@
       </div>
     </div>
 
+    <!-- 2. МАСШТАБ РОЗВІДКИ В ОДИН РЯДОК -->
     <div class="scale-bar">
       <span class="scale-lbl">МАСШТАБ РОЗВІДКИ:</span>
       <div class="scale-btns-wrap">
@@ -438,7 +506,7 @@
       </div>
     </div>
 
-    <!-- ВЕРХНЄ ВІКНО ВИСНОВКУ ШІ ЗІ СКРОЛІНГОМ -->
+    <!-- 3. ВЕРХНЄ ВІКНО ВИСНОВКУ ШІ ЗІ СКРОЛІНГОМ -->
     <div class="verdict-banner">
       <div class="verdict-top">
         <span class="verdict-tag">⚡ Заключення ШІ-штурмана та оперативний прогноз:</span>
@@ -456,12 +524,11 @@
       </div>
     </div>
 
-    <!-- ОПЕРАТИВНИЙ ДІАЛОГ ІЗ НЕСТИРАЄМОЮ ПАМ'ЯТТЮ -->
+    <!-- 4. ОПЕРАТИВНИЙ ДІАЛОГ ІЗ НЕСТИРАЄМОЮ ПАМ'ЯТТЮ -->
     <div class="dossier-chat-card">
       <div class="chat-head-row">
         <div class="chat-head-title">
-          <span>💬 Діалог зі штурманом:</span>
-          <span style="font-size:9.5px; color:#64748b; font-weight:700;">(Дім ↔ Робота)</span>
+          <span>💬 Діалог зі штурманом</span>
         </div>
         <button class="btn-clear-chat" onclick="clearDossierChat()" title="Очистити історію листування">
           <span>🗑️</span><span>Очистити діалог</span>
@@ -471,21 +538,25 @@
       <div class="chat-history-box" id="chatHistoryBox"></div>
 
       <div class="chat-input-row">
-        <input type="text" id="chatInput" class="chat-input" placeholder="Запитайте (напр.: їду додому / як проїхати на роботу)..." onkeydown="if(event.key==='Enter') submitDossierChat()">
+        <input type="text" id="chatInput" class="chat-input" placeholder="Запитайте обстановку або прокладіть об'їзд приватним сектором (Enter)..." onkeydown="if(event.key==='Enter') submitDossierChat()">
         <button class="btn-chat-send" onclick="submitDossierChat()">Запитати ➔</button>
       </div>
     </div>
 
-    <!-- КАРТКИ 8 ТОЧОК ПО 4 ПУНКТИ -->
+    <!-- 5. СЕЛЕКТОР ТА КАРТКИ 8 ТОЧОК ПО КРИТИЧНОСТІ -->
     <div class="section-head-title">
-      <span>📍 Оперативні картки 8 ключових точок маршруту:</span>
-      <span style="font-size:10.5px; color:#64748b; font-weight:700;">Факти • Прогноз годин • Коридор • Маневр</span>
+      <span>📍 Оперативні картки ключових точок маршруту:</span>
+      <span class="sort-indicator-badge">⬇️ Вгорі найбільш критичні (засади 4–5+)</span>
     </div>
+
+    <!-- Фільтр-селектор: Всі / окремі точки -->
+    <div class="cp-filter-bar" id="cpFilterBar"></div>
+
+    <!-- Список карток (сортований по критичності) -->
     <div class="checkpoint-cards-list" id="checkpointCardsList"></div>
   </div>
 
   <script>
-    // Фіксація останньої відкритої вкладки аналітики (для пам'яті входу)
     localStorage.setItem("radar_last_analytics_page", "dossier.html");
 
     const SECRET_KEY_HASH = "570984";
@@ -530,16 +601,17 @@
 
     let rawArchive = [];
     let scaleMode = localStorage.getItem("dossier_scale_mode") || "route";
+    let selectedCheckpointIds = []; // Порожньо = показувати ВСІ
     const DAYS_UA = ["Неділя", "Понеділок", "Вівторок", "Середа", "Четвер", "П'ятниця", "Субота"];
 
     const TARGET_CHECKPOINTS = [
       { 
         id: "kaidak_rovd", 
-        name: "РОВД / Кайдацький з'їзд", 
+        name: "РОВД / Кайдацький", 
         fullName: "РОВД / Кайдацький з'їзд (Набережна Заводська)", 
         regex: /(?:кайдак|кайдацька|з'їзд.*кайдак|съезд.*кайдак|ровд.*заводськ)/i, 
         color: "#a855f7",
-        detour: "Перед з'їздом піти вправо в приватний сектор Нових Кайдак (вул. Моторна / вул. Сибірська / пров. Вільний) з виїздом на пр. Свободи біля зупинки 'Кайдаки'.",
+        detour: "Перед з'їздом піти вправо в приватний сектор Нових Кайдак (вул. Моторна / Сибірська / пров. Вільний) з виїздом на пр. Свободи біля зупинки 'Кайдаки'.",
         partnerId: "stan_550"
       },
       { 
@@ -835,7 +907,7 @@ ${recentSample || "Даних мало"}
 2. РОЗКЛАД ХВИЛЬ ТА ЧАСОВІ ВІКНА (Ранішня хвиля, денне вікно, вечірній пік).
 3. ПАРНА МІГРАЦІЯ ЕКІПАЖІВ (Кайдаки—Стан 550, Павлова—Краснозаводська—Річпорт).
 4. ПРОГНОЗ «ЗЕЛЕНОГО КОРИДОРУ» (Точні години найбезпечнішого руху).
-5. ТАКТИЧНИЙ ВЕРДИКТ ДЛЯ ПОЇЗДКИ (Дім ↔ Робота: де їхати відкрито, а де застосувати приватний сектор).
+5. ТАКТИЧНИЙ ВЕРДИКТ ДЛЯ ПОЇЗДКИ (Дім ↔ Робота та будь-які об'їзди приватним сектором: де їхати відкрито, а де застосувати приховані проїзди).
 `;
 
       try {
@@ -867,6 +939,48 @@ ${recentSample || "Даних мало"}
       }
     }
 
+    // =========================================================================
+    // 📍 СОРТУВАННЯ ПО КРИТИЧНОСТІ ТА ФІЛЬТР-СЕЛЕКТОР (ОДНА / КІЛЬКА / ВСІ)
+    // =========================================================================
+    function toggleCheckpointFilter(cpId) {
+      if (cpId === "all") {
+        selectedCheckpointIds = [];
+      } else {
+        const idx = selectedCheckpointIds.indexOf(cpId);
+        if (idx === -1) {
+          selectedCheckpointIds.push(cpId);
+        } else {
+          selectedCheckpointIds.splice(idx, 1);
+        }
+      }
+      renderFilterBarUI();
+      renderCheckpointCards();
+    }
+
+    function renderFilterBarUI() {
+      const bar = document.getElementById("cpFilterBar");
+      if (!bar) return;
+
+      const isAllActive = (selectedCheckpointIds.length === 0 || selectedCheckpointIds.length === TARGET_CHECKPOINTS.length);
+
+      let html = `
+        <button class="cp-chip-btn chip-all ${isAllActive ? 'active' : ''}" onclick="toggleCheckpointFilter('all')">
+          🌐 Всі (8)
+        </button>
+      `;
+
+      TARGET_CHECKPOINTS.forEach(t => {
+        const isSel = (!isAllActive && selectedCheckpointIds.includes(t.id));
+        html += `
+          <button class="cp-chip-btn ${isSel ? 'active' : ''}" onclick="toggleCheckpointFilter('${t.id}')" style="${isSel ? `background:${t.color}; border-color:${t.color};` : ''}">
+            📍 ${t.name}
+          </button>
+        `;
+      });
+
+      bar.innerHTML = html;
+    }
+
     function renderCheckpointCards() {
       const listEl = document.getElementById("checkpointCardsList");
       if (!listEl) return;
@@ -875,9 +989,11 @@ ${recentSample || "Даних мало"}
       const now = Date.now();
       const nowDate = new Date();
       const currentDayIdx = nowDate.getDay();
+      const todayStart = new Date(nowDate.getFullYear(), nowDate.getMonth(), nowDate.getDate()).getTime();
       const weekStart = now - (7 * 86400000);
 
-      TARGET_CHECKPOINTS.forEach(t => {
+      // 1. Попередній підрахунок статистики по кожній точці для точного сортування
+      const scoredCheckpoints = TARGET_CHECKPOINTS.map(t => {
         const allPointReports = rawArchive.filter(r => {
           const txt = ((r.text || "") + " " + (r.address || "")).toLowerCase();
           return t.regex.test(txt);
@@ -885,38 +1001,92 @@ ${recentSample || "Даних мало"}
 
         const weekReports = allPointReports.filter(r => r.time >= weekStart);
         const weekDanger = weekReports.filter(r => !checkIsReportClean(r));
+        const todayDanger = weekDanger.filter(r => r.time >= todayStart);
         const totalDanger7d = weekDanger.length;
+
+        const lastRep = allPointReports.length > 0 ? allPointReports[allPointReports.length - 1] : null;
+        const isLastClean = lastRep ? checkIsReportClean(lastRep) : true;
+        const lastDangerTime = lastRep && !isLastClean ? lastRep.time : 0;
+        const isRecentDanger2h = (now - lastDangerTime <= 2 * 3600000);
+
+        // Критичність розраховується за формулою:
+        // Бали за свіжий пост (2 год) + бали за кількість сьогодні + бали за 7 днів
+        let criticalScore = 0;
+        if (isRecentDanger2h) criticalScore += 500;
+        criticalScore += (todayDanger.length * 50);
+        criticalScore += (totalDanger7d * 10);
+
+        return {
+          point: t,
+          allReports: allPointReports,
+          weekReports: weekReports,
+          weekDanger: weekDanger,
+          todayDangerCount: todayDanger.length,
+          totalDanger7d: totalDanger7d,
+          lastRep: lastRep,
+          isLastClean: isLastClean,
+          criticalScore: criticalScore
+        };
+      });
+
+      // 2. СОРТУВАННЯ: зверху вниз від найбільш критичних (4-5+ постів) до спокійних
+      scoredCheckpoints.sort((a, b) => b.criticalScore - a.criticalScore);
+
+      // 3. ФІЛЬТРАЦІЯ: якщо користувач обрав 1 чи кілька точок
+      const isAllActive = (selectedCheckpointIds.length === 0 || selectedCheckpointIds.length === TARGET_CHECKPOINTS.length);
+      const visibleItems = isAllActive 
+        ? scoredCheckpoints 
+        : scoredCheckpoints.filter(item => selectedCheckpointIds.includes(item.point.id));
+
+      if (visibleItems.length === 0) {
+        listEl.innerHTML = `<div style="text-align:center; padding:15px; font-size:12px; color:#64748b;">Немає вибраних точок. Оберіть точку зі списку вгорі або натисніть «Всі».</div>`;
+        return;
+      }
+
+      visibleItems.forEach((item, index) => {
+        const t = item.point;
+        const allPointReports = item.allReports;
+        const weekDanger = item.weekDanger;
+        const totalDanger7d = item.totalDanger7d;
+        const lastRep = item.lastRep;
 
         let riskLevel = "НИЗЬКИЙ";
         let riskClass = "risk-low";
-        if (totalDanger7d >= 8) {
-          riskLevel = "ВИСОКИЙ";
+        let dangerBadgeNotice = "";
+
+        if (totalDanger7d >= 5 || item.todayDangerCount >= 2) {
+          riskLevel = "КРИТИЧНИЙ";
           riskClass = "risk-high";
+          dangerBadgeNotice = `<span style="color:#ef4444; font-size:9.5px; font-weight:900;">🔥 ${totalDanger7d} постів (висока концентрація)</span>`;
         } else if (totalDanger7d >= 3) {
           riskLevel = "СЕРЕДНІЙ";
           riskClass = "risk-mid";
+          dangerBadgeNotice = `<span style="color:#fbbf24; font-size:9.5px; font-weight:800;">⚠️ ${totalDanger7d} зафіксовані засади</span>`;
+        } else {
+          dangerBadgeNotice = `<span style="color:#34d399; font-size:9.5px; font-weight:800;">🟢 спокійна ділянка</span>`;
         }
 
+        // --- 1. Поточна обстановка та останній факт ---
         let p1Html = "";
-        if (allPointReports.length > 0) {
-          const lastRep = allPointReports[allPointReports.length - 1];
-          const isClean = checkIsReportClean(lastRep);
+        if (allPointReports.length > 0 && lastRep) {
+          const isClean = item.isLastClean;
           const diffMin = Math.max(1, Math.round((now - lastRep.time) / 60000));
           const timeClock = new Date(lastRep.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-          const quote = (lastRep.text || lastRep.raw_text || "").replace(/[\r\n]+/g, ' ').slice(0, 85);
+          const quote = (lastRep.text || lastRep.raw_text || "").replace(/[\r\n]+/g, ' ').slice(0, 90);
 
           if (diffMin <= 120) {
             p1Html = isClean 
-              ? `<b style="color:#34d399;">🟢 ЗАРАЗ СПОКІЙНО (проїзд вільний).</b> Останній сигнал о ${timeClock} (${diffMin} хв тому): <i>«${quote}»</i>. Рух чистий.`
-              : `<b style="color:#f87171;">🔴 УВАГА: ЗАФІКСОВАНО ПОСТ (${diffMin} хв тому, о ${timeClock}).</b> Цитата: <i>«${quote}»</i>. Проводяться перевірки.`;
+              ? `<b style="color:#34d399;">🟢 ЗАРАЗ СПОКІЙНО (проїзд вільний).</b> Останнє підтвердження о ${timeClock} (${diffMin} хв тому): <i>«${quote}»</i>. Рух чистий.`
+              : `<b style="color:#f87171;">🔴 УВАГА: ЗАФІКСОВАНО ПОСТ (${diffMin} хв тому, о ${timeClock}).</b> Повідомлення: <i>«${quote}»</i>. Проводяться зупинки транспорту.`;
           } else {
             let agoText = diffMin < 1440 ? `${Math.floor(diffMin/60)} год тому` : `${Math.floor(diffMin/1440)} дн. тому`;
-            p1Html = `<b style="color:#94a3b8;">⚪ СВІЖИХ СИГНАЛІВ НЕМАЄ (затишшя).</b> Останній запис о ${timeClock} (${agoText}): <i>«${quote}»</i> (${isClean ? 'було чисто' : 'був пост'}). За останні 2 години нових фіксацій не надходило.`;
+            p1Html = `<b style="color:#94a3b8;">⚪ СВІЖИХ СИГНАЛІВ НЕМАЄ (затишшя).</b> Останній запис о ${timeClock} (${agoText}): <i>«${quote}»</i> (${isClean ? 'було чисто' : 'був пост'}). За останні 2 години нових сигналів не надходило.`;
           }
         } else {
           p1Html = "⚪ За останні 7 днів повідомлень по цій точці не надходило. Обстановка стабільна.";
         }
 
+        // --- 2. Прогноз небезпечних годин на сьогодні ---
         const hourCounts = new Array(24).fill(0);
         weekDanger.forEach(r => { hourCounts[new Date(r.time).getHours()]++; });
         let mornH = -1, mornMax = 0;
@@ -933,11 +1103,12 @@ ${recentSample || "Даних мало"}
         if (mornMax > 0 || eveMax > 0) {
           let mornStr = mornMax > 0 ? `Ранок: <b style="color:#fbbf24;">${String(mornH).padStart(2,'0')}:30 – ${String(mornH+1).padStart(2,'0')}:45</b>` : "Ранок: спокійний";
           let eveStr = eveMax > 0 ? `Вечір: <b style="color:#fbbf24;">${String(eveH).padStart(2,'0')}:00 – ${String(eveH+1).padStart(2,'0')}:30</b>` : "Вечір: без сплесків";
-          p2Html = `<b>${mornStr}</b> | <b>${eveStr}</b>. Специфіка ${todayName}: активність має ${weekDanger.length > 5 ? 'підвищений' : 'помірний'} рівень ризику.`;
+          p2Html = `<b>${mornStr}</b> | <b>${eveStr}</b>. Специфіка ${todayName}: активність має ${weekDanger.length >= 4 ? 'підвищений' : 'помірний'} рівень уваги.`;
         } else {
-          p2Html = `На сьогодні (${todayName}) явних пікових сплесків не прогнозується. Чергування якщо й виникають, то мають короткочасний мобільний характер (до 30 хв).`;
+          p2Html = `На сьогодні (${todayName}) явних пікових сплесків не фіксувалося. Чергування якщо й виникають, то мають короткочасний мобільний характер (до 30 хв).`;
         }
 
+        // --- 3. «Зелений коридор» (Коли безпечно) ---
         let bestStart = 12;
         let minSum = 999;
         for (let h = 10; h <= 15; h++) {
@@ -946,6 +1117,7 @@ ${recentSample || "Даних мало"}
         }
         let p3Html = `<b style="color:#34d399;">З ${String(bestStart).padStart(2,'0')}:00 до ${String(bestStart+2).padStart(2,'0')}:30</b> — гарантований інтервал денного затишшя (перезмінка). За статистикою у ці години найнижча ймовірність перевірок.`;
 
+        // --- 4. Тактика об'їзду та приховані шляхи ---
         const partnerObj = TARGET_CHECKPOINTS.find(x => x.id === t.partnerId);
         const partnerName = partnerObj ? partnerObj.name : "сусідні точки";
         let p4Html = `${t.detour} <br><span style="color:#a855f7; font-size:10px; font-weight:700;">🔄 СИНХРОННІСТЬ:</span> При згортанні групи екіпаж частіше за все переміщується на <b>${partnerName}</b>.`;
@@ -953,7 +1125,11 @@ ${recentSample || "Даних мало"}
         listEl.innerHTML += `
           <div class="cp-card" style="border-left-color:${t.color};">
             <div class="cp-card-top">
-              <span class="cp-card-title" style="color:${t.color};">📍 ${t.fullName}</span>
+              <div class="cp-card-title-wrap">
+                <span class="cp-rank-badge">#${index + 1}</span>
+                <span class="cp-card-title" style="color:${t.color};">📍 ${t.fullName}</span>
+                ${dangerBadgeNotice}
+              </div>
               <span class="cp-risk-badge ${riskClass}">ЗАГРОЗА: ${riskLevel}</span>
             </div>
 
@@ -982,7 +1158,7 @@ ${recentSample || "Даних мало"}
     }
 
     // =========================================================================
-    // 💬 НЕСТИРАЄМА ПАМ'ЯТЬ ДІАЛОГУ (LOCALSTORAGE)
+    // 💬 НЕСТИРАЄМА ПАМ'ЯТЬ ДІАЛОГУ + ДОКТРИНА ПРИВАТНОГО СЕКТОРА
     // =========================================================================
     const CHAT_STORE_KEY = "radar_dossier_chat_store";
 
@@ -1009,7 +1185,7 @@ ${recentSample || "Даних мало"}
       if (store.length === 0) {
         chatBox.innerHTML = `
           <div class="chat-bubble bot">
-            Штурман на зв'язку. Базові точки (<b>Дім:</b> пр. Свободи, тупик 18/19 ↔ <b>Робота:</b> низ Канатної) та карта об'їздів у пам'яті. Запитуйте проїзд чи маршрут.
+            Штурман на зв'язку. Базові орієнтири, оперативна обстановка міста та детальні лабіринти приватного сектора зафіксовані. Запитуйте стан будь-яких ділянок або прокладайте безпечні об'їзди дворами.
           </div>
         `;
         return;
@@ -1059,7 +1235,6 @@ ${recentSample || "Даних мало"}
       input.value = "";
       const chatBox = document.getElementById("chatHistoryBox");
 
-      // Додаємо репліку користувача у сховище
       const store = loadSavedChatStore();
       store.push({ role: "user", text: userQuestion });
       if (store.length > 20) store.splice(0, store.length - 20);
@@ -1072,7 +1247,7 @@ ${recentSample || "Даних мало"}
 
       const loadingBubble = document.createElement("div");
       loadingBubble.className = "chat-bubble bot loading";
-      loadingBubble.innerText = "Штурман розраховує маршрут...";
+      loadingBubble.innerText = "Штурман прокладає безпечний маршрут...";
       chatBox.appendChild(loadingBubble);
       chatBox.scrollTop = chatBox.scrollHeight;
 
@@ -1094,32 +1269,29 @@ ${recentSample || "Даних мало"}
       });
 
       const systemPrompt = `
-Ти — спокійний, витриманий, висококваліфікований тактичний штурман та водій-навігатор у місті Дніпро.
-
+Ти — висококласний, витриманий тактичний штурман та водій-навігатор у місті Дніпро.
 ТОНАЛЬНІСТЬ:
-Ввічлива, коректна, ділова та абсолютно спокійна. Без фамільярності, напускної зухвалості, грубості чи вигаданих історій про 'рації'. Ти спираєшся на офіційну аналітику та оперативну базу звітів водіїв.
+Спокійна, ділова, конкретна та поважна. Жодного жаргону, надуманих 'рацій' чи зухвалості. Відповідай прямо, впевнено і професійно.
 
-БАЗОВІ ТОЧКИ ТА ПОНЯТТЯ ВОДІЯ:
-1. «ДІМ»: Проспект Свободи, кільце/тупик трамваїв 18 та 19 (Новокодацька площа / ст. метро 'Проспект Свободи').
-2. «РОБОТА»: Низ вулиці Канатної (перетин з пр. Лесі Українки / Пушкіна, район Скверу Героїв / Дніпро-Арени).
+БАЗОВІ ОРІЄНТИРИ ВОДІЯ:
+• ДІМ: Проспект Свободи, кільце/тупик трамваїв 18 та 19 (Новокодацька площа / ст. метро 'Проспект Свободи').
+• РОБОТА: Низ вулиці Канатної (перетин з пр. Лесі Українки / Пушкіна, біля Скверу Героїв / Дніпро-Арени).
+• ОСНОВНИЙ КОРИДОР: пр. Свободи ➔ Набережна Заводська ➔ вул. Ударників / Белелюбського ➔ вул. Павлова ➔ Річпорт / Канатна.
 
-МАРШРУТИ РУХУ:
-• «Їду на роботу» (Дім ➔ Робота): Старт з тупика 18/19 пр. Свободи ➔ вихід через Водолікарню або Набережну Заводську (Водокачка, Кайдацький з'їзд, Стан 550) ➔ вул. Ударників/Белелюбського (Комбайновий, Краснозаводська) ➔ вул. Павлова або Щепкіна ➔ Річпорт / автовокзал ➔ фініш у низу вул. Канатної.
-• «Їду додому» (Робота ➔ Дім): Зворотний рух з низу вул. Канатної ➔ через Чечелівку або Павлова/Белелюбського ➔ пр. Свободи прямо до кільця трамваїв 18/19.
+ДОКТРИНА ПРИВАТНОГО СЕКТОРА ТА СКРИТИХ ОБ'ЇЗДІВ (ДЛЯ БУДЬ-ЯКОГО РАЙОНУ МІСТА):
+1. Якщо водій запитує про «приватний сектор», «об'їзд», «дворами», «скритно» або обхід блокпостів — ДЛЯ ТЕБЕ ПОВНІСТЮ ЗНИКАЮТЬ НАБЕРЕЖНІ, ШИРОКІ ПРОСПЕКТИ, ШОСЕ ТА МОСТОВІ РОЗВ'ЯЗКИ. Ти будуєш рух виключно другорядними вуличками, приватним сектором, промзонами та міжквартальними проїздами.
+2. Це стосується БУДЬ-ЯКОГО напрямку:
+   - На Тополь: через Краснопілля, сел. Мирний, Корею, Аптекарську балку.
+   - На Вокзал / Канатну: через Нові Кайдаки (Моторна, Сибірська, пров. Вільний), Чечелівку (Олександра Чернікова, Камчатська, Щепкіна, Івана Езау).
+   - На Парус / Діївку: через Велику Діївську, Ближню, Юрія Кондратюка.
+   - Лівий берег: через Амур, проїзди Сагайдачного, приватний сектор Клочко тощо.
+3. ПРАВИЛО ГЕНЕРАЦІЇ ТОЧОК МАРШРУТУ (<<<ACTION:ROUTE:...>>>):
+   Щоб роутер OSRM на карті НЕ викидав автомобіль на Набережну чи шосе через високу швидкість, ТИ ЗОБОВ'ЯЗАНИЙ видавати ЩІЛЬНИЙ ЛАНЦЮЖОК ТОЧОК (кожні 300–500 метрів прямо на перехрестях у приватному секторі, від 6 до 12 точок у масиві!).
+   Приклад формату в самому кінці відповіді:
+   <<<ACTION:ROUTE:{"title":"Об'їзд через приватний сектор Нових Кайдак","points":[[48.4870,34.9650],[48.4900,34.9620],[48.4925,34.9580],[48.4940,34.9530],[48.4955,34.9480],[48.4945,34.9420]]}>>>
+   Підставляй реальні географічні координати перехресть Дніпра для заданого шляху!
 
-ГОЛОВНІ ПРАВИЛА:
-1. КАТЕГОРИЧНО ЗАБОРОНЕНО перепитувати у водія «який у вас маршрут?», «де дім/робота». Якщо водій каже «їду додому», «їду на роботу», «як проїхати» — напрямок і кінцеві точки чітко зрозумілі без уточнень!
-2. ТИ МАЄШ ПОВНІ ЗНАННЯ ДЛЯ ОБ'ЇЗДІВ ПРИВАТНИМ СЕКТОРОМ ТА ПРОМЗОНАМИ:
-   - Нові Кайдаки: вул. Моторна, Сибірська, пров. Вільний (обхід Кайдацького з'їзду);
-   - Діївка: вул. Велика Діївська, Кондратюка (обхід Водокачки);
-   - Промзона Бабушкіна/Белелюбського: через вул. Щепкіна, вул. Івана Езау, пр. Сергія Нігояна;
-   - Чечелівка: вул. Олександра Чернікова, вул. Камчатська (обхід Краснозаводської та Робочої);
-   - Канатна / Аптекарська балка: провулки навколо Філософської, Войцеховича, Надії Алексєєнко.
-3. ПРОКЛАДАННЯ МАРШРУТУ НА КАРТУ:
-   Якщо водій просить прокласти/показати об'їзд чи маршрут на карті, розпиши його спокійно по кроках, а в самому кінці повідомлення ОБОВ'ЯЗКОВО додай технічний тег з реальними координатами точок маневру:
-   <<<ACTION:ROUTE:{"title":"Об'їзд Кайдацького через Нові Кайдаки","points":[[48.4955,34.9490],[48.4935,34.9575],[48.4895,34.9680],[48.4848,34.9735]]}>>>
-   (Підставляй точні координати точок Дніпра згідно із зазначеним маршрутом).
-4. ВІДПОВІДАЙ НА БУДЬ-ЯКІ ТРАНСПОРТНІ ПИТАННЯ (траси на Харків, Запоріжжя тощо) спокійно та виважено.
+ВІДПОВІДАЙ НА БУДЬ-ЯКІ ТРАНСПОРТНІ ЗАПИТАННЯ по місту та виїздах з нього (Харків, Запоріжжя тощо).
 
 ОПЕРАТИВНИЙ СТАН ТОЧОК:
 ${streetSummary}
@@ -1136,7 +1308,7 @@ ${recentReports}
       try {
         const payloadContents = [
           { role: "user", parts: [{ text: systemPrompt }] },
-          { role: "model", parts: [{ text: "Зрозумів. Я готовий спокійно вести водія між Домом (пр. Свободи, тупик 18/19) та Роботою (низ Канатної), пам'ятаю приватний сектор і зберігаю історію." }] },
+          { role: "model", parts: [{ text: "Зрозумів. Веду водія спокійно та фахово. Застосовую доктрину приватного сектора з щільним ланцюжком точок через проїзди, щоб уникнути виходу на магістралі." }] },
           ...dialogPayload
         ];
 
@@ -1156,7 +1328,6 @@ ${recentReports}
           rawReply = rawReply.replace(/<<<ACTION:ROUTE:[\s\S]*?>>>/, '').trim();
         }
 
-        // Зберігаємо відповідь у нестираєме сховище
         store.push({ role: "bot", text: rawReply, routePayload: routePayload });
         saveChatStore(store);
 
@@ -1193,12 +1364,13 @@ ${recentReports}
       }
     }
 
-    // ІНІЦІАЛІЗАЦІЯ ПРИ СТАРТІ:
+    // СТАРТ
     document.getElementById("btnScaleRoute").classList.toggle("active", scaleMode === 'route');
     document.getElementById("btnScaleCity").classList.toggle("active", scaleMode === 'city');
     document.getElementById("verdictScope").innerText = scaleMode === 'route' ? "Режим: 8 точок маршруту" : "Режим: Все місто";
 
     renderSavedChatUI();
+    renderFilterBarUI();
     loadCachedVerdictDisplay();
     loadArchiveData().then(() => {
       updateMathStripOnly();
