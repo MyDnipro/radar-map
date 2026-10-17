@@ -1707,6 +1707,75 @@ ${allLiveReportsText || "Повідомлень немає"}
       loadPoints();
     });
     setInterval(loadPoints, 15000);
+    // =========================================================================
+    // 🛣️ ВІДОБРАЖЕННЯ ОБ'ЇЗДУ ВІД ШІ-ШТУРМАНА (З ДОСЬЄ)
+    // =========================================================================
+    const navRouteLayer = L.layerGroup().addTo(map);
+
+    async function checkAndDrawNavRoute() {
+      const rawRoute = localStorage.getItem("radar_active_nav_route");
+      if (!rawRoute) return;
+
+      try {
+        const routeData = JSON.parse(rawRoute);
+        if (!routeData || !Array.isArray(routeData.points) || routeData.points.length < 2) return;
+
+        navRouteLayer.clearLayers();
+
+        // Прокладаємо нитку по дорогах через OSRM
+        let latLngs = routeData.points;
+        try {
+          const coordStr = routeData.points.map(p => `${p[1]},${p[0]}`).join(';');
+          const controller = new AbortController();
+          const tId = setTimeout(() => controller.abort(), 2500);
+          const osrmRes = await fetch(`https://router.project-osrm.org/route/v1/driving/${coordStr}?overview=full&geometries=geojson`, { signal: controller.signal });
+          clearTimeout(tId);
+          if (osrmRes.ok) {
+            const osrmData = await osrmRes.json();
+            if (osrmData.routes && osrmData.routes[0] && osrmData.routes[0].geometry) {
+              latLngs = osrmData.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+            }
+          }
+        } catch(e) {}
+
+        // Малюємо контрастну неонову лінію об'їзду
+        const polyGlow = L.polyline(latLngs, { color: '#00f3ff', weight: 8, opacity: 0.45, lineJoin: 'round' }).addTo(navRouteLayer);
+        const polyMain = L.polyline(latLngs, { color: '#0284c7', weight: 4.5, opacity: 1, lineJoin: 'round' }).addTo(navRouteLayer);
+
+        // Початкова і кінцева точки
+        const startIcon = L.divIcon({ className: 'custom-dot-marker', html: '<div class="radar-circle color-green" style="transform:scale(1.3);"></div>', iconSize: [18,18], iconAnchor: [9,9] });
+        const endIcon = L.divIcon({ className: 'custom-dot-marker', html: '<div class="radar-circle" style="background:#00f3ff; border:2.5px solid #fff; transform:scale(1.3);"></div>', iconSize: [18,18], iconAnchor: [9,9] });
+        L.marker(latLngs[0], { icon: startIcon }).addTo(navRouteLayer);
+        L.marker(latLngs[latLngs.length - 1], { icon: endIcon }).addTo(navRouteLayer);
+
+        map.fitBounds(polyMain.getBounds(), { padding: [60, 60], maxZoom: 16 });
+
+        // Плаваюча плашка з назвою та кнопкою скидання
+        let banner = document.getElementById("navRouteFloatingBanner");
+        if (!banner) {
+          banner = document.createElement("div");
+          banner.id = "navRouteFloatingBanner";
+          banner.className = "nav-route-banner";
+          document.body.appendChild(banner);
+        }
+        banner.innerHTML = `
+          <span>🛣️ <b>Об'їзд:</b> ${routeData.title || 'Маршрут'}</span>
+          <button onclick="clearNavRoute()">✕ Скинути</button>
+        `;
+        banner.style.display = "flex";
+      } catch(e) {}
+    }
+
+    window.clearNavRoute = function() {
+      localStorage.removeItem("radar_active_nav_route");
+      navRouteLayer.clearLayers();
+      const banner = document.getElementById("navRouteFloatingBanner");
+      if (banner) banner.style.display = "none";
+      if (typeof showToast === "function") showToast("🛣️ Маршрут об'їзду прибрано");
+    };
+
+    // Перевірка наявності маршруту при завантаженні карти
+    setTimeout(checkAndDrawNavRoute, 400);
   </script>
 
   <!-- МОДУЛІ ДОДАТКА -->
