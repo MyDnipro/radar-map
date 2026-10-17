@@ -14,7 +14,7 @@
   <link rel="stylesheet" href="style.css" />
   <style>
     /* =========================================================================
-       1. КОНТРАСТНА НІЧНА ТЕМА КАРТИ (БЕЗ СІРОЇ МУТІ ТА ВОДЯНИХ ЗНАКІВ)
+       1. КОНТРАСТНА НІЧНА ТЕМА КАРТИ
        ========================================================================= */
     #map.night-mode .leaflet-tile-pane {
       filter: invert(100%) hue-rotate(180deg) contrast(115%) brightness(82%) saturate(130%) !important;
@@ -23,7 +23,6 @@
     /* =========================================================================
        2. ПЕРЕМИКАННЯ РЕЖИМІВ (ПРОСТИЙ ВОДІЙСЬКИЙ / ПОВНИЙ РОЗРОБНИК)
        ========================================================================= */
-    /* У простому режимі приховуємо всі інженерні панелі */
     html.mode-simple #aiPillPanel,
     html.mode-simple #routeStatusBar,
     html.mode-simple #routeSubmenu,
@@ -33,7 +32,6 @@
       display: none !important;
     }
 
-    /* Простий режим: блок 1 завжди зафіксований на висоті 38px */
     html.mode-simple #dashPanel {
       width: auto !important;
       height: 38px !important;
@@ -58,7 +56,6 @@
       display: none !important;
     }
 
-    /* Повний режим: схлопування першого вікна по стрілці ▲ / ▼ */
     #dashPanel.collapsed {
       width: auto !important;
       height: 38px !important;
@@ -83,7 +80,6 @@
       display: none !important;
     }
 
-    /* Компактна кнопка-іконка теми День/Ніч (без тексту, не роздуває ширину) */
     .btn-theme-inline {
       background: #1e293b;
       border: 1px solid #334155;
@@ -103,7 +99,6 @@
     }
     .btn-theme-inline:active { transform: scale(0.92); }
 
-    /* Міні-кнопка переходу в простий режим внизу блоку 1 */
     .btn-admin-switch-mini {
       width: 100%;
       background: #1e293b;
@@ -125,7 +120,6 @@
       color: #fff;
     }
 
-    /* Міні-кнопка шестірні в простому режимі для повернення розробника */
     .btn-dev-mode-icon {
       background: #1e293b;
       border: 1px solid #334155;
@@ -143,7 +137,6 @@
       flex-shrink: 0;
     }
 
-    /* Горизонтальна кнопка «Оновити» в простому режимі */
     html.mode-simple #btnRefresh {
       width: auto !important;
       height: 38px !important;
@@ -167,7 +160,6 @@
       text-align: left !important;
     }
 
-    /* Тост перенесено вниз, щоб не перекривати радіо-ефір */
     .toast-msg {
       position: absolute !important;
       top: auto !important;
@@ -209,6 +201,7 @@
     }
     .btn-tl-quick.green { background: #059669; }
     .btn-tl-quick.red { background: #dc2626; }
+
     /* Плаваючий банер активного об'їзду від ШІ */
     .nav-route-banner {
       position: absolute;
@@ -271,17 +264,14 @@
         <span>Точок: 0</span>
       </div>
       
-      <!-- Компактна кнопка День / Ніч: тільки іконка -->
       <button id="btnThemeHeader" class="btn-theme-inline" onclick="toggleMapTheme()" title="Зміна теми (День / Ніч)">
         <span id="themeHeaderIcon">☀️</span>
       </button>
 
-      <!-- Кнопка переходу в режим розробника (видима тільки у простому режимі для адміна) -->
       <button id="btnEnterFullMode" class="btn-dev-mode-icon" onclick="switchToFullMode()" title="Режим розробника" style="display:none;">
         ⚙️
       </button>
 
-      <!-- Стрілка ▲ / ▼: ТІЛЬКИ згортає та розгортає вікно 1 (не чіпає режими) -->
       <button class="btn-toggle" id="btnToggle" onclick="togglePanelCollapse(event)" title="Згорнути / Розгорнути вікно">▲</button>
     </div>
 
@@ -311,7 +301,6 @@
         </div>
       </div>
 
-      <!-- КЕРУВАННЯ СЕРВЕРОМ -->
       <div class="server-menu-container">
         <button class="btn-server-main" onclick="toggleServerDropdown()">
           <span>⚙️ Керування сервером</span>
@@ -330,7 +319,6 @@
         <div class="legend-row"><span class="shape dot-red"></span><span>Увага / Блокпост / Патруль</span></div>
       </div>
 
-      <!-- КОМПАКТНА КНОПКА ПЕРЕХОДУ В ПРОСТИЙ РЕЖИМ (ВНИЗУ БЛОКУ 1) -->
       <button id="btnAdminModeSwitch" class="btn-admin-switch-mini" onclick="switchToSimpleMode()">
         🚗 Перейти в простий режим
       </button>
@@ -402,8 +390,8 @@
     </div>
   </div>
 
-  <!-- 4. КНОПКА СТАТИСТИКИ — ТІЛЬКИ У ПОВНОМУ РЕЖИМІ -->
-<a href="javascript:void(0)" id="btnStatsHud" onclick="event.preventDefault(); window.location.href = (localStorage.getItem('radar_last_analytics_page') || 'stats.html');" title="Аналітика блокпостів">
+  <!-- 4. КНОПКА СТАТИСТИКИ (ВЕДЕ НА ОСТАННЮ ВІДКРИТУ СТОРІНКУ) -->
+  <a href="javascript:void(0)" id="btnStatsHud" onclick="event.preventDefault(); window.location.href = (localStorage.getItem('radar_last_analytics_page') || 'stats.html');" title="Аналітика блокпостів">
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
       <rect x="3" y="12" width="4.5" height="9" rx="2" fill="#00f3ff" />
       <rect x="9.75" y="7" width="4.5" height="14" rx="2" fill="#00f3ff" />
@@ -487,9 +475,6 @@
       ["I2d17d2VpDXpzxEPKh", "tzBWtRt4bN62lifvrufLg3dptg"]
     ];
 
-    // =========================================================================
-    // 🔐 АВТОРИЗАЦІЯ ТА КЕРУВАННЯ РЕЖИМАМИ
-    // =========================================================================
     function getAdminToken() {
       return localStorage.getItem("radar_admin_token") || localStorage.getItem("github_radar_token") || "";
     }
@@ -510,7 +495,6 @@
       document.documentElement.classList.toggle("mode-simple", isSimple);
       document.documentElement.classList.toggle("mode-full", !isSimple);
 
-      // Керування кнопками у шапці
       const btnToggle = document.getElementById("btnToggle");
       const btnDevIcon = document.getElementById("btnEnterFullMode");
       const dashPanel = document.getElementById("dashPanel");
@@ -537,7 +521,7 @@
       if (window.map) setTimeout(() => window.map.invalidateSize(), 150);
     }
 
-   function switchToFullMode() {
+    function switchToFullMode() {
       if (!isUserAdmin()) {
         requestAdminLogin();
         return;
@@ -555,7 +539,7 @@
       showToast("🚗 Простий режим водія активовано!");
     }
 
-   function requestAdminLogin() {
+    function requestAdminLogin() {
       const token = prompt("🔐 Введіть персональний GitHub токен (ghp_...):\n(Вхід виконується 1 раз, пристрій запам'ятовується)");
       if (!token) return;
       const clean = token.trim();
@@ -569,7 +553,6 @@
       }
     }
 
-    // Секретний виклик авторизації на новому пристрої (затискання на 0.7 сек)
     const countTextEl = document.getElementById("countText");
     let countPressTimer = null;
     function startCountPress() {
@@ -589,7 +572,7 @@
       countTextEl.addEventListener("touchend", cancelCountPress);
       countTextEl.addEventListener("touchcancel", cancelCountPress);
     }
-    // СТРІЛКА ▲ / ▼: ТІЛЬКИ ЗГОРТАННЯ ТА РОЗГОРТАННЯ ВІКНА 1
+
     function togglePanelCollapse(e) {
       if (e) e.stopPropagation();
       const panel = document.getElementById("dashPanel");
@@ -671,9 +654,6 @@
       if (savedPo) manualPointOverrides = JSON.parse(savedPo);
     } catch(e) {}
 
-    // =========================================================================
-    // 🗺️ КАРТА: ОГЛЯД ВСЬОГО МІСТА + КОНТРАСТНА НІЧНА ТЕМА
-    // =========================================================================
     const isMobile = window.innerWidth < 768;
     const INITIAL_CENTER = [48.462, 35.035];
     const INITIAL_ZOOM = isMobile ? 11.3 : 11.8;
@@ -683,7 +663,6 @@
       zoomSnap: 0.1
     }).setView(INITIAL_CENTER, INITIAL_ZOOM);
 
-    // Єдина надійна підложка Google Maps
     const googleMapLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
       subdomains: ['0', '1', '2', '3'],
       maxZoom: 20,
@@ -711,7 +690,6 @@
       showToast(mapTheme === "night" ? "🌙 Увімкнено нічну тему" : "☀️ Увімкнено денну тему");
     }
 
-    // Застосовуємо збережену тему при завантаженні
     applyMapTheme(mapTheme);
 
     window.addEventListener('resize', () => {
@@ -1419,7 +1397,7 @@ ${allLiveReportsText || "Повідомлень немає"}
       checkpoints.forEach(cp => {
         const matched = allPoints.filter(p => {
           const text = ((p.raw_text || p.text || "") + " " + (p.address || "")).toLowerCase();
-          return cp.keys.some(k => (k === "стан" ? /\bстан\b/i.test(t) && !/остановил/i.test(t) : new RegExp(k, "i").test(text)));
+          return cp.keys.some(k => (k === "стан" ? /\bстан\b/i.test(text) && !/остановил/i.test(text) : new RegExp(k, "i").test(text)));
         });
         matched.sort((a, b) => (b.time || 0) - (a.time || 0));
         let latest = matched[0];
@@ -1503,7 +1481,6 @@ ${allLiveReportsText || "Повідомлень немає"}
       searchResults.style.display = localMatches.length > 0 ? "block" : "none";
     }
 
-    // 4. ЗАВАНТАЖЕННЯ ТОЧОК ТА ЗАХИСТ КООРДИНАТ
     async function loadPoints() {
       if (pendingRelocation) return;
       try {
@@ -1547,7 +1524,6 @@ ${allLiveReportsText || "Повідомлень немає"}
       } catch (err) {}
     }
 
-    // 5. ВІДОБРАЖЕННЯ МІТОК НА КАРТІ
     function renderMarkers() {
       try {
         markersLayer.clearLayers();
@@ -1690,10 +1666,8 @@ ${allLiveReportsText || "Повідомлень немає"}
       }
     }
 
-    // Застосовуємо початковий стан інтерфейсу
     applyUiMode(currentUiMode);
 
-    // Відновлення згорнутого стану першого вікна у повному режимі
     if (localStorage.getItem("radar_dash_collapsed") === "true" && currentUiMode === "full") {
       const panel = document.getElementById("dashPanel");
       if (panel) {
@@ -1707,12 +1681,13 @@ ${allLiveReportsText || "Повідомлень немає"}
       loadPoints();
     });
     setInterval(loadPoints, 15000);
+
     // =========================================================================
     // 🛣️ ВІДОБРАЖЕННЯ ОБ'ЇЗДУ ВІД ШІ-ШТУРМАНА (З ДОСЬЄ)
     // =========================================================================
     const navRouteLayer = L.layerGroup().addTo(map);
 
-   async function checkAndDrawNavRoute() {
+    async function checkAndDrawNavRoute() {
       const rawRoute = localStorage.getItem("radar_active_nav_route");
       if (!rawRoute) return;
 
@@ -1722,7 +1697,6 @@ ${allLiveReportsText || "Повідомлень немає"}
 
         navRouteLayer.clearLayers();
 
-        // Спроба провести нитку строго по дорогам через OSRM
         let latLngs = routeData.points;
         try {
           const coordStr = routeData.points.map(p => `${p[1]},${p[0]}`).join(';');
@@ -1737,11 +1711,9 @@ ${allLiveReportsText || "Повідомлень немає"}
             }
           }
         } catch(e) {
-          // Якщо OSRM недоступний або стежка приватного сектора не розмічена — ведемо по точках ШІ
           latLngs = routeData.points;
         }
 
-        // Тонка графічна лінія: м'яке неонове світіння (5.5px) + чітка тактична нитка (2.8px)
         const polyGlow = L.polyline(latLngs, {
           color: '#00f3ff',
           weight: 5.5,
@@ -1758,7 +1730,6 @@ ${allLiveReportsText || "Повідомлень немає"}
           lineJoin: 'round'
         }).addTo(navRouteLayer);
 
-        // Акуратні компактні маркери старту (зелений) та фінішу (блакитний)
         const startHtml = '<div style="width:12px; height:12px; border-radius:50%; background:#10b981; border:2px solid #fff; box-shadow:0 0 8px #10b981;"></div>';
         const endHtml = '<div style="width:12px; height:12px; border-radius:50%; background:#00f3ff; border:2px solid #fff; box-shadow:0 0 8px #00f3ff;"></div>';
 
@@ -1770,35 +1741,6 @@ ${allLiveReportsText || "Повідомлень немає"}
 
         map.fitBounds(polyMain.getBounds(), { padding: [60, 60], maxZoom: 16 });
 
-        // Плаваючий банер із назвою маршруту та кнопкою скидання
-        let banner = document.getElementById("navRouteFloatingBanner");
-        if (!banner) {
-          banner = document.createElement("div");
-          banner.id = "navRouteFloatingBanner";
-          banner.className = "nav-route-banner";
-          document.body.appendChild(banner);
-        }
-        banner.innerHTML = `
-          <span>🛣️ <b>Об'їзд:</b> ${routeData.title || 'Маршрут'}</span>
-          <button onclick="clearNavRoute()">✕ Скинути</button>
-        `;
-        banner.style.display = "flex";
-      } catch(e) {}
-    }
-
-        // Малюємо контрастну неонову лінію об'їзду
-        const polyGlow = L.polyline(latLngs, { color: '#00f3ff', weight: 8, opacity: 0.45, lineJoin: 'round' }).addTo(navRouteLayer);
-        const polyMain = L.polyline(latLngs, { color: '#0284c7', weight: 4.5, opacity: 1, lineJoin: 'round' }).addTo(navRouteLayer);
-
-        // Початкова і кінцева точки
-        const startIcon = L.divIcon({ className: 'custom-dot-marker', html: '<div class="radar-circle color-green" style="transform:scale(1.3);"></div>', iconSize: [18,18], iconAnchor: [9,9] });
-        const endIcon = L.divIcon({ className: 'custom-dot-marker', html: '<div class="radar-circle" style="background:#00f3ff; border:2.5px solid #fff; transform:scale(1.3);"></div>', iconSize: [18,18], iconAnchor: [9,9] });
-        L.marker(latLngs[0], { icon: startIcon }).addTo(navRouteLayer);
-        L.marker(latLngs[latLngs.length - 1], { icon: endIcon }).addTo(navRouteLayer);
-
-        map.fitBounds(polyMain.getBounds(), { padding: [60, 60], maxZoom: 16 });
-
-        // Плаваюча плашка з назвою та кнопкою скидання
         let banner = document.getElementById("navRouteFloatingBanner");
         if (!banner) {
           banner = document.createElement("div");
@@ -1822,7 +1764,6 @@ ${allLiveReportsText || "Повідомлень немає"}
       if (typeof showToast === "function") showToast("🛣️ Маршрут об'їзду прибрано");
     };
 
-    // Перевірка наявності маршруту при завантаженні карти
     setTimeout(checkAndDrawNavRoute, 400);
   </script>
 
