@@ -37,7 +37,7 @@ html, body {
 }
 
 /* =========================================================================
-   1. ДАШБОРД (БЛОК 1: ТОЧКИ, ТЕМА, МЕНЮ)
+   1. ДАШБОРД (БЛОК 1)
    ========================================================================= */
 .dashboard {
   position: absolute !important;
@@ -48,14 +48,14 @@ html, body {
   z-index: 1000;
   background: rgba(15, 23, 42, 0.94);
   backdrop-filter: blur(10px);
-  padding: 10px 12px;
+  padding: 8px 10px;
   border-radius: 14px;
   color: #fff;
   box-shadow: 0 6px 25px rgba(0, 0, 0, 0.45);
-  width: 220px;
-  max-width: calc(100vw - 150px);
+  width: 205px;
+  max-width: calc(50vw - 30px);
   border: 1.5px solid #334155;
-  transition: width 0.25s ease, height 0.25s ease, padding 0.2s ease;
+  transition: width 0.22s ease, height 0.22s ease, padding 0.2s ease;
   overflow-y: auto;
   max-height: calc(100vh - 80px);
 }
@@ -64,7 +64,7 @@ html, body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   user-select: none;
   padding-bottom: 4px;
   border-bottom: 1px solid #1e293b;
@@ -72,12 +72,12 @@ html, body {
 }
 
 .points-count { 
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 800;
   color: #38bdf8;
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
   cursor: pointer;
   white-space: nowrap;
 }
@@ -90,7 +90,7 @@ html, body {
   height: 26px;
   border-radius: 7px;
   cursor: pointer;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   font-size: 11px;
@@ -102,34 +102,55 @@ html, body {
 
 .collapsible-body { margin-top: 6px; }
 
-/* Кнопка переключения темы День / Ночь */
+/* Кнопка-иконка темы День / Ночь */
 .btn-theme-inline {
   background: #1e293b;
   border: 1px solid #334155;
   color: #f8fafc;
   border-radius: 8px;
-  padding: 4px 8px;
-  font-size: 11px;
-  font-weight: 800;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  font-size: 13px;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  justify-content: center;
   user-select: none;
+  flex-shrink: 0;
   transition: background 0.2s, border-color 0.2s;
 }
-.btn-theme-inline:active { transform: scale(0.95); }
+.btn-theme-inline:active { transform: scale(0.92); }
 
-/* Компактная мини-кнопка переключения в простой режим для админа */
+/* Иконка перехода в режим разработчика (в простом режиме) */
+.btn-dev-mode-icon {
+  background: #1e293b;
+  border: 1px solid #334155;
+  color: #38bdf8;
+  border-radius: 8px;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  font-size: 12px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  flex-shrink: 0;
+}
+.btn-dev-mode-icon:active { transform: scale(0.92); }
+
+/* Мини-кнопка перехода в простой режим (внизу блока 1) */
 .btn-admin-switch-mini {
   width: 100%;
-  background: rgba(59, 7, 100, 0.45);
-  border: 1px solid #7c3aed;
-  color: #c084fc;
+  background: #1e293b;
+  border: 1px solid #475569;
+  color: #94a3b8;
   padding: 5px 8px;
   border-radius: 6px;
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 700;
   cursor: pointer;
   margin-top: 8px;
   text-align: center;
@@ -138,8 +159,8 @@ html, body {
   transition: all 0.2s;
 }
 .btn-admin-switch-mini:hover {
-  background: #7c3aed;
-  color: #ffffff;
+  background: #334155;
+  color: #fff;
 }
 .btn-admin-switch-mini:active { transform: scale(0.96); }
 
@@ -194,17 +215,17 @@ html, body {
 .search-item:hover { background: #1e293b; color: #38bdf8; }
 
 /* =========================================================================
-   2. СХЛОПЫВАНИЕ БЛОКА 1 И ПРОСТОЙ РЕЖИМ
+   2. СХЛОПЫВАНИЕ ДАШБОРДА И ПРАВИЛА РЕЖИМОВ
    ========================================================================= */
 
-/* Блок схлопывается в 38px: либо в простом режиме, либо по классу .dash-collapsed */
+/* Схлопывание в 38px при наличии класса .collapsed или в простом режиме */
 html.mode-simple #dashPanel,
-html.dash-collapsed #dashPanel {
+#dashPanel.collapsed {
   width: auto !important;
   height: 38px !important;
   min-height: 38px !important;
   max-height: 38px !important;
-  padding: 0 10px !important;
+  padding: 0 8px !important;
   display: inline-flex !important;
   flex-direction: row !important;
   align-items: center !important;
@@ -215,7 +236,7 @@ html.dash-collapsed #dashPanel {
 }
 
 html.mode-simple #dashHeader,
-html.dash-collapsed #dashHeader {
+#dashPanel.collapsed #dashHeader {
   margin-bottom: 0 !important;
   padding-bottom: 0 !important;
   border-bottom: none !important;
@@ -223,11 +244,11 @@ html.dash-collapsed #dashHeader {
 }
 
 html.mode-simple #collapsibleBody,
-html.dash-collapsed #collapsibleBody {
+#dashPanel.collapsed #collapsibleBody {
   display: none !important;
 }
 
-/* В простом режиме полностью скрываются инженерные кнопки */
+/* В простом режиме скрываем инженерные панели */
 html.mode-simple #aiPillPanel,
 html.mode-simple #routeStatusBar,
 html.mode-simple #routeSubmenu,
@@ -237,12 +258,12 @@ html.mode-simple #memWidget {
   display: none !important;
 }
 
-/* В режиме радио в простом режиме скрывается переключатель «Мій шлях / Все місто» */
+/* В режиме радио скрываем переключатель «Мій шлях / Все місто» ТОЛЬКО в простом режиме */
 html.mode-simple .radio-mode-switcher {
   display: none !important;
 }
 
-/* В простом режиме кнопка «Оновити» становится компактной горизонтальной плашкой */
+/* В простом режиме кнопка «Оновити» становится горизонтальной плашкой */
 html.mode-simple #btnRefresh {
   width: auto !important;
   height: 38px !important;
@@ -282,7 +303,7 @@ html.mode-simple #btnRefresh span:last-child {
   gap: 7px !important;
 }
 
-/* Вертикальный вариант кнопки «Оновити» для полного админ-режима */
+/* Вертикальный вариант кнопки «Оновити» для полного режима */
 #btnRefresh {
   width: 44px;
   height: 83px;
@@ -309,7 +330,6 @@ html.mode-simple #btnRefresh span:last-child {
 #btnRefresh span:last-child { font-size: 8.5px; font-weight: 800; line-height: 1.1; text-align: center; }
 #btnRefresh:active { transform: scale(0.94); }
 
-/* Квадратная кнопка GPS навигации */
 #btnGpsHud {
   width: 38px !important;
   height: 38px !important;
@@ -791,12 +811,25 @@ html.mode-simple #btnRefresh span:last-child {
 .traffic-marker-icon { background: transparent !important; border: none !important; }
 
 /* =========================================================================
-   8. УВЕДОМЛЕНИЯ И МОДАЛЬНЫЕ ОКНА
+   8. ТОАСТЫ (ВНИЗУ ЭКРАНА) И МОДАЛЬНЫЕ ОКНА
    ========================================================================= */
 .toast-msg {
-  position: absolute; top: 65px; left: 50%; transform: translateX(-50%);
-  z-index: 3500; background: #0f172a; border: 1.5px solid #38bdf8; color: #fff; padding: 8px 18px;
-  border-radius: 20px; font-size: 12px; font-weight: 700; box-shadow: 0 4px 20px rgba(0, 243, 255, 0.4); display: none; text-align: center;
+  position: absolute !important;
+  top: auto !important;
+  bottom: 75px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  z-index: 3500;
+  background: #0f172a;
+  border: 1.5px solid #38bdf8;
+  color: #fff;
+  padding: 8px 18px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  box-shadow: 0 4px 20px rgba(0, 243, 255, 0.4);
+  display: none;
+  text-align: center;
   white-space: nowrap;
 }
 
