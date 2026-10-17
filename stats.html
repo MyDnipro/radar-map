@@ -593,13 +593,11 @@
       <div id="modalReports" class="modal-reports-list"></div>
     </div>
   </div>
-<script>
-  if (localStorage.getItem('radar_last_analytics_page') === 'dossier.html') {
-    window.location.replace('dossier.html');
-  }
 
-  // далі йде твій звичайний код stats.html...
   <script>
+    // Запам'ятовуємо, що останній перегляд аналітики був саме на сторінці статистики
+    localStorage.setItem("radar_last_analytics_page", "stats.html");
+
     const SECRET_KEY_HASH = "570984";
     const _VAULT_PREFIX = String.fromCharCode(65, 81, 46, 65, 98, 56, 82, 78, 54);
 
@@ -710,7 +708,6 @@
       return spamWords.some(w => t.includes(w));
     }
 
-    // НАДІЙНА ПЕРЕВІРКА СТАТУСУ З РОЗПІЗНАВАННЯМ «НОРМ / НОРМАЛЬНО» ТА ЗАПЕРЕЧЕНЬ
     function checkIsReportClean(rep) {
       if (!rep) return false;
       if (rep.is_clean === true) return true;
