@@ -2,7 +2,7 @@
 <html lang="uk">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>ШІ-Штурман: Тактичне досьє — Дніпро</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -20,24 +20,24 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 12px;
+      margin-bottom: 10px;
       border-bottom: 1px solid #1e293b;
-      padding-bottom: 10px;
+      padding-bottom: 8px;
       flex-wrap: wrap;
-      gap: 8px;
+      gap: 6px;
     }
     .hud-title {
-      font-size: 17px;
+      font-size: 16px;
       font-weight: 900;
       color: #00f3ff;
       text-shadow: 0 0 12px rgba(0, 243, 255, 0.45);
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
     }
     .head-actions {
       display: flex;
-      gap: 8px;
+      gap: 6px;
       align-items: center;
       flex-wrap: wrap;
     }
@@ -45,7 +45,7 @@
       background: #0284c7;
       color: #fff;
       border: 1px solid #38bdf8;
-      padding: 6px 12px;
+      padding: 6px 10px;
       border-radius: 8px;
       font-size: 11px;
       font-weight: 800;
@@ -58,7 +58,7 @@
       background: #0f172a;
       color: #38bdf8;
       border: 1px solid #0284c7;
-      padding: 6px 12px;
+      padding: 6px 10px;
       border-radius: 8px;
       text-decoration: none;
       font-size: 11px;
@@ -68,45 +68,58 @@
     }
     .btn-head-nav:hover { background: #0284c7; color: #fff; }
 
-    /* ПЕРЕМИКАЧ МАСШТАБУ РОЗВІДКИ */
+    /* МАСШТАБ РОЗВІДКИ: СТРОГО В ОДИН РЯДОК */
     .scale-bar {
       display: flex;
       align-items: center;
-      gap: 8px;
-      margin-bottom: 12px;
-      flex-wrap: wrap;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      gap: 6px;
+      flex-wrap: nowrap;
+      background: #0b1120;
+      border: 1px solid #1e293b;
+      padding: 5px 8px;
+      border-radius: 10px;
     }
     .scale-lbl {
-      font-size: 11px;
+      font-size: 10.5px;
       font-weight: 900;
       color: #94a3b8;
       letter-spacing: 0.5px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .scale-btns-wrap {
+      display: flex;
+      gap: 4px;
+      flex-shrink: 0;
     }
     .btn-scale-toggle {
       background: #0f172a;
       border: 1px solid #334155;
       color: #94a3b8;
-      padding: 6px 12px;
-      border-radius: 8px;
-      font-size: 11px;
+      padding: 5px 9px;
+      border-radius: 7px;
+      font-size: 10.5px;
       font-weight: 800;
       cursor: pointer;
+      white-space: nowrap;
       transition: all 0.2s;
     }
     .btn-scale-toggle.active {
       background: #ca8a04;
       border-color: #f59e0b;
       color: #ffffff;
-      box-shadow: 0 0 12px rgba(245, 158, 11, 0.5);
+      box-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
     }
 
-    /* БАНЕР ВЕРДИКТУ */
+    /* БАНЕР ТАКТИЧНОГО ДОСЬЄ */
     .verdict-banner {
       background: rgba(15, 23, 42, 0.95);
       border: 1.5px solid #00f3ff;
       border-radius: 12px;
       padding: 12px 14px;
-      margin-bottom: 14px;
+      margin-bottom: 12px;
       box-shadow: 0 0 20px rgba(0, 243, 255, 0.2);
     }
     .verdict-top {
@@ -120,51 +133,61 @@
       gap: 6px;
     }
     .verdict-tag { color: #f59e0b; }
-    .verdict-calc { color: #38bdf8; text-transform: uppercase; }
+    .verdict-calc { color: #38bdf8; text-transform: uppercase; font-size: 10px; }
+    .verdict-math-strip {
+      font-size: 11px;
+      color: #38bdf8;
+      margin-bottom: 8px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid #1e293b;
+      line-height: 1.4;
+    }
     .verdict-body {
       font-size: 11.5px;
-      line-height: 1.5;
+      line-height: 1.55;
       color: #f1f5f9;
-      margin-bottom: 8px;
+      white-space: pre-wrap;
+      word-break: break-word;
     }
     .verdict-foot {
       display: flex;
       justify-content: space-between;
-      font-size: 10px;
+      font-size: 9.5px;
       font-weight: 700;
       color: #64748b;
       border-top: 1px solid #1e293b;
       padding-top: 6px;
+      margin-top: 8px;
     }
 
-    /* ЧАТ З ШІ */
+    /* ДІАЛОГ БЕЗ ЧІПСІВ */
     .dossier-chat-card {
       background: #0b1120;
       border: 1px solid #1e293b;
       border-radius: 12px;
-      padding: 12px;
-      margin-bottom: 16px;
+      padding: 10px;
+      margin-bottom: 14px;
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 8px;
     }
     .chat-history-box {
       background: #060913;
       border: 1px solid #1e293b;
       border-radius: 8px;
-      padding: 12px;
-      max-height: 380px;
+      padding: 10px;
+      max-height: 320px;
       overflow-y: auto;
       display: flex;
       flex-direction: column;
       gap: 8px;
     }
     .chat-bubble {
-      padding: 8px 12px;
+      padding: 8px 11px;
       border-radius: 8px;
       font-size: 11.5px;
       line-height: 1.5;
-      max-width: 94%;
+      max-width: 95%;
       white-space: pre-wrap;
       word-break: break-word;
     }
@@ -208,7 +231,7 @@
       background: linear-gradient(135deg, #0284c7 0%, #00f3ff 100%);
       border: none;
       color: #0f172a;
-      padding: 8px 16px;
+      padding: 8px 15px;
       border-radius: 8px;
       font-size: 11px;
       font-weight: 900;
@@ -216,43 +239,22 @@
       flex-shrink: 0;
     }
 
-    .quick-chips-row {
-      display: flex;
-      gap: 5px;
-      flex-wrap: wrap;
-    }
-    .quick-chip {
-      background: #0f172a;
-      border: 1px solid #334155;
-      color: #94a3b8;
-      padding: 4px 8px;
-      border-radius: 6px;
-      font-size: 10px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: all 0.15s;
-    }
-    .quick-chip:hover {
-      border-color: #00f3ff;
-      color: #00f3ff;
-    }
-
-    /* СПИСОК ТОЧОК МАРШРУТУ */
+    /* СПИСОК ТОЧОК */
     .checkpoint-cards-list {
       display: flex;
       flex-direction: column;
-      gap: 10px;
-      margin-top: 10px;
+      gap: 8px;
+      margin-top: 8px;
     }
     .cp-card {
       background: #0b1120;
       border: 1px solid #1e293b;
       border-radius: 10px;
-      padding: 12px 14px;
+      padding: 10px 12px;
       border-left: 5px solid #00f3ff;
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 5px;
     }
     .cp-card-top {
       display: flex;
@@ -262,14 +264,14 @@
       gap: 6px;
     }
     .cp-card-title {
-      font-size: 13px;
+      font-size: 12.5px;
       font-weight: 900;
       color: #f8fafc;
     }
     .cp-risk-badge {
-      font-size: 9.5px;
+      font-size: 9px;
       font-weight: 900;
-      padding: 2px 7px;
+      padding: 2px 6px;
       border-radius: 5px;
       text-transform: uppercase;
       letter-spacing: 0.5px;
@@ -280,17 +282,17 @@
 
     .cp-stats-row {
       display: flex;
-      gap: 12px;
-      font-size: 10.5px;
+      gap: 10px;
+      font-size: 10px;
       color: #94a3b8;
       font-weight: 700;
       flex-wrap: wrap;
     }
     .cp-peak-info {
-      font-size: 11px;
+      font-size: 10.5px;
       color: #cbd5e1;
       background: #060913;
-      padding: 6px 10px;
+      padding: 5px 8px;
       border-radius: 6px;
       border: 1px solid #1e293b;
       line-height: 1.4;
@@ -309,40 +311,38 @@
       </div>
     </div>
 
-    <!-- МАСШТАБ РОЗВІДКИ -->
+    <!-- МАСШТАБ РОЗВІДКИ В ОДИН РЯДОК -->
     <div class="scale-bar">
-      <span class="scale-lbl">МАСШТАБ РОЗВІДКИ:</span>
-      <button id="btnScaleRoute" class="btn-scale-toggle active" onclick="setScaleMode('route')">🔔 Тільки мої точки (8)</button>
-      <button id="btnScaleCity" class="btn-scale-toggle" onclick="setScaleMode('city')">👥 Все місто + мої точки</button>
+      <span class="scale-lbl">МАСШТАБ:</span>
+      <div class="scale-btns-wrap">
+        <button id="btnScaleRoute" class="btn-scale-toggle active" onclick="setScaleMode('route')">🔔 Мій шлях (8)</button>
+        <button id="btnScaleCity" class="btn-scale-toggle" onclick="setScaleMode('city')">🌐 Все місто</button>
+      </div>
     </div>
 
-    <!-- БАНЕР ЗАГАЛЬНОГО ВЕРДИКТУ -->
+    <!-- БАНЕР ТАКТИЧНОГО ДОСЬЄ -->
     <div class="verdict-banner">
       <div class="verdict-top">
-        <span class="verdict-tag">⚡ Загальний тактичний вердикт на сьогодні:</span>
-        <span class="verdict-calc">ТОЧНИЙ МАТЕМАТИЧНИЙ РОЗРАХУНОК ⚡</span>
+        <span class="verdict-tag">⚡ Тактичне досьє та аналітичний прогноз:</span>
+        <span class="verdict-calc">ТОЧНИЙ РОЗРАХУНОК GEMINI 3.8 ⚡</span>
+      </div>
+      <div id="verdictMathStrip" class="verdict-math-strip">
+        ⏳ Підрахунок активності...
       </div>
       <div id="verdictText" class="verdict-body">
-        ⏳ Завантаження та розрахунок розвідданих...
+        ⏳ Формування глибокого тактичного досьє...
       </div>
       <div class="verdict-foot">
         <span id="verdictTime">Останнє оновлення: --:--</span>
-        <span id="verdictScope">Режим: 8 ключових точок маршруту</span>
+        <span id="verdictScope">Режим: 8 точок маршруту</span>
       </div>
     </div>
 
-    <!-- ІНТЕРАКТИВНИЙ ДІАЛОГ -->
+    <!-- ІНТЕРАКТИВНИЙ ДІАЛОГ БЕЗ ЗАЙВИХ КНОПОК -->
     <div class="dossier-chat-card">
-      <div class="quick-chips-row">
-        <span class="quick-chip" onclick="sendQuickQuestion('Чи є засідки на моєму шляху зараз?')">❓ Чи чисто зараз?</span>
-        <span class="quick-chip" onclick="sendQuickQuestion('Коли сьогодні найбезпечніше їхати?')">⏱️ Вікна безпеки</span>
-        <span class="quick-chip" onclick="sendQuickQuestion('Які години пікового ризику на моєму маршруті?')">🔥 Пікові години</span>
-        <span class="quick-chip" onclick="sendQuickQuestion('Дай повний розгорнутий тактичний звіт')">📋 Повний звіт</span>
-      </div>
-
       <div class="chat-history-box" id="chatHistoryBox">
         <div class="chat-bubble bot">
-          👋 ШІ-штурман готовий до оперативного діалогу. Відповідаю суворо по суті запитання, без вітань та зайвої води.
+          ШІ-штурман на зв'язку. Ставте запитання по точках чи обстановці — відповідаю строго по суті без зайвої води.
         </div>
       </div>
 
@@ -353,7 +353,7 @@
     </div>
 
     <!-- 8 КЛЮЧОВИХ ТОЧОК МАРШРУТУ -->
-    <div style="font-size:13px; font-weight:900; color:#38bdf8; margin:16px 0 8px;">
+    <div style="font-size:12.5px; font-weight:900; color:#38bdf8; margin:14px 0 6px;">
       📍 Оперативний статус 8 контрольних пунктів:
     </div>
     <div class="checkpoint-cards-list" id="checkpointCardsList"></div>
@@ -441,12 +441,12 @@
       localStorage.setItem("dossier_scale_mode", mode);
       document.getElementById("btnScaleRoute").classList.toggle("active", mode === 'route');
       document.getElementById("btnScaleCity").classList.toggle("active", mode === 'city');
-      document.getElementById("verdictScope").innerText = mode === 'route' ? "Режим: 8 ключових точок маршруту" : "Режим: Все місто + мій маршрут";
-      calculateTacticalVerdict();
+      document.getElementById("verdictScope").innerText = mode === 'route' ? "Режим: 8 ключових точок маршруту" : "Режим: Все місто";
+      generateDossier(true);
       renderCheckpointCards();
     }
 
-    async function executeGemini(promptText) {
+    async function executeGemini(promptText, temperature = 0.2) {
       if (!verifyGeminiAuthorization()) throw new Error("ШІ заблоковано.");
       const apiKeys = getDecryptedGeminiPool();
       if (apiKeys.length === 0) throw new Error("Немає доступних ключів Gemini.");
@@ -458,14 +458,14 @@
         for (const m of models) {
           try {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 8000);
+            const timeoutId = setTimeout(() => controller.abort(), 9000);
             const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${k}`;
             const res = await fetch(url, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 contents: [{ role: "user", parts: [{ text: promptText }] }],
-                generationConfig: { temperature: 0.15 }
+                generationConfig: { temperature: temperature }
               }),
               signal: controller.signal
             });
@@ -479,14 +479,24 @@
               lastErr = errObj.error?.message || `HTTP ${res.status}`;
             }
           } catch(e) {
-            lastErr = e.name === 'AbortError' ? 'Таймаут (8с)' : e.message;
+            lastErr = e.name === 'AbortError' ? 'Таймаут (9с)' : e.message;
           }
         }
       }
       throw new Error(lastErr || "Вичерпано ліміт ключів.");
     }
 
-    function calculateTacticalVerdict() {
+    // =========================================================================
+    // 🧠 ГЛИБОКА ТАКТИЧНА АНАЛІТИКА ДОСЬЄ (ПРОГНОЗ, ВІКНА БЕЗПЕКИ, МІГРАЦІЯ)
+    // =========================================================================
+    async function generateDossier(isManual = false) {
+      const verdictTextEl = document.getElementById("verdictText");
+      const verdictMathEl = document.getElementById("verdictMathStrip");
+      
+      verdictTextEl.innerHTML = "⏳ Проводжу глибокий аналіз патрулів, розрахунок хвиль та формування досьє...";
+
+      await loadArchiveData();
+
       const now = Date.now();
       const nowDate = new Date();
       const todayStart = new Date(nowDate.getFullYear(), nowDate.getMonth(), nowDate.getDate()).getTime();
@@ -509,15 +519,58 @@
       const beforeYesterdayReports = relevantReports.filter(r => r.time >= beforeYesterdayStart && r.time < yesterdayStart);
       const weekReports = relevantReports.filter(r => r.time >= weekStart);
 
-      document.getElementById("verdictText").innerHTML = `
-        📊 <b>Добова активність:</b> сьогодні зафіксовано <b>${todayReports.length}</b> постів, вчора <b>${yesterdayReports.length}</b>, позавчора <b>${beforeYesterdayReports.length}</b>. 
-        Всього за 7 днів зафіксовано <b>${weekReports.length}</b> небезпечних точок ${scaleMode === 'route' ? 'на вашому маршруті' : 'по всьому місту'}.
+      verdictMathEl.innerHTML = `
+        📊 <b>Добова активність:</b> сьогодні: <b>${todayReports.length}</b>, вчора: <b>${yesterdayReports.length}</b>, позавчора: <b>${beforeYesterdayReports.length}</b>. 
+        За 7 днів: <b>${weekReports.length}</b> небезпечних точок (${scaleMode === 'route' ? '8 точок маршруту' : 'все місто'}).
       `;
 
       const d = new Date();
-      const timeStr = String(d.getHours()).padStart(2, '0') + ":" + String(d.getMinutes()).padStart(2, '0');
-      const dateStr = d.toLocaleDateString([], { day:'2-digit', month:'2-digit', year:'numeric' });
-      document.getElementById("verdictTime").innerText = `Останнє оновлення: ${dateStr} ${timeStr}`;
+      document.getElementById("verdictTime").innerText = `Останнє оновлення: ${d.toLocaleDateString([], {day:'2-digit', month:'2-digit'})} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+
+      let streetStatsText = "";
+      TARGET_CHECKPOINTS.forEach(t => {
+        const matches = rawArchive.filter(r => !checkIsReportClean(r) && t.regex.test(((r.text||'') + ' ' + (r.address||'')).toLowerCase()));
+        const todayCount = matches.filter(r => r.time >= todayStart).length;
+        streetStatsText += `• ${t.name}: сьогодні=${todayCount}, за тиждень=${matches.length}\n`;
+      });
+
+      const recentReportsSample = relevantReports.slice(-35).reverse().map(r => {
+        const dt = new Date(r.time);
+        const tStr = String(dt.getHours()).padStart(2, '0') + ":" + String(dt.getMinutes()).padStart(2, '0');
+        return `[${tStr}] БЛОКПОСТ: "${r.text || r.raw_text || ''}" [${r.address || ''}]`;
+      }).join('\n');
+
+      const deepDossierPrompt = `
+Ти — провідний тактичний штурман та аналітик дорожньої розвідки міста Дніпро.
+Твоє завдання — надати ПОВНЕ, ГЛИБОКЕ ТАКТИЧНЕ ДОСЬЄ ТА ПРОГНОЗ ОБСТАНОВКИ (${scaleMode === 'route' ? 'для 8 контрольних пунктів маршруту водія' : 'по всьому місту'}).
+
+МАТЕМАТИКА АКТИВНОСТІ:
+Сьогодні: ${todayReports.length} постів | Вчора: ${yesterdayReports.length} | Позавчора: ${beforeYesterdayReports.length} | За тиждень: ${weekReports.length}
+
+ДАНІ ПО ТОЧКАХ:
+${streetStatsText}
+
+СВІЖІ ЗВІТИ З КАНАЛУ:
+${recentReportsSample || "Немає підтверджених засад"}
+
+СТРУКТУРА ДОСЬЄ (чітко, професійно, по суті):
+1. **Оперативна оцінка обстановки**: загальний рівень загрози, динаміка (зростання/спад відносно вчора).
+2. **Аналіз добових хвиль**:
+   - Ранішній пік (07:00 – 11:00)
+   - Денне вікно затишшя (12:00 – 16:00)
+   - Вечірній сплеск (17:00 – 21:00)
+3. **Закономірності та міграція екіпажів**: де концентруються сили, які точки маршруту під найбільшим ударом.
+4. **Рекомендовані вікна безпеки**: коли сьогодні найбезпечніше рухатися.
+5. **Тактичний вердикт на найближчі години**.
+`;
+
+      try {
+        const res = await executeGemini(deepDossierPrompt, 0.25);
+        verdictTextEl.innerHTML = res.reply.trim();
+      } catch (e) {
+        verdictTextEl.innerHTML = `<span style="color:#ef4444;">⚠️ Помилка формування досьє: ${e.message}</span>`;
+      }
+      renderCheckpointCards();
     }
 
     function renderCheckpointCards() {
@@ -570,23 +623,21 @@
               <span class="cp-risk-badge ${riskClass}">РИЗИК: ${riskLevel}</span>
             </div>
             <div class="cp-stats-row">
-              <span>Всього за тиждень: <b>${matches.length}</b> повідомлень</span>
+              <span>Всього за тиждень: <b>${matches.length}</b></span>
               <span>Блокпостів: <b style="color:#ef4444;">${totalDanger}</b></span>
               <span>Чисто: <b style="color:#10b981;">${matches.length - totalDanger}</b></span>
             </div>
             <div class="cp-peak-info">
-              🕒 <b>Головний час ризику:</b> ${peakDisplay}
+              🕒 <b>Час ризику:</b> ${peakDisplay}
             </div>
           </div>
         `;
       });
     }
 
-    function sendQuickQuestion(txt) {
-      document.getElementById("chatInput").value = txt;
-      submitDossierChat();
-    }
-
+    // =========================================================================
+    // 💬 ОПЕРАТИВНИЙ ДІАЛОГ БЕЗ ВОДИ (1–3 РЕЧЕННЯ ПО СУТІ)
+    // =========================================================================
     async function submitDossierChat() {
       const input = document.getElementById("chatInput");
       const userQuestion = input.value.trim();
@@ -602,7 +653,7 @@
 
       const loadingBubble = document.createElement("div");
       loadingBubble.className = "chat-bubble bot loading";
-      loadingBubble.innerText = "🧠 ШІ аналізує дорожню ситуацію...";
+      loadingBubble.innerText = "ШІ аналізує запит...";
       chatBox.appendChild(loadingBubble);
       chatBox.scrollTop = chatBox.scrollHeight;
 
@@ -610,10 +661,10 @@
 
       const now = Date.now();
       const todayStart = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate()).getTime();
-      const recentReports = rawArchive.slice(-30).reverse().map(r => {
+      const recentReports = rawArchive.slice(-25).reverse().map(r => {
         const d = new Date(r.time);
         const tStr = String(d.getHours()).padStart(2, '0') + ":" + String(d.getMinutes()).padStart(2, '0');
-        return `[${tStr}] ${checkIsReportClean(r) ? 'ЧИСТО' : 'БЛОКПОСТ'}: "${r.text || r.raw_text || ''}" (${r.address || ''})`;
+        return `[${tStr}] ${checkIsReportClean(r) ? 'ЧИСТО' : 'БЛОКПОСТ'}: "${r.text || r.raw_text || ''}"`;
       }).join('\n');
 
       let streetSummary = "";
@@ -623,47 +674,40 @@
         streetSummary += `• ${t.name}: сьогодні=${todayPts.length}, за тиждень=${pts.length}\n`;
       });
 
-      let systemPrompt = "";
-
+      let prompt = "";
       if (isFullReportRequested) {
-        systemPrompt = `
+        prompt = `
 Ти — тактичний дорожній штурман Дніпра.
-Користувач явно попросив ПОВНИЙ ЗВІТ.
-Надай структурований тактичний рапорт (Ранішній пік, денне вікно затишшя, вечірній сплеск, аналіз 8 точок маршруту водія).
-
-СТАТИСТИКА 8 ТОЧОК МАРШРУТУ:
+Користувач прямо попросив ПОВНИЙ ЗВІТ.
+Надай структурований звіт (Ранішній пік, вікна затишшя, вечірній сплеск, аналіз точок).
+СТАТИСТИКА:
 ${streetSummary}
-
-ОСТАННІ 30 ПОВІДОМЛЕНЬ:
+ОСТАННІ ПОВІДОМЛЕННЯ:
 ${recentReports}
-
 ЗАПИТ:
 "${userQuestion}"
-        `;
+`;
       } else {
-        systemPrompt = `
-Ти — оперативний дорожній штурман міста Дніпро.
+        prompt = `
+Ти — оперативний дорожній штурман Дніпра.
 РЕЖИМ: ЖИВИЙ ДІАЛОГ БЕЗ ВОДИ.
 
 СУВОРІ ПРАВИЛА:
-1. КАТЕГОРИЧНО ЗАБОРОНЕНО писати вітання («Вітаю, водію», «На зв'язку»), вказувати версію моделі («Gemini 3.8»), поточний час запиту чи вступні фрази («Проводжу розбір...», «Нижче наведено аналіз...»).
-2. ВІДПОВІДАЙ СТРОГО ПО СУТІ: максимум 1–3 коротких, чітких речення.
-3. Якщо запитують «чи повне затишшя?», «чи чисто?», «чи є пости?» — одразу дай пряму конкретну відповідь (Так чи Ні), назви точну кількість зафіксованих постів на маршруті та найближчий часовий проміжок ризику.
-4. Ніяких списків піків, якщо про них прямо не запитали.
+1. КАТЕГОРИЧНО ЗАБОРОНЕНО вітатися («Вітаю, водію»), писати версії моделей («Gemini 3.8»), час запиту чи вступні фрази («Проводжу розбір...»).
+2. ВІДПОВІДАЙ СТРОГО ПО СУТІ: максимум 1–3 коротких конкретних речення.
+3. Одразу давай чітку відповідь: Так чи Ні, скільки постів зафіксовано, коли найближчий пік небезпеки. Не перераховуй усі піки дня, якщо про них не спитали.
 
-СТАТИСТИКА 8 ТОЧОК МАРШРУТУ ВОДІЯ:
+СТАТИСТИКА 8 ТОЧОК:
 ${streetSummary}
-
-ОСТАННІ ПОВІДОМЛЕННЯ:
+СВІЖІ ЗВІТИ:
 ${recentReports}
-
 ЗАПИТАННЯ ВОДІЯ:
 "${userQuestion}"
-        `;
+`;
       }
 
       try {
-        const result = await executeGemini(systemPrompt);
+        const result = await executeGemini(prompt, 0.15);
         loadingBubble.className = "chat-bubble bot";
         loadingBubble.innerText = result.reply.trim();
         chatBox.scrollTop = chatBox.scrollHeight;
@@ -672,15 +716,6 @@ ${recentReports}
         loadingBubble.innerHTML = `<span style="color:#ef4444;">⚠️ ${err.message}</span>`;
         chatBox.scrollTop = chatBox.scrollHeight;
       }
-    }
-
-    async function generateDossier(isManual = false) {
-      if (isManual) {
-        document.getElementById("verdictText").innerHTML = "⏳ Оновлення розвідданих та тактичного вердикту...";
-      }
-      await loadArchiveData();
-      calculateTacticalVerdict();
-      renderCheckpointCards();
     }
 
     async function loadArchiveData() {
@@ -695,10 +730,7 @@ ${recentReports}
       }
     }
 
-    loadArchiveData().then(() => {
-      calculateTacticalVerdict();
-      renderCheckpointCards();
-    });
+    generateDossier();
   </script>
 </body>
 </html>
