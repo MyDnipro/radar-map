@@ -520,7 +520,7 @@
       showToast("🚗 Простий режим водія активовано!");
     }
 
-    function requestAdminLogin() {
+   function requestAdminLogin() {
       const token = prompt("🔐 Введіть персональний GitHub токен (ghp_...):\n(Вхід виконується 1 раз, пристрій запам'ятовується)");
       if (!token) return;
       const clean = token.trim();
@@ -534,6 +534,26 @@
       }
     }
 
+    // Секретний виклик авторизації на новому пристрої (затискання на 0.7 сек)
+    const countTextEl = document.getElementById("countText");
+    let countPressTimer = null;
+    function startCountPress() {
+      countPressTimer = setTimeout(() => {
+        if (navigator.vibrate) navigator.vibrate(60);
+        requestAdminLogin();
+      }, 700);
+    }
+    function cancelCountPress() {
+      if (countPressTimer) { clearTimeout(countPressTimer); countPressTimer = null; }
+    }
+    if (countTextEl) {
+      countTextEl.addEventListener("mousedown", startCountPress);
+      countTextEl.addEventListener("mouseup", cancelCountPress);
+      countTextEl.addEventListener("mouseleave", cancelCountPress);
+      countTextEl.addEventListener("touchstart", startCountPress, { passive: true });
+      countTextEl.addEventListener("touchend", cancelCountPress);
+      countTextEl.addEventListener("touchcancel", cancelCountPress);
+    }
     // СТРІЛКА ▲ / ▼: ТІЛЬКИ ЗГОРТАННЯ ТА РОЗГОРТАННЯ ВІКНА 1
     function togglePanelCollapse(e) {
       if (e) e.stopPropagation();
