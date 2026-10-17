@@ -5,29 +5,29 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>ШІ-Штурман: Тактичне досьє — Дніпро</title>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     body {
       background: #060913;
       color: #e2e8f0;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      padding: 12px;
+      padding: 10px 12px 24px 12px;
       min-height: 100vh;
     }
     .container { max-width: 980px; margin: 0 auto; }
 
-    /* ШАПКА */
+    /* 1. ШАПКА */
     .hud-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 10px;
+      margin-bottom: 8px;
       border-bottom: 1px solid #1e293b;
       padding-bottom: 8px;
       flex-wrap: wrap;
       gap: 6px;
     }
     .hud-title {
-      font-size: 16px;
+      font-size: 15px;
       font-weight: 900;
       color: #00f3ff;
       text-shadow: 0 0 12px rgba(0, 243, 255, 0.45);
@@ -39,10 +39,10 @@
       display: flex;
       gap: 6px;
       align-items: center;
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
     }
     .btn-head-act {
-      background: #0284c7;
+      background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
       color: #fff;
       border: 1px solid #38bdf8;
       padding: 6px 10px;
@@ -51,9 +51,10 @@
       font-weight: 800;
       cursor: pointer;
       box-shadow: 0 0 10px rgba(2, 132, 199, 0.4);
+      white-space: nowrap;
       transition: all 0.2s;
     }
-    .btn-head-act:hover { background: #0369a1; }
+    .btn-head-act:active { transform: scale(0.95); }
     .btn-head-nav {
       background: #0f172a;
       color: #38bdf8;
@@ -63,12 +64,12 @@
       text-decoration: none;
       font-size: 11px;
       font-weight: 700;
-      box-shadow: 0 0 10px rgba(2, 132, 199, 0.3);
+      white-space: nowrap;
       transition: all 0.2s;
     }
     .btn-head-nav:hover { background: #0284c7; color: #fff; }
 
-    /* МАСШТАБ РОЗВІДКИ: СТРОГО В ОДИН РЯДОК */
+    /* 2. МАСШТАБ РОЗВІДКИ: СТРОГО В ОДИН РЯДОК */
     .scale-bar {
       display: flex;
       align-items: center;
@@ -78,7 +79,7 @@
       flex-wrap: nowrap;
       background: #0b1120;
       border: 1px solid #1e293b;
-      padding: 5px 8px;
+      padding: 5px 10px;
       border-radius: 10px;
     }
     .scale-lbl {
@@ -91,14 +92,14 @@
     }
     .scale-btns-wrap {
       display: flex;
-      gap: 4px;
+      gap: 5px;
       flex-shrink: 0;
     }
     .btn-scale-toggle {
       background: #0f172a;
       border: 1px solid #334155;
       color: #94a3b8;
-      padding: 5px 9px;
+      padding: 5px 10px;
       border-radius: 7px;
       font-size: 10.5px;
       font-weight: 800;
@@ -113,14 +114,16 @@
       box-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
     }
 
-    /* БАНЕР ТАКТИЧНОГО ДОСЬЄ */
+    /* 3. ВЕРХНЄ ВІКНО ВИСНОВКУ ШІ ЗІ СКРОЛІНГОМ */
     .verdict-banner {
-      background: rgba(15, 23, 42, 0.95);
+      background: rgba(15, 23, 42, 0.96);
       border: 1.5px solid #00f3ff;
       border-radius: 12px;
-      padding: 12px 14px;
-      margin-bottom: 12px;
-      box-shadow: 0 0 20px rgba(0, 243, 255, 0.2);
+      padding: 10px 12px;
+      margin-bottom: 10px;
+      box-shadow: 0 0 20px rgba(0, 243, 255, 0.18);
+      display: flex;
+      flex-direction: column;
     }
     .verdict-top {
       display: flex;
@@ -130,64 +133,86 @@
       font-weight: 900;
       margin-bottom: 6px;
       flex-wrap: wrap;
-      gap: 6px;
+      gap: 4px;
     }
     .verdict-tag { color: #f59e0b; }
-    .verdict-calc { color: #38bdf8; text-transform: uppercase; font-size: 10px; }
+    .verdict-calc { color: #38bdf8; text-transform: uppercase; font-size: 9.5px; }
+    
     .verdict-math-strip {
       font-size: 11px;
       color: #38bdf8;
+      background: #060913;
+      padding: 6px 10px;
+      border-radius: 8px;
+      border: 1px solid #1e293b;
       margin-bottom: 8px;
-      padding-bottom: 6px;
-      border-bottom: 1px solid #1e293b;
       line-height: 1.4;
     }
-    .verdict-body {
+
+    /* Вікно скролінгу для звіту ШІ */
+    .verdict-scroll-box {
+      max-height: 230px;
+      overflow-y: auto;
+      padding: 8px 10px;
+      background: #080d1a;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
       font-size: 11.5px;
       line-height: 1.55;
       color: #f1f5f9;
       white-space: pre-wrap;
       word-break: break-word;
+      scroll-behavior: smooth;
     }
+    .verdict-scroll-box::-webkit-scrollbar { width: 5px; }
+    .verdict-scroll-box::-webkit-scrollbar-track { background: #060913; border-radius: 4px; }
+    .verdict-scroll-box::-webkit-scrollbar-thumb { background: #0284c7; border-radius: 4px; }
+
     .verdict-foot {
       display: flex;
       justify-content: space-between;
+      align-items: center;
       font-size: 9.5px;
       font-weight: 700;
       color: #64748b;
-      border-top: 1px solid #1e293b;
       padding-top: 6px;
-      margin-top: 8px;
+      margin-top: 6px;
+      flex-wrap: wrap;
+      gap: 4px;
     }
 
-    /* ДІАЛОГ БЕЗ ЧІПСІВ */
+    /* 4. ДІАЛОГОВЕ ВІКНО ОДРАЗУ ПІД АНАЛІЗОМ (БЕЗ ЧІПСІВ ТА ВОДИ) */
     .dossier-chat-card {
       background: #0b1120;
-      border: 1px solid #1e293b;
+      border: 1.5px solid #1e293b;
       border-radius: 12px;
       padding: 10px;
       margin-bottom: 14px;
       display: flex;
       flex-direction: column;
       gap: 8px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
     }
     .chat-history-box {
       background: #060913;
       border: 1px solid #1e293b;
       border-radius: 8px;
-      padding: 10px;
-      max-height: 320px;
+      padding: 8px 10px;
+      max-height: 210px;
       overflow-y: auto;
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 7px;
     }
+    .chat-history-box::-webkit-scrollbar { width: 4px; }
+    .chat-history-box::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+
     .chat-bubble {
-      padding: 8px 11px;
+      padding: 7px 10px;
       border-radius: 8px;
       font-size: 11.5px;
-      line-height: 1.5;
-      max-width: 95%;
+      line-height: 1.45;
+      max-width: 94%;
       white-space: pre-wrap;
       word-break: break-word;
     }
@@ -222,7 +247,7 @@
       border: 1px solid #334155;
       border-radius: 8px;
       color: #fff;
-      padding: 8px 12px;
+      padding: 8px 11px;
       font-size: 11.5px;
       outline: none;
     }
@@ -231,30 +256,40 @@
       background: linear-gradient(135deg, #0284c7 0%, #00f3ff 100%);
       border: none;
       color: #0f172a;
-      padding: 8px 15px;
+      padding: 8px 14px;
       border-radius: 8px;
       font-size: 11px;
       font-weight: 900;
       cursor: pointer;
       flex-shrink: 0;
     }
+    .btn-chat-send:active { transform: scale(0.95); }
 
-    /* СПИСОК ТОЧОК */
+    /* 5. КАРТКИ 8 КОНТРОЛЬНИХ ТОЧОК (ПО 8 ПАРАМЕТРІВ У КОЖНІЙ) */
+    .section-head-title {
+      font-size: 12.5px;
+      font-weight: 900;
+      color: #38bdf8;
+      margin: 10px 0 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
     .checkpoint-cards-list {
       display: flex;
       flex-direction: column;
-      gap: 8px;
-      margin-top: 8px;
+      gap: 12px;
     }
     .cp-card {
       background: #0b1120;
       border: 1px solid #1e293b;
-      border-radius: 10px;
-      padding: 10px 12px;
+      border-radius: 12px;
+      padding: 11px 12px;
       border-left: 5px solid #00f3ff;
       display: flex;
       flex-direction: column;
-      gap: 5px;
+      gap: 8px;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
     }
     .cp-card-top {
       display: flex;
@@ -262,48 +297,68 @@
       align-items: center;
       flex-wrap: wrap;
       gap: 6px;
+      border-bottom: 1px solid #1e293b;
+      padding-bottom: 6px;
     }
     .cp-card-title {
-      font-size: 12.5px;
+      font-size: 13px;
       font-weight: 900;
       color: #f8fafc;
     }
     .cp-risk-badge {
-      font-size: 9px;
+      font-size: 9.5px;
       font-weight: 900;
-      padding: 2px 6px;
-      border-radius: 5px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-    .risk-low { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid #10b981; }
-    .risk-mid { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid #f59e0b; }
-    .risk-high { background: rgba(239, 68, 68, 0.25); color: #f87171; border: 1px solid #ef4444; }
-
-    .cp-stats-row {
-      display: flex;
-      gap: 10px;
-      font-size: 10px;
-      color: #94a3b8;
-      font-weight: 700;
-      flex-wrap: wrap;
-    }
-    .cp-peak-info {
-      font-size: 10.5px;
-      color: #cbd5e1;
-      background: #060913;
-      padding: 5px 8px;
+      padding: 3px 7px;
       border-radius: 6px;
-      border: 1px solid #1e293b;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+    .risk-low { background: rgba(16, 185, 129, 0.18); color: #34d399; border: 1px solid #10b981; }
+    .risk-mid { background: rgba(245, 158, 11, 0.18); color: #fbbf24; border: 1px solid #f59e0b; }
+    .risk-high { background: rgba(239, 68, 68, 0.22); color: #f87171; border: 1px solid #ef4444; }
+
+    /* Сітка 8 параметрів точки */
+    .cp-params-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 6px;
+    }
+    @media (max-width: 600px) {
+      .cp-params-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    .cp-param-box {
+      background: #060913;
+      border: 1px solid #162032;
+      border-radius: 8px;
+      padding: 6px 9px;
+      font-size: 10.5px;
       line-height: 1.4;
+      color: #cbd5e1;
+    }
+    .cp-param-box.full-span {
+      grid-column: 1 / -1;
+    }
+    .cp-param-lbl {
+      font-size: 9.5px;
+      font-weight: 800;
+      color: #64748b;
+      text-transform: uppercase;
+      margin-bottom: 2px;
+      display: block;
+    }
+    .cp-param-val {
+      color: #f1f5f9;
+      font-weight: 600;
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <!-- ШАПКА -->
+    <!-- 1. ШАПКА -->
     <div class="hud-header">
-      <div class="hud-title">🧠 ШІ-ШТУРМАН: ТАКТИЧНЕ ДОСЬЄ (8 ПУНКТІВ)</div>
+      <div class="hud-title">🧠 ШІ-ШТУРМАН: ТАКТИЧНЕ ДОСЬЄ</div>
       <div class="head-actions">
         <button class="btn-head-act" onclick="generateDossier(true)">🔄 Оновити ШІ-досьє</button>
         <a href="stats.html" class="btn-head-nav">📊 Аналітика</a>
@@ -311,50 +366,51 @@
       </div>
     </div>
 
-    <!-- МАСШТАБ РОЗВІДКИ В ОДИН РЯДОК -->
+    <!-- 2. МАСШТАБ РОЗВІДКИ В ОДИН РЯДОК -->
     <div class="scale-bar">
-      <span class="scale-lbl">МАСШТАБ:</span>
+      <span class="scale-lbl">МАСШТАБ РОЗВІДКИ:</span>
       <div class="scale-btns-wrap">
         <button id="btnScaleRoute" class="btn-scale-toggle active" onclick="setScaleMode('route')">🔔 Мій шлях (8)</button>
         <button id="btnScaleCity" class="btn-scale-toggle" onclick="setScaleMode('city')">🌐 Все місто</button>
       </div>
     </div>
 
-    <!-- БАНЕР ТАКТИЧНОГО ДОСЬЄ -->
+    <!-- 3. ВЕРХНЄ ВІКНО ВИСНОВКУ ШІ ЗІ СКРОЛІНГОМ (ЗАВАНТАЖУЄТЬСЯ З ПАМ'ЯТІ МИТТЄВО) -->
     <div class="verdict-banner">
       <div class="verdict-top">
-        <span class="verdict-tag">⚡ Тактичне досьє та аналітичний прогноз:</span>
-        <span class="verdict-calc">ТОЧНИЙ РОЗРАХУНОК GEMINI 3.8 ⚡</span>
+        <span class="verdict-tag">⚡ Заключення ШІ-штурмана та прогноз:</span>
+        <span class="verdict-calc" id="verdictStatusBadge">ЗБЕРЕЖЕНИЙ ЗВІТ (БЕЗ ОЧІКУВАННЯ) ⚡</span>
       </div>
       <div id="verdictMathStrip" class="verdict-math-strip">
-        ⏳ Підрахунок активності...
+        ⏳ Завантаження статистики архіву...
       </div>
-      <div id="verdictText" class="verdict-body">
-        ⏳ Формування глибокого тактичного досьє...
+      <div id="verdictText" class="verdict-scroll-box">
+        Завантаження збереженого досьє...
       </div>
       <div class="verdict-foot">
-        <span id="verdictTime">Останнє оновлення: --:--</span>
+        <span id="verdictTime">Останнє оновлення ШІ: --:--</span>
         <span id="verdictScope">Режим: 8 точок маршруту</span>
       </div>
     </div>
 
-    <!-- ІНТЕРАКТИВНИЙ ДІАЛОГ БЕЗ ЗАЙВИХ КНОПОК -->
+    <!-- 4. ОДРАЗУ ПІД АНАЛІЗОМ — ОПЕРАТИВНИЙ ДІАЛОГ З ШІ БЕЗ ВОДИ -->
     <div class="dossier-chat-card">
       <div class="chat-history-box" id="chatHistoryBox">
         <div class="chat-bubble bot">
-          ШІ-штурман на зв'язку. Ставте запитання по точках чи обстановці — відповідаю строго по суті без зайвої води.
+          На зв'язку. Пишіть запитання по вулицях, часу чи маршруту — відповідаю чітко по факту без зайвої води.
         </div>
       </div>
 
       <div class="chat-input-row">
-        <input type="text" id="chatInput" class="chat-input" placeholder="Запитайте у ШІ обстановку у місті чи по точках..." onkeydown="if(event.key==='Enter') submitDossierChat()">
-        <button class="btn-chat-send" onclick="submitDossierChat()">Аналіз ➔</button>
+        <input type="text" id="chatInput" class="chat-input" placeholder="Запитайте конкретно (напр.: як зараз проїхати Павлова?)..." onkeydown="if(event.key==='Enter') submitDossierChat()">
+        <button class="btn-chat-send" onclick="submitDossierChat()">Запитати ➔</button>
       </div>
     </div>
 
-    <!-- 8 КЛЮЧОВИХ ТОЧОК МАРШРУТУ -->
-    <div style="font-size:12.5px; font-weight:900; color:#38bdf8; margin:14px 0 6px;">
-      📍 Оперативний статус 8 контрольних пунктів:
+    <!-- 5. ДЕТАЛЬНІ КАРТКИ 8 КОНТРОЛЬНИХ ТОЧОК (ПО 8 ПАРАМЕТРІВ У КОЖНІЙ) -->
+    <div class="section-head-title">
+      <span>📍 Детальна розвідка 8 пунктів (Статистика + Прогноз):</span>
+      <span style="font-size:10px; color:#64748b; font-weight:700;">8 параметрів на кожну точку</span>
     </div>
     <div class="checkpoint-cards-list" id="checkpointCardsList"></div>
   </div>
@@ -398,18 +454,77 @@
     }
 
     const FIREBASE_ARCHIVE_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/stats_archive.json";
+    const FIREBASE_DOSSIER_CACHE_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/config/dossier_cache.json";
+
     let rawArchive = [];
     let scaleMode = localStorage.getItem("dossier_scale_mode") || "route";
+    const DAYS_UA = ["Неділя", "Понеділок", "Вівторок", "Середа", "Четвер", "П'ятниця", "Субота"];
 
     const TARGET_CHECKPOINTS = [
-      { id: "kaidak_rovd", name: "РОВД / Кайдацький з'їзд", fullName: "РОВД / Кайдацький з'їзд (Набережна Заводська)", regex: /(?:кайдак|кайдацька|з'їзд.*кайдак|съезд.*кайдак|ровд.*заводськ)/i, color: "#a855f7" },
-      { id: "vodolechebnitsa", name: "Водолікарня", fullName: "Водолікарня (пр. Свободи)", regex: /(?:водолечеб|водолікарн|водогрязелечеб)/i, color: "#ec4899" },
-      { id: "kombainoviy", name: "Комбайновий", fullName: "Комбайновий завод (вул. Ударників)", regex: /(?:комбайн|ударник)/i, color: "#f59e0b" },
-      { id: "krasnozavodska", name: "Краснозаводська", fullName: "Краснозаводська / Белелюбського / ДТРЗ", regex: /(?:белелюб|краснозавод|дтрз)/i, color: "#eab308" },
-      { id: "pavlova", name: "вул. Павлова", fullName: "вул. Академіка Павлова", regex: /(?:академика\s*павлова|академіка\s*павлова|\bпавлова\b)/i, color: "#00f3ff" },
-      { id: "rechport", name: "Річпорт", fullName: "Річпорт (Річковий вокзал / Десантники)", regex: /(?:речпорт|річпорт|речной\s*вокзал|річковий\s*вокзал|десантник)/i, color: "#10b981" },
-      { id: "vodokachka", name: "Водокачка", fullName: "Водокачка (Набережна Заводська)", regex: /(?:водокачк)/i, color: "#3b82f6" },
-      { id: "stan_550", name: "Стан 550", fullName: "Стан 550 (Набережна Заводська)", regex: /(?:стан\s*550|стан550)/i, color: "#6366f1" }
+      { 
+        id: "kaidak_rovd", 
+        name: "РОВД / Кайдацький з'їзд", 
+        fullName: "РОВД / Кайдацький з'їзд (Набережна Заводська)", 
+        regex: /(?:кайдак|кайдацька|з'їзд.*кайдак|съезд.*кайдак|ровд.*заводськ)/i, 
+        color: "#a855f7",
+        detour: "Об'їзд через пр. Свободи або вул. Маяковського"
+      },
+      { 
+        id: "vodolechebnitsa", 
+        name: "Водолікарня", 
+        fullName: "Водолікарня (пр. Свободи)", 
+        regex: /(?:водолечеб|водолікарн|водогрязелечеб)/i, 
+        color: "#ec4899",
+        detour: "Об'їзд по Набережній Заводській або через пр. Івана Мазепи"
+      },
+      { 
+        id: "kombainoviy", 
+        name: "Комбайновий", 
+        fullName: "Комбайновий завод (вул. Ударників)", 
+        regex: /(?:комбайн|ударник)/i, 
+        color: "#f59e0b",
+        detour: "Рух по Набережній Заводській або через пр. Лесі Українки"
+      },
+      { 
+        id: "krasnozavodska", 
+        name: "Краснозаводська", 
+        fullName: "Краснозаводська / Белелюбського / ДТРЗ", 
+        regex: /(?:белелюб|краснозавод|дтрз)/i, 
+        color: "#eab308",
+        detour: "Маневр через Набережну Заводську або верх вул. Робочої"
+      },
+      { 
+        id: "pavlova", 
+        name: "вул. Павлова", 
+        fullName: "вул. Академіка Павлова", 
+        regex: /(?:академика\s*павлова|академіка\s*павлова|\bпавлова\b)/i, 
+        color: "#00f3ff",
+        detour: "Об'їзд через вул. Курчатова / автовокзал або транзитом по Набережній"
+      },
+      { 
+        id: "rechport", 
+        name: "Річпорт", 
+        fullName: "Річпорт (Річковий вокзал / Десантники)", 
+        regex: /(?:речпорт|річпорт|речной\s*вокзал|річковий\s*вокзал|десантник)/i, 
+        color: "#10b981",
+        detour: "Обхід через вул. Княгині Ольги (Горького) — пр. Яворницького"
+      },
+      { 
+        id: "vodokachka", 
+        name: "Водокачка", 
+        fullName: "Водокачка (Набережна Заводська)", 
+        regex: /(?:водокачк)/i, 
+        color: "#3b82f6",
+        detour: "Об'їзд через ж/м Покровський — вул. Юрія Кондратюка — пр. Свободи"
+      },
+      { 
+        id: "stan_550", 
+        name: "Стан 550", 
+        fullName: "Стан 550 (Набережна Заводська)", 
+        regex: /(?:стан\s*550|стан550)/i, 
+        color: "#6366f1",
+        detour: "Маневр через пр. Свободи (перевірити статус Водолікарні)"
+      }
     ];
 
     function isArchiveSpam(text) {
@@ -433,17 +548,28 @@
       if (rep.is_clean === true) return true;
       const txt = ((rep.text || "") + " " + (rep.raw_text || "")).toLowerCase();
       if (/(?:не\s*норм|не\s*чисто|не\s*спок)/i.test(txt)) return false;
-      return /(?:чисто|спокійно|спокойно|зелено|вільно|свободно|пусто|\bнорм\b|\bнормально\b|\bнормик\b)/i.test(txt);
+      return /(?:чисто|спокійно|спокойно|зелено|вільно|свободно|пусто|\bнорм\b|\bнормально\b|\bнормик\b|☀️|🌞|👍|👌|💚)/i.test(txt);
     }
 
+    function formatAiTextToHtml(rawText) {
+      if (!rawText) return "";
+      return rawText
+        .replace(/^#{1,4}\s*(.+)$/gm, '<b style="color:#00f3ff; display:block; margin-top:8px; margin-bottom:2px;">$1</b>')
+        .replace(/\*\*(.*?)\*\*/g, '<b style="color:#f8fafc;">$1</b>')
+        .replace(/^\*\s+/gm, '• ')
+        .trim();
+    }
+
+    // Перемикач масштабу (бере з кешу без примусового запиту до ШІ)
     function setScaleMode(mode) {
       scaleMode = mode;
       localStorage.setItem("dossier_scale_mode", mode);
       document.getElementById("btnScaleRoute").classList.toggle("active", mode === 'route');
       document.getElementById("btnScaleCity").classList.toggle("active", mode === 'city');
-      document.getElementById("verdictScope").innerText = mode === 'route' ? "Режим: 8 ключових точок маршруту" : "Режим: Все місто";
-      generateDossier(true);
-      renderCheckpointCards();
+      document.getElementById("verdictScope").innerText = mode === 'route' ? "Режим: 8 точок маршруту" : "Режим: Все місто";
+      
+      updateMathStripOnly();
+      loadCachedVerdictDisplay();
     }
 
     async function executeGemini(promptText, temperature = 0.2) {
@@ -458,7 +584,7 @@
         for (const m of models) {
           try {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 9000);
+            const timeoutId = setTimeout(() => controller.abort(), 9500);
             const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${k}`;
             const res = await fetch(url, {
               method: "POST",
@@ -479,25 +605,18 @@
               lastErr = errObj.error?.message || `HTTP ${res.status}`;
             }
           } catch(e) {
-            lastErr = e.name === 'AbortError' ? 'Таймаут (9с)' : e.message;
+            lastErr = e.name === 'AbortError' ? 'Таймаут (9.5с)' : e.message;
           }
         }
       }
       throw new Error(lastErr || "Вичерпано ліміт ключів.");
     }
 
-    // =========================================================================
-    // 🧠 ГЛИБОКА ТАКТИЧНА АНАЛІТИКА ДОСЬЄ (ПРОГНОЗ, ВІКНА БЕЗПЕКИ, МІГРАЦІЯ)
-    // =========================================================================
-    async function generateDossier(isManual = false) {
-      const verdictTextEl = document.getElementById("verdictText");
+    // Оновлює математичну стрічку зі свіжого архіву без виклику ШІ
+    function updateMathStripOnly() {
       const verdictMathEl = document.getElementById("verdictMathStrip");
-      
-      verdictTextEl.innerHTML = "⏳ Проводжу глибокий аналіз патрулів, розрахунок хвиль та формування досьє...";
+      if (!verdictMathEl || rawArchive.length === 0) return;
 
-      await loadArchiveData();
-
-      const now = Date.now();
       const nowDate = new Date();
       const todayStart = new Date(nowDate.getFullYear(), nowDate.getMonth(), nowDate.getDate()).getTime();
       const yesterdayStart = todayStart - 86400000;
@@ -505,7 +624,6 @@
       const weekStart = todayStart - 86400000 * 6;
 
       const validDangerReports = rawArchive.filter(r => !checkIsReportClean(r));
-
       let relevantReports = validDangerReports;
       if (scaleMode === 'route') {
         relevantReports = validDangerReports.filter(r => {
@@ -514,121 +632,352 @@
         });
       }
 
-      const todayReports = relevantReports.filter(r => r.time >= todayStart);
-      const yesterdayReports = relevantReports.filter(r => r.time >= yesterdayStart && r.time < todayStart);
-      const beforeYesterdayReports = relevantReports.filter(r => r.time >= beforeYesterdayStart && r.time < yesterdayStart);
-      const weekReports = relevantReports.filter(r => r.time >= weekStart);
+      const todayCount = relevantReports.filter(r => r.time >= todayStart).length;
+      const yesterdayCount = relevantReports.filter(r => r.time >= yesterdayStart && r.time < todayStart).length;
+      const beforeYesterdayCount = relevantReports.filter(r => r.time >= beforeYesterdayStart && r.time < yesterdayStart).length;
+      const weekCount = relevantReports.filter(r => r.time >= weekStart).length;
 
       verdictMathEl.innerHTML = `
-        📊 <b>Добова активність:</b> сьогодні: <b>${todayReports.length}</b>, вчора: <b>${yesterdayReports.length}</b>, позавчора: <b>${beforeYesterdayReports.length}</b>. 
-        За 7 днів: <b>${weekReports.length}</b> небезпечних точок (${scaleMode === 'route' ? '8 точок маршруту' : 'все місто'}).
+        📊 <b>Фактична активність (${scaleMode === 'route' ? '8 точок маршруту' : 'все місто'}):</b> сьогодні зафіксовано <b>${todayCount}</b> постів, вчора: <b>${yesterdayCount}</b>, позавчора: <b>${beforeYesterdayCount}</b>. За 7 днів: <b>${weekCount}</b> небезпечних фіксацій.
       `;
+    }
 
-      const d = new Date();
-      document.getElementById("verdictTime").innerText = `Останнє оновлення: ${d.toLocaleDateString([], {day:'2-digit', month:'2-digit'})} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+    // Завантажує останній збережений висновок ШІ миттєво без перезапиту
+    async function loadCachedVerdictDisplay() {
+      const verdictTextEl = document.getElementById("verdictText");
+      const verdictTimeEl = document.getElementById("verdictTime");
+      const badgeEl = document.getElementById("verdictStatusBadge");
+
+      const localText = localStorage.getItem(`dossier_cached_text_${scaleMode}`);
+      const localTime = localStorage.getItem(`dossier_cached_time_${scaleMode}`);
+
+      if (localText) {
+        verdictTextEl.innerHTML = formatAiTextToHtml(localText);
+        verdictTimeEl.innerText = `Останнє оновлення ШІ: ${localTime || 'збережено'}`;
+        if (badgeEl) badgeEl.innerText = "ЗБЕРЕЖЕНИЙ ЗВІТ (ОНОВЛЕННЯ ПО КНОПЦІ) ⚡";
+        return;
+      }
+
+      // Якщо в localStorage ще пусто — перевіряємо хмарний кеш Firebase
+      try {
+        const res = await fetch(`${FIREBASE_DOSSIER_CACHE_URL}?t=${Date.now()}`);
+        if (res.ok) {
+          const cloudCache = await res.json();
+          if (cloudCache && cloudCache[scaleMode] && cloudCache[scaleMode].text) {
+            const cText = cloudCache[scaleMode].text;
+            const cTime = cloudCache[scaleMode].time || "з хмари";
+            localStorage.setItem(`dossier_cached_text_${scaleMode}`, cText);
+            localStorage.setItem(`dossier_cached_time_${scaleMode}`, cTime);
+            verdictTextEl.innerHTML = formatAiTextToHtml(cText);
+            verdictTimeEl.innerText = `Останнє оновлення ШІ: ${cTime}`;
+            return;
+          }
+        }
+      } catch(e) {}
+
+      verdictTextEl.innerHTML = `ℹ️ Збереженого звіту для цього режиму ще немає. Натисніть кнопку <b>«🔄 Оновити ШІ-досьє»</b> у шапці, щоб сформувати висновок та зберегти його в пам'ять.`;
+      verdictTimeEl.innerText = `Останнє оновлення ШІ: очікує запуску`;
+    }
+
+    // Примусове оновлення висновку ШІ ТІЛЬКИ за кнопкою «Оновити ШІ-досьє»
+    async function generateDossier(isManual = false) {
+      if (!isManual) return;
+
+      const verdictTextEl = document.getElementById("verdictText");
+      const badgeEl = document.getElementById("verdictStatusBadge");
+      
+      verdictTextEl.innerHTML = "⏳ ШІ-штурман аналізує базу, рахує хвилі засад та формує свіже досьє...";
+      if (badgeEl) badgeEl.innerText = "ЙДЕ ОНОВЛЕННЯ ШІ... ⏳";
+
+      await loadArchiveData();
+      updateMathStripOnly();
+      renderCheckpointCards();
+
+      const nowDate = new Date();
+      const todayStart = new Date(nowDate.getFullYear(), nowDate.getMonth(), nowDate.getDate()).getTime();
+      const yesterdayStart = todayStart - 86400000;
+      const beforeYesterdayStart = todayStart - 86400000 * 2;
+      const weekStart = todayStart - 86400000 * 6;
+
+      const validDangerReports = rawArchive.filter(r => !checkIsReportClean(r));
+      let relevantReports = validDangerReports;
+      if (scaleMode === 'route') {
+        relevantReports = validDangerReports.filter(r => {
+          const txt = ((r.text || "") + " " + (r.address || "")).toLowerCase();
+          return TARGET_CHECKPOINTS.some(t => t.regex.test(txt));
+        });
+      }
+
+      const todayCount = relevantReports.filter(r => r.time >= todayStart).length;
+      const yesterdayCount = relevantReports.filter(r => r.time >= yesterdayStart && r.time < todayStart).length;
+      const beforeYesterdayCount = relevantReports.filter(r => r.time >= beforeYesterdayStart && r.time < yesterdayStart).length;
+      const weekCount = relevantReports.filter(r => r.time >= weekStart).length;
 
       let streetStatsText = "";
       TARGET_CHECKPOINTS.forEach(t => {
-        const matches = rawArchive.filter(r => !checkIsReportClean(r) && t.regex.test(((r.text||'') + ' ' + (r.address||'')).toLowerCase()));
-        const todayCount = matches.filter(r => r.time >= todayStart).length;
-        streetStatsText += `• ${t.name}: сьогодні=${todayCount}, за тиждень=${matches.length}\n`;
+        const allMatches = rawArchive.filter(r => r.time >= weekStart && t.regex.test(((r.text||'') + ' ' + (r.address||'')).toLowerCase()));
+        const dangerMatches = allMatches.filter(r => !checkIsReportClean(r));
+        const todayD = dangerMatches.filter(r => r.time >= todayStart).length;
+        streetStatsText += `• ${t.name}: сьогодні БП=${todayD}, за 7 днів БП=${dangerMatches.length} (чисто=${allMatches.length - dangerMatches.length})\n`;
       });
 
-      const recentReportsSample = relevantReports.slice(-35).reverse().map(r => {
+      const recentSample = relevantReports.slice(-35).reverse().map(r => {
         const dt = new Date(r.time);
         const tStr = String(dt.getHours()).padStart(2, '0') + ":" + String(dt.getMinutes()).padStart(2, '0');
-        return `[${tStr}] БЛОКПОСТ: "${r.text || r.raw_text || ''}" [${r.address || ''}]`;
+        return `[${tStr}] БП: "${r.text || r.raw_text || ''}"`;
       }).join('\n');
 
+      const todayDayName = DAYS_UA[nowDate.getDay()];
+
       const deepDossierPrompt = `
-Ти — провідний тактичний штурман та аналітик дорожньої розвідки міста Дніпро.
-Твоє завдання — надати ПОВНЕ, ГЛИБОКЕ ТАКТИЧНЕ ДОСЬЄ ТА ПРОГНОЗ ОБСТАНОВКИ (${scaleMode === 'route' ? 'для 8 контрольних пунктів маршруту водія' : 'по всьому місту'}).
+Ти — провідний тактичний штурман та аналітик дорожньої розвідки Дніпра.
+Сформуй ГЛИБОКЕ ТАКТИЧНЕ ДОСЬЄ ТА ПРОГНОЗ станом на зараз (${todayDayName}, масштаб: ${scaleMode === 'route' ? '8 контрольних точок маршруту водія' : 'все місто Дніпро'}).
 
-МАТЕМАТИКА АКТИВНОСТІ:
-Сьогодні: ${todayReports.length} постів | Вчора: ${yesterdayReports.length} | Позавчора: ${beforeYesterdayReports.length} | За тиждень: ${weekReports.length}
-
-ДАНІ ПО ТОЧКАХ:
+ФАКТИЧНА БАЗА:
+Сьогодні: ${todayCount} БП | Вчора: ${yesterdayCount} | Позавчора: ${beforeYesterdayCount} | За 7 днів: ${weekCount}
+ПО ТОЧКАХ МАРШРУТУ:
 ${streetStatsText}
 
-СВІЖІ ЗВІТИ З КАНАЛУ:
-${recentReportsSample || "Немає підтверджених засад"}
+ОСТАННІ ЗАФІКСОВАНІ ПОСТИ:
+${recentSample || "Підтверджених активних засад мало"}
 
-СТРУКТУРА ДОСЬЄ (чітко, професійно, по суті):
-1. **Оперативна оцінка обстановки**: загальний рівень загрози, динаміка (зростання/спад відносно вчора).
-2. **Аналіз добових хвиль**:
-   - Ранішній пік (07:00 – 11:00)
-   - Денне вікно затишшя (12:00 – 16:00)
-   - Вечірній сплеск (17:00 – 21:00)
-3. **Закономірності та міграція екіпажів**: де концентруються сили, які точки маршруту під найбільшим ударом.
-4. **Рекомендовані вікна безпеки**: коли сьогодні найбезпечніше рухатися.
-5. **Тактичний вердикт на найближчі години**.
+ВИМОГИ ДО СТРУКТУРИ ВИСНОВКУ (пиши чітко, інформативно, без привітань):
+1. ОПЕРАТИВНА ОЦІНКА ТА ДИНАМІКА: поточний рівень загрози, порівняння сьогоднішньої активності зі вчорашнім днем та профілем дня тижня (${todayDayName}).
+2. РОЗКЛАД ХВИЛЬ ТА ЗАКОНОМІРНОСТІ:
+   • Ранішня хвиля (де і о котрій виставляють пости)
+   • Денне вікно (де зберігається присутність)
+   • Вечірній пік (прогноз виходу екіпажів)
+3. ПАРНА МІГРАЦІЯ ЕКІПАЖІВ: куди зміщуються групи після зняття постів (зв'язки Кайдацький—Водолікарня—Стан 550 та Павлова—Краснозаводська—Річпорт).
+4. ПРОГНОЗ ВІКОН БЕЗПЕКИ («ЗЕЛЕНИЙ КОРИДОР»): найбезпечніші інтервали для проїзду сьогодні.
+5. ТАКТИЧНИЙ ВЕРДИКТ ВОДІЮ: коротке резюме, де їхати безпечно, а які вузли краще обійти.
 `;
 
       try {
-        const res = await executeGemini(deepDossierPrompt, 0.25);
-        verdictTextEl.innerHTML = res.reply.trim();
+        const res = await executeGemini(deepDossierPrompt, 0.22);
+        const cleanReply = res.reply.trim();
+        const d = new Date();
+        const timeFormatted = `${d.toLocaleDateString([], {day:'2-digit', month:'2-digit', year:'numeric'})} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+
+        localStorage.setItem(`dossier_cached_text_${scaleMode}`, cleanReply);
+        localStorage.setItem(`dossier_cached_time_${scaleMode}`, timeFormatted);
+
+        // Зберігаємо також у Firebase, щоб на інших пристроях теж одразу відкривався свіжий звіт
+        fetch(FIREBASE_DOSSIER_CACHE_URL, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            [scaleMode]: { text: cleanReply, time: timeFormatted, updated_at: Date.now() }
+          })
+        }).catch(() => {});
+
+        verdictTextEl.innerHTML = formatAiTextToHtml(cleanReply);
+        document.getElementById("verdictTime").innerText = `Останнє оновлення ШІ: ${timeFormatted}`;
+        if (badgeEl) badgeEl.innerText = "ЗБЕРЕЖЕНИЙ ЗВІТ (ОНОВЛЕНО ЩОЙНО) ⚡";
       } catch (e) {
-        verdictTextEl.innerHTML = `<span style="color:#ef4444;">⚠️ Помилка формування досьє: ${e.message}</span>`;
+        verdictTextEl.innerHTML = `<span style="color:#ef4444;">⚠️ Помилка оновлення: ${e.message}</span>`;
+        if (badgeEl) badgeEl.innerText = "ПОМИЛКА З'ЄДНАННЯ ⚠️";
       }
-      renderCheckpointCards();
     }
 
+    // =========================================================================
+    // 📍 ДЕТАЛЬНИЙ РОЗРАХУНОК 8 ПАРАМЕТРІВ ДЛЯ КОЖНОЇ З 8 ТОЧОК
+    // =========================================================================
     function renderCheckpointCards() {
       const listEl = document.getElementById("checkpointCardsList");
       if (!listEl) return;
       listEl.innerHTML = "";
 
       const now = Date.now();
+      const nowDate = new Date();
+      const currentHour = nowDate.getHours();
+      const currentDayIdx = nowDate.getDay();
       const weekStart = now - (7 * 86400000);
+      const threeDaysAgo = now - (3 * 86400000);
+
+      // Попередній збір небезпечних звітів по всіх 8 точках для розрахунку парної міграції
+      const dangerByCheckpoint = {};
+      TARGET_CHECKPOINTS.forEach(t => {
+        dangerByCheckpoint[t.id] = rawArchive.filter(r => {
+          const txt = ((r.text || "") + " " + (r.address || "")).toLowerCase();
+          return !checkIsReportClean(r) && t.regex.test(txt);
+        });
+      });
 
       TARGET_CHECKPOINTS.forEach(t => {
-        const matches = rawArchive.filter(r => {
-          if (r.time < weekStart) return false;
+        const allPointReports = rawArchive.filter(r => {
           const txt = ((r.text || "") + " " + (r.address || "")).toLowerCase();
           return t.regex.test(txt);
-        });
+        }).sort((a, b) => a.time - b.time);
 
-        const dangerMatches = matches.filter(r => !checkIsReportClean(r));
-        const totalDanger = dangerMatches.length;
+        const weekReports = allPointReports.filter(r => r.time >= weekStart);
+        const weekDanger = weekReports.filter(r => !checkIsReportClean(r));
+        const weekClean = weekReports.length - weekDanger.length;
+        const totalDanger7d = weekDanger.length;
 
+        // Рівень загрози
         let riskLevel = "НИЗЬКИЙ";
         let riskClass = "risk-low";
-        if (totalDanger >= 8) {
+        if (totalDanger7d >= 8) {
           riskLevel = "ВИСОКИЙ";
           riskClass = "risk-high";
-        } else if (totalDanger >= 3) {
+        } else if (totalDanger7d >= 3) {
           riskLevel = "СЕРЕДНІЙ";
           riskClass = "risk-mid";
         }
 
-        const hourDistribution = new Array(24).fill(0);
-        dangerMatches.forEach(r => {
-          const h = new Date(r.time).getHours();
-          hourDistribution[h]++;
-        });
+        // --- ПАРАМЕТР 1: LIVE-СТАТУС (ОСТАННЯ ФІКСАЦІЯ) ---
+        let param1Html = "Даних за останній час немає";
+        if (allPointReports.length > 0) {
+          const lastRep = allPointReports[allPointReports.length - 1];
+          const isClean = checkIsReportClean(lastRep);
+          const diffMin = Math.max(1, Math.round((now - lastRep.time) / 60000));
+          let agoStr = diffMin < 60 ? `${diffMin} хв тому` : (diffMin < 1440 ? `${Math.floor(diffMin/60)} год тому` : `${Math.floor(diffMin/1440)} дн. тому`);
+          const dt = new Date(lastRep.time);
+          const timeClock = `${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`;
+          const quote = (lastRep.text || lastRep.raw_text || "").slice(0, 65);
+          param1Html = `<b style="color:${isClean ? '#34d399' : '#f87171'};">${isClean ? '🟢 ЧИСТО' : '🔴 ПОСТ'}</b> (${agoStr}, о ${timeClock}): <i>«${quote}»</i>`;
+        }
 
-        let peakH = -1, peakV = 0;
-        hourDistribution.forEach((cnt, idx) => {
-          if (cnt > peakV) { peakV = cnt; peakH = idx; }
-        });
+        // --- ПАРАМЕТР 2: ІНДЕКС ЗАГРОЗИ ТА ТРЕНД ТИЖНЯ ---
+        const recent3dDanger = weekDanger.filter(r => r.time >= threeDaysAgo).length / 3;
+        const prev4dDanger = weekDanger.filter(r => r.time < threeDaysAgo).length / 4;
+        let trendStr = "➖ Стабільний фон";
+        if (recent3dDanger > prev4dDanger * 1.25 && totalDanger7d >= 2) trendStr = "📈 Ріст активності (+увага)";
+        else if (recent3dDanger < prev4dDanger * 0.75) trendStr = "📉 Спад активності";
+        const dangerRatio = weekReports.length > 0 ? Math.round((totalDanger7d / weekReports.length) * 100) : 0;
+        const param2Html = `<b style="color:#f87171;">🔴 БП: ${totalDanger7d}</b> / <b style="color:#34d399;">🟢 Чисто: ${weekClean}</b> (частка засад ${dangerRatio}%) • ${trendStr}`;
 
-        const peakDisplay = peakV > 0 
-          ? `${String(peakH).padStart(2,'0')}:00–${String((peakH+1)%24).padStart(2,'0')}:00 (фіксацій: ${peakV})` 
-          : "Зафіксованих сплесків немає";
+        // --- ПАРАМЕТР 3: ХАРАКТЕР ТА ЖИВУЧІСТЬ ЗАСАД (СЕРЕДНЯ ТРИВАЛІСТЬ) ---
+        let durations = [];
+        for (let i = 0; i < allPointReports.length; i++) {
+          if (!checkIsReportClean(allPointReports[i])) {
+            const startT = allPointReports[i].time;
+            for (let j = i + 1; j < allPointReports.length; j++) {
+              const diffM = (allPointReports[j].time - startT) / 60000;
+              if (diffM > 240) break;
+              if (checkIsReportClean(allPointReports[j]) && diffM >= 12) {
+                durations.push(diffM);
+                i = j;
+                break;
+              }
+            }
+          }
+        }
+        let avgMin = durations.length > 0 ? Math.round(durations.reduce((a,b) => a+b, 0) / durations.length) : (totalDanger7d >= 6 ? 75 : 40);
+        let styleType = avgMin <= 45 ? "короткі мобільні накати" : (avgMin <= 95 ? "середні чергування" : "затяжні стаціонарні пости");
+        const param3Html = `<b>~${avgMin} хв</b> до відбою (${styleType})`;
+
+        // --- ПАРАМЕТР 4: ПРОФІЛЬ ДНЯ ТИЖНЯ (СЬОГОДНІ) ---
+        const dayCounts = new Array(7).fill(0);
+        const allHistoricalDanger = dangerByCheckpoint[t.id];
+        allHistoricalDanger.forEach(r => {
+          dayCounts[new Date(r.time).getDay()]++;
+        });
+        let maxDayIdx = 0, maxDayVal = 0;
+        dayCounts.forEach((cnt, idx) => { if (cnt > maxDayVal) { maxDayVal = cnt; maxDayIdx = idx; } });
+        const todayHistCount = dayCounts[currentDayIdx];
+        const peakDayName = maxDayVal > 0 ? DAYS_UA[maxDayIdx] : "не виявлено";
+        const param4Html = `Сьогодні (${DAYS_UA[currentDayIdx]}): фіксацій у базі <b>${todayHistCount}</b> • Піковий день: <b>${peakDayName}</b> (${maxDayVal})`;
+
+        // --- ПАРАМЕТР 5: ЙМОВІРНІСТЬ ЗАСАДИ ПРЯМО ЗАРАЗ (ПОТОЧНА ГОДИНА) ---
+        const hourCounts = new Array(24).fill(0);
+        allHistoricalDanger.forEach(r => {
+          hourCounts[new Date(r.time).getHours()]++;
+        });
+        const maxHourVal = Math.max(1, ...hourCounts);
+        const currSlotHits = hourCounts[currentHour] + (hourCounts[(currentHour + 23) % 24] * 0.35);
+        let probNow = Math.min(92, Math.round((currSlotHits / (maxHourVal * 1.35)) * 100));
+        // Враховуємо, якщо за останні 50 хв вже був свіжий звіт
+        const lastReport = allPointReports[allPointReports.length - 1];
+        if (lastReport && (now - lastReport.time) <= 50 * 60000) {
+          probNow = checkIsReportClean(lastReport) ? Math.min(probNow, 15) : Math.max(probNow, 85);
+        }
+        const probColor = probNow >= 60 ? "#f87171" : (probNow >= 30 ? "#fbbf24" : "#34d399");
+        const param5Html = `<b style="color:${probColor};">${probNow}%</b> у вікні ${String(currentHour).padStart(2,'0')}:00–${String((currentHour+1)%24).padStart(2,'0')}:00 (історичних попадань у цю годину: ${hourCounts[currentHour]})`;
+
+        // --- ПАРАМЕТР 6: ПРОГНОЗ НЕБЕЗПЕЧНИХ ХВИЛЬ (ЧЕРВОНІ ВІКНА) ---
+        let mornH = -1, mornMax = 0;
+        for (let h = 6; h <= 12; h++) {
+          if (hourCounts[h] > mornMax) { mornMax = hourCounts[h]; mornH = h; }
+        }
+        let eveH = -1, eveMax = 0;
+        for (let h = 13; h <= 21; h++) {
+          if (hourCounts[h] > eveMax) { eveMax = hourCounts[h]; eveH = h; }
+        }
+        const mornStr = mornMax > 0 ? `Ранок: <b>${String(mornH).padStart(2,'0')}:00–${String(mornH+1).padStart(2,'0')}:30</b> (${mornMax})` : "Ранок: спокійно";
+        const eveStr = eveMax > 0 ? `Вечір: <b>${String(eveH).padStart(2,'0')}:00–${String(eveH+1).padStart(2,'0')}:30</b> (${eveMax})` : "Вечір: спокійно";
+        const param6Html = `${mornStr} | ${eveStr}`;
+
+        // --- ПАРАМЕТР 7: ПРОГНОЗ «ЗЕЛЕНОГО КОРИДОРУ» (ВІКНА БЕЗПЕКИ) ---
+        let bestStart = 11, bestLen = 2, minHitsSum = 999;
+        for (let h = 8; h <= 18; h++) {
+          const sum2h = hourCounts[h] + hourCounts[h + 1];
+          if (sum2h < minHitsSum) {
+            minHitsSum = sum2h;
+            bestStart = h;
+          }
+        }
+        const param7Html = `<b style="color:#34d399;">${String(bestStart).padStart(2,'0')}:00 – ${String(bestStart+2).padStart(2,'0')}:00</b> (мінімальна історична активність патрулів удень)`;
+
+        // --- ПАРАМЕТР 8: ПАРНА МІГРАЦІЯ ТА ТАКТИЧНА ПОРАДА ---
+        let bestPartnerName = "не виявлено";
+        let bestPartnerCo = 0;
+        TARGET_CHECKPOINTS.forEach(other => {
+          if (other.id === t.id) return;
+          let coCount = 0;
+          const otherList = dangerByCheckpoint[other.id];
+          allHistoricalDanger.forEach(r1 => {
+            if (otherList.some(r2 => Math.abs(r1.time - r2.time) <= 45 * 60000)) {
+              coCount++;
+            }
+          });
+          if (coCount > bestPartnerCo) {
+            bestPartnerCo = coCount;
+            bestPartnerName = other.name;
+          }
+        });
+        const partnerText = bestPartnerCo > 0 ? `Часто працює синхронно з: <b>${bestPartnerName}</b> (${bestPartnerCo} збігів)` : "Автономна робота точки";
+        const param8Html = `${partnerText} • 💡 <b>Маневр:</b> ${t.detour}`;
 
         listEl.innerHTML += `
           <div class="cp-card" style="border-left-color:${t.color};">
             <div class="cp-card-top">
               <span class="cp-card-title" style="color:${t.color};">📍 ${t.fullName}</span>
-              <span class="cp-risk-badge ${riskClass}">РИЗИК: ${riskLevel}</span>
+              <span class="cp-risk-badge ${riskClass}">ЗАГРОЗА: ${riskLevel}</span>
             </div>
-            <div class="cp-stats-row">
-              <span>Всього за тиждень: <b>${matches.length}</b></span>
-              <span>Блокпостів: <b style="color:#ef4444;">${totalDanger}</b></span>
-              <span>Чисто: <b style="color:#10b981;">${matches.length - totalDanger}</b></span>
-            </div>
-            <div class="cp-peak-info">
-              🕒 <b>Час ризику:</b> ${peakDisplay}
+            <div class="cp-params-grid">
+              <div class="cp-param-box full-span">
+                <span class="cp-param-lbl">1. Live-статус (Останній сигнал у базі)</span>
+                <div class="cp-param-val">${param1Html}</div>
+              </div>
+              <div class="cp-param-box">
+                <span class="cp-param-lbl">2. Індекс загрози та тижневий тренд</span>
+                <div class="cp-param-val">${param2Html}</div>
+              </div>
+              <div class="cp-param-box">
+                <span class="cp-param-lbl">3. Живучість поста (Сер. тривалість)</span>
+                <div class="cp-param-val">${param3Html}</div>
+              </div>
+              <div class="cp-param-box">
+                <span class="cp-param-lbl">4. Профіль дня тижня</span>
+                <div class="cp-param-val">${param4Html}</div>
+              </div>
+              <div class="cp-param-box">
+                <span class="cp-param-lbl">5. Прогноз засади ПРЯМО ЗАРАЗ</span>
+                <div class="cp-param-val">${param5Html}</div>
+              </div>
+              <div class="cp-param-box">
+                <span class="cp-param-lbl">6. Прогноз небезпечних хвиль</span>
+                <div class="cp-param-val">${param6Html}</div>
+              </div>
+              <div class="cp-param-box">
+                <span class="cp-param-lbl">7. Прогноз «Зеленого коридору»</span>
+                <div class="cp-param-val">${param7Html}</div>
+              </div>
+              <div class="cp-param-box full-span">
+                <span class="cp-param-lbl">8. Парна міграція екіпажів та маршрут об'їзду</span>
+                <div class="cp-param-val">${param8Html}</div>
+              </div>
             </div>
           </div>
         `;
@@ -636,7 +985,7 @@ ${recentReportsSample || "Немає підтверджених засад"}
     }
 
     // =========================================================================
-    // 💬 ОПЕРАТИВНИЙ ДІАЛОГ БЕЗ ВОДИ (1–3 РЕЧЕННЯ ПО СУТІ)
+    // 💬 ЖИВИЙ ДІАЛОГ З ШІ ПІД ДОСЬЄ (БЕЗ ВОДИ, ЧІТКО ПО СУТІ)
     // =========================================================================
     async function submitDossierChat() {
       const input = document.getElementById("chatInput");
@@ -653,63 +1002,51 @@ ${recentReportsSample || "Немає підтверджених засад"}
 
       const loadingBubble = document.createElement("div");
       loadingBubble.className = "chat-bubble bot loading";
-      loadingBubble.innerText = "ШІ аналізує запит...";
+      loadingBubble.innerText = "Аналізую...";
       chatBox.appendChild(loadingBubble);
       chatBox.scrollTop = chatBox.scrollHeight;
 
-      const isFullReportRequested = /(?:повний\s*звіт|детальн|розгорнут|полный\s*отчет|подробн|все\s*подробн|полную\s*картину)/i.test(userQuestion);
+      const nowDate = new Date();
+      const todayStart = new Date(nowDate.getFullYear(), nowDate.getMonth(), nowDate.getDate()).getTime();
+      const yesterdayStart = todayStart - 86400000;
 
-      const now = Date.now();
-      const todayStart = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate()).getTime();
-      const recentReports = rawArchive.slice(-25).reverse().map(r => {
+      const recentReports = rawArchive.slice(-35).reverse().map(r => {
         const d = new Date(r.time);
+        const dateTag = r.time >= todayStart ? "Сьогодні" : (r.time >= yesterdayStart ? "Вчора" : d.toLocaleDateString([], {day:'2-digit', month:'2-digit'}));
         const tStr = String(d.getHours()).padStart(2, '0') + ":" + String(d.getMinutes()).padStart(2, '0');
-        return `[${tStr}] ${checkIsReportClean(r) ? 'ЧИСТО' : 'БЛОКПОСТ'}: "${r.text || r.raw_text || ''}"`;
+        return `[${dateTag} ${tStr}] ${checkIsReportClean(r) ? 'ЧИСТО' : 'БП'}: "${r.text || r.raw_text || ''}"`;
       }).join('\n');
 
       let streetSummary = "";
       TARGET_CHECKPOINTS.forEach(t => {
-        const pts = rawArchive.filter(r => !checkIsReportClean(r) && t.regex.test(((r.text||'') + ' ' + (r.address||'')).toLowerCase()));
-        const todayPts = pts.filter(r => r.time >= todayStart);
-        streetSummary += `• ${t.name}: сьогодні=${todayPts.length}, за тиждень=${pts.length}\n`;
+        const allM = rawArchive.filter(r => t.regex.test(((r.text||'') + ' ' + (r.address||'')).toLowerCase()));
+        const lastM = allM[allM.length - 1];
+        const lastSt = lastM ? `${checkIsReportClean(lastM) ? 'ЧИСТО' : 'БП'} (${new Date(lastM.time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})})` : 'немає даних';
+        const todayD = allM.filter(r => !checkIsReportClean(r) && r.time >= todayStart).length;
+        streetSummary += `• ${t.name}: останній статус=${lastSt}, сьогодні БП=${todayD}\n`;
       });
 
-      let prompt = "";
-      if (isFullReportRequested) {
-        prompt = `
-Ти — тактичний дорожній штурман Дніпра.
-Користувач прямо попросив ПОВНИЙ ЗВІТ.
-Надай структурований звіт (Ранішній пік, вікна затишшя, вечірній сплеск, аналіз точок).
-СТАТИСТИКА:
-${streetSummary}
-ОСТАННІ ПОВІДОМЛЕННЯ:
-${recentReports}
-ЗАПИТ:
-"${userQuestion}"
-`;
-      } else {
-        prompt = `
-Ти — оперативний дорожній штурман Дніпра.
-РЕЖИМ: ЖИВИЙ ДІАЛОГ БЕЗ ВОДИ.
-
+      const prompt = `
+Ти — оперативний дорожній штурман Дніпра. Спілкуєшся з водієм напряму, як досвідчений напарник.
 СУВОРІ ПРАВИЛА:
-1. КАТЕГОРИЧНО ЗАБОРОНЕНО вітатися («Вітаю, водію»), писати версії моделей («Gemini 3.8»), час запиту чи вступні фрази («Проводжу розбір...»).
-2. ВІДПОВІДАЙ СТРОГО ПО СУТІ: максимум 1–3 коротких конкретних речення.
-3. Одразу давай чітку відповідь: Так чи Ні, скільки постів зафіксовано, коли найближчий пік небезпеки. Не перераховуй усі піки дня, якщо про них не спитали.
+1. Жодних вітань («Вітаю», «На зв'язку»), жодних назв моделей («Gemini»), жодних вступних фраз («Проводжу аналіз...»).
+2. Відповідай ОДРАЗУ ПО СУТІ питання: конкретно, інформативно, без води (2–4 чітких речення, або структуровано по пунктах, якщо питання об'ємне).
+3. Спирайся на реальні цифри й звіти нижче.
 
-СТАТИСТИКА 8 ТОЧОК:
+СТАТУС 8 ТОЧОК МАРШРУТУ:
 ${streetSummary}
-СВІЖІ ЗВІТИ:
+
+ОСТАННІ 35 ПОВІДОМЛЕНЬ У БАЗІ:
 ${recentReports}
+
 ЗАПИТАННЯ ВОДІЯ:
 "${userQuestion}"
 `;
-      }
 
       try {
         const result = await executeGemini(prompt, 0.15);
         loadingBubble.className = "chat-bubble bot";
-        loadingBubble.innerText = result.reply.trim();
+        loadingBubble.innerHTML = formatAiTextToHtml(result.reply);
         chatBox.scrollTop = chatBox.scrollHeight;
       } catch (err) {
         loadingBubble.className = "chat-bubble bot";
@@ -730,7 +1067,18 @@ ${recentReports}
       }
     }
 
-    generateDossier();
+    // ІНІЦІАЛІЗАЦІЯ ПРИ ВХОДІ:
+    // 1. Миттєво показуємо збережений висновок ШІ з пам'яті (0 сек очікування, без виклику ШІ)
+    // 2. Паралельно підтягуємо архів і будуємо 8 карток із 8 параметрами
+    document.getElementById("btnScaleRoute").classList.toggle("active", scaleMode === 'route');
+    document.getElementById("btnScaleCity").classList.toggle("active", scaleMode === 'city');
+    document.getElementById("verdictScope").innerText = scaleMode === 'route' ? "Режим: 8 точок маршруту" : "Режим: Все місто";
+
+    loadCachedVerdictDisplay();
+    loadArchiveData().then(() => {
+      updateMathStripOnly();
+      renderCheckpointCards();
+    });
   </script>
 </body>
 </html>
