@@ -47,32 +47,15 @@
     .btn-tl-quick.green { background: #059669; }
     .btn-tl-quick.red { background: #dc2626; }
   </style>
-  <script>
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then(function(registrations) {
-        for (let registration of registrations) registration.unregister();
-      });
-    }
-    if ('caches' in window) {
-      caches.keys().then(function(names) {
-        for (let name of names) caches.delete(name);
-      });
-    }
-    localStorage.removeItem("dash_pos_top"); localStorage.removeItem("dash_pos_left");
-    localStorage.removeItem("ai_pos_top"); localStorage.removeItem("ai_pos_left");
-    localStorage.removeItem("route_status_pos_top"); localStorage.removeItem("route_status_pos_left");
-    localStorage.removeItem("refresh_pos_top"); localStorage.removeItem("refresh_pos_left");
-
-    if (localStorage.getItem("radar_dash_collapsed") === "true") {
-      document.documentElement.classList.add("dash-collapsed");
-    }
-  </script>
   <link rel="manifest" href="manifest.json">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <script>
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js');
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    }
+    if (localStorage.getItem("radar_dash_collapsed") === "true") {
+      document.documentElement.classList.add("dash-collapsed");
     }
   </script>
 </head>
@@ -367,26 +350,6 @@
       if (savedPo) manualPointOverrides = JSON.parse(savedPo);
     } catch(e) {}
 
-    let screenWakeLock = null;
-    async function requestWakeLock() {
-      try {
-        if ('wakeLock' in navigator && !screenWakeLock) {
-          screenWakeLock = await navigator.wakeLock.request('screen');
-          screenWakeLock.addEventListener('release', () => { screenWakeLock = null; });
-        }
-      } catch (err) {}
-    }
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') requestWakeLock();
-    });
-    ['click', 'touchstart', 'touchend', 'mousemove'].forEach(evt => {
-      window.addEventListener(evt, () => { if (!screenWakeLock) requestWakeLock(); }, { passive: true });
-    });
-    setInterval(() => {
-      if (document.visibilityState === 'visible' && !screenWakeLock) requestWakeLock();
-    }, 10000);
-    requestWakeLock();
-
     const isMobile = window.innerWidth < 768;
     const INITIAL_CENTER = [48.484, 34.985];
     const INITIAL_ZOOM = isMobile ? 12 : 13;
@@ -567,15 +530,27 @@
       closeMarkerActionSheet();
     });
 
-    // 1. ЗАЛІЗНА ПЕРЕВІРКА СТАТУСУ
+    // 1. ЗАЛІЗНА ПЕРЕВІРКА СТАТУСУ (з пріоритетом ручних оверрайдів і навчання)
     function isCleanPoint(p) {
-      if (p.is_clean === true || p.status === "чисто" || p.color === "green") return true;
-      if (p.is_clean === false || p.status === "опасно" || p.color === "red") return false;
+      if (!p) return false;
+
+      // 1.1 Ручне перевизначення користувача в поточній сесії
+      if (p._fbKey && manualPointOverrides[p._fbKey]) {
+        return manualPointOverrides[p._fbKey].is_clean;
+      }
 
       const rawCombined = ((p.raw_text || "") + " " + (p.text || "") + " " + (p.address || ""))
         .replace(/[\r\n]+/g, " ")
         .toLowerCase();
 
+      // 1.2 Локальні правила, вивчені користувачем
+      for (const rule of learnedRules) {
+        if (rule && rule.phrase && rawCombined.includes(rule.phrase.toLowerCase())) {
+          return rule.is_clean;
+        }
+      }
+
+      // 1.3 Перевірка на заперечення небезпеки (знялися, уїхали)
       const negationWords = ["нет", "немає", "убрали", "прибрали", "сняли", "зняли", "поехали", "поїхали", "уехали", "пропали", "чисто по", "немає вже", "уже чисто"];
       const hasNegation = negationWords.some(nw => rawCombined.includes(nw));
 
@@ -587,19 +562,18 @@
         return false;
       }
 
-     for (const rule of learnedRules) {
-        if (rule && rule.phrase && rawCombined.includes(rule.phrase.toLowerCase())) {
-          return rule.is_clean;
-        }
-      }
-
-      // Перевірка на пряме заперечення норми ("не норм", "не чисто")
+      // 1.4 Пряме заперечення норми ("не норм", "не чисто")
       if (/(?:не\s*норм|не\s*чисто|не\s*спок|не\s*тихо)/i.test(rawCombined)) return false;
 
-      // Перевірка на чистий статус (з точними межами слів для норм / нормально)
+      // 1.5 Перевірка на чистий статус
       if (/(?:👍|👌|💚|🌻|☀️|🌞|\b(?:чисто|чистенько|пусто|вільно|спокійно|спокойно|проїзд|проїхав|проехали|норм|нормально|нормик|добре|зелено)\b|без\s*бп|все\s*чисто|все\s*норм|всё\s*норм)/i.test(rawCombined)) {
         return true;
       }
+
+      // 1.6 Серверний статус як резервний фоллбек
+      if (p.is_clean === true || p.status === "чисто" || p.color === "green") return true;
+      if (p.is_clean === false || p.status === "опасно" || p.color === "red") return false;
+
       return false;
     }
 
@@ -779,13 +753,14 @@
         p.lat = Number(pos.lat.toFixed(5));
         p.lng = Number(pos.lng.toFixed(5));
         p.needs_training = false;
+        p.geo_refined = true;
         p.address = "Встановлено користувачем";
 
         if (p._fbKey) {
           fetch(FIREBASE_POINTS_URL.replace(".json", `/${p._fbKey}.json`), {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ lat: p.lat, lng: p.lng, needs_training: false, address: p.address })
+            body: JSON.stringify({ lat: p.lat, lng: p.lng, needs_training: false, geo_refined: true, address: p.address })
           }).catch(() => {});
         }
 
@@ -799,6 +774,28 @@
     async function executeAiActionDirective(actionType, payload) {
       if (actionType === "NAVIGATE") {
         if (payload.url) window.location.href = payload.url;
+      } else if (actionType === "FILTER") {
+        if (payload.showGreen !== undefined) filterShowGreen = !!payload.showGreen;
+        if (payload.showRed !== undefined) filterShowRed = !!payload.showRed;
+        renderMarkers();
+        showToast(`🎯 Фільтр: Зелені ${filterShowGreen ? 'ВКЛ' : 'ВИМК'}`);
+      } else if (actionType === "SECTORS") {
+        if (Array.isArray(payload.sectors) && payload.sectors.length > 0) {
+          activeSectors = payload.sectors;
+        } else if (payload.preset === "route") {
+          activeSectors = ['s1'];
+        } else if (payload.preset === "all") {
+          activeSectors = ['s1', 's2', 's3', 's4', 's5', 's6'];
+        } else if (payload.remove_left) {
+          activeSectors = activeSectors.filter(s => s !== 's5' && s !== 's6');
+          if (activeSectors.length === 0) activeSectors = ['s1'];
+        }
+        localStorage.setItem("radar_active_sectors", JSON.stringify(activeSectors));
+        syncSectorCheckboxesUI();
+        renderMarkers();
+        renderTrafficLights();
+        updateRouteStatus();
+        showToast(`🎯 Сектори моніторингу оновлено!`);
       } else if (actionType === "FLYTO") {
         let lat = Number(payload.lat);
         let lng = Number(payload.lng);
@@ -843,7 +840,7 @@
         const targetPos = L.latLng(lat, lng);
         let m = findMarkerByPoint(p);
 
-        p.lat = targetPos.lat; p.lng = targetPos.lng; p.address = street; p.needs_training = false;
+        p.lat = targetPos.lat; p.lng = targetPos.lng; p.address = street; p.needs_training = false; p.geo_refined = true;
 
         if (m) {
           smoothGlideMarker(m, startPos, targetPos, 850, () => {
@@ -860,7 +857,7 @@
           fetch(FIREBASE_POINTS_URL.replace(".json", `/${p._fbKey}.json`), {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ lat: p.lat, lng: p.lng, address: street, needs_training: false })
+            body: JSON.stringify({ lat: p.lat, lng: p.lng, address: street, needs_training: false, geo_refined: true })
           }).catch(() => {});
         }
         showToast(`🚀 ШІ переніс точку ➔ ${street}!`);
@@ -1049,7 +1046,7 @@
       if (apiKeys.length === 0) {
         throw new Error("Немає доступних ключів Gemini.");
       }
-const models = ['gemini-3.8-flash', 'gemini-3.5-flash-lite', 'gemini-3.5-flash'];
+      const models = ['gemini-3.8-flash', 'gemini-3.5-flash-lite', 'gemini-3.5-flash'];
       let lastErr = null;
 
       for (const k of apiKeys) {
@@ -1115,17 +1112,19 @@ const models = ['gemini-3.8-flash', 'gemini-3.5-flash-lite', 'gemini-3.5-flash']
 
       const systemInstructionText = `
 Ти — високоінтелектуальний військово-дорожній ШІ-штурман у місті Дніпро для водія (v4.0).
-Ти маєш ПОВНУ ВЛАДУ над картою. Якщо користувач просить перенести точку, змінити статус чи відкрити аналітику, ти ОБОВ'ЯЗКОВО в кінці своєї відповіді додаєш директиву дії:
+Ти маєш ПОВНУ ВЛАДУ над картою. Якщо користувач просить виконати дію з картою, ти ОБОВ'ЯЗКОВО в кінці своєї відповіді додаєш директиву дії:
 
 ТОЧКИ НА КАРТІ:
 ${allLiveReportsText || "Повідомлень немає"}
 
 КОМАНДИ:
 1. ПЕРЕМІЩЕННЯ: <<<ACTION:MOVE:{"key":"KEY_ТОЧКИ","street":"Назва вулиці або перехрестя","lat":48.XXXXX,"lng":34.XXXXX}>>>
-​2. СТАТУС: <<<ACTION:STATUS:{"key":"KEY_ТОЧКИ","clean":true}>>> (true - чисто, false - блокпост)
-3. АНАЛІТИКА: <<<ACTION:NAVIGATE:{"url":"stats.html"}>>>
+2. СТАТУС МІТКИ: <<<ACTION:STATUS:{"key":"KEY_ТОЧКИ","clean":true}>>> (true - чисто, false - блокпост)
+3. ФІЛЬТР ТОЧОК: <<<ACTION:FILTER:{"showGreen":false,"showRed":true}>>>
+4. СЕКТОРИ МІСТА: <<<ACTION:SECTORS:{"preset":"route"}>>> або <<<ACTION:SECTORS:{"preset":"all"}>>> або <<<ACTION:SECTORS:{"remove_left":true}>>>
+5. АНАЛІТИКА: <<<ACTION:NAVIGATE:{"url":"stats.html"}>>>
 
-Завжди викликай <<<ACTION:...>>>, коли користувач дає вказівку змінити карту!
+Завжди викликай відповідну команду <<<ACTION:...>>>, коли користувач просить змінити фільтр, статус, сектори або карту!
 `;
 
       geminiChatHistory.push({ role: "user", parts: [{ text: query }] });
@@ -1597,8 +1596,7 @@ ${allLiveReportsText || "Повідомлень немає"}
       if (!e.target.closest(".search-box")) searchResults.style.display = "none";
     });
 
-    // 4. ЗАВАНТАЖЕННЯ ТОЧОК
-    // Фоновое уточнение координат: 1. Overpass (стык улиц) -> 2. Gemini AI (ориентиры)
+    // 4. ЗАВАНТАЖЕННЯ ТОЧОК ТА АВТО-УТОЧНЕННЯ
     const _pendingGeocodeKeys = new Set();
 
     async function autoRefinePointCoordinates(p, fullText, resolved) {
@@ -1607,7 +1605,7 @@ ${allLiveReportsText || "Повідомлень немає"}
 
       _pendingGeocodeKeys.add(p._fbKey);
 
-      // 1. Если это связка двух улиц — ищем реальный узел через Overpass API
+      // 4.1 Якщо це перехрестя двох вулиць — перевіряємо через Overpass
       if (resolved && resolved.isIntersection && typeof window.findIntersectionOnline === "function") {
         try {
           const exactPos = await window.findIntersectionOnline(resolved.street1, resolved.street2);
@@ -1632,7 +1630,7 @@ ${allLiveReportsText || "Повідомлень немає"}
         } catch(e) {}
       }
 
-      // 2. Если Overpass не нашел или в тексте сложный ориентир (парк, училище и т.д.) — подключаем Gemini
+      // 4.2 Складні орієнтири через Gemini AI
       const isComplex = /(?:парк|училищ|больниц|лікарн|міст|тупик|напротив|біля|в сторону|направление)/i.test(fullText);
       const isAuth = localStorage.getItem("radar_gemini_unlocked") === SECRET_KEY_HASH;
 
@@ -1642,8 +1640,8 @@ ${allLiveReportsText || "Повідомлень немає"}
             contents: [{
               role: "user",
               parts: [{
-                text: `Ты GPS-геокодер города Днепр. Определи точные координаты [lat, lng] и краткий адрес для сообщения о блокпосте: "${fullText}". 
-Ответь ТОЛЬКО валидным JSON без markdown: {"lat": 48.xxxxx, "lng": 34.xxxxx, "street": "Название места"}. Координаты строго в пределах Днепра.`
+                text: `Ти GPS-геокодер міста Дніпро. Визнач точні координати [lat, lng] та короткий адрес для повідомлення: "${fullText}". 
+Відповідай ВИКЛЮЧНО валідним JSON без markdown: {"lat": 48.xxxxx, "lng": 34.xxxxx, "street": "Назва місця"}. Координати строго в межах Дніпра.`
               }]
             }],
             generationConfig: { temperature: 0.1 }
@@ -1675,6 +1673,7 @@ ${allLiveReportsText || "Повідомлень немає"}
         } catch(e) {}
       }
     }
+
     async function loadPoints() {
       if (pendingRelocation) return;
       try {
@@ -1707,19 +1706,16 @@ ${allLiveReportsText || "Повідомлень немає"}
             return null;
           }
 
-          const resolved = resolveLocationFromText(fullText);
-          if (resolved) {
-            // Если координаты еще не были уточнены через Overpass/ИИ или вручную, берем базовые
-            if (!p.geo_refined && !manualPointOverrides[key]) {
+          // ЗАХИСТ КООРДИНАТ: якщо точка вже geo_refined або має точну координату не на воді, не перетираємо її базою streets.js
+          const isWaterCoord = (p.lat >= 48.498 && p.lat <= 48.506 && p.lng >= 34.922 && p.lng <= 34.934);
+          if ((p.needs_training || isWaterCoord) && !p.geo_refined && !manualPointOverrides[key]) {
+            const resolved = resolveLocationFromText(fullText);
+            if (resolved) {
               p.lat = resolved.lat;
               p.lng = resolved.lng;
               p.address = resolved.name;
+              p.needs_training = false;
             }
-            p.needs_training = false;
-          }
-
-          // Запускаем фоновое уточнение (Overpass -> Gemini)
-          if (!p.geo_refined && !manualPointOverrides[key]) {
             autoRefinePointCoordinates(p, fullText, resolved);
           }
 
@@ -1740,7 +1736,7 @@ ${allLiveReportsText || "Повідомлень немає"}
       } catch (err) {}
     }
 
-    // 5. РОЗДІЛЬНІ МІТКИ ЗА КОЛЬОРОМ НА ОДНІЙ ЛОКАЦІЇ (ЗАДАЧА 1)
+    // 5. ВІДОБРАЖЕННЯ МІТОК
     function renderMarkers() {
       try {
         markersLayer.clearLayers();
