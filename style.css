@@ -37,7 +37,7 @@ html, body {
 }
 
 /* =========================================================================
-   1. ДАШБОРД (ВЕРХ СЛЕВА)
+   1. ДАШБОРД (БЛОК 1: ТОЧКИ, ТЕМА, МЕНЮ)
    ========================================================================= */
 .dashboard {
   position: absolute !important;
@@ -55,7 +55,7 @@ html, body {
   width: 220px;
   max-width: calc(100vw - 150px);
   border: 1.5px solid #334155;
-  transition: width 0.28s cubic-bezier(0.4, 0, 0.2, 1), padding 0.25s ease;
+  transition: width 0.25s ease, height 0.25s ease, padding 0.2s ease;
   overflow-y: auto;
   max-height: calc(100vh - 80px);
 }
@@ -96,11 +96,13 @@ html, body {
   font-size: 11px;
   flex-shrink: 0;
   z-index: 1005;
+  user-select: none;
 }
+.btn-toggle:active { transform: scale(0.92); }
 
 .collapsible-body { margin-top: 6px; }
 
-/* Кнопка День/Ночь */
+/* Кнопка переключения темы День / Ночь */
 .btn-theme-inline {
   background: #1e293b;
   border: 1px solid #334155;
@@ -117,6 +119,29 @@ html, body {
   transition: background 0.2s, border-color 0.2s;
 }
 .btn-theme-inline:active { transform: scale(0.95); }
+
+/* Компактная мини-кнопка переключения в простой режим для админа */
+.btn-admin-switch-mini {
+  width: 100%;
+  background: rgba(59, 7, 100, 0.45);
+  border: 1px solid #7c3aed;
+  color: #c084fc;
+  padding: 5px 8px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 800;
+  cursor: pointer;
+  margin-top: 8px;
+  text-align: center;
+  display: block;
+  user-select: none;
+  transition: all 0.2s;
+}
+.btn-admin-switch-mini:hover {
+  background: #7c3aed;
+  color: #ffffff;
+}
+.btn-admin-switch-mini:active { transform: scale(0.96); }
 
 /* Поиск улиц */
 .search-box { position: relative; margin-bottom: 8px; }
@@ -169,10 +194,40 @@ html, body {
 .search-item:hover { background: #1e293b; color: #38bdf8; }
 
 /* =========================================================================
-   2. ПРАВИЛА ПРОСТОГО (ВОДИТЕЛЬСКОГО) РЕЖИМА (html.mode-simple)
+   2. СХЛОПЫВАНИЕ БЛОКА 1 И ПРОСТОЙ РЕЖИМ
    ========================================================================= */
 
-/* 2.1 Скрываем все лишние инженерные панели */
+/* Блок схлопывается в 38px: либо в простом режиме, либо по классу .dash-collapsed */
+html.mode-simple #dashPanel,
+html.dash-collapsed #dashPanel {
+  width: auto !important;
+  height: 38px !important;
+  min-height: 38px !important;
+  max-height: 38px !important;
+  padding: 0 10px !important;
+  display: inline-flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 6px !important;
+  border-radius: 12px !important;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45) !important;
+  overflow: hidden !important;
+}
+
+html.mode-simple #dashHeader,
+html.dash-collapsed #dashHeader {
+  margin-bottom: 0 !important;
+  padding-bottom: 0 !important;
+  border-bottom: none !important;
+  gap: 6px !important;
+}
+
+html.mode-simple #collapsibleBody,
+html.dash-collapsed #collapsibleBody {
+  display: none !important;
+}
+
+/* В простом режиме полностью скрываются инженерные кнопки */
 html.mode-simple #aiPillPanel,
 html.mode-simple #routeStatusBar,
 html.mode-simple #routeSubmenu,
@@ -182,36 +237,12 @@ html.mode-simple #memWidget {
   display: none !important;
 }
 
-/* 2.2 В режиме радио убираем переключатель "Мій шлях / Все місто" */
+/* В режиме радио в простом режиме скрывается переключатель «Мій шлях / Все місто» */
 html.mode-simple .radio-mode-switcher {
   display: none !important;
 }
 
-/* 2.3 Дашборд превращается в компактную плашку */
-html.mode-simple #dashPanel {
-  width: auto !important;
-  height: 38px !important;
-  padding: 0 10px !important;
-  display: inline-flex !important;
-  flex-direction: row !important;
-  align-items: center !important;
-  gap: 8px !important;
-  border-radius: 12px !important;
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45) !important;
-  overflow: hidden !important;
-}
-html.mode-simple #dashHeader {
-  margin-bottom: 0 !important;
-  padding-bottom: 0 !important;
-  border-bottom: none !important;
-  gap: 8px !important;
-}
-html.mode-simple #btnToggle,
-html.mode-simple #collapsibleBody {
-  display: none !important;
-}
-
-/* 2.4 Кнопка «Оновити» становится горизонтальной */
+/* В простом режиме кнопка «Оновити» становится компактной горизонтальной плашкой */
 html.mode-simple #btnRefresh {
   width: auto !important;
   height: 38px !important;
@@ -236,7 +267,7 @@ html.mode-simple #btnRefresh span:last-child {
 }
 
 /* =========================================================================
-   3. НИЖНИЙ ПРАВЫЙ КЛАСТЕР (ОНОВИТИ + GPS)
+   3. КЛАСТЕР ВНИЗУ СПРАВА (ОНОВИТИ + GPS)
    ========================================================================= */
 .bottom-right-cluster {
   position: absolute !important;
@@ -278,7 +309,7 @@ html.mode-simple #btnRefresh span:last-child {
 #btnRefresh span:last-child { font-size: 8.5px; font-weight: 800; line-height: 1.1; text-align: center; }
 #btnRefresh:active { transform: scale(0.94); }
 
-/* Квадрат навигации GPS */
+/* Квадратная кнопка GPS навигации */
 #btnGpsHud {
   width: 38px !important;
   height: 38px !important;
@@ -478,7 +509,7 @@ html.mode-simple #btnRefresh span:last-child {
 }
 
 /* =========================================================================
-   5. МАРШРУТ И СТАТУС-БАР (НИЗ СЛЕВА, ПОЛНЫЙ РЕЖИМ)
+   5. МАРШРУТ И ПОДМЕНЮ СЕКТОРОВ
    ========================================================================= */
 .route-status-bar {
   position: absolute !important;
@@ -571,7 +602,7 @@ html.mode-simple #btnRefresh span:last-child {
 }
 
 /* =========================================================================
-   6. ПЛАВАЮЩИЕ КНОПКИ СТАТИСТИКИ И ПАМЯТИ
+   6. ПЛАВАЮЩИЕ КНОПКИ СТАТИСТИКИ И МЕНЮ СЕРВЕРА
    ========================================================================= */
 #btnStatsHud {
   position: absolute !important;
@@ -760,7 +791,7 @@ html.mode-simple #btnRefresh span:last-child {
 .traffic-marker-icon { background: transparent !important; border: none !important; }
 
 /* =========================================================================
-   8. ТОАСТЫ И МОДАЛКИ
+   8. УВЕДОМЛЕНИЯ И МОДАЛЬНЫЕ ОКНА
    ========================================================================= */
 .toast-msg {
   position: absolute; top: 65px; left: 50%; transform: translateX(-50%);
