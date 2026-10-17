@@ -36,6 +36,9 @@ html, body {
   background: #0b1120;
 }
 
+/* =========================================================================
+   1. ДАШБОРД (ВЕРХ СЛЕВА)
+   ========================================================================= */
 .dashboard {
   position: absolute !important;
   top: 15px !important;
@@ -48,14 +51,15 @@ html, body {
   padding: 10px 12px;
   border-radius: 14px;
   color: #fff;
-  box-shadow: 0 6px 25px rgba(0,0,0,0.45);
-  width: 200px;
+  box-shadow: 0 6px 25px rgba(0, 0, 0, 0.45);
+  width: 220px;
   max-width: calc(100vw - 150px);
   border: 1.5px solid #334155;
   transition: width 0.28s cubic-bezier(0.4, 0, 0.2, 1), padding 0.25s ease;
   overflow-y: auto;
   max-height: calc(100vh - 80px);
 }
+
 .dash-header { 
   display: flex;
   justify-content: space-between;
@@ -64,7 +68,9 @@ html, body {
   user-select: none;
   padding-bottom: 4px;
   border-bottom: 1px solid #1e293b;
+  gap: 6px;
 }
+
 .points-count { 
   font-size: 12px;
   font-weight: 800;
@@ -75,6 +81,7 @@ html, body {
   cursor: pointer;
   white-space: nowrap;
 }
+
 .btn-toggle {
   background: #1e293b;
   border: 1px solid #334155;
@@ -88,37 +95,32 @@ html, body {
   justify-content: center;
   font-size: 11px;
   flex-shrink: 0;
-  margin-left: 6px;
   z-index: 1005;
 }
+
 .collapsible-body { margin-top: 6px; }
 
-html.dash-collapsed .dashboard {
-  width: auto !important;
-  height: 38px !important;
-  display: inline-flex !important;
-  flex-direction: row !important;
-  align-items: center !important;
-  justify-content: center !important;
-  padding: 0 12px !important;
-  border-radius: 12px !important;
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45) !important;
-  overflow: hidden !important;
-}
-html.dash-collapsed .dash-header {
-  margin-bottom: 0 !important;
-  padding-bottom: 0 !important;
-  border-bottom: none !important;
-  gap: 6px !important;
-}
-html.dash-collapsed #collapsibleBody { display: none; }
-
-.search-box { position: relative; margin-bottom: 8px; }
-.search-input-wrap {
-  position: relative;
-  display: flex;
+/* Кнопка День/Ночь */
+.btn-theme-inline {
+  background: #1e293b;
+  border: 1px solid #334155;
+  color: #f8fafc;
+  border-radius: 8px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+  display: inline-flex;
   align-items: center;
+  gap: 4px;
+  user-select: none;
+  transition: background 0.2s, border-color 0.2s;
 }
+.btn-theme-inline:active { transform: scale(0.95); }
+
+/* Поиск улиц */
+.search-box { position: relative; margin-bottom: 8px; }
+.search-input-wrap { position: relative; display: flex; align-items: center; }
 .search-input {
   width: 100%;
   background: #0b1120;
@@ -140,10 +142,7 @@ html.dash-collapsed #collapsibleBody { display: none; }
   cursor: pointer;
   display: none;
   padding: 2px 4px;
-  line-height: 1;
 }
-.search-clear-btn:hover { color: #fff; }
-
 .search-results {
   position: absolute;
   top: 100%;
@@ -157,7 +156,7 @@ html.dash-collapsed #collapsibleBody { display: none; }
   z-index: 10005;
   display: none;
   margin-top: 4px;
-  box-shadow: 0 8px 25px rgba(0,0,0,0.7);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.7);
 }
 .search-item {
   padding: 7px 9px;
@@ -169,6 +168,147 @@ html.dash-collapsed #collapsibleBody { display: none; }
 }
 .search-item:hover { background: #1e293b; color: #38bdf8; }
 
+/* =========================================================================
+   2. ПРАВИЛА ПРОСТОГО (ВОДИТЕЛЬСКОГО) РЕЖИМА (html.mode-simple)
+   ========================================================================= */
+
+/* 2.1 Скрываем все лишние инженерные панели */
+html.mode-simple #aiPillPanel,
+html.mode-simple #routeStatusBar,
+html.mode-simple #routeSubmenu,
+html.mode-simple #btnStatsHud,
+html.mode-simple #btnTimelineFloating,
+html.mode-simple #memWidget {
+  display: none !important;
+}
+
+/* 2.2 В режиме радио убираем переключатель "Мій шлях / Все місто" */
+html.mode-simple .radio-mode-switcher {
+  display: none !important;
+}
+
+/* 2.3 Дашборд превращается в компактную плашку */
+html.mode-simple #dashPanel {
+  width: auto !important;
+  height: 38px !important;
+  padding: 0 10px !important;
+  display: inline-flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 8px !important;
+  border-radius: 12px !important;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45) !important;
+  overflow: hidden !important;
+}
+html.mode-simple #dashHeader {
+  margin-bottom: 0 !important;
+  padding-bottom: 0 !important;
+  border-bottom: none !important;
+  gap: 8px !important;
+}
+html.mode-simple #btnToggle,
+html.mode-simple #collapsibleBody {
+  display: none !important;
+}
+
+/* 2.4 Кнопка «Оновити» становится горизонтальной */
+html.mode-simple #btnRefresh {
+  width: auto !important;
+  height: 38px !important;
+  min-height: 38px !important;
+  max-height: 38px !important;
+  padding: 0 14px !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 6px !important;
+  border-radius: 12px !important;
+  margin: 0 !important;
+}
+html.mode-simple #btnRefresh span:first-child {
+  font-size: 16px !important;
+  line-height: 1 !important;
+}
+html.mode-simple #btnRefresh span:last-child {
+  font-size: 11.5px !important;
+  font-weight: 800 !important;
+  line-height: 1 !important;
+  text-align: left !important;
+}
+
+/* =========================================================================
+   3. НИЖНИЙ ПРАВЫЙ КЛАСТЕР (ОНОВИТИ + GPS)
+   ========================================================================= */
+.bottom-right-cluster {
+  position: absolute !important;
+  bottom: 25px !important;
+  right: 15px !important;
+  left: auto !important;
+  top: auto !important;
+  z-index: 2100 !important;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: flex-end !important;
+  gap: 7px !important;
+}
+
+/* Вертикальный вариант кнопки «Оновити» для полного админ-режима */
+#btnRefresh {
+  width: 44px;
+  height: 83px;
+  min-height: 83px;
+  max-height: 83px;
+  box-sizing: border-box;
+  background: #0f172a;
+  border: 1.5px solid #334155;
+  border-radius: 12px;
+  color: #f8fafc;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.7);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  user-select: none;
+  padding: 4px 2px;
+  margin: 0 6px 0 0;
+  transition: transform 0.15s ease, background 0.2s ease, border-color 0.2s ease;
+}
+#btnRefresh span:first-child { font-size: 16px; line-height: 1; }
+#btnRefresh span:last-child { font-size: 8.5px; font-weight: 800; line-height: 1.1; text-align: center; }
+#btnRefresh:active { transform: scale(0.94); }
+
+/* Квадрат навигации GPS */
+#btnGpsHud {
+  width: 38px !important;
+  height: 38px !important;
+  min-height: 38px !important;
+  max-height: 38px !important;
+  box-sizing: border-box !important;
+  background: #0f172a !important;
+  border: 1.5px solid #334155 !important;
+  border-radius: 12px !important;
+  color: #cbd5e1 !important;
+  cursor: pointer !important;
+  font-size: 17px !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.7) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  user-select: none !important;
+  margin: 0 !important;
+  transition: border-color 0.2s ease, background 0.2s ease, transform 0.15s ease !important;
+}
+#btnGpsHud:active { transform: scale(0.92) !important; }
+#btnGpsHud.active {
+  border-color: #eab308 !important;
+  background: #713f12 !important;
+  box-shadow: 0 0 14px rgba(234, 179, 8, 0.7) !important;
+}
+
+/* =========================================================================
+   4. ШИ-ПАНЕЛЬ (ВЕРХ СПРАВА, ПОЛНЫЙ РЕЖИМ)
+   ========================================================================= */
 .ai-pill-panel {
   position: absolute;
   top: 15px;
@@ -179,7 +319,7 @@ html.dash-collapsed #collapsibleBody { display: none; }
   border: 1.5px solid #0284c7;
   border-radius: 12px;
   color: #fff;
-  box-shadow: 0 4px 18px rgba(0,0,0,0.45);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
   transition: width 0.25s ease, height 0.25s ease, padding 0.2s ease;
   overflow: hidden;
 }
@@ -196,8 +336,9 @@ html.dash-collapsed #collapsibleBody { display: none; }
   gap: 6px;
   cursor: pointer;
 }
-.ai-pill-panel.compact .ai-pill-tools { display: none !important; }
+.ai-pill-panel.compact .ai-pill-tools,
 .ai-pill-panel.compact .ai-pill-body { display: none !important; }
+
 .ai-pill-compact-content {
   display: flex;
   align-items: center;
@@ -336,6 +477,9 @@ html.dash-collapsed #collapsibleBody { display: none; }
   justify-content: center;
 }
 
+/* =========================================================================
+   5. МАРШРУТ И СТАТУС-БАР (НИЗ СЛЕВА, ПОЛНЫЙ РЕЖИМ)
+   ========================================================================= */
 .route-status-bar {
   position: absolute !important;
   bottom: 25px !important;
@@ -426,10 +570,9 @@ html.dash-collapsed #collapsibleBody { display: none; }
   cursor: pointer;
 }
 
-#memWidget {
-  left: calc(50% - 20px) !important;
-}
-
+/* =========================================================================
+   6. ПЛАВАЮЩИЕ КНОПКИ СТАТИСТИКИ И ПАМЯТИ
+   ========================================================================= */
 #btnStatsHud {
   position: absolute !important;
   bottom: 25px !important;
@@ -454,85 +597,6 @@ html.dash-collapsed #collapsibleBody { display: none; }
 }
 #btnStatsHud:active {
   transform: translateX(-50%) scale(0.92) !important;
-}
-
-/* --- КЛАСТЕР НИЖНИХ КНОПОК СПРАВА --- */
-.bottom-right-cluster {
-  position: absolute !important;
-  bottom: 25px !important;
-  right: 15px !important;
-  left: auto !important;
-  top: auto !important;
-  z-index: 2100 !important;
-  display: flex !important;
-  flex-direction: row !important;
-  align-items: flex-end !important;
-  gap: 7px !important;
-}
-
-/* ВЕРТИКАЛЬНАЯ КНОПКА «ОНОВИТИ» ВЫСОТОЙ 83px (РОВНО ПО ВЫСОТЕ НАВИГАЦИИ + СЕКУНДОМЕРА) */
-#btnRefresh {
-  width: 44px !important;
-  height: 83px !important;
-  min-height: 83px !important;
-  max-height: 83px !important;
-  box-sizing: border-box !important;
-  background: #0f172a !important; /* плотный монолитный графитовый фон */
-  border: 1.5px solid #334155 !important;
-  border-radius: 12px !important;
-  color: #f8fafc !important;
-  cursor: pointer !important;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.7) !important;
-  display: flex !important;
-  flex-direction: column !important;
-  align-items: center !important;
-  justify-content: center !important;
-  gap: 4px !important;
-  user-select: none !important;
-  padding: 4px 2px !important;
- margin: 0 10px 0 0 !important;
-  position: static !important;
-  transition: transform 0.15s ease, background 0.2s ease, border-color 0.2s ease !important;
-}
-#btnRefresh span:first-child {
-  font-size: 16px !important;
-  line-height: 1 !important;
-}
-#btnRefresh span:last-child {
-  font-size: 8.5px !important;
-  font-weight: 800 !important;
-  line-height: 1.1 !important;
-  text-align: center !important;
-}
-#btnRefresh:active { transform: scale(0.94) !important; }
-
-/* КВАДРАТ НАВИГАЦИИ (38x38) В САМОМ НИЖНЕМ ПРАВОМ УГЛУ */
-#btnGpsHud {
-  width: 38px !important;
-  height: 38px !important;
-  min-height: 38px !important;
-  max-height: 38px !important;
-  box-sizing: border-box !important;
-  background: #0f172a !important; /* плотный монолитный фон */
-  border: 1.5px solid #334155 !important;
-  border-radius: 12px !important;
-  color: #cbd5e1 !important;
-  cursor: pointer !important;
-  font-size: 17px !important;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.7) !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  user-select: none !important;
-  position: static !important;
-  margin: 0 !important;
-  transition: border-color 0.2s ease, background 0.2s ease, transform 0.15s ease !important;
-}
-#btnGpsHud:active { transform: scale(0.92) !important; }
-#btnGpsHud.active {
-  border-color: #eab308 !important;
-  background: #713f12 !important;
-  box-shadow: 0 0 14px rgba(234, 179, 8, 0.7) !important;
 }
 
 .subtitle { font-size: 10px; color: #94a3b8; margin-bottom: 8px; }
@@ -643,6 +707,9 @@ html.dash-collapsed #collapsibleBody { display: none; }
 .dot-green { background: var(--color-green); }
 .dot-red { background: var(--color-red); }
 
+/* =========================================================================
+   7. МЕТКИ НА КАРТЕ И СВЕТОФОРЫ
+   ========================================================================= */
 .custom-dot-marker { background: transparent !important; border: none !important; }
 .radar-circle { width: 18px; height: 18px; border-radius: 50%; cursor: pointer; position: relative; touch-action: none; transition: transform 0.2s ease; }
 .radar-circle.clustered {
@@ -692,6 +759,9 @@ html.dash-collapsed #collapsibleBody { display: none; }
 .tl-lamp.off { background: #334155 !important; opacity: 0.4; }
 .traffic-marker-icon { background: transparent !important; border: none !important; }
 
+/* =========================================================================
+   8. ТОАСТЫ И МОДАЛКИ
+   ========================================================================= */
 .toast-msg {
   position: absolute; top: 65px; left: 50%; transform: translateX(-50%);
   z-index: 3500; background: #0f172a; border: 1.5px solid #38bdf8; color: #fff; padding: 8px 18px;
