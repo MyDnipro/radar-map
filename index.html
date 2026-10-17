@@ -209,6 +209,41 @@
     }
     .btn-tl-quick.green { background: #059669; }
     .btn-tl-quick.red { background: #dc2626; }
+    /* Плаваючий банер активного об'їзду від ШІ */
+    .nav-route-banner {
+      position: absolute;
+      top: 65px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 2500;
+      background: rgba(15, 23, 42, 0.96);
+      border: 1.5px solid #00f3ff;
+      border-radius: 20px;
+      padding: 6px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      box-shadow: 0 4px 20px rgba(0, 243, 255, 0.45);
+      font-size: 11.5px;
+      font-weight: 800;
+      color: #f8fafc;
+      white-space: nowrap;
+    }
+    .nav-route-banner button {
+      background: #1e293b;
+      border: 1px solid #475569;
+      color: #94a3b8;
+      border-radius: 6px;
+      padding: 2px 8px;
+      font-size: 10.5px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .nav-route-banner button:hover {
+      color: #fff;
+      border-color: #ef4444;
+    }
   </style>
   <link rel="manifest" href="manifest.json">
   <meta name="mobile-web-app-capable" content="yes">
