@@ -20,8 +20,8 @@
       filter: invert(90%) hue-rotate(180deg) contrast(108%) brightness(96%) saturate(85%) !important;
     }
 
-    /* =========================================================================
-       2. ПРИМУСОВИЙ БІЛИЙ ТЕКСТ РАДІО ТА ЕФІРУ В НІЧНОМУ РЕЖИМІ
+/* =========================================================================
+       2. БІЛИЙ ТЕКСТ РАДІО ТА ЕФІРУ В НІЧНОМУ РЕЖИМІ (ТІЛЬКИ ДЛЯ РАДІО)
        ========================================================================= */
     body.night-mode [class*="ticker"],
     body.night-mode [class*="ticker"] *,
@@ -31,18 +31,22 @@
     body.night-mode [class*="radio"] *,
     body.night-mode [id*="radio"],
     body.night-mode [id*="radio"] *,
-    body.night-mode [class*="feed"],
-    body.night-mode [class*="feed"] *,
-    body.night-mode [class*="stream"],
-    body.night-mode [id*="stream"],
-    body.night-mode .report-row-item,
-    body.night-mode .report-status-title,
     body.night-mode .points-count span,
     body.night-mode #dashHeader span {
       color: #ffffff !important;
       text-shadow: 0 1px 4px rgba(0, 0, 0, 0.95), 0 0 8px rgba(0, 0, 0, 0.9) !important;
     }
 
+    /* ЗАХИСТ ПОПАПІВ: ЗАВЖДИ ЧОРНИЙ КОНТРАСТНИЙ ТЕКСТ НА БІЛОМУ ФОНІ */
+    .leaflet-popup-content,
+    .leaflet-popup-content *,
+    .leaflet-popup-content .report-status-title,
+    .leaflet-popup-content .report-row-item {
+      text-shadow: none !important;
+    }
+    .leaflet-popup-content .report-status-title {
+      color: #0f172a !important;
+    }
     /* =========================================================================
        3. ПЕРЕМИКАННЯ РЕЖИМІВ (ПРОСТИЙ ВОДІЙСЬКИЙ / ПОВНИЙ РОЗРОБНИК)
        ========================================================================= */
