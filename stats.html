@@ -593,7 +593,12 @@
       <div id="modalReports" class="modal-reports-list"></div>
     </div>
   </div>
+<script>
+  if (localStorage.getItem('radar_last_analytics_page') === 'dossier.html') {
+    window.location.replace('dossier.html');
+  }
 
+  // далі йде твій звичайний код stats.html...
   <script>
     const SECRET_KEY_HASH = "570984";
     const _VAULT_PREFIX = String.fromCharCode(65, 81, 46, 65, 98, 56, 82, 78, 54);
