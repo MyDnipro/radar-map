@@ -1,18 +1,18 @@
 /**
  * Radar Dnipro — Модуль "Радіо ефір" (ticker.js)
- * - 4 рядки на екрані + плавний скрол до 100 повідомлень
- * - У простому режимі: автоматична трансляція всього міста, перемикач надійно прихований
- * - У повному режимі: активний перемикач "Мій шлях" / "Все місто"
- * - Динамічний "ластик" для попапів (не перекриває картки при відкритті)
- * - Клікабельний ТІЛЬКИ кружок (🟢/🔴) на початку рядка для фокусу на карті
- * - Повністю вирізано зайвий дублюючий плеєр утримання екрана
+ * - 4 рядки на екрані + скрол до 100 повідомлень
+ * - Кнопка 📻 чітко по центру (left: 50%, transform: translateX(-50%))
+ * - У повному режимі: над повідомленнями доступний перемикач "Мій шлях / Все місто"
+ * - У простому режимі: перемикач прихований, ефір автоматично транслює все місто
+ * - Клікабельний ТІЛЬКИ кружок (🟢/🔴) на початку рядка для переходу до точки
+ * - Розумний динамічний ластик під відкриті вікна/попапи
  */
 (function() {
   let isRadioActive = localStorage.getItem("radar_radio_active") === "true";
   let radioMode = localStorage.getItem("radar_radio_mode") || "route";
   let lastDataSignature = "";
 
-  // Словник фільтрації за 8 контрольними точками маршруту
+  // 8 контрольних точок маршруту водія
   const CHECKPOINT_REGEXES = [
     /кайдак/i, /ровд/i,
     /водолечеб/i, /водолікарн/i, /пр[\s.]*свободи/i,
@@ -30,16 +30,16 @@
     return CHECKPOINT_REGEXES.some(rgx => rgx.test(fullText));
   }
 
-  // 1. Стилі радіо-ефіру
+  // 1. СТИЛІ РАДІО-ЕФІРУ
   const style = document.createElement("style");
   style.textContent = `
     #btnKeepAwake { display: none !important; }
 
-    /* Кнопка 📻 у верхній панелі */
+    /* Кнопка 📻 строго по центру екрана */
     #btnRadioTopCenter {
       position: absolute !important;
       top: 15px !important;
-      left: calc(50% - 14px) !important;
+      left: 50% !important;
       transform: translateX(-50%) !important;
       z-index: 850 !important;
       width: 38px;
@@ -81,13 +81,13 @@
       transition: opacity 0.15s ease;
     }
 
-    /* Перемикач: Мій шлях | Все місто */
+    /* Перемикач над текстом у повному режимі */
     .radio-mode-switcher {
-      pointer-events: auto;
+      pointer-events: auto !important;
       display: inline-flex;
       align-items: center;
       gap: 2px;
-      background: rgba(15, 23, 42, 0.45);
+      background: rgba(15, 23, 42, 0.65);
       backdrop-filter: blur(6px);
       border: 1px solid rgba(56, 189, 248, 0.35);
       border-radius: 14px;
@@ -111,7 +111,7 @@
       box-shadow: 0 0 8px rgba(2, 132, 199, 0.6);
     }
 
-    /* Скрол-список на 4 рядки (висота 96px) */
+    /* Скрол-список на 4 рядки по 24px (висота 96px) */
     .radio-scroll-list {
       display: block !important;
       height: 96px !important;
@@ -143,7 +143,7 @@
       transition: opacity 0.15s ease;
     }
 
-    /* Точковий клікабельний кружок */
+    /* Точковий клікабельний кружок фокусу */
     .radio-msg-dot {
       pointer-events: auto;
       cursor: pointer;
@@ -192,7 +192,7 @@
   `;
   document.head.appendChild(style);
 
-  // 2. Створення вузлів DOM
+  // 2. СТВОРЕННЯ ВУЗЛІВ DOM
   const radioBtn = document.createElement("div");
   radioBtn.id = "btnRadioTopCenter";
   radioBtn.title = "Радіо ефір";
@@ -225,7 +225,7 @@
     feedBox.addEventListener(evt, (e) => e.stopPropagation(), { passive: true });
   });
 
-  // Ластик для попапів (приховує рядки під відкритими вікнами)
+  // Ластик під попапи
   function updateSmartMask() {
     if (!isRadioActive || feedBox.style.display === "none") return;
 
@@ -247,7 +247,7 @@
 
   setInterval(updateSmartMask, 100);
 
-  // Обробка кліку по вкладках перемикача
+  // Перемикання вкладок у повному режимі
   switcher.addEventListener("click", (e) => {
     const tab = e.target.closest(".radio-mode-tab");
     if (!tab) return;
@@ -272,7 +272,7 @@
     return t;
   }
 
-  // 3. Відображення стрічки повідомлень
+  // 3. ВІДОБРАЖЕННЯ ПОВІДОМЛЕНЬ
   function renderRadioFeed(forceRebuild = false) {
     if (!isRadioActive) {
       feedBox.style.display = "none";
@@ -286,7 +286,7 @@
     const isSimple = document.documentElement.classList.contains("mode-simple");
     const activeMode = isSimple ? "city" : radioMode;
 
-    // Керування видимістю перемикача: приховано у простому режимі, видно у повному
+    // Перемикач виводиться у повному режимі і ховається у простому
     switcher.style.display = isSimple ? "none" : "inline-flex";
     switcher.querySelectorAll(".radio-mode-tab").forEach(el => {
       el.classList.toggle("active", el.getAttribute("data-mode") === activeMode);
@@ -375,6 +375,11 @@
 
   window.addEventListener('radar:pointsUpdated', () => {
     if (isRadioActive) renderRadioFeed(false);
+  });
+
+  window.addEventListener('radar:uiModeChanged', () => {
+    lastDataSignature = "";
+    if (isRadioActive) renderRadioFeed(true);
   });
 
   setInterval(() => {
