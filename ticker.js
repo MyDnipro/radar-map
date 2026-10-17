@@ -3,8 +3,7 @@
  * - 4 рядки на екрані + скрол до 100 повідомлень
  * - Перемикач: "Мій шлях" / "Все місто"
  * - Динамічний "ластик" для попапів
- * - Клікабельний ТІЛЬКИ кружок (🟢/🔴) на початку рядка — весь текст і фон тепер НЕ інтерферентять з кліками по карті!
- * - Автоматичне утримання екрана (завжди увімкнено)
+ * - Клікабельний ТІЛЬКИ кружок (🟢/🔴) на початку рядка — весь текст і фон не заважають роботі з картою
  */
 (function() {
   let isRadioActive = localStorage.getItem("radar_radio_active") === "true";
@@ -74,15 +73,15 @@
       display: none;
       flex-direction: column;
       gap: 3px;
-      pointer-events: none; /* Загалом блок не заважає клікати на карту скрізь */
+      pointer-events: none;
       user-select: none;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       transition: opacity 0.15s ease;
     }
 
-    /* Ненав'язливий напівпрозорий перемикач: Мій шлях | Все місто */
+    /* Напівпрозорий перемикач: Мій шлях | Все місто */
     .radio-mode-switcher {
-      pointer-events: auto; /* Перемикач клікабельний */
+      pointer-events: auto;
       display: inline-flex;
       align-items: center;
       gap: 2px;
@@ -128,7 +127,7 @@
     .radio-msg-line {
       height: 24px !important;
       line-height: 24px !important;
-      pointer-events: none; /* Сам рядок не перехоплює кліки карти */
+      pointer-events: none;
       font-size: 12.5px;
       font-weight: 800;
       white-space: nowrap;
@@ -140,7 +139,6 @@
       transition: opacity 0.15s ease;
     }
 
-    /* А от сам кружок у початку рядка — клікабельний приціл! */
     .radio-msg-dot {
       pointer-events: auto;
       cursor: pointer;
@@ -162,13 +160,13 @@
       font-size: 11px;
       font-weight: 900;
       flex-shrink: 0;
-      pointer-events: auto; /* Час теж можна залишити клікабельним за бажанням, або прибрати */
+      pointer-events: auto;
     }
     .radio-msg-text {
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
-      pointer-events: none; /* Текст повністю прозорий для кліків карти */
+      pointer-events: none;
     }
 
     .radio-msg-line.clean,
@@ -318,7 +316,6 @@
       const row = document.createElement("div");
       row.className = `radio-msg-line ${statusClass}`;
       
-      // Створюємо елементи окремо: клікабельний лише кружок (dot)
       const dotSpan = document.createElement("span");
       dotSpan.className = "radio-msg-dot";
       dotSpan.innerText = dot;
@@ -371,76 +368,4 @@
   }, 4000);
 
   setTimeout(() => renderRadioFeed(true), 600);
-
-  // Фонове утримання екрана завжди увімкненим
-  let wakeLockObj = null;
-  let videoEl = null;
-  let audioCtx = null;
-
-  function ensureAlwaysAwake() {
-    if (!videoEl) {
-      try {
-        const canvas = document.createElement("canvas");
-        canvas.width = 16;
-        canvas.height = 16;
-        const ctx = canvas.getContext("2d");
-        let tick = 0;
-        function drawLoop() {
-          tick++;
-          ctx.fillStyle = (tick % 2 === 0) ? "#010101" : "#020202";
-          ctx.fillRect(0, 0, 16, 16);
-          requestAnimationFrame(drawLoop);
-        }
-        drawLoop();
-
-        videoEl = document.createElement("video");
-        videoEl.setAttribute("playsinline", "");
-        videoEl.setAttribute("webkit-playsinline", "");
-        videoEl.setAttribute("loop", "");
-        videoEl.muted = true;
-        videoEl.volume = 0;
-        videoEl.style.cssText = "position:fixed;bottom:0;right:0;width:2px;height:2px;opacity:0.01;pointer-events:none;z-index:1;";
-        document.body.appendChild(videoEl);
-
-        if (canvas.captureStream) {
-          videoEl.srcObject = canvas.captureStream(10);
-        }
-      } catch (e) {}
-    }
-
-    if (videoEl && videoEl.paused) {
-      videoEl.play().catch(() => {});
-    }
-
-    try {
-      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-      if (!audioCtx && AudioContextClass) {
-        audioCtx = new AudioContextClass();
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        gain.gain.value = 0.00001;
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.start();
-      }
-      if (audioCtx && audioCtx.state === "suspended") {
-        audioCtx.resume().catch(() => {});
-      }
-    } catch (e) {}
-
-    if ("wakeLock" in navigator && !wakeLockObj) {
-      navigator.wakeLock.request("screen").then(lock => {
-        wakeLockObj = lock;
-        wakeLockObj.addEventListener("release", () => { wakeLockObj = null; });
-      }).catch(() => {});
-    }
-  }
-
-  ensureAlwaysAwake();
-  document.addEventListener("touchstart", ensureAlwaysAwake, { passive: true });
-  document.addEventListener("click", ensureAlwaysAwake, { passive: true });
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") ensureAlwaysAwake();
-  });
-  setInterval(ensureAlwaysAwake, 8000);
 })();
