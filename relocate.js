@@ -1,5 +1,5 @@
 /**
- * relocate.js — Модуль перенесення міток, розумного навчання та керування базою знань (v4.0)
+ * relocate.js — Модуль перенесення міток, 3-рівневого пошуку та бази знань (v4.0)
  */
 
 (function () {
@@ -7,19 +7,17 @@
   const FIREBASE_KB_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/knowledge_base.json";
 
   // =========================================================================
-  // 1. АЛГОРИТМ ВИТЯГУВАННЯ ЧИСТОЇ НАЗВИ ВУЛИЦІ (БЕЗ БУСІВ, СМАЙЛІВ ТА СТАТУСІВ)
+  // 1. ЧИСТЕ ВИТЯГУВАННЯ НАЗВИ ВУЛИЦІ (ЗАХИСТ БАЗИ ВІД СМІТТЯ ТА АВТО)
   // =========================================================================
   function extractCleanLocationPhrase(rawText, targetStreetName) {
     if (!rawText) return "";
 
     let s = rawText
-      // Видаляємо всі емодзі та спецсимволи
       .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}]/gu, " ")
       .replace(/&#\d+;/g, " ")
       .replace(/[,.!?:;\"'«»()–—\/\\]/g, " ")
       .toLowerCase();
 
-    // Дорожній шум, статуси, авто та зайві дієслова
     const stopRegexes = [
       /\b(блок\s*пост|блокпост|бп|патруль|патрулі|патрули|патруля|полиция|поліція|менты|мент|менти|тцк|военкомат|воєнкомат)\b/gi,
       /\b(чисто\s*в\s*обе(?:\s*стороны)?|чисто\s*в\s*обе|чисто|вільно|свободно|спокойно|спокійно|зелено|норм|нормально|проезд|проїзд)\b/gi,
@@ -32,7 +30,6 @@
     stopRegexes.forEach(rg => { s = s.replace(rg, " "); });
     s = s.replace(/\s+/g, " ").trim();
 
-    // Якщо передано офіційну назву вулиці — знаходимо точне слово у повідомленні
     if (targetStreetName) {
       const cleanTarget = targetStreetName.toLowerCase()
         .replace(/(?:вулиця|проспект|просп|провулок|вул|шосе|тупик|узвіз)\.?/gi, "")
@@ -41,17 +38,15 @@
       const parts = cleanTarget.split(/\s+/).filter(w => w.length >= 4);
 
       for (const p of parts) {
-        const root = p.slice(0, -2); // Корінь слова (наприклад, "богомаз", "сикорск")
+        const root = p.slice(0, -2);
         const words = s.split(" ");
         const matchedWord = words.find(w => w.includes(root));
 
         if (matchedWord) {
           const mIdx = words.indexOf(matchedWord);
-          // Якщо це ім'я + прізвище (наприклад, "ігоря сікорського")
           if (mIdx > 0 && ["игоря", "ігоря", "академика", "академіка", "олександра", "маршала", "генерала"].includes(words[mIdx - 1])) {
             return `${words[mIdx - 1]} ${matchedWord}`;
           }
-          // Якщо орієнтир типу "от апполо к метеору"
           if (words.length <= 4 && words.length > 1) {
             return s.replace(/^\s*(?:на|по|в|до|от)\s+/i, "").trim();
           }
@@ -60,7 +55,6 @@
       }
     }
 
-    // Зрізаємо залишки прийменників на краях
     s = s.replace(/^\s*(?:на|по|в|до|от|біля|возле|коло)\s+/i, "");
     s = s.replace(/\s+(?:на|по|в|до|от)\$/i, "");
     s = s.replace(/\s+/g, " ").trim();
@@ -69,7 +63,182 @@
   }
 
   // =========================================================================
-  // 2. ВІДКРИТТЯ МОДАЛКИ ПЕРЕНЕСЕННЯ ЗА АДРЕСОЮ
+  // 2. ДОСТУП ДО ПАМ'ЯТІ ТОПОНІМІВ "А = Б" (З memory.js)
+  // =========================================================================
+  function getMemoryToponymsMap() {
+    const memoryKeys = ["radar_toponyms", "toponyms_memory", "radar_memory_toponyms", "radar_ab_rules", "radar_learned_rules"];
+    const map = {};
+
+    for (const mk of memoryKeys) {
+      try {
+        const raw = localStorage.getItem(mk);
+        if (!raw) continue;
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          parsed.forEach(item => {
+            if (item.from && item.to) map[item.from.toLowerCase().trim()] = item.to.trim();
+            else if (item.a && item.b) map[item.a.toLowerCase().trim()] = item.b.trim();
+            else if (item.key && item.value) map[item.key.toLowerCase().trim()] = item.value.trim();
+            else if (item.phrase && item.street) map[item.phrase.toLowerCase().trim()] = item.street.trim();
+          });
+        } else if (typeof parsed === "object" && parsed !== null) {
+          for (const [k, v] of Object.entries(parsed)) {
+            if (typeof v === "string") map[k.toLowerCase().trim()] = v.trim();
+            else if (v && typeof v === "object" && (v.to || v.street)) {
+              map[k.toLowerCase().trim()] = (v.to || v.street).trim();
+            }
+          }
+        }
+      } catch (e) {}
+    }
+    return map;
+  }
+
+  // =========================================================================
+  // 3. ТРЬОХРІВНЕВИЙ РОЗУМНИЙ ПОШУК (ПАМ'ЯТЬ + STREETS.JS + ОНЛАЙН)
+  // =========================================================================
+  let searchDebounceTimer = null;
+
+  window.executeCustomTrain = async function () {
+    const inputEl = document.getElementById("trainCustomInput");
+    const resultsEl = document.getElementById("trainSearchResults");
+    if (!inputEl || !resultsEl) return;
+
+    const q = inputEl.value.trim().toLowerCase();
+    if (q.length < 2) {
+      resultsEl.style.display = "none";
+      return;
+    }
+
+    resultsEl.innerHTML = `<div style="padding:8px 10px; font-size:11px; color:#38bdf8;">🔍 Пошук по всіх базах...</div>`;
+    resultsEl.style.display = "block";
+
+    const collectedMatches = [];
+
+    // РІВЕНЬ 1: Перевірка Пам'яті топонімів ("А = Б")
+    const memMap = getMemoryToponymsMap();
+    let resolvedMemoryTarget = null;
+
+    for (const [fromKey, toVal] of Object.entries(memMap)) {
+      if (fromKey === q || q.startsWith(fromKey) || fromKey.startsWith(q)) {
+        resolvedMemoryTarget = toVal;
+        break;
+      }
+    }
+
+    if (resolvedMemoryTarget) {
+      let matchedCoord = null;
+      if (typeof DNIPRO_STREETS_MAP !== "undefined") {
+        for (const item of Object.values(DNIPRO_STREETS_MAP)) {
+          if (item.name.toLowerCase().includes(resolvedMemoryTarget.toLowerCase())) {
+            matchedCoord = item;
+            break;
+          }
+        }
+      }
+      if (matchedCoord) {
+        collectedMatches.push({
+          source: "memory",
+          name: matchedCoord.name,
+          lat: matchedCoord.lat,
+          lng: matchedCoord.lng,
+          label: `🧠 <b>${matchedCoord.name}</b> <span style="font-size:10px; color:#c084fc;">(з Пам'яті топонімів для «${q}»)</span>`
+        });
+      }
+    }
+
+    // РІВЕНЬ 2: Локальний довідник streets.js
+    if (typeof DNIPRO_STREETS_MAP !== "undefined") {
+      for (const [key, item] of Object.entries(DNIPRO_STREETS_MAP)) {
+        const matchesQuery = key.includes(q) || (item.old && item.old.toLowerCase().includes(q)) || item.name.toLowerCase().includes(q);
+        const matchesMemory = resolvedMemoryTarget && item.name.toLowerCase().includes(resolvedMemoryTarget.toLowerCase());
+
+        if (matchesQuery || matchesMemory) {
+          if (!collectedMatches.some(m => m.name === item.name)) {
+            collectedMatches.push({
+              source: "local",
+              name: item.name,
+              lat: item.lat,
+              lng: item.lng,
+              old: item.old,
+              label: `📍 <b>${item.name}</b> ${item.old ? `<span style="font-size:10px; color:#94a3b8;">(\${item.old})</span>` : ""}`
+            });
+          }
+        }
+      }
+    }
+
+    // РІВЕНЬ 3: Онлайн-пошук (Photon / OpenStreetMap) якщо локальних мало або натиснуто "Знайти"
+    if (collectedMatches.length < 3 && q.length >= 3) {
+      try {
+        const onlineQuery = `${q} Дніпро`;
+        const ctrl = new AbortController();
+        const timeout = setTimeout(() => ctrl.abort(), 2000);
+        const geoRes = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(onlineQuery)}&lat=48.46&lon=35.04&limit=4`, { signal: ctrl.signal });
+        clearTimeout(timeout);
+
+        if (geoRes.ok) {
+          const geoData = await geoRes.json();
+          if (geoData && geoData.features) {
+            geoData.features.forEach(f => {
+              const p = f.properties || {};
+              const coords = f.geometry?.coordinates;
+              if (coords && coords.length >= 2) {
+                const lng = coords[0], lat = coords[1];
+                // Обмежуємося квадратом Дніпра
+                if (lat >= 48.30 && lat <= 48.60 && lng >= 34.80 && lng <= 35.30) {
+                  const placeName = [p.name, p.street].filter(Boolean).join(", ") || p.city || q;
+                  if (!collectedMatches.some(m => m.name.toLowerCase() === placeName.toLowerCase())) {
+                    collectedMatches.push({
+                      source: "online",
+                      name: placeName,
+                      lat: lat,
+                      lng: lng,
+                      label: `🌐 <b>${placeName}</b> <span style="font-size:10px; color:#38bdf8;">(Онлайн-карта)</span>`
+                    });
+                  }
+                }
+              }
+            });
+          }
+        }
+      } catch (e) {}
+    }
+
+    // РЕНДЕР РЕЗУЛЬТАТІВ
+    resultsEl.innerHTML = "";
+    if (collectedMatches.length === 0) {
+      resultsEl.innerHTML = `<div style="padding:8px 10px; font-size:11px; color:#94a3b8;">Вулицю не знайдено. Спробуйте іншу назву.</div>`;
+      resultsEl.style.display = "block";
+      return;
+    }
+
+    collectedMatches.slice(0, 8).forEach(item => {
+      const row = document.createElement("div");
+      row.className = "search-item";
+      row.innerHTML = item.label;
+      row.onclick = () => selectStreetForRelocation(item);
+      resultsEl.appendChild(row);
+    });
+
+    resultsEl.style.display = "block";
+  };
+
+  const trainInput = document.getElementById("trainCustomInput");
+  if (trainInput) {
+    trainInput.addEventListener("input", () => {
+      clearTimeout(searchDebounceTimer);
+      if (trainInput.value.trim().length >= 2) {
+        searchDebounceTimer = setTimeout(window.executeCustomTrain, 220);
+      } else {
+        const res = document.getElementById("trainSearchResults");
+        if (res) res.style.display = "none";
+      }
+    });
+  }
+
+  // =========================================================================
+  // 4. ВІДКРИТТЯ МОДАЛКИ ПЕРЕНЕСЕННЯ
   // =========================================================================
   window.openTrainingModal = function (point, marker) {
     window.activeActionPoint = point;
@@ -103,60 +272,7 @@
   };
 
   // =========================================================================
-  // 3. ПОШУК ВУЛИЦЬ У СПИСКУ
-  // =========================================================================
-  window.executeCustomTrain = function () {
-    const inputEl = document.getElementById("trainCustomInput");
-    const resultsEl = document.getElementById("trainSearchResults");
-    if (!inputEl || !resultsEl) return;
-
-    const q = inputEl.value.trim().toLowerCase();
-    if (q.length < 2) {
-      resultsEl.style.display = "none";
-      return;
-    }
-
-    resultsEl.innerHTML = "";
-    const matches = [];
-
-    if (typeof DNIPRO_STREETS_MAP !== "undefined") {
-      for (const [key, item] of Object.entries(DNIPRO_STREETS_MAP)) {
-        if (key.includes(q) || (item.old && item.old.toLowerCase().includes(q)) || item.name.toLowerCase().includes(q)) {
-          if (!matches.some(m => m.name === item.name)) matches.push(item);
-        }
-      }
-    }
-
-    if (matches.length === 0) {
-      resultsEl.innerHTML = `<div style="padding:8px 10px; font-size:11px; color:#94a3b8;">Вулицю не знайдено. Спробуйте іншу назву.</div>`;
-      resultsEl.style.display = "block";
-      return;
-    }
-
-    matches.slice(0, 7).forEach(st => {
-      const row = document.createElement("div");
-      row.className = "search-item";
-      row.innerHTML = `📍 <b>${st.name}</b> ${st.old ? `<span style="font-size:10px; color:#94a3b8;">(\${st.old})</span>` : ""}`;
-      row.onclick = () => selectStreetForRelocation(st);
-      resultsEl.appendChild(row);
-    });
-
-    resultsEl.style.display = "block";
-  };
-
-  const trainInput = document.getElementById("trainCustomInput");
-  if (trainInput) {
-    trainInput.addEventListener("input", () => {
-      if (trainInput.value.trim().length >= 2) window.executeCustomTrain();
-      else {
-        const res = document.getElementById("trainSearchResults");
-        if (res) res.style.display = "none";
-      }
-    });
-  }
-
-  // =========================================================================
-  // 4. ПІДТВЕРДЖЕННЯ ПЕРЕНЕСЕННЯ ТА ЗБЕРЕЖЕННЯ ОЧИЩЕНОГО ПРАВИЛА
+  // 5. ПІДТВЕРДЖЕННЯ ПЕРЕНЕСЕННЯ ТА ЗБЕРЕЖЕННЯ ОЧИЩЕНОГО ПРАВИЛА
   // =========================================================================
   function selectStreetForRelocation(streetObj) {
     const p = window.activeActionPoint;
@@ -197,8 +313,6 @@
 
     const p = pr.point;
     const rawText = p.text || p.raw_text || "";
-
-    // ВИТЯГУЄМО ЧИСТУ НАЗВУ ВУЛИЦІ
     const cleanRulePhrase = extractCleanLocationPhrase(rawText, pr.streetName);
 
     p.lat = Number(pr.targetLat.toFixed(5));
@@ -207,7 +321,6 @@
     p.needs_training = false;
     p.geo_refined = true;
 
-    // Зберігаємо зміну точки у Firebase
     if (p._fbKey) {
       fetch(FIREBASE_POINTS_URL.replace(".json", `/${p._fbKey}.json`), {
         method: "PATCH",
@@ -222,7 +335,6 @@
       }).catch(() => {});
     }
 
-    // Зберігаємо чисте правило в Базу Знань
     if (cleanRulePhrase && cleanRulePhrase.length >= 3) {
       saveRuleToKnowledgeBase(cleanRulePhrase, pr.streetName, p.lat, p.lng);
     }
@@ -257,7 +369,6 @@
       created_at: Date.now()
     };
 
-    // 1. Локальна пам'ять
     try {
       let rules = JSON.parse(localStorage.getItem("radar_learned_rules") || "[]");
       rules = rules.filter(r => r.phrase !== phrase);
@@ -265,7 +376,6 @@
       localStorage.setItem("radar_learned_rules", JSON.stringify(rules));
     } catch (e) {}
 
-    // 2. Хмара Firebase
     try {
       await fetch(FIREBASE_KB_URL, {
         method: "POST",
@@ -276,7 +386,7 @@
   }
 
   // =========================================================================
-  // 5. РУЧНЕ ОЧИЩЕННЯ БАЗИ ВІД СМІТТЯ (ЗАПУСКАЄТЬСЯ ТІЛЬКИ ПО КНОПЦІ)
+  // 6. РУЧНЕ ОЧИЩЕННЯ БАЗИ ЗНАНЬ (ТІЛЬКИ ПО КНОПЦІ З ПІДТВЕРДЖЕННЯМ)
   // =========================================================================
   window.cleanAllExistingRules = async function () {
     if (!confirm("Очистити всі наявні правила в базі від сміття (смайлів, описів авто та слів 'блокпост/чисто')?")) {
@@ -303,7 +413,6 @@
         if (cleanP && cleanP !== oldPhrase) {
           item.phrase = cleanP;
           cleanedCount++;
-          // Оновлюємо тільки поле phrase в Firebase
           fetch(`https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/knowledge_base/${key}.json`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
@@ -325,7 +434,7 @@
   };
 
   // =========================================================================
-  // 6. ЖУРНАЛ ПРИВ'ЯЗОК ІІ (ПЕРЕГЛЯД, РЕДАГУВАННЯ, ВИДАЛЕННЯ)
+  // 7. ЖУРНАЛ ПРИВ'ЯЗОК ІІ (ПЕРЕГЛЯД, РЕДАГУВАННЯ, ВИДАЛЕННЯ)
   // =========================================================================
   window.openBindingJournal = async function () {
     let journalModal = document.getElementById("bindingJournalModal");
