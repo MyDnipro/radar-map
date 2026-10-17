@@ -13,8 +13,8 @@ RAW_GEMINI_KEYS = os.environ.get("GEMINI_KEY", "").strip() or os.environ.get("GE
 GEMINI_KEYS = [k.strip() for k in re.split(r'[,;\s]+', RAW_GEMINI_KEYS) if len(k.strip()) > 15]
 
 current_key_index = 0
-# Пріоритетна зв'язка моделей: надшвидкий Lite -> потужний 3.8 Flash -> резервний 3.5 Flash
-SUPPORTED_MODELS = ["gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-3.5-flash"]
+# Пріоритетна зв'язка моделей: першочерговий 3.8 Flash, далі резервні Flash-моделі
+SUPPORTED_MODELS = ["gemini-3.8-flash", "gemini-3.5-flash-lite", "gemini-3.5-flash"]
 
 # Базовий URL Firebase Realtime Database
 FIREBASE_URL = os.environ.get("FIREBASE_URL", "").strip()
@@ -364,6 +364,10 @@ def geocode_osm_fallback(text):
     return None, None, None
 
 def get_knowledge_base():
+    """Единый источник знаний теперь опирается на общую таблицу custom_streets"""
+    if CUSTOM_STREETS_CACHE:
+        return [v for v in CUSTOM_STREETS_CACHE.values() if isinstance(v, dict)]
+    
     if not KNOWLEDGE_BASE_URL:
         return []
     try:
@@ -381,7 +385,7 @@ def get_knowledge_base():
 def match_knowledge_base(text, kb_list):
     t = text.lower().replace('ё', 'е')
     for item in kb_list:
-        phrase = item.get("phrase", "").strip().lower().replace('ё', 'е')
+        phrase = (item.get("alias") or item.get("phrase", "")).strip().lower().replace('ё', 'е')
         if phrase and len(phrase) >= 3 and phrase in t:
             lat = item.get("lat")
             lng = item.get("lng")
@@ -395,19 +399,22 @@ def match_knowledge_base(text, kb_list):
     return None
 
 def auto_save_to_knowledge_base(phrase, address, lat, lng):
-    if not KNOWLEDGE_BASE_URL or not phrase or not address or not lat or not lng:
+    """Сохраняем новые привязки ИИ в единую таблицу custom_streets для синхронизации с фронтендом"""
+    if not CUSTOM_STREETS_URL or not phrase or not address or not lat or not lng:
         return
     try:
         clean_key = re.sub(r'[^a-zA-Z0-9а-яА-ЯіїєґІЇЄҐ_]', '_', phrase.strip().lower())[:40]
         data = {
+            "alias": phrase.strip().lower(),
             "phrase": phrase.strip().lower(),
+            "name": address,
             "address": address,
-            "lat": lat,
-            "lng": lng,
+            "lat": round(float(lat), 5),
+            "lng": round(float(lng), 5),
             "time": int(time.time() * 1000)
         }
-        requests.put(f"{BASE_FB_URL}/knowledge_base/{clean_key}.json", json=data, timeout=5)
-        log(f"💾 [АВТО-НАВЧАННЯ]: '{phrase}' ➔ {address} збережено в базу знань!")
+        requests.put(f"{CUSTOM_STREETS_URL.replace('.json', '')}/{clean_key}.json", json=data, timeout=5)
+        log(f"💾 [АВТО-НАВЧАННЯ]: '{phrase}' ➔ {address} збережено в пам'ять (custom_streets)!")
     except Exception as e:
         log(f"⚠️ Помилка авто-навчання бази знань: {e}")
 
@@ -546,6 +553,7 @@ def save_point_to_firebase(msg, parsed_result, is_clean, now_ms):
         "color": color,
         "status": "чисто" if status_clean else "опасно",
         "is_clean": status_clean,
+        "geo_refined": True,  # 👈 КРИТИЧЕСКИ ВАЖНО: защищает от сброса координат на клиенте
         "needs_training": parsed_result.get("needs_training", False),
         "time": now_ms,
         "timestamp": now_ms
@@ -622,18 +630,18 @@ def sync_cycle():
             }
             log(f"⚡ [ЛОКАЛЬНО / ДІЛЯНКА]: '{msg[:45]}' ➔ {addr} ({'ЗЕЛЕНА' if is_clean else 'ЧЕРВОНА'})")
 
-        # База знань Firebase
+        # База знань Firebase (custom_streets)
         if not parsed_result:
             matched_kb = match_knowledge_base(msg, kb_list)
             if matched_kb and matched_kb.get("lat") and matched_kb.get("lng"):
                 parsed_result = {
-                    "address": matched_kb.get("address") or matched_kb.get("phrase"),
+                    "address": matched_kb.get("name") or matched_kb.get("address") or matched_kb.get("phrase"),
                     "lat": float(matched_kb["lat"]),
                     "lng": float(matched_kb["lng"]),
                     "status": "чисто" if is_clean else "опасно",
                     "needs_training": False
                 }
-                log(f"🎯 [БАЗА ЗНАНЬ]: '{matched_kb.get('phrase')}' ➔ {parsed_result['address']}")
+                log(f"🎯 [БАЗА ЗНАНЬ]: '{matched_kb.get('alias') or matched_kb.get('phrase')}' ➔ {parsed_result['address']}")
 
         # OpenStreetMap
         if not parsed_result:
