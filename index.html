@@ -403,7 +403,7 @@
   </div>
 
   <!-- 4. КНОПКА СТАТИСТИКИ — ТІЛЬКИ У ПОВНОМУ РЕЖИМІ -->
-  <a href="stats.html" id="btnStatsHud" title="Аналітика блокпостів">
+<a href="javascript:void(0)" id="btnStatsHud" onclick="event.preventDefault(); window.location.href = (localStorage.getItem('radar_last_analytics_page') || 'stats.html');" title="Аналітика блокпостів">
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
       <rect x="3" y="12" width="4.5" height="9" rx="2" fill="#00f3ff" />
       <rect x="9.75" y="7" width="4.5" height="14" rx="2" fill="#00f3ff" />
