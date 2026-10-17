@@ -1,9 +1,11 @@
 /**
  * Radar Dnipro — Модуль "Радіо ефір" з точковим кліком по кружку (ticker.js)
  * - 4 рядки на екрані + скрол до 100 повідомлень
- * - Перемикач: "Мій шлях" / "Все місто"
+ * - У простому режимі: автоматична трансляція всього міста, перемикач прихований
+ * - У повному режимі: доступний перемикач "Мій шлях" / "Все місто"
  * - Динамічний "ластик" для попапів
- * - Клікабельний ТІЛЬКИ кружок (🟢/🔴) на початку рядка — весь текст і фон не заважають роботі з картою
+ * - Клікабельний ТІЛЬКИ кружок (🟢/🔴) на початку рядка — текст і фон не блокують карту
+ * - Дублюючий фоновий відеоплеєр keepawake видалено
  */
 (function() {
   let isRadioActive = localStorage.getItem("radar_radio_active") === "true";
@@ -190,7 +192,7 @@
   // 2. Створення елементів радіо
   const radioBtn = document.createElement("div");
   radioBtn.id = "btnRadioTopCenter";
-  radioBtn.title = "Радіо ефір маршруту";
+  radioBtn.title = "Радіо ефір";
   radioBtn.innerText = "📻";
   document.body.appendChild(radioBtn);
 
@@ -278,14 +280,18 @@
     feedBox.style.display = "flex";
     radioBtn.classList.add("active");
 
+    // Якщо активовано простий водійський режим — завжди транслюємо ВСЕ МІСТО
+    const isSimple = document.documentElement.classList.contains("mode-simple");
+    const activeMode = isSimple ? "city" : radioMode;
+
     const allPts = (window.allPoints && Array.isArray(window.allPoints)) ? window.allPoints.slice() : [];
-    const filteredPts = (radioMode === "route") ? allPts.filter(isCheckpointMessage) : allPts;
+    const filteredPts = (activeMode === "route") ? allPts.filter(isCheckpointMessage) : allPts;
     filteredPts.sort((a, b) => getCleanTimestamp(b) - getCleanTimestamp(a));
 
     const top100 = filteredPts.slice(0, 100);
 
     const newestTime = top100.length > 0 ? getCleanTimestamp(top100[0]) : 0;
-    const signature = `${radioMode}_${top100.length}_${newestTime}`;
+    const signature = `${activeMode}_${top100.length}_${newestTime}`;
     if (!forceRebuild && signature === lastDataSignature) {
       return;
     }
