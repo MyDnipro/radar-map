@@ -1712,7 +1712,7 @@ ${allLiveReportsText || "Повідомлень немає"}
     // =========================================================================
     const navRouteLayer = L.layerGroup().addTo(map);
 
-    async function checkAndDrawNavRoute() {
+   async function checkAndDrawNavRoute() {
       const rawRoute = localStorage.getItem("radar_active_nav_route");
       if (!rawRoute) return;
 
@@ -1722,7 +1722,7 @@ ${allLiveReportsText || "Повідомлень немає"}
 
         navRouteLayer.clearLayers();
 
-        // Прокладаємо нитку по дорогах через OSRM
+        // Спроба провести нитку строго по дорогам через OSRM
         let latLngs = routeData.points;
         try {
           const coordStr = routeData.points.map(p => `${p[1]},${p[0]}`).join(';');
@@ -1736,7 +1736,55 @@ ${allLiveReportsText || "Повідомлень немає"}
               latLngs = osrmData.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
             }
           }
-        } catch(e) {}
+        } catch(e) {
+          // Якщо OSRM недоступний або стежка приватного сектора не розмічена — ведемо по точках ШІ
+          latLngs = routeData.points;
+        }
+
+        // Тонка графічна лінія: м'яке неонове світіння (5.5px) + чітка тактична нитка (2.8px)
+        const polyGlow = L.polyline(latLngs, {
+          color: '#00f3ff',
+          weight: 5.5,
+          opacity: 0.28,
+          lineCap: 'round',
+          lineJoin: 'round'
+        }).addTo(navRouteLayer);
+
+        const polyMain = L.polyline(latLngs, {
+          color: '#38bdf8',
+          weight: 2.8,
+          opacity: 0.95,
+          lineCap: 'round',
+          lineJoin: 'round'
+        }).addTo(navRouteLayer);
+
+        // Акуратні компактні маркери старту (зелений) та фінішу (блакитний)
+        const startHtml = '<div style="width:12px; height:12px; border-radius:50%; background:#10b981; border:2px solid #fff; box-shadow:0 0 8px #10b981;"></div>';
+        const endHtml = '<div style="width:12px; height:12px; border-radius:50%; background:#00f3ff; border:2px solid #fff; box-shadow:0 0 8px #00f3ff;"></div>';
+
+        const startIcon = L.divIcon({ className: 'custom-dot-marker', html: startHtml, iconSize: [12, 12], iconAnchor: [6, 6] });
+        const endIcon = L.divIcon({ className: 'custom-dot-marker', html: endHtml, iconSize: [12, 12], iconAnchor: [6, 6] });
+
+        L.marker(latLngs[0], { icon: startIcon }).addTo(navRouteLayer);
+        L.marker(latLngs[latLngs.length - 1], { icon: endIcon }).addTo(navRouteLayer);
+
+        map.fitBounds(polyMain.getBounds(), { padding: [60, 60], maxZoom: 16 });
+
+        // Плаваючий банер із назвою маршруту та кнопкою скидання
+        let banner = document.getElementById("navRouteFloatingBanner");
+        if (!banner) {
+          banner = document.createElement("div");
+          banner.id = "navRouteFloatingBanner";
+          banner.className = "nav-route-banner";
+          document.body.appendChild(banner);
+        }
+        banner.innerHTML = `
+          <span>🛣️ <b>Об'їзд:</b> ${routeData.title || 'Маршрут'}</span>
+          <button onclick="clearNavRoute()">✕ Скинути</button>
+        `;
+        banner.style.display = "flex";
+      } catch(e) {}
+    }
 
         // Малюємо контрастну неонову лінію об'їзду
         const polyGlow = L.polyline(latLngs, { color: '#00f3ff', weight: 8, opacity: 0.45, lineJoin: 'round' }).addTo(navRouteLayer);
