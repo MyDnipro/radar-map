@@ -1,11 +1,11 @@
 /**
- * Radar Dnipro — Модуль "Радіо ефір" з точковим кліком по кружку (ticker.js)
- * - 4 рядки на екрані + скрол до 100 повідомлень
- * - У простому режимі: автоматична трансляція всього міста, перемикач прихований
- * - У повному режимі: доступний перемикач "Мій шлях" / "Все місто"
- * - Динамічний "ластик" для попапів
- * - Клікабельний ТІЛЬКИ кружок (🟢/🔴) на початку рядка — текст і фон не блокують карту
- * - Дублюючий фоновий відеоплеєр keepawake видалено
+ * Radar Dnipro — Модуль "Радіо ефір" (ticker.js)
+ * - 4 рядки на екрані + плавний скрол до 100 повідомлень
+ * - У простому режимі: автоматична трансляція всього міста, перемикач надійно прихований
+ * - У повному режимі: активний перемикач "Мій шлях" / "Все місто"
+ * - Динамічний "ластик" для попапів (не перекриває картки при відкритті)
+ * - Клікабельний ТІЛЬКИ кружок (🟢/🔴) на початку рядка для фокусу на карті
+ * - Повністю вирізано зайвий дублюючий плеєр утримання екрана
  */
 (function() {
   let isRadioActive = localStorage.getItem("radar_radio_active") === "true";
@@ -30,12 +30,12 @@
     return CHECKPOINT_REGEXES.some(rgx => rgx.test(fullText));
   }
 
-  // 1. Стилі інтерфейсу
+  // 1. Стилі радіо-ефіру
   const style = document.createElement("style");
   style.textContent = `
     #btnKeepAwake { display: none !important; }
 
-    /* Кнопка 📻 */
+    /* Кнопка 📻 у верхній панелі */
     #btnRadioTopCenter {
       position: absolute !important;
       top: 15px !important;
@@ -65,7 +65,7 @@
       box-shadow: 0 0 18px rgba(0, 243, 255, 0.6) !important;
     }
 
-    /* Контейнер радіо-ефіру */
+    /* Контейнер радіо-стрічки */
     #radioFeedOverlay {
       position: absolute !important;
       top: 58px !important;
@@ -81,35 +81,37 @@
       transition: opacity 0.15s ease;
     }
 
-    /* Напівпрозорий перемикач: Мій шлях | Все місто */
+    /* Перемикач: Мій шлях | Все місто */
     .radio-mode-switcher {
       pointer-events: auto;
       display: inline-flex;
       align-items: center;
       gap: 2px;
-      background: rgba(15, 23, 42, 0.28);
-      backdrop-filter: blur(4px);
-      border: 1px solid rgba(56, 189, 248, 0.25);
+      background: rgba(15, 23, 42, 0.45);
+      backdrop-filter: blur(6px);
+      border: 1px solid rgba(56, 189, 248, 0.35);
       border-radius: 14px;
       padding: 1px 3px;
-      margin-bottom: 2px;
+      margin-bottom: 3px;
       align-self: flex-start;
     }
     .radio-mode-tab {
       cursor: pointer;
       font-size: 10px;
       font-weight: 800;
-      padding: 2px 7px;
+      padding: 2px 8px;
       border-radius: 10px;
-      color: rgba(15, 23, 42, 0.75);
+      color: #94a3b8;
       transition: all 0.15s ease;
+      user-select: none;
     }
     .radio-mode-tab.active {
-      background: rgba(2, 132, 199, 0.85);
+      background: #0284c7;
       color: #ffffff;
+      box-shadow: 0 0 8px rgba(2, 132, 199, 0.6);
     }
 
-    /* Скрол-контейнер: 4 рядки по 24px */
+    /* Скрол-список на 4 рядки (висота 96px) */
     .radio-scroll-list {
       display: block !important;
       height: 96px !important;
@@ -141,6 +143,7 @@
       transition: opacity 0.15s ease;
     }
 
+    /* Точковий клікабельний кружок */
     .radio-msg-dot {
       pointer-events: auto;
       cursor: pointer;
@@ -189,7 +192,7 @@
   `;
   document.head.appendChild(style);
 
-  // 2. Створення елементів радіо
+  // 2. Створення вузлів DOM
   const radioBtn = document.createElement("div");
   radioBtn.id = "btnRadioTopCenter";
   radioBtn.title = "Радіо ефір";
@@ -222,7 +225,7 @@
     feedBox.addEventListener(evt, (e) => e.stopPropagation(), { passive: true });
   });
 
-  // Розумний динамічний ластик для попапів
+  // Ластик для попапів (приховує рядки під відкритими вікнами)
   function updateSmartMask() {
     if (!isRadioActive || feedBox.style.display === "none") return;
 
@@ -235,7 +238,6 @@
     }
 
     const pRect = popupWrapper.getBoundingClientRect();
-
     rows.forEach(row => {
       const rRect = row.getBoundingClientRect();
       const isOverlapped = !(rRect.bottom < pRect.top + 5 || rRect.top > pRect.bottom - 5 || rRect.right < pRect.left || rRect.left > pRect.right);
@@ -245,6 +247,7 @@
 
   setInterval(updateSmartMask, 100);
 
+  // Обробка кліку по вкладках перемикача
   switcher.addEventListener("click", (e) => {
     const tab = e.target.closest(".radio-mode-tab");
     if (!tab) return;
@@ -269,7 +272,7 @@
     return t;
   }
 
-  // 3. Відображення повідомлень
+  // 3. Відображення стрічки повідомлень
   function renderRadioFeed(forceRebuild = false) {
     if (!isRadioActive) {
       feedBox.style.display = "none";
@@ -280,18 +283,23 @@
     feedBox.style.display = "flex";
     radioBtn.classList.add("active");
 
-    // Якщо активовано простий водійський режим — завжди транслюємо ВСЕ МІСТО
     const isSimple = document.documentElement.classList.contains("mode-simple");
     const activeMode = isSimple ? "city" : radioMode;
+
+    // Керування видимістю перемикача: приховано у простому режимі, видно у повному
+    switcher.style.display = isSimple ? "none" : "inline-flex";
+    switcher.querySelectorAll(".radio-mode-tab").forEach(el => {
+      el.classList.toggle("active", el.getAttribute("data-mode") === activeMode);
+    });
 
     const allPts = (window.allPoints && Array.isArray(window.allPoints)) ? window.allPoints.slice() : [];
     const filteredPts = (activeMode === "route") ? allPts.filter(isCheckpointMessage) : allPts;
     filteredPts.sort((a, b) => getCleanTimestamp(b) - getCleanTimestamp(a));
 
     const top100 = filteredPts.slice(0, 100);
-
     const newestTime = top100.length > 0 ? getCleanTimestamp(top100[0]) : 0;
-    const signature = `${activeMode}_${top100.length}_${newestTime}`;
+    const signature = `${isSimple ? 's' : 'f'}_${activeMode}_${top100.length}_${newestTime}`;
+
     if (!forceRebuild && signature === lastDataSignature) {
       return;
     }
