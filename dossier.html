@@ -223,12 +223,40 @@
       gap: 8px;
       box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
     }
+    .chat-head-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 2px;
+    }
+    .chat-head-title {
+      font-size: 11px;
+      font-weight: 800;
+      color: #38bdf8;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .btn-clear-chat {
+      background: transparent;
+      border: none;
+      color: #64748b;
+      font-size: 10px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      transition: color 0.2s;
+    }
+    .btn-clear-chat:hover { color: #ef4444; }
+
     .chat-history-box {
       background: #060913;
       border: 1px solid #1e293b;
       border-radius: 8px;
       padding: 8px 10px;
-      max-height: 240px;
+      max-height: 250px;
       overflow-y: auto;
       display: flex;
       flex-direction: column;
@@ -266,7 +294,6 @@
       font-style: italic;
     }
 
-    /* Кнопка відкриття маршруту на карті */
     .btn-route-action {
       margin-top: 8px;
       background: linear-gradient(135deg, #0284c7 0%, #00f3ff 100%);
@@ -389,9 +416,7 @@
     .lbl-risk { color: #f59e0b; }
     .lbl-clean { color: #34d399; }
     .lbl-detour { color: #a855f7; }
-    .cp-narrative-val {
-      color: #f1f5f9;
-    }
+    .cp-narrative-val { color: #f1f5f9; }
   </style>
 </head>
 <body>
@@ -400,7 +425,7 @@
       <div class="hud-title">🧠 ШІ-ШТУРМАН: ТАКТИЧНЕ ДОСЬЄ</div>
       <div class="head-actions">
         <button class="btn-head-act" onclick="generateDossier(true)">🔄 Оновити ШІ-досьє</button>
-        <a href="stats.html" class="btn-head-nav">📊 Аналітика</a>
+        <a href="stats.html" class="btn-head-nav" onclick="localStorage.setItem('radar_last_analytics_page', 'stats.html')">📊 Аналітика</a>
         <a href="index.html" class="btn-head-nav">← До карти</a>
       </div>
     </div>
@@ -431,16 +456,22 @@
       </div>
     </div>
 
-    <!-- ОПЕРАТИВНИЙ ДІАЛОГ -->
+    <!-- ОПЕРАТИВНИЙ ДІАЛОГ ІЗ НЕСТИРАЄМОЮ ПАМ'ЯТТЮ -->
     <div class="dossier-chat-card">
-      <div class="chat-history-box" id="chatHistoryBox">
-        <div class="chat-bubble bot">
-          Штурман на зв'язку. Оперативна обстановка та детальний план маршруту перед очима. Запитуйте стан точок або варіанти об'їзду через приватний сектор.
+      <div class="chat-head-row">
+        <div class="chat-head-title">
+          <span>💬 Діалог зі штурманом:</span>
+          <span style="font-size:9.5px; color:#64748b; font-weight:700;">(Дім ↔ Робота)</span>
         </div>
+        <button class="btn-clear-chat" onclick="clearDossierChat()" title="Очистити історію листування">
+          <span>🗑️</span><span>Очистити діалог</span>
+        </button>
       </div>
 
+      <div class="chat-history-box" id="chatHistoryBox"></div>
+
       <div class="chat-input-row">
-        <input type="text" id="chatInput" class="chat-input" placeholder="Запитайте обстановку або варіант об'їзду (Enter)..." onkeydown="if(event.key==='Enter') submitDossierChat()">
+        <input type="text" id="chatInput" class="chat-input" placeholder="Запитайте (напр.: їду додому / як проїхати на роботу)..." onkeydown="if(event.key==='Enter') submitDossierChat()">
         <button class="btn-chat-send" onclick="submitDossierChat()">Запитати ➔</button>
       </div>
     </div>
@@ -454,6 +485,9 @@
   </div>
 
   <script>
+    // Фіксація останньої відкритої вкладки аналітики (для пам'яті входу)
+    localStorage.setItem("radar_last_analytics_page", "dossier.html");
+
     const SECRET_KEY_HASH = "570984";
     const _VAULT_PREFIX = String.fromCharCode(65, 81, 46, 65, 98, 56, 82, 78, 54);
 
@@ -496,7 +530,6 @@
 
     let rawArchive = [];
     let scaleMode = localStorage.getItem("dossier_scale_mode") || "route";
-    let dossierChatHistory = [];
     const DAYS_UA = ["Неділя", "Понеділок", "Вівторок", "Середа", "Четвер", "П'ятниця", "Субота"];
 
     const TARGET_CHECKPOINTS = [
@@ -783,12 +816,12 @@
       const deepDossierPrompt = `
 Ти — професійний тактичний штурман та водій-навігатор міста Дніпро.
 ТОНАЛЬНІСТЬ:
-Стриманий, спокійний, діловий та впевнений тон. Без грубощів, фамільярності, надуманих джерел ('рацій'). Джерела інформації — оперативна база моніторингу та повідомлення очевидців.
+Стриманий, спокійний, діловий та впевнений тон. Без грубощів, фамільярності, надуманих джерел. Джерела інформації — оперативна база моніторингу та повідомлення очевидців.
 
-Склади ДЕТАЛЬНЕ ТАКТИЧНЕ ДОСЬЄ ТА ПРОГНОЗ ОБСТАНОВКИ (${todayDayName}, масштаб: ${scaleMode === 'route' ? '8 ключових точок постійного маршруту водія' : 'все місто Дніпро'}).
-
-МАРШРУТ ВОДІЯ (знати назубок):
-Парус ➔ Набережна Заводська (Водокачка, Кайдацький з'їзд, Стан 550) ➔ пр. Свободи (Водолікарня) ➔ вул. Ударників / Белелюбського (Комбайновий, Краснозаводська) ➔ вул. Академіка Павлова ➔ Річпорт / вул. Робоча / вул. Канатна.
+БАЗОВІ ТОЧКИ ТА МАРШРУТ ВОДІЯ:
+• ДІМ: Проспект Свободи, тупик/кільце трамваїв 18 та 19 (Новокодацька площа / ст. метро 'Проспект Свободи').
+• РОБОТА: Низ вулиці Канатної (район пр. Лесі Українки / Пушкіна, біля Скверу Героїв / Дніпро-Арени).
+• ОСНОВНИЙ КОРИДОР: пр. Свободи ➔ Набережна Заводська (Водокачка, Кайдацький з'їзд, Стан 550) ➔ вул. Ударників / Белелюбського (Комбайновий, Краснозаводська) ➔ вул. Академіка Павлова ➔ Річпорт / вул. Робоча / низ Канатної.
 
 БАЗА СТАТИСТИКИ:
 Сьогодні зафіксовано БП: ${todayCount} | Вчора: ${yesterdayCount} | За 7 днів: ${weekCount}
@@ -797,17 +830,12 @@ ${streetStatsText}
 ОСТАННІ СИГНАЛИ У БАЗІ:
 ${recentSample || "Даних мало"}
 
-СТРУКТУРА ЗВІТУ (використовуй чіткі заголовки розділів, виділяй час у форматі HH:MM, називай конкретні вулиці):
-1. ОПЕРАТИВНА ОЦІНКА ТА ДИНАМІКА
-Рівень загрози, динаміка щодо вчора та специфіка дня (${todayDayName}).
-2. РОЗКЛАД ХВИЛЬ ТА ЧАСОВІ ВІКНА
-Ранішня хвиля (точний час розгортання), денне вікно, вечірній пік.
-3. ПАРНА МІГРАЦІЯ ЕКІПАЖІВ
-Куди зміщуються сили після зняття постів (Кайдаки—Стан 550, Павлова—Краснозаводська—Річпорт).
-4. ПРОГНОЗ «ЗЕЛЕНОГО КОРИДОРУ»
-Точні інтервали найбезпечнішого проїзду на сьогодні.
-5. ТАКТИЧНИЙ ВЕРДИКТ ШТУРМАНА
-Короткий підсумок: де їхати спокійно, а де застосувати об'їзди приватним сектором.
+СТРУКТУРА ЗВІТУ:
+1. ОПЕРАТИВНА ОЦІНКА ТА ДИНАМІКА (Рівень загрози, динаміка щодо вчора та специфіка дня ${todayDayName}).
+2. РОЗКЛАД ХВИЛЬ ТА ЧАСОВІ ВІКНА (Ранішня хвиля, денне вікно, вечірній пік).
+3. ПАРНА МІГРАЦІЯ ЕКІПАЖІВ (Кайдаки—Стан 550, Павлова—Краснозаводська—Річпорт).
+4. ПРОГНОЗ «ЗЕЛЕНОГО КОРИДОРУ» (Точні години найбезпечнішого руху).
+5. ТАКТИЧНИЙ ВЕРДИКТ ДЛЯ ПОЇЗДКИ (Дім ↔ Робота: де їхати відкрито, а де застосувати приватний сектор).
 `;
 
       try {
@@ -954,8 +982,65 @@ ${recentSample || "Даних мало"}
     }
 
     // =========================================================================
-    // 💬 ДІАЛОГ: СПОКІЙНИЙ ТОН + ПЕРЕДАЧА МАРШРУТУ НА КАРТУ
+    // 💬 НЕСТИРАЄМА ПАМ'ЯТЬ ДІАЛОГУ (LOCALSTORAGE)
     // =========================================================================
+    const CHAT_STORE_KEY = "radar_dossier_chat_store";
+
+    function loadSavedChatStore() {
+      try {
+        const raw = localStorage.getItem(CHAT_STORE_KEY);
+        return raw ? JSON.parse(raw) : [];
+      } catch(e) {
+        return [];
+      }
+    }
+
+    function saveChatStore(store) {
+      try {
+        localStorage.setItem(CHAT_STORE_KEY, JSON.stringify(store));
+      } catch(e) {}
+    }
+
+    function renderSavedChatUI() {
+      const chatBox = document.getElementById("chatHistoryBox");
+      chatBox.innerHTML = "";
+      const store = loadSavedChatStore();
+
+      if (store.length === 0) {
+        chatBox.innerHTML = `
+          <div class="chat-bubble bot">
+            Штурман на зв'язку. Базові точки (<b>Дім:</b> пр. Свободи, тупик 18/19 ↔ <b>Робота:</b> низ Канатної) та карта об'їздів у пам'яті. Запитуйте проїзд чи маршрут.
+          </div>
+        `;
+        return;
+      }
+
+      store.forEach(msg => {
+        const bubble = document.createElement("div");
+        bubble.className = `chat-bubble ${msg.role}`;
+        bubble.innerHTML = formatAiTextToHtml(msg.text);
+
+        if (msg.routePayload && Array.isArray(msg.routePayload.points) && msg.routePayload.points.length > 0) {
+          const encoded = encodeURIComponent(JSON.stringify(msg.routePayload));
+          const btn = document.createElement("button");
+          btn.className = "btn-route-action";
+          btn.innerHTML = `🗺️ Показати об'їзд на карті: ${msg.routePayload.title || 'Маршрут'} ➔`;
+          btn.onclick = () => window.openRouteOnMainMap(encoded);
+          bubble.appendChild(document.createElement("br"));
+          bubble.appendChild(btn);
+        }
+
+        chatBox.appendChild(bubble);
+      });
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    window.clearDossierChat = function() {
+      if (!confirm("Очистити історію листування зі штурманом?")) return;
+      localStorage.removeItem(CHAT_STORE_KEY);
+      renderSavedChatUI();
+    };
+
     window.openRouteOnMainMap = function(encodedData) {
       try {
         const routeData = JSON.parse(decodeURIComponent(encodedData));
@@ -974,6 +1059,12 @@ ${recentSample || "Даних мало"}
       input.value = "";
       const chatBox = document.getElementById("chatHistoryBox");
 
+      // Додаємо репліку користувача у сховище
+      const store = loadSavedChatStore();
+      store.push({ role: "user", text: userQuestion });
+      if (store.length > 20) store.splice(0, store.length - 20);
+      saveChatStore(store);
+
       const userBubble = document.createElement("div");
       userBubble.className = "chat-bubble user";
       userBubble.innerText = userQuestion;
@@ -981,12 +1072,9 @@ ${recentSample || "Даних мало"}
 
       const loadingBubble = document.createElement("div");
       loadingBubble.className = "chat-bubble bot loading";
-      loadingBubble.innerText = "Штурман аналізує запит...";
+      loadingBubble.innerText = "Штурман розраховує маршрут...";
       chatBox.appendChild(loadingBubble);
       chatBox.scrollTop = chatBox.scrollHeight;
-
-      dossierChatHistory.push({ role: "user", parts: [{ text: userQuestion }] });
-      if (dossierChatHistory.length > 10) dossierChatHistory = dossierChatHistory.slice(-10);
 
       const nowDate = new Date();
       const todayStart = new Date(nowDate.getFullYear(), nowDate.getMonth(), nowDate.getDate()).getTime();
@@ -1009,13 +1097,18 @@ ${recentSample || "Даних мало"}
 Ти — спокійний, витриманий, висококваліфікований тактичний штурман та водій-навігатор у місті Дніпро.
 
 ТОНАЛЬНІСТЬ:
-Ввічлива, коректна, ділова та абсолютно спокійна. Без фамільярності, напускної зухвалості, грубості чи сленгу на кшталт 'крутимо коліщата'. Ти спираєшся на офіційну аналітику та оперативну базу звітів водіїв. Жодних вигаданих історій про 'рації'.
+Ввічлива, коректна, ділова та абсолютно спокійна. Без фамільярності, напускної зухвалості, грубості чи вигаданих історій про 'рації'. Ти спираєшся на офіційну аналітику та оперативну базу звітів водіїв.
 
-МАРШРУТ ВОДІЯ (знати назубок, ніколи не перепитувати):
-Парус ➔ Набережна Заводська (Водокачка, Кайдацький з'їзд, Стан 550) ➔ пр. Свободи (Водолікарня) ➔ вул. Ударників / Белелюбського (Комбайновий, Краснозаводська) ➔ вул. Академіка Павлова ➔ Річпорт / вул. Робоча / вул. Канатна.
+БАЗОВІ ТОЧКИ ТА ПОНЯТТЯ ВОДІЯ:
+1. «ДІМ»: Проспект Свободи, кільце/тупик трамваїв 18 та 19 (Новокодацька площа / ст. метро 'Проспект Свободи').
+2. «РОБОТА»: Низ вулиці Канатної (перетин з пр. Лесі Українки / Пушкіна, район Скверу Героїв / Дніпро-Арени).
+
+МАРШРУТИ РУХУ:
+• «Їду на роботу» (Дім ➔ Робота): Старт з тупика 18/19 пр. Свободи ➔ вихід через Водолікарню або Набережну Заводську (Водокачка, Кайдацький з'їзд, Стан 550) ➔ вул. Ударників/Белелюбського (Комбайновий, Краснозаводська) ➔ вул. Павлова або Щепкіна ➔ Річпорт / автовокзал ➔ фініш у низу вул. Канатної.
+• «Їду додому» (Робота ➔ Дім): Зворотний рух з низу вул. Канатної ➔ через Чечелівку або Павлова/Белелюбського ➔ пр. Свободи прямо до кільця трамваїв 18/19.
 
 ГОЛОВНІ ПРАВИЛА:
-1. КАТЕГОРИЧНО ЗАБОРОНЕНО перепитувати у водія «який у вас маршрут?», «назвіть точки». Якщо водій каже «мій шлях», «як проїхати», «дай об'їзд» — мова ЗАВЖДИ ПРО ЦЕЙ МАРШРУТ.
+1. КАТЕГОРИЧНО ЗАБОРОНЕНО перепитувати у водія «який у вас маршрут?», «де дім/робота». Якщо водій каже «їду додому», «їду на роботу», «як проїхати» — напрямок і кінцеві точки чітко зрозумілі без уточнень!
 2. ТИ МАЄШ ПОВНІ ЗНАННЯ ДЛЯ ОБ'ЇЗДІВ ПРИВАТНИМ СЕКТОРОМ ТА ПРОМЗОНАМИ:
    - Нові Кайдаки: вул. Моторна, Сибірська, пров. Вільний (обхід Кайдацького з'їзду);
    - Діївка: вул. Велика Діївська, Кондратюка (обхід Водокачки);
@@ -1026,7 +1119,7 @@ ${recentSample || "Даних мало"}
    Якщо водій просить прокласти/показати об'їзд чи маршрут на карті, розпиши його спокійно по кроках, а в самому кінці повідомлення ОБОВ'ЯЗКОВО додай технічний тег з реальними координатами точок маневру:
    <<<ACTION:ROUTE:{"title":"Об'їзд Кайдацького через Нові Кайдаки","points":[[48.4955,34.9490],[48.4935,34.9575],[48.4895,34.9680],[48.4848,34.9735]]}>>>
    (Підставляй точні координати точок Дніпра згідно із зазначеним маршрутом).
-4. ВІДПОВІДАЙ НА БУДЬ-ЯКІ ТРАНСПОРТНІ ПИТАННЯ: якщо водій спитає за виїзд на Харків, Запоріжжя або інший район — давай зважену експертну оцінку водія щодо стаціонарних постів і безпеки руху.
+4. ВІДПОВІДАЙ НА БУДЬ-ЯКІ ТРАНСПОРТНІ ПИТАННЯ (траси на Харків, Запоріжжя тощо) спокійно та виважено.
 
 ОПЕРАТИВНИЙ СТАН ТОЧОК:
 ${streetSummary}
@@ -1035,11 +1128,16 @@ ${streetSummary}
 ${recentReports}
 `;
 
+      const dialogPayload = store.slice(-8).map(m => ({
+        role: m.role === 'user' ? 'user' : 'model',
+        parts: [{ text: m.text }]
+      }));
+
       try {
         const payloadContents = [
           { role: "user", parts: [{ text: systemPrompt }] },
-          { role: "model", parts: [{ text: "Зрозумів. Діалог веду спокійно, витримано та професійно. Знаю всі точки маршруту та готовий передавати геометрію об'їздів на карту." }] },
-          ...dossierChatHistory
+          { role: "model", parts: [{ text: "Зрозумів. Я готовий спокійно вести водія між Домом (пр. Свободи, тупик 18/19) та Роботою (низ Канатної), пам'ятаю приватний сектор і зберігаю історію." }] },
+          ...dialogPayload
         ];
 
         const result = await executeGemini({
@@ -1058,7 +1156,9 @@ ${recentReports}
           rawReply = rawReply.replace(/<<<ACTION:ROUTE:[\s\S]*?>>>/, '').trim();
         }
 
-        dossierChatHistory.push({ role: "model", parts: [{ text: rawReply }] });
+        // Зберігаємо відповідь у нестираєме сховище
+        store.push({ role: "bot", text: rawReply, routePayload: routePayload });
+        saveChatStore(store);
 
         loadingBubble.className = "chat-bubble bot";
         loadingBubble.innerHTML = formatAiTextToHtml(rawReply);
@@ -1093,10 +1193,12 @@ ${recentReports}
       }
     }
 
+    // ІНІЦІАЛІЗАЦІЯ ПРИ СТАРТІ:
     document.getElementById("btnScaleRoute").classList.toggle("active", scaleMode === 'route');
     document.getElementById("btnScaleCity").classList.toggle("active", scaleMode === 'city');
     document.getElementById("verdictScope").innerText = scaleMode === 'route' ? "Режим: 8 точок маршруту" : "Режим: Все місто";
 
+    renderSavedChatUI();
     loadCachedVerdictDisplay();
     loadArchiveData().then(() => {
       updateMathStripOnly();
