@@ -14,10 +14,10 @@
   <link rel="stylesheet" href="style.css" />
   <style>
     /* =========================================================================
-       СТИЛІ РЕЖИМІВ: ПРОСТИЙ (ВОДІЙСЬКИЙ) ТА ПОВНИЙ (АДМІНІСТРАТОР)
+       ПЕРЕМИКАННЯ РЕЖИМІВ: ПРОСТИЙ (ВОДІЙ) / ПОВНИЙ (РОЗРОБНИК)
        ========================================================================= */
 
-    /* У простому режимі приховуємо всі інженерні кнопки */
+    /* У простому режимі ховаємо інженерні віджети */
     html.mode-simple #aiPillPanel,
     html.mode-simple #routeStatusBar,
     html.mode-simple #routeSubmenu,
@@ -27,7 +27,7 @@
       display: none !important;
     }
 
-    /* У простому режимі панель дашборду стає компактною смужкою */
+    /* У простому режимі блок 1 завжди згорнутий у компактну плашку */
     html.mode-simple #dashPanel {
       width: auto !important;
       height: 38px !important;
@@ -35,7 +35,7 @@
       display: inline-flex !important;
       flex-direction: row !important;
       align-items: center !important;
-      gap: 8px !important;
+      gap: 6px !important;
       border-radius: 12px !important;
       box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45) !important;
       overflow: hidden !important;
@@ -46,12 +46,34 @@
       border-bottom: none !important;
       gap: 6px !important;
     }
-    html.mode-simple #btnToggle,
     html.mode-simple #collapsibleBody {
       display: none !important;
     }
 
-    /* Кнопка перемикання теми День/Ніч у простому режимі */
+    /* У повному режимі при згортанні (клас dash-collapsed) */
+    html.mode-full.dash-collapsed #dashPanel {
+      width: auto !important;
+      height: 38px !important;
+      padding: 0 10px !important;
+      display: inline-flex !important;
+      flex-direction: row !important;
+      align-items: center !important;
+      gap: 6px !important;
+      border-radius: 12px !important;
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45) !important;
+      overflow: hidden !important;
+    }
+    html.mode-full.dash-collapsed #dashHeader {
+      margin-bottom: 0 !important;
+      padding-bottom: 0 !important;
+      border-bottom: none !important;
+      gap: 6px !important;
+    }
+    html.mode-full.dash-collapsed #collapsibleBody {
+      display: none !important;
+    }
+
+    /* Кнопка День / Ніч у шапці дашборду */
     .btn-theme-inline {
       background: #1e293b;
       border: 1px solid #334155;
@@ -69,6 +91,26 @@
     }
     .btn-theme-inline:active { transform: scale(0.95); }
 
+    /* Мініатюрна кнопка повернення в простий режим внизу відкритого блоку */
+    .btn-admin-switch-mini {
+      width: 100%;
+      background: rgba(59, 7, 100, 0.45);
+      border: 1px solid #7c3aed;
+      color: #c084fc;
+      padding: 5px 8px;
+      border-radius: 6px;
+      font-size: 10px;
+      font-weight: 800;
+      cursor: pointer;
+      margin-top: 6px;
+      text-align: center;
+      transition: all 0.2s;
+    }
+    .btn-admin-switch-mini:hover {
+      background: #7c3aed;
+      color: #ffffff;
+    }
+
     /* Горизонтальна кнопка «Оновити» у простому режимі */
     html.mode-simple #btnRefresh {
       width: auto !important;
@@ -77,6 +119,7 @@
       max-height: 38px !important;
       padding: 0 14px !important;
       flex-direction: row !important;
+      align-items: center !important;
       gap: 6px !important;
       border-radius: 12px !important;
       margin: 0 !important;
@@ -92,7 +135,7 @@
       text-align: left !important;
     }
 
-    /* Компактне міні-меню прямо над світлофором */
+    /* Попап світлофора */
     .tl-quick-bubble {
       padding: 4px 6px;
       display: flex;
@@ -133,12 +176,12 @@
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('sw.js').catch(() => {});
     }
-    // Ініціалізація збереженого режиму інтерфейсу
-    const _savedToken = localStorage.getItem("radar_admin_token") || localStorage.getItem("github_radar_token") || "";
-    const _isAdmin = _savedToken.startsWith("ghp_") && _savedToken.length >= 35;
-    let _uiMode = localStorage.getItem("radar_ui_mode") || "simple";
-    if (!_isAdmin) _uiMode = "simple";
-    document.documentElement.classList.add(_uiMode === "full" ? "mode-full" : "mode-simple");
+    // Автоматичне відновлення стану без повторного запиту пароля
+    const _initToken = localStorage.getItem("radar_admin_token") || localStorage.getItem("github_radar_token") || "";
+    const _initIsAdmin = typeof _initToken === "string" && _initToken.startsWith("ghp_") && _initToken.length >= 35;
+    let _initMode = localStorage.getItem("radar_ui_mode") || "simple";
+    if (!_initIsAdmin) _initMode = "simple";
+    document.documentElement.classList.add(_initMode === "full" ? "mode-full" : "mode-simple");
   </script>
 </head>
 <body>
@@ -149,13 +192,14 @@
   <!-- 1. ДАШБОРД (ВІКНО ТОЧОК) -->
   <div id="dashPanel" class="dashboard">
     <div id="dashHeader" class="dash-header">
-      <div class="points-count" id="countText" title="Утримуйте для входу адміністратора">
+      <div class="points-count" id="countText">
         <span>Точок: 0</span>
       </div>
-      <!-- Кнопка День / Ніч прямо в шапці -->
+      <!-- Кнопка День / Ніч -->
       <button id="btnThemeHeader" class="btn-theme-inline" onclick="toggleMapTheme()">
         <span id="themeHeaderIcon">☀️</span><span id="themeHeaderText">День</span>
       </button>
+      <!-- Стрілка згортання / розгортання: в 1 клік перемикає простий/повний режим -->
       <button class="btn-toggle" id="btnToggle" onclick="togglePanelCollapse(event)">▲</button>
     </div>
 
@@ -204,9 +248,9 @@
         <div class="legend-row"><span class="shape dot-red"></span><span>Увага / Блокпост / Патруль</span></div>
       </div>
 
-      <!-- КНОПКА ПЕРЕХОДУ МІЖ РЕЖИМАМИ ДЛЯ АДМІНІСТРАТОРА -->
-      <button id="btnAdminModeSwitch" class="btn-secondary" style="background:#3b0764; border-color:#a855f7; color:#f3e8ff; font-weight:800; margin-top:8px;" onclick="toggleAdminUiMode()">
-        ⚡ Режим: Повний ➔ Простий
+      <!-- КОМПАКТНА КНОПКА ЗГОРТАННЯ ДЛЯ АДМІНІСТРАТОРА -->
+      <button id="btnAdminModeSwitch" class="btn-admin-switch-mini" onclick="toggleAdminUiMode()">
+        ⚡ Згорнути в простий режим
       </button>
     </div>
   </div>
@@ -230,7 +274,7 @@
     <div class="ai-pill-body" id="aiPillBody">
       <div id="aiChatBox" class="ai-chat-box">
         <div class="ai-msg bot">
-          👋 Вітаю! Я ваш ШІ-штурман (Карта v4.0). Мульти-мітки, точні ділянки та Бородинська активні!
+          👋 Вітаю! Я ваш ШІ-штурман (Карта v4.0). Всі функції активні!
         </div>
       </div>
 
@@ -276,7 +320,7 @@
     </div>
   </div>
 
-  <!-- 4. НЕОНОВА КНОПКА СТАТИСТИКИ — ТІЛЬКИ У ПОВНОМУ РЕЖИМІ -->
+  <!-- 4. КНОПКА СТАТИСТИКИ — ТІЛЬКИ У ПОВНОМУ РЕЖИМІ -->
   <a href="stats.html" id="btnStatsHud" title="Аналітика блокпостів">
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
       <rect x="3" y="12" width="4.5" height="9" rx="2" fill="#00f3ff" />
@@ -285,7 +329,7 @@
     </svg>
   </a>
 
-  <!-- КНОПКИ ВНИЗУ СПРАВА: ГОРИЗОНТАЛЬНЕ/ВЕРТИКАЛЬНЕ ОНОВИТИ ТА GPS -->
+  <!-- КНОПКИ ВНИЗУ СПРАВА: ОНОВИТИ ТА GPS -->
   <div class="bottom-right-cluster">
     <div id="btnRefresh" onclick="refreshRadarClick()">
       <span>🔄</span>
@@ -362,7 +406,7 @@
     ];
 
     // =========================================================================
-    // 🔐 АВТОРИЗАЦІЯ ТА КЕРУВАННЯ РЕЖИМАМИ (ПРОСТИЙ / ПОВНИЙ)
+    // 🔐 АВТОРИЗАЦІЯ ТА КЕРУВАННЯ РЕЖИМАМИ В 1 КЛІК
     // =========================================================================
     function getAdminToken() {
       return localStorage.getItem("radar_admin_token") || localStorage.getItem("github_radar_token") || "";
@@ -370,7 +414,7 @@
 
     function isUserAdmin() {
       const t = getAdminToken();
-      return t.startsWith("ghp_") && t.length >= 35;
+      return typeof t === "string" && t.startsWith("ghp_") && t.length >= 35;
     }
 
     let currentUiMode = localStorage.getItem("radar_ui_mode") || "simple";
@@ -379,15 +423,18 @@
     function applyUiMode(mode) {
       currentUiMode = mode;
       localStorage.setItem("radar_ui_mode", mode);
-      document.documentElement.classList.toggle("mode-simple", mode === "simple");
-      document.documentElement.classList.toggle("mode-full", mode === "full");
+      
+      const isSimple = (mode === "simple");
+      document.documentElement.classList.toggle("mode-simple", isSimple);
+      document.documentElement.classList.toggle("mode-full", !isSimple);
+      document.documentElement.classList.remove("dash-collapsed");
 
-      const adminBtn = document.getElementById("btnAdminModeSwitch");
-      if (adminBtn) {
-        adminBtn.innerText = mode === "full" ? "⚡ Режим: Повний ➔ Перейти в Простий" : "⚡ Режим: Простий ➔ Перейти в Повний";
+      const btnToggle = document.getElementById("btnToggle");
+      if (btnToggle) {
+        btnToggle.innerText = isSimple ? "▼" : "▲";
       }
 
-      if (mode === "simple") {
+      if (isSimple) {
         showTrafficLights = false;
         if (window.map && window.map.hasLayer(trafficLightLayer)) {
           window.map.removeLayer(trafficLightLayer);
@@ -399,6 +446,7 @@
       if (window.map) setTimeout(() => window.map.invalidateSize(), 150);
     }
 
+    // Миттєвий перемикач по стрілці без паролів, якщо пристрій авторизовано
     function toggleAdminUiMode() {
       if (!isUserAdmin()) {
         requestAdminLogin();
@@ -406,45 +454,28 @@
       }
       const nextMode = currentUiMode === "full" ? "simple" : "full";
       applyUiMode(nextMode);
-      showToast(nextMode === "full" ? "👑 Увімкнено ПОВНИЙ режим (Адмін)" : "🚗 Увімкнено ПРОСТИЙ режим (Водій)");
+      showToast(nextMode === "full" ? "👑 Повний режим (Розробник)" : "🚗 Простий режим (Водій)");
     }
 
     function requestAdminLogin() {
-      const token = prompt("🔐 Введіть персональний GitHub токен (ghp_...):\n(Вхід одноразовий для цього пристрою)");
+      const token = prompt("🔐 Введіть персональний GitHub токен (ghp_...):\n(Вхід разовий, система запам'ятає цей пристрій)");
       if (!token) return;
       const clean = token.trim();
       if (clean.startsWith("ghp_") && clean.length >= 35) {
         localStorage.setItem("radar_admin_token", clean);
         localStorage.setItem("github_radar_token", clean);
         applyUiMode("full");
-        showToast("🔓 Доступ адміністратора підтверджено!");
+        showToast("🔓 Пристрій авторизовано! Режим розробника активний.");
       } else {
-        alert("❌ Недійсний токен! Токен повинен починатися з 'ghp_' та містити не менше 35 символів.");
+        alert("❌ Недійсний токен! Токен повинен починатися з 'ghp_' (довжина не менше 35 символів).");
       }
     }
 
-    // Довге натискання на лічильник точок у шапці для виклику входу адміністратора
-    const countTextEl = document.getElementById("countText");
-    let countPressTimer = null;
-    function startCountPress() {
-      countPressTimer = setTimeout(() => {
-        if (navigator.vibrate) navigator.vibrate(60);
-        if (isUserAdmin()) {
-          toggleAdminUiMode();
-        } else {
-          requestAdminLogin();
-        }
-      }, 700);
+    // Стрілка дашборду вмикає простий/повний режим в 1 клік
+    function togglePanelCollapse(e) {
+      if (e) e.stopPropagation();
+      toggleAdminUiMode();
     }
-    function cancelCountPress() {
-      if (countPressTimer) { clearTimeout(countPressTimer); countPressTimer = null; }
-    }
-    countTextEl.addEventListener("mousedown", startCountPress);
-    countTextEl.addEventListener("mouseup", cancelCountPress);
-    countTextEl.addEventListener("mouseleave", cancelCountPress);
-    countTextEl.addEventListener("touchstart", startCountPress, { passive: true });
-    countTextEl.addEventListener("touchend", cancelCountPress);
-    countTextEl.addEventListener("touchcancel", cancelCountPress);
 
     function verifyGeminiAuthorization(forcePrompt = false) {
       const savedAuth = localStorage.getItem("radar_gemini_unlocked");
@@ -452,7 +483,7 @@
       const entered = prompt("🔐 Введіть пароль для активації ШІ-штурмана:\n(Підказка: телефон батьків)");
       if (entered === SECRET_KEY_HASH) {
         localStorage.setItem("radar_gemini_unlocked", SECRET_KEY_HASH);
-        showToast("🔓 ШІ-штурман успішно активовано!");
+        showToast("🔓 ШІ-штурман активовано!");
         return true;
       } else if (entered !== null) {
         alert("❌ Невірний пароль! Доступ до ШІ заблоковано.");
@@ -518,10 +549,9 @@
     } catch(e) {}
 
     // =========================================================================
-    // 🗺️ КАРТА: ОГЛЯД ВСЬОГО МІСТА (ФОТО 2) ТА 2 РЕЖИМИ (ДЕНЬ / НІЧ)
+    // 🗺️ КАРТА: ОГЛЯД ВСЬОГО МІСТА ТА 2 РЕЖИМИ БЕЗ ВОДЯНИХ ЗНАКІВ (ДЕНЬ / НІЧ)
     // =========================================================================
     const isMobile = window.innerWidth < 768;
-    // Географічний центр Дніпра з віддаленим масштабом
     const INITIAL_CENTER = [48.462, 35.035];
     const INITIAL_ZOOM = isMobile ? 11.3 : 11.8;
 
@@ -532,19 +562,25 @@
 
     let mapTheme = localStorage.getItem("radar_map_theme") || "day";
 
-    // 1. Денна карта (Google Streets)
+    // 1. Денна карта (Google Maps)
     const dayLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
       subdomains: ['0', '1', '2', '3'],
       maxZoom: 20,
       attribution: 'Google Maps'
     });
 
-    // 2. Нічна карта (CartoDB Dark Matter — висококонтрастна нічна карта)
-    const nightLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      subdomains: ['a', 'b', 'c', 'd'],
+    // 2. Нічна карта: Esri Dark Canvas без водяних знаків та без вимог API ключа
+    const nightBase = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+      maxNativeZoom: 16,
       maxZoom: 19,
-      attribution: '&copy; CARTO'
+      attribution: 'Esri Dark'
     });
+    const nightLabels = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}', {
+      maxNativeZoom: 16,
+      maxZoom: 19,
+      attribution: 'Esri'
+    });
+    const nightLayer = L.layerGroup([nightBase, nightLabels]);
 
     if (mapTheme === "night") {
       nightLayer.addTo(map);
@@ -578,7 +614,7 @@
       }
       localStorage.setItem("radar_map_theme", mapTheme);
       updateThemeBtnUI();
-      showToast(mapTheme === "night" ? "🌙 Увімкнено нічну карту" : "☀️ Увімкнено денну карту");
+      showToast(mapTheme === "night" ? "🌙 Увімкнено нічну тему" : "☀️ Увімкнено денну тему");
     }
 
     window.addEventListener('resize', () => {
@@ -688,7 +724,6 @@
       closeMarkerActionSheet();
     });
 
-    // 1. ЗАЛІЗНА ПЕРЕВІРКА СТАТУСУ (з пріоритетом ручних правок)
     function isCleanPoint(p) {
       if (!p) return false;
 
@@ -730,7 +765,6 @@
     }
 
     function isPointInActiveSectors(p) {
-      // У простому водійському режимі завжди відображається весь Дніпро
       if (currentUiMode === "simple") return true;
       if (p.needs_training) return true;
       if (activeSectors.length === 6) return true;
@@ -797,7 +831,6 @@
       return found;
     }
 
-    // 2. ПРЯМЕ ПЕРЕМИКАННЯ СТАТУСУ (В АДМІН-РЕЖИМІ)
     window.setPointVerdictDirect = async function(fbKey, isClean, btnEl) {
       const p = allPoints.find(x => x._fbKey === fbKey);
       if (!p) return;
@@ -854,7 +887,7 @@
     };
 
     function openMarkerActionSheet(point, marker) {
-      if (currentUiMode === "simple") return; // Вимкнено в простому режимі
+      if (currentUiMode === "simple") return;
       activeActionPoint = point;
       activeActionMarker = marker || findMarkerByPoint(point);
       document.getElementById("markerActionSheet").style.display = "flex";
@@ -1095,7 +1128,7 @@
           }
         }
       }
-      throw new Error(lastErr || "Всі ключі з пулу вичерпали квоту.");
+      throw new Error(lastErr || "Всі ключі вичерпали квоту.");
     }
 
     async function submitAiChatMessage() {
@@ -1280,7 +1313,6 @@ ${allLiveReportsText || "Повідомлень немає"}
       } catch (e) {}
     }
 
-    // 3. РОЗУМНІ СВІТЛОФОРИ (ТІЛЬКИ В АДМІН-РЕЖИМІ)
     function renderTrafficLights() {
       if (!showTrafficLights || currentUiMode === "simple") {
         trafficLightLayer.clearLayers();
@@ -1290,7 +1322,7 @@ ${allLiveReportsText || "Повідомлень немає"}
       checkpoints.forEach(cp => {
         const matched = allPoints.filter(p => {
           const text = ((p.raw_text || p.text || "") + " " + (p.address || "")).toLowerCase();
-          return cp.keys.some(k => (k === "стан" ? /\bстан\b/i.test(text) && !/остановил/i.test(text) : new RegExp(k, "i").test(text)));
+          return cp.keys.some(k => (k === "стан" ? /\bстан\b/i.test(t) && !/остановил/i.test(t) : new RegExp(k, "i").test(text)));
         });
         matched.sort((a, b) => (b.time || 0) - (a.time || 0));
         let latest = matched[0];
@@ -1332,15 +1364,6 @@ ${allLiveReportsText || "Повідомлень немає"}
           trafficMarkersMap[cp.id] = marker;
         }
       });
-    }
-
-    const dashPanel = document.getElementById("dashPanel");
-    const btnToggle = document.getElementById("btnToggle");
-
-    function togglePanelCollapse(e) {
-      if (e) e.stopPropagation();
-      const isNowCollapsed = document.documentElement.classList.toggle("dash-collapsed");
-      btnToggle.innerText = isNowCollapsed ? "▼" : "▲";
     }
 
     const streetSearchInput = document.getElementById("streetSearchInput");
@@ -1408,7 +1431,6 @@ ${allLiveReportsText || "Повідомлень немає"}
           const fullText = (p.text || "") + " " + (p.raw_text || "");
           if (isSpamMessage(fullText)) return null;
 
-          // Якщо точка на воді і ще не вточнена — фолбек у словник
           const isWater = (p.lat >= 48.498 && p.lat <= 48.506 && p.lng >= 34.922 && p.lng <= 34.934);
           if ((p.needs_training || isWater) && !p.geo_refined && !manualPointOverrides[key]) {
             const resolved = resolveLocationFromText(fullText);
@@ -1501,7 +1523,6 @@ ${allLiveReportsText || "Повідомлень немає"}
             } catch(e) {}
 
             if (isSimple) {
-              // 🚗 ПРОСТИЙ ВОДІЙСЬКИЙ РЕЖИМ (ФОТО 1): Лише інформація, без кнопок дій[cite: 4]
               listHtml += `
                 <div class="report-row-item" style="border-bottom: 1px solid #334155; padding-bottom: 5px; margin-bottom: 5px;">
                   <div class="report-status-title" style="font-weight:800; font-size:12px; color:#0f172a; line-height:1.35;">${clean ? "🟢" : "🔴"} ${pt.text || pt.raw_text || ""}</div>
@@ -1510,7 +1531,6 @@ ${allLiveReportsText || "Повідомлень немає"}
                 </div>
               `;
             } else {
-              // 👑 ПОВНИЙ АДМІНІСТРАТОРСЬКИЙ РЕЖИМ: З усіма кнопками керування
               listHtml += `
                 <div class="report-row-item" style="border-bottom: 1px solid #334155; padding-bottom: 7px; margin-bottom: 7px;">
                   <div class="report-status-title" style="font-weight:700; font-size:12px; color:#0f172a; line-height:1.35;">${clean ? "🟢" : "🔴"} ${pt.text || pt.raw_text || ""}</div>
@@ -1541,7 +1561,6 @@ ${allLiveReportsText || "Повідомлень немає"}
           const marker = L.marker([renderLat, renderLng], { icon: dotIcon, draggable: false });
           marker.bindPopup(popupContent, { autoClose: true, closeOnClick: true });
 
-          // Тривале натискання на мітки активне ТІЛЬКИ в режимі адміністратора
           if (!isSimple) {
             let pressTimer = null;
             let startX = 0, startY = 0;
@@ -1573,6 +1592,9 @@ ${allLiveReportsText || "Повідомлень немає"}
         console.error("Помилка renderMarkers:", err);
       }
     }
+
+    // Застосовуємо початковий стан інтерфейсу
+    applyUiMode(currentUiMode);
 
     loadCheckpointsFromCloud().then(() => {
       loadPoints();
