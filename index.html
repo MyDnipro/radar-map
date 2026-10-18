@@ -499,7 +499,6 @@
         if (btnToggle) btnToggle.style.display = "none";
         if (btnDevIcon) btnDevIcon.style.display = isUserAdmin() ? "inline-flex" : "none";
         dashPanel.classList.remove("collapsed");
-        showTrafficLights = false;
         if (window.map && window.map.hasLayer(trafficLightLayer)) {
           window.map.removeLayer(trafficLightLayer);
         }
@@ -510,9 +509,12 @@
           btnToggle.innerText = "▼";
         }
         if (btnDevIcon) btnDevIcon.style.display = "none";
+        showTrafficLights = localStorage.getItem("radar_tl_visible") !== "false";
+        if (typeof updateTrafficLightsBtnUI === "function") updateTrafficLightsBtnUI();
       }
 
       renderMarkers();
+      if (typeof renderTrafficLights === "function") renderTrafficLights();
       updateRouteStatus();
       window.dispatchEvent(new CustomEvent('radar:uiModeChanged', { detail: mode }));
       if (window.map) setTimeout(() => window.map.invalidateSize(), 150);
