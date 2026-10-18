@@ -5,6 +5,10 @@ import time
 import random
 import requests
 from urllib.parse import unquote
+from datetime import datetime, timezone, timedelta
+
+# Часовий пояс України (Дніпро)
+UA_TZ = timezone(timedelta(hours=3))
 
 # =========================================================================
 # ⚙️ НАЛАШТУВАННЯ ТА API КЛЮЧІ GEMINI
@@ -28,6 +32,7 @@ STATS_ARCHIVE_URL = f"{BASE_FB_URL}/stats_archive.json" if BASE_FB_URL else ""
 CUSTOM_STREETS_URL = f"{BASE_FB_URL}/custom_streets.json" if BASE_FB_URL else ""
 STREET_OVERRIDES_URL = f"{BASE_FB_URL}/street_overrides.json" if BASE_FB_URL else ""
 SPAM_FILTERS_URL = f"{BASE_FB_URL}/spam_filters.json" if BASE_FB_URL else ""
+TRAFFIC_STATS_HISTORY_URL = f"{BASE_FB_URL}/config/traffic_stats_history.json" if BASE_FB_URL else ""
 
 LIFETIME_MS = 40 * 60 * 1000  # 40 хвилин для актуальних міток
 CHANNEL_BASE_URL = "https://t.me/s/dnepr_bez_tck"
@@ -37,6 +42,7 @@ CUSTOM_STREETS_CACHE = {}
 STREET_OVERRIDES_CACHE = {}
 DYNAMIC_SPAM_WORDS = set()
 LAST_CLOUD_SYNC = 0
+LAST_STATS_AGGREGATION = 0
 
 def log(msg):
     print(msg, flush=True)
@@ -110,8 +116,18 @@ def is_ad_or_spam(text):
     return False
 
 # =========================================================================
-# 📍 БАЗА ТОПОНІМІВ ДНІПРА
+# 📍 БАЗА ТОПОНІМІВ ДНІПРА ТА ЦІЛЬОВІ ТОЧКИ ДЛЯ СТАТИСТИКИ
 # =========================================================================
+TARGET_CHECKPOINTS_CONFIG = [
+    {"id": "pavlova", "name": "вул. Павлова", "regex": re.compile(r'(?:академика\s*павлова|академіка\s*павлова|\bпавлова\b)', re.IGNORECASE)},
+    {"id": "krasnozavodska", "name": "Краснозаводська", "regex": re.compile(r'(?:белелюб|краснозавод|комбайн|дтрз|ударник)', re.IGNORECASE)},
+    {"id": "vodolechebnitsa", "name": "Водолікарня", "regex": re.compile(r'(?:водолечеб|водолікарн|водогрязелечеб)', re.IGNORECASE)},
+    {"id": "vodokachka", "name": "Водокачка", "regex": re.compile(r'(?:водокачк)', re.IGNORECASE)},
+    {"id": "rechport", "name": "Річпорт", "regex": re.compile(r'(?:речпорт|річпорт|речной\s*вокзал|річковий\s*вокзал|десантник)', re.IGNORECASE)},
+    {"id": "naberezhna", "name": "Набережна Зав.", "regex": re.compile(r'(?:кайдак|кайдацька|стан\s*550|стан550|ровд.*заводськ)', re.IGNORECASE)},
+    {"id": "svobody", "name": "пр. Свободи", "regex": re.compile(r'(?:проспект\s*свобод|пр\s*свобод|пр\.\s*свобод|свободи\b)', re.IGNORECASE)}
+]
+
 LOCAL_STREETS_DB = [
     {"keys": ["славянк", "словянк"], "addr": "ТЦ Слов'янський (Слов'янка)", "lat": 48.4715, "lng": 35.0135},
     {"keys": ["озерк"], "addr": "Ринок Озерка", "lat": 48.4715, "lng": 35.0215},
@@ -421,6 +437,124 @@ def cleanup_old_points():
     except Exception as e:
         log(f"⚠️ Помилка очищення Firebase: {e}")
 
+# =========================================================================
+# 📊 ДОВГОТРИВАЛА АГРЕГАЦІЯ СТАТИСТИКИ (4+ ПОВІДОМЛЕННЯ ДО ЧИСТО = 1 БП)
+# =========================================================================
+def calculate_checkpoint_episodes(reports):
+    if not reports:
+        return 0
+
+    sorted_reps = sorted(reports, key=lambda x: x.get("time", 0))
+    total_cp_count = 0
+    red_count = 0
+    last_report_time = 0
+    in_danger_session = False
+    SILENCE_GAP_MS = 90 * 60 * 1000
+
+    for r in sorted_reps:
+        r_time = r.get("time", 0)
+        is_clean = r.get("is_clean", False)
+
+        if last_report_time > 0 and (r_time - last_report_time > SILENCE_GAP_MS):
+            if in_danger_session:
+                total_cp_count += 1
+                in_danger_session = False
+            red_count = 0
+
+        if is_clean:
+            if in_danger_session:
+                total_cp_count += 1
+                in_danger_session = False
+            red_count = 0
+        else:
+            red_count += 1
+            if red_count >= 4:
+                in_danger_session = True
+
+        last_report_time = r_time
+
+    if in_danger_session:
+        total_cp_count += 1
+
+    return total_cp_count
+
+def update_traffic_stats_history():
+    global LAST_STATS_AGGREGATION
+    if not STATS_ARCHIVE_URL or not TRAFFIC_STATS_HISTORY_URL:
+        return
+
+    # Запускаємо раз на 15 хвилин
+    if time.time() - LAST_STATS_AGGREGATION < 15 * 60:
+        return
+
+    try:
+        r_arch = requests.get(f"{STATS_ARCHIVE_URL}?t={int(time.time() * 1000)}", timeout=12)
+        if r_arch.status_code != 200 or not r_arch.json():
+            return
+
+        archive_data = r_arch.json()
+        reports_list = []
+        if isinstance(archive_data, dict):
+            reports_list = list(archive_data.values())
+        elif isinstance(archive_data, list):
+            reports_list = archive_data
+
+        if not reports_list:
+            return
+
+        # Завантажуємо вже існуючу історію, щоб не втратити старі дні
+        existing_history = {}
+        try:
+            r_hist = requests.get(TRAFFIC_STATS_HISTORY_URL, timeout=8)
+            if r_hist.status_code == 200 and r_hist.json():
+                existing_history = r_hist.json()
+        except Exception:
+            existing_history = {}
+
+        # Групуємо звіти по днях (з 01.10.2026)
+        day_groups = {}
+        min_date_str = "2026-10-01"
+
+        for r in reports_list:
+            if not isinstance(r, dict) or not r.get("time"):
+                continue
+            ts = r["time"]
+            dt = datetime.fromtimestamp(ts / 1000.0, tz=UA_TZ)
+            date_str = dt.strftime("%Y-%m-%d")
+
+            if date_str < min_date_str:
+                continue
+
+            if date_str not in day_groups:
+                day_groups[date_str] = []
+            day_groups[date_str].append(r)
+
+        # Рахуємо БП для кожного дня та точки
+        updated_history = dict(existing_history)
+
+        for date_str, day_reps in day_groups.items():
+            if date_str not in updated_history:
+                updated_history[date_str] = {}
+
+            for cp in TARGET_CHECKPOINTS_CONFIG:
+                cp_id = cp["id"]
+                regex = cp["regex"]
+                matched_reps = [
+                    r for r in day_reps
+                    if regex.search((r.get("text", "") + " " + r.get("address", "")).lower())
+                ]
+                cp_count = calculate_checkpoint_episodes(matched_reps)
+                updated_history[date_str][cp_id] = cp_count
+
+        # Зберігаємо агреговані сухі цифри у Firebase
+        r_save = requests.put(TRAFFIC_STATS_HISTORY_URL, json=updated_history, timeout=10)
+        if r_save.status_code == 200:
+            log(f"📊 [ДОВГОТРИВАЛА СТАТИСТИКА]: Успішно оновлено {len(updated_history)} днів у traffic_stats_history.json")
+        
+        LAST_STATS_AGGREGATION = time.time()
+    except Exception as e:
+        log(f"⚠️ Помилка оновлення traffic_stats_history: {e}")
+
 def fetch_channel_messages():
     timestamp_param = int(time.time())
     url = f"{CHANNEL_BASE_URL}?t={timestamp_param}"
@@ -564,6 +698,7 @@ def sync_cycle():
     global PROCESSED_POST_IDS
     cleanup_old_points()
     sync_cloud_knowledge_and_spam()
+    update_traffic_stats_history()
 
     kb_list = get_knowledge_base()
     items = fetch_channel_messages()
@@ -665,7 +800,6 @@ def sync_cycle():
                         "needs_training": False
                     }
                     log(f"🤖 [GEMINI AI]: '{msg[:45]}' ➔ {addr}")
-                    # ВАЖЛИВО: авто-спам у базу знань вимкнено назавжди!
 
             if not parsed_result:
                 water_lat = round(48.5020 + random.uniform(-0.0040, 0.0040), 5)
@@ -685,6 +819,12 @@ if __name__ == "__main__":
     log(f"🚀 Запуск оновленого радара 24/7 v4.0 (Завантажено {len(GEMINI_KEYS)} API ключів)...")
     start_time = time.time()
     MAX_RUNTIME_SEC = 5 * 3600 + 40 * 60
+
+    # Однократний запуск агрегації при старті
+    try:
+        update_traffic_stats_history()
+    except Exception as e:
+        log(f"⚠️ Стартова агрегація статистики: {e}")
 
     while (time.time() - start_time) < MAX_RUNTIME_SEC:
         try:
