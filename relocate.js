@@ -1,6 +1,6 @@
 /**
- * relocate.js — Модуль перенесення міток (за адресою та вручну) та калібрування вулиць v7.0
- * Повне відновлення: Пошук за адресою + Ручне перетягування + Безпечні ключі Firebase
+ * relocate.js — Модуль перенесення міток та калібрування вулиць (street_overrides) v7.5
+ * Розумні перейменування: "Нова назва / Раніше / Не перейменовувалась" + Фіксація на офіційну назву
  */
 
 (function () {
@@ -22,13 +22,14 @@
   }
 
   // =========================================================================
-  // 2. ДОВІДНИК ПЕРЕЙМЕНУВАНЬ ДЛЯ ПОПАПІВ
+  // 2. ДОВІДНИК ПЕРЕЙМЕНУВАНЬ ДЛЯ ПОПАПІВ (НОВА НАЗВА / РАНІШЕ / ОРІЄНТИР)
   // =========================================================================
   window.getStreetRenameNote = function (rawText) {
     if (!rawText || typeof DNIPRO_STREETS_MAP === "undefined") return "";
     const t = rawText.toLowerCase().replace(/[\r\n,.-]+/g, " ");
 
     let matchedItem = null;
+    let matchedOld = false;
     let maxMatchLen = 0;
 
     for (const [key, item] of Object.entries(DNIPRO_STREETS_MAP)) {
@@ -36,34 +37,50 @@
       const cleanName = item.name.toLowerCase().replace(/(?:вулиця|проспект|просп|провулок|вул|шосе|тупик|узвіз)\.?/gi, "").trim();
       const cleanOld = (item.old || "").toLowerCase().replace(/(?:вулиця|проспект|просп|провулок|вул|шосе|тупик|узвіз)\.?/gi, "").trim();
 
+      const oldVariants = (item.old || "")
+        .toLowerCase()
+        .split(/[,;/]+/)
+        .map(s => s.replace(/(?:вулиця|проспект|просп|провулок|вул|шосе|тупик|узвіз)\.?/gi, "").trim())
+        .filter(s => s.length >= 3);
+
+      const matchOld = (cleanOld.length >= 3 && t.includes(cleanOld)) || oldVariants.some(v => t.includes(v));
       const matchNew = cleanName.length >= 3 && t.includes(cleanName);
-      const matchOld = cleanOld.length >= 3 && t.includes(cleanOld);
       const matchKey = key.length >= 3 && t.includes(key);
 
-      if (matchNew || matchOld || matchKey) {
-        const matchLen = Math.max(
+      if (matchOld || matchNew || matchKey) {
+        const curLen = Math.max(
+          matchOld ? (cleanOld.length || 5) : 0,
           matchNew ? cleanName.length : 0,
-          matchOld ? cleanOld.length : 0,
           matchKey ? key.length : 0
         );
-        if (matchLen > maxMatchLen) {
-          maxMatchLen = matchLen;
+        if (curLen > maxMatchLen) {
+          maxMatchLen = curLen;
           matchedItem = item;
+          // Фіксуємо: в тексті вжито саме стару назву (наприклад, "Кирова", "Савченко")
+          matchedOld = matchOld || (matchKey && !item.name.toLowerCase().includes(key));
         }
       }
     }
 
     if (!matchedItem) return "";
 
-    if (matchedItem.old) {
-      return `📍 Раніше: ${matchedItem.old}`;
-    } else if (
-      matchedItem.type === "landmark" ||
+    const isLandmark = matchedItem.type === "landmark" ||
       matchedItem.landmark ||
       matchedItem.is_landmark ||
-      /міст|мост|завод|вокзал|тц|трц|ринок|парк|озерк|кар'єр|станція/i.test(matchedItem.name)
-    ) {
+      /міст|мост|завод|вокзал|тц|трц|ринок|парк|озерк|кар'єр|станція/i.test(matchedItem.name);
+
+    if (isLandmark) {
       return `📍 Місцевий орієнтир`;
+    }
+
+    if (matchedItem.old) {
+      if (matchedOld) {
+        // У тексті стара народна назва -> показуємо сучасну офіційну
+        return `📍 Нова назва: ${matchedItem.name}`;
+      } else {
+        // У тексті вже нова назва -> нагадуємо колишню
+        return `📍 Раніше: ${matchedItem.old}`;
+      }
     } else {
       return `📍 Не перейменовувалась`;
     }
@@ -150,50 +167,63 @@
     } catch (e) {}
   }
 
-  function findNearestStreet(lat, lng, maxDistMeters) {
-    if (typeof DNIPRO_STREETS_MAP === "undefined" || !window.L) return null;
-    const pos = L.latLng(lat, lng);
-    let best = null;
-    let minDist = Infinity;
-
-    for (const item of Object.values(DNIPRO_STREETS_MAP)) {
-      if (!item || !item.name || !item.lat || !item.lng) continue;
-      const d = pos.distanceTo([item.lat, item.lng]);
-      if (d < minDist) {
-        minDist = d;
-        best = item.name;
-      }
-    }
-    if (minDist <= (maxDistMeters || 120)) return best;
-    return null;
-  }
-
+  // Визначення офіційної назви вулиці за текстом повідомлення
   function detectStreetForPoint(point) {
     if (!point) return null;
+
+    const raw = (point.text || point.raw_text || "").toLowerCase().replace(/[\r\n,.-]+/g, " ");
+    if (raw && typeof DNIPRO_STREETS_MAP !== "undefined") {
+      let bestItem = null;
+      let maxLen = 0;
+
+      for (const [key, item] of Object.entries(DNIPRO_STREETS_MAP)) {
+        if (!item || !item.name) continue;
+        const cleanName = item.name.toLowerCase().replace(/(?:вулиця|проспект|просп|провулок|вул|шосе|тупик|узвіз)\.?/gi, "").trim();
+        const cleanOld = (item.old || "").toLowerCase().replace(/(?:вулиця|проспект|просп|провулок|вул|шосе|тупик|узвіз)\.?/gi, "").trim();
+
+        const oldVariants = (item.old || "")
+          .toLowerCase()
+          .split(/[,;/]+/)
+          .map(s => s.replace(/(?:вулиця|проспект|просп|провулок|вул|шосе|тупик|узвіз)\.?/gi, "").trim())
+          .filter(s => s.length >= 3);
+
+        const matchOld = (cleanOld.length >= 3 && raw.includes(cleanOld)) || oldVariants.some(v => raw.includes(v));
+        const matchNew = cleanName.length >= 3 && raw.includes(cleanName);
+        const matchKey = key.length >= 3 && raw.includes(key);
+
+        if (matchOld || matchNew || matchKey) {
+          const l = Math.max(
+            matchOld ? (cleanOld.length || 5) : 0,
+            matchNew ? cleanName.length : 0,
+            matchKey ? key.length : 0
+          );
+          if (l > maxLen) {
+            maxLen = l;
+            bestItem = item;
+          }
+        }
+      }
+      if (bestItem && bestItem.name) {
+        return bestItem.name; // Завжди повертаємо нову офіційну назву!
+      }
+    }
+
     if (point.address &&
         point.address !== "Встановлено користувачем" &&
         point.address !== "Мітка на карті" &&
         !point.address.includes("Потребує навчання")) {
+      if (typeof DNIPRO_STREETS_MAP !== "undefined") {
+        const addrLower = point.address.toLowerCase();
+        for (const item of Object.values(DNIPRO_STREETS_MAP)) {
+          if (item && item.name && (item.name.toLowerCase() === addrLower || (item.old && item.old.toLowerCase().includes(addrLower)))) {
+            return item.name;
+          }
+        }
+      }
       return point.address;
     }
 
-    const raw = (point.text || point.raw_text || "").toLowerCase();
-    if (!raw || typeof DNIPRO_STREETS_MAP === "undefined") return null;
-
-    let bestMatch = null;
-    let maxLen = 0;
-
-    for (const item of Object.values(DNIPRO_STREETS_MAP)) {
-      if (!item || !item.name) continue;
-      const clean = item.name.toLowerCase().replace(/(?:вулиця|проспект|просп|провулок|вул|шосе|тупик|узвіз)\.?/gi, "").trim();
-      if (clean.length >= 4 && raw.includes(clean)) {
-        if (clean.length > maxLen) {
-          maxLen = clean.length;
-          bestMatch = item.name;
-        }
-      }
-    }
-    return bestMatch;
+    return null;
   }
 
   // =========================================================================
@@ -379,7 +409,7 @@
   }
 
   // =========================================================================
-  // 7. МЕНЮ ДІЙ З МІТКОЮ (ПЕРЕНЕСТИ ЗА АДРЕСОЮ + РУЧНЕ ПЕРЕТЯГУВАННЯ)
+  // 7. МЕНЮ ДІЙ З МІТКОЮ
   // =========================================================================
   window.openRelocateActionSheet = function (point, marker) {
     const basePoint = point || resolveMarkerPoint(marker);
@@ -417,7 +447,6 @@
             —
           </div>
 
-          <!-- ОБИДВІ КНОПКИ ВІДНОВЛЕНО -->
           <div style="display:flex; flex-direction:column; gap:8px;">
             <button id="btnActionGoAddress" style="background:linear-gradient(135deg, #0284c7, #0369a1); border:none; color:#fff; padding:12px; border-radius:10px; font-size:12px; font-weight:800; display:flex; align-items:center; justify-content:center; gap:8px; cursor:pointer;">
               <span>🔍 Перенести за адресою (навчити «мозок»)</span>
@@ -489,7 +518,6 @@
 
   window.openActionSheet = window.openRelocateActionSheet;
 
-  // ПК-кліки (СКМ і ПКМ)
   function setupDesktopInteractions() {
     if (!window.map) return setTimeout(setupDesktopInteractions, 300);
     const mapContainer = window.map.getContainer();
@@ -983,6 +1011,7 @@
     manualMovingMarker.off("drag");
     manualMovingMarker.off("dragend");
 
+    // 1. Оновлюємо точку в локальному масиві
     let targetFbKey = p ? p._fbKey : null;
 
     if (Array.isArray(window.allPoints)) {
@@ -1009,6 +1038,7 @@
       p.needs_training = false;
     }
 
+    // 2. Відправляємо оновлені координати мітки в базу
     if (targetFbKey) {
       fetch(FIREBASE_POINTS_URL.replace(".json", `/${targetFbKey}.json`), {
         method: "PATCH",
@@ -1017,10 +1047,11 @@
       }).catch(() => {});
     }
 
-    // Розумне визначення назви вулиці: спочатку перевіряємо, де кинули мітку
-    let detectedStreet = findNearestStreet(lat, lng, 120) || detectStreetForPoint(p);
+    // 3. Знаходимо офіційну назву вулиці (перетворюючи старе ім'я на нове, напр. Кірова -> просп. Олександра Поля)
+    let detectedStreet = detectStreetForPoint(p);
 
     if (detectedStreet) {
+      if (p) p.address = detectedStreet;
       await saveStreetCoordinateOverride(detectedStreet, lat, lng);
     }
 
