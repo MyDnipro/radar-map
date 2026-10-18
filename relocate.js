@@ -1,5 +1,5 @@
 /**
- * relocate.js — Модуль перенесення міток, 3-рівневого пошуку та бази знань (v4.0)
+ * relocate.js — Модуль перенесення міток, 3-рівневого пошуку, калібрування координат та ПК-керування (v4.5)
  */
 
 (function () {
@@ -7,7 +7,7 @@
   const FIREBASE_KB_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/knowledge_base.json";
 
   // =========================================================================
-  // 1. ЧИСТЕ ВИТЯГУВАННЯ НАЗВИ ВУЛИЦІ (ЗАХИСТ БАЗИ ВІД СМІТТЯ ТА АВТО)
+  // 1. ЧИСТЕ ВИТЯГУВАННЯ НАЗВИ ВУЛИЦІ (ЗАХИСТ БАЗИ ЗНАНЬ ВІД СМІТТЯ)
   // =========================================================================
   function extractCleanLocationPhrase(rawText, targetStreetName) {
     if (!rawText) return "";
@@ -63,7 +63,7 @@
   }
 
   // =========================================================================
-  // 2. ДОСТУП ДО ПАМ'ЯТІ ТОПОНІМІВ "А = Б" (З memory.js)
+  // 2. ДОСТУП ДО ПАМ'ЯТІ ТОПОНІМІВ "А = Б"
   // =========================================================================
   function getMemoryToponymsMap() {
     const memoryKeys = ["radar_toponyms", "toponyms_memory", "radar_memory_toponyms", "radar_ab_rules", "radar_learned_rules"];
@@ -115,7 +115,7 @@
 
     const collectedMatches = [];
 
-    // РІВЕНЬ 1: Перевірка Пам'яті топонімів ("А = Б")
+    // РІВЕНЬ 1: Пам'ять топонімів ("А = Б")
     const memMap = getMemoryToponymsMap();
     let resolvedMemoryTarget = null;
 
@@ -142,7 +142,7 @@
           name: matchedCoord.name,
           lat: matchedCoord.lat,
           lng: matchedCoord.lng,
-          label: `🧠 <b>${matchedCoord.name}</b> <span style="font-size:10px; color:#c084fc;">(з Пам'яті топонімів для «${q}»)</span>`
+          label: `🧠 <b>${matchedCoord.name}</b> <span style="font-size:10px; color:#c084fc;">(з Пам'яті топонімів)</span>`
         });
       }
     }
@@ -168,7 +168,7 @@
       }
     }
 
-    // РІВЕНЬ 3: Онлайн-пошук (Photon / OpenStreetMap) якщо локальних мало або натиснуто "Знайти"
+    // РІВЕНЬ 3: Онлайн геокодер (Photon / OSM)
     if (collectedMatches.length < 3 && q.length >= 3) {
       try {
         const onlineQuery = `${q} Дніпро`;
@@ -185,7 +185,6 @@
               const coords = f.geometry?.coordinates;
               if (coords && coords.length >= 2) {
                 const lng = coords[0], lat = coords[1];
-                // Обмежуємося квадратом Дніпра
                 if (lat >= 48.30 && lat <= 48.60 && lng >= 34.80 && lng <= 35.30) {
                   const placeName = [p.name, p.street].filter(Boolean).join(", ") || p.city || q;
                   if (!collectedMatches.some(m => m.name.toLowerCase() === placeName.toLowerCase())) {
@@ -205,7 +204,6 @@
       } catch (e) {}
     }
 
-    // РЕНДЕР РЕЗУЛЬТАТІВ
     resultsEl.innerHTML = "";
     if (collectedMatches.length === 0) {
       resultsEl.innerHTML = `<div style="padding:8px 10px; font-size:11px; color:#94a3b8;">Вулицю не знайдено. Спробуйте іншу назву.</div>`;
@@ -238,7 +236,233 @@
   }
 
   // =========================================================================
-  // 4. ВІДКРИТТЯ МОДАЛКИ ПЕРЕНЕСЕННЯ
+  // 4. ПІДТРИМКА ПК: ПРАВИЙ КЛІК ТА ЗАЖАТТЯ ЛКМ ДЛЯ ВІДКРИТТЯ МЕНЮ
+  // =========================================================================
+  window.triggerMarkerContextMenu = function (point, marker) {
+    if (typeof window.openActionSheet === "function") {
+      window.openActionSheet(point, marker);
+    } else if (typeof window.openTrainingModal === "function") {
+      window.openTrainingModal(point, marker);
+    }
+  };
+
+  window.bindDesktopEventsToMarker = function (marker, point) {
+    if (!marker || marker._hasDesktopContextMenu) return;
+    marker._hasDesktopContextMenu = true;
+
+    // 1. Правий клік мишкою на комп'ютері
+    marker.on("contextmenu", function (e) {
+      if (e) {
+        L.DomEvent.stopPropagation(e);
+        if (e.originalEvent) L.DomEvent.preventDefault(e.originalEvent);
+      }
+      window.triggerMarkerContextMenu(point, marker);
+    });
+
+    // 2. Затискання лівої кнопки мишки на 0.5с на ПК
+    let pressTimer = null;
+    marker.on("mousedown", function (e) {
+      if (e && e.originalEvent && e.originalEvent.button === 0) {
+        pressTimer = setTimeout(() => {
+          window.triggerMarkerContextMenu(point, marker);
+        }, 500);
+      }
+    });
+    marker.on("mouseup mouseout dragstart", function () {
+      if (pressTimer) clearTimeout(pressTimer);
+    });
+  };
+
+  // Автоматичне перехоплення нових міток через Leaflet Prototype
+  if (typeof L !== "undefined" && L.Marker) {
+    const origOnAdd = L.Marker.prototype.onAdd;
+    L.Marker.prototype.onAdd = function (map) {
+      origOnAdd.call(this, map);
+      const p = this.pointData || this._point || (this.options && this.options.pointData);
+      if (p) window.bindDesktopEventsToMarker(this, p);
+    };
+  }
+
+  // =========================================================================
+  // 5. РУЧНЕ ПЕРЕТЯГУВАННЯ ТА ВІДОБРАЖЕННЯ / КОПІЮВАННЯ КООРДИНАТ
+  // =========================================================================
+  let manualMovingMarker = null;
+  let manualOriginalLatLng = null;
+  let manualPointObj = null;
+
+  window.startDirectManualDrag = function (pointOrFbKey, optionalMarker) {
+    let p = null;
+    let m = optionalMarker;
+
+    if (typeof pointOrFbKey === "object" && pointOrFbKey !== null) {
+      p = pointOrFbKey;
+    } else if (typeof window.activeActionPoint === "object") {
+      p = window.activeActionPoint;
+      m = window.activeActionMarker;
+    }
+
+    if (!m && p && window.markersMap && p._fbKey) {
+      m = window.markersMap[p._fbKey];
+    }
+
+    if (!m && window.map) {
+      // Пошук маркера на карті за координатами
+      window.map.eachLayer(l => {
+        if (l instanceof L.Marker && l.getLatLng && p) {
+          const ll = l.getLatLng();
+          if (Math.abs(ll.lat - p.lat) < 0.0001 && Math.abs(ll.lng - p.lng) < 0.0001) {
+            m = l;
+          }
+        }
+      });
+    }
+
+    if (!m) {
+      if (typeof showToast === "function") showToast("⚠️ Маркер не знайдено для перетягування");
+      return;
+    }
+
+    manualMovingMarker = m;
+    manualPointObj = p;
+    manualOriginalLatLng = m.getLatLng();
+
+    m.closePopup();
+    if (m.dragging) m.dragging.enable();
+
+    if (typeof showToast === "function") {
+      showToast("🎯 Перетягніть мітку на дорожнє полотно", 4000);
+    }
+
+    m.once("dragend", function (e) {
+      const newPos = m.getLatLng();
+      showCoordinatesCopyModal(newPos.lat, newPos.lng, p, m);
+    });
+  };
+
+  // Вікно точних координат з можливістю скопіювати для streets.js
+  function showCoordinatesCopyModal(lat, lng, point, marker) {
+    let modal = document.getElementById("coordsCalibrationModal");
+    if (!modal) {
+      modal = document.createElement("div");
+      modal.id = "coordsCalibrationModal";
+      modal.className = "action-sheet-backdrop";
+      modal.style.zIndex = "5000";
+      modal.onclick = (e) => {
+        if (e.target.id === "coordsCalibrationModal") cancelCalibrationMove();
+      };
+
+      modal.innerHTML = `
+        <div class="action-sheet-card" style="padding:16px; display:flex; flex-direction:column; gap:10px; max-width:340px; margin:auto;" onclick="event.stopPropagation()">
+          <div style="font-size:14px; font-weight:900; color:#38bdf8; display:flex; justify-content:space-between; align-items:center;">
+            <span>📍 Точні координати мітки</span>
+            <span style="cursor:pointer; font-size:16px; color:#94a3b8;" onclick="cancelCalibrationMove()">✕</span>
+          </div>
+
+          <div style="font-size:11px; color:#94a3b8; line-height:1.4;">
+            Мітку встановлено. Ви можете скопіювати точні координати для оновлення <b>streets.js</b>:
+          </div>
+
+          <div id="calibCoordsDisplay" style="background:#0b1120; border:1px solid #1e293b; padding:10px; border-radius:8px; font-family:monospace; font-size:12px; color:#38bdf8; text-align:center; user-select:all;">
+            lat: ${lat.toFixed(5)}, lng: ${lng.toFixed(5)}
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:6px;">
+            <button id="btnCopyStreetsFormat" style="background:#1e293b; border:1px solid #0284c7; color:#38bdf8; padding:8px; border-radius:6px; font-size:11px; font-weight:800; cursor:pointer;">
+              📋 Скопіювати для streets.js
+            </button>
+            <button id="btnCopyRawDigits" style="background:#1e293b; border:1px solid #334155; color:#f1f5f9; padding:7px; border-radius:6px; font-size:10.5px; font-weight:700; cursor:pointer;">
+              📋 Скопіювати тільки цифри (${lat.toFixed(4)}, ${lng.toFixed(4)})
+            </button>
+          </div>
+
+          <div style="display:flex; gap:8px; margin-top:6px;">
+            <button id="btnSaveCalibMove" style="flex:1; background:#0284c7; color:#fff; border:none; padding:9px; border-radius:6px; font-size:12px; font-weight:800; cursor:pointer;">
+              💾 Зафіксувати
+            </button>
+            <button onclick="cancelCalibrationMove()" style="flex:1; background:#334155; color:#94a3b8; border:none; padding:9px; border-radius:6px; font-size:12px; font-weight:700; cursor:pointer;">
+              ↩️ Скасувати
+            </button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+    } else {
+      const disp = document.getElementById("calibCoordsDisplay");
+      if (disp) disp.innerText = `lat: ${lat.toFixed(5)}, lng: ${lng.toFixed(5)}`;
+    }
+
+    const streetsCode = `lat: ${Number(lat.toFixed(5))}, lng: ${Number(lng.toFixed(5))}`;
+    const rawCode = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+
+    document.getElementById("btnCopyStreetsFormat").onclick = () => {
+      copyToClipboard(streetsCode);
+      if (typeof showToast === "function") showToast(`📋 Скопійовано: ${streetsCode}`);
+    };
+
+    document.getElementById("btnCopyRawDigits").onclick = () => {
+      copyToClipboard(rawCode);
+      if (typeof showToast === "function") showToast(`📋 Скопійовано: ${rawCode}`);
+    };
+
+    document.getElementById("btnSaveCalibMove").onclick = () => {
+      saveCalibrationMove(lat, lng, point, marker);
+    };
+
+    modal.style.display = "flex";
+  }
+
+  function copyToClipboard(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text);
+    } else {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+    }
+  }
+
+  window.cancelCalibrationMove = function () {
+    const modal = document.getElementById("coordsCalibrationModal");
+    if (modal) modal.style.display = "none";
+
+    if (manualMovingMarker && manualOriginalLatLng) {
+      manualMovingMarker.setLatLng(manualOriginalLatLng);
+      if (manualMovingMarker.dragging) manualMovingMarker.dragging.disable();
+    }
+    if (typeof showToast === "function") showToast("↩️ Перенесення скасовано");
+  };
+
+  async function saveCalibrationMove(lat, lng, point, marker) {
+    const modal = document.getElementById("coordsCalibrationModal");
+    if (modal) modal.style.display = "none";
+
+    if (marker && marker.dragging) marker.dragging.disable();
+
+    if (point) {
+      point.lat = Number(lat.toFixed(5));
+      point.lng = Number(lng.toFixed(5));
+      point.geo_refined = true;
+      point.needs_training = false;
+
+      if (point._fbKey) {
+        fetch(FIREBASE_POINTS_URL.replace(".json", `/${point._fbKey}.json`), {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ lat: point.lat, lng: point.lng, geo_refined: true, needs_training: false })
+        }).catch(() => {});
+      }
+    }
+
+    if (typeof showToast === "function") showToast(`✅ Точку зафіксовано на (${lat.toFixed(4)}, ${lng.toFixed(4)})`);
+    if (typeof renderMarkers === "function") renderMarkers();
+    if (typeof renderTrafficLights === "function") renderTrafficLights();
+  }
+
+  // =========================================================================
+  // 6. МОДАЛКА ПЕРЕНЕСЕННЯ ЗА АДРЕСОЮ
   // =========================================================================
   window.openTrainingModal = function (point, marker) {
     window.activeActionPoint = point;
@@ -271,9 +495,6 @@
     if (modal) modal.style.display = "none";
   };
 
-  // =========================================================================
-  // 5. ПІДТВЕРДЖЕННЯ ПЕРЕНЕСЕННЯ ТА ЗБЕРЕЖЕННЯ ОЧИЩЕНОГО ПРАВИЛА
-  // =========================================================================
   function selectStreetForRelocation(streetObj) {
     const p = window.activeActionPoint;
     if (!p) return;
@@ -353,11 +574,8 @@
     const pr = window.pendingRelocation;
     if (!pr || !pr.point) return;
 
-    const fbKey = pr.point._fbKey;
+    window.startDirectManualDrag(pr.point, window.activeActionMarker);
     window.pendingRelocation = null;
-    if (typeof startDirectManualDrag === "function") {
-      startDirectManualDrag(fbKey);
-    }
   };
 
   async function saveRuleToKnowledgeBase(phrase, streetName, lat, lng) {
@@ -386,7 +604,7 @@
   }
 
   // =========================================================================
-  // 6. РУЧНЕ ОЧИЩЕННЯ БАЗИ ЗНАНЬ (ТІЛЬКИ ПО КНОПЦІ З ПІДТВЕРДЖЕННЯМ)
+  // 7. ЖУРНАЛ ПРИВ'ЯЗОК ІІ ТА РУЧНЕ ОЧИЩЕННЯ
   // =========================================================================
   window.cleanAllExistingRules = async function () {
     if (!confirm("Очистити всі наявні правила в базі від сміття (смайлів, описів авто та слів 'блокпост/чисто')?")) {
@@ -433,9 +651,6 @@
     }
   };
 
-  // =========================================================================
-  // 7. ЖУРНАЛ ПРИВ'ЯЗОК ІІ (ПЕРЕГЛЯД, РЕДАГУВАННЯ, ВИДАЛЕННЯ)
-  // =========================================================================
   window.openBindingJournal = async function () {
     let journalModal = document.getElementById("bindingJournalModal");
     if (!journalModal) {
@@ -489,7 +704,7 @@
         if (!item) return;
         const phrase = item.phrase || item.text || item.raw_text || "—";
         const street = item.street || item.name || item.address || "Невідомо";
-        const dateStr = item.created_at ? new Date(item.created_at).toLocaleDateString([], { day: '2-digit', month: '2-digit', year: 'numeric' }) : "17.10.2026";
+        const dateStr = item.created_at ? new Date(item.created_at).toLocaleDateString([], { day: '2-digit', month: '2-digit', year: 'numeric' }) : "18.10.2026";
         const timeStr = item.created_at ? new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "12:00";
         const coordsStr = item.lat && item.lng ? `(${Number(item.lat).toFixed(4)}, ${Number(item.lng).toFixed(4)})` : "";
 
