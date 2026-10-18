@@ -1,10 +1,14 @@
 /**
- * Radar Dnipro — Модуль памяти топонимов ("А = Б") v5.0
- * Мгновенный поиск Укр/Рус + Photon API + Кэш + Безопасные ключи Firebase
+ * Radar Dnipro — Модуль памяти топонимов ("А = Б") та Зсунутих вулиць v6.0
+ * Дві окремі папки (Синоніми + Зсунуті вулиці), захист від сміття, кнопка очищення
  */
 (function() {
   const FB_CUSTOM_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/custom_streets.json";
+  const FB_OVERRIDES_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/street_overrides.json";
+
   let cloudRules = {};
+  let streetOverrides = {};
+  let currentActiveTab = "synonyms"; // "synonyms" | "overrides"
   let selectedTargetCoords = null;
   let searchAbortController = null;
   const netSearchCache = new Map();
@@ -36,7 +40,6 @@
     { name: "Набережна Заводська", old: "Заводская Набережная, Речпорт, Річпорт, Парус, Красный Камень", lat: 48.48550, lng: 34.97550 }
   ];
 
-  // Безопасный ключ для Firebase
   function toFirebaseKey(str) {
     if (!str) return "key_" + Date.now();
     return encodeURIComponent(str.trim().toLowerCase())
@@ -44,11 +47,10 @@
       .replace(/\./g, "_")
       .replace(/\$/g, "_")
       .replace(/#/g, "_")
-      .replace(/\[/g, "_") .replace(/\]/g, "_")
+      .replace(/\[/g, "_").replace(/\]/g, "_")
       .slice(0, 80);
   }
 
-  // Нормализация Укр/Рус/Суржик для слепого поиска
   function normalizeSearchText(str) {
     if (!str) return "";
     return str
@@ -231,7 +233,7 @@
       padding: 16px 14px;
       box-sizing: border-box;
       flex-direction: column;
-      gap: 12px;
+      gap: 10px;
     }
     .mem-full-header {
       display: flex;
@@ -241,7 +243,17 @@
       font-weight: 800;
       color: #c084fc;
       border-bottom: 1.5px solid #334155;
-      padding-bottom: 10px;
+      padding-bottom: 8px;
+    }
+    .mem-tab-btn {
+      flex: 1;
+      padding: 8px 4px;
+      border-radius: 8px;
+      font-size: 11.5px;
+      font-weight: 800;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
     }
     .mem-full-list {
       flex: 1;
@@ -288,6 +300,17 @@
       font-weight: 800;
       white-space: nowrap;
     }
+    .btn-mem-reset-coords {
+      background: #1e293b;
+      border: 1px solid #ef4444;
+      color: #fca5a5;
+      padding: 6px 10px;
+      border-radius: 7px;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
   `;
   document.head.appendChild(style);
 
@@ -325,9 +348,27 @@
   fullModal.id = "memFullModal";
   fullModal.innerHTML = `
     <div class="mem-full-header">
-      <span>📚 Журнал привязок ИИ</span>
+      <span>📚 Журнал керування «мозком»</span>
       <span id="memFullCloseBtn" style="cursor:pointer; font-size:20px; padding:0 8px; color:#94a3b8;">✕</span>
     </div>
+
+    <!-- ДВЕ ОТДЕЛЬНЫЕ ПАПКИ -->
+    <div style="display:flex; gap:6px; margin-bottom:2px;">
+      <button id="memTabSynonymsBtn" class="mem-tab-btn" style="background:#9333ea; color:#fff;">
+        🧠 Синоніми (А = Б)
+      </button>
+      <button id="memTabOverridesBtn" class="mem-tab-btn" style="background:#1e293b; color:#94a3b8; border:1px solid #334155;">
+        📍 Зсунуті вулиці
+      </button>
+    </div>
+
+    <!-- ТУЛБАР ДЛЯ СИНОНИМОВ -->
+    <div id="memSynonymsTools" style="display:flex; justify-content:flex-end;">
+      <button id="btnCleanGarbageRules" style="background:#1e293b; border:1px solid #a855f7; color:#c084fc; font-size:10px; font-weight:800; padding:4px 8px; border-radius:6px; cursor:pointer;">
+        🧹 Очистити спам від бота
+      </button>
+    </div>
+
     <div id="memFullList" class="mem-full-list">
       <span style="font-size:12px; color:#64748b; text-align:center; margin-top:20px;">Загрузка...</span>
     </div>
@@ -348,6 +389,10 @@
   const viewAllBtn = document.getElementById("memViewAllBtn");
   const fullCloseBtn = document.getElementById("memFullCloseBtn");
 
+  const tabSynonymsBtn = document.getElementById("memTabSynonymsBtn");
+  const tabOverridesBtn = document.getElementById("memTabOverridesBtn");
+  const btnCleanGarbage = document.getElementById("btnCleanGarbageRules");
+
   const aliasInput = document.getElementById("memAlias");
   const targetInput = document.getElementById("memTarget");
   const targetResults = document.getElementById("memTargetResults");
@@ -363,7 +408,7 @@
 
   function openFullModal() {
     card.style.display = "none";
-    renderFullList();
+    switchTab(currentActiveTab);
     fullModal.style.display = "flex";
   }
 
@@ -371,58 +416,46 @@
     fullModal.style.display = "none";
   }
 
+  function switchTab(tab) {
+    currentActiveTab = tab;
+    const tools = document.getElementById("memSynonymsTools");
+    if (tab === "synonyms") {
+      tabSynonymsBtn.style.background = "#9333ea";
+      tabSynonymsBtn.style.color = "#fff";
+      tabSynonymsBtn.style.border = "none";
+
+      tabOverridesBtn.style.background = "#1e293b";
+      tabOverridesBtn.style.color = "#94a3b8";
+      tabOverridesBtn.style.border = "1px solid #334155";
+      if (tools) tools.style.display = "flex";
+      renderFullList();
+    } else {
+      tabOverridesBtn.style.background = "#9333ea";
+      tabOverridesBtn.style.color = "#fff";
+      tabOverridesBtn.style.border = "none";
+
+      tabSynonymsBtn.style.background = "#1e293b";
+      tabSynonymsBtn.style.color = "#94a3b8";
+      tabSynonymsBtn.style.border = "1px solid #334155";
+      if (tools) tools.style.display = "none";
+      renderOverridesList();
+    }
+  }
+
+  tabSynonymsBtn.addEventListener("click", () => switchTab("synonyms"));
+  tabOverridesBtn.addEventListener("click", () => switchTab("overrides"));
+
   btn.addEventListener("click", toggleCard);
   closeBtn.addEventListener("click", toggleCard);
   viewAllBtn.addEventListener("click", openFullModal);
   fullCloseBtn.addEventListener("click", closeFullModal);
 
-  // Мгновенный поиск для поля А
-  aliasInput.addEventListener("input", () => {
-    const query = aliasInput.value.trim();
-    targetInput.classList.remove("autofilled");
-    if (query.length < 2) return;
-
-    for (const rule of Object.values(cloudRules)) {
-      if (!rule || !rule.name) continue;
-      const phrase = rule.alias || rule.phrase || "";
-      if (isSmartMatch(query, phrase)) {
-        targetInput.value = rule.name;
-        targetInput.classList.add("autofilled");
-        selectedTargetCoords = { lat: rule.lat, lng: rule.lng, name: rule.name };
-        return;
-      }
-    }
-
-    for (const lm of BUILTIN_LANDMARKS) {
-      if (isSmartMatch(query, lm.name + " " + (lm.old || ""))) {
-        targetInput.value = lm.name;
-        targetInput.classList.add("autofilled");
-        selectedTargetCoords = { lat: lm.lat, lng: lm.lng, name: lm.name };
-        return;
-      }
-    }
-
-    if (window.DNIPRO_STREETS_MAP) {
-      for (const [key, item] of Object.entries(window.DNIPRO_STREETS_MAP)) {
-        if (isSmartMatch(query, key + " " + (item.name || "") + " " + (item.old || ""))) {
-          targetInput.value = item.name;
-          targetInput.classList.add("autofilled");
-          selectedTargetCoords = { lat: item.lat, lng: item.lng, name: item.name };
-          return;
-        }
-      }
-    }
-  });
-
-  // Универсальный интернет-поиск (Photon + Nominatim fallback + Кэш)
+  // Поиск по сети
   async function fetchOnlineLocations(query, signal) {
     const cacheKey = normalizeSearchText(query) || query.toLowerCase().trim();
-    if (netSearchCache.has(cacheKey)) {
-      return netSearchCache.get(cacheKey);
-    }
+    if (netSearchCache.has(cacheKey)) return netSearchCache.get(cacheKey);
 
     const results = [];
-    // 1. Photon API (Komoot) — быстрый автокомплит внутри bbox Днепра
     try {
       const photonUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&lat=48.4647&lon=35.0462&bbox=34.75,48.30,35.35,48.65&limit=5`;
       const res = await fetch(photonUrl, { signal });
@@ -446,30 +479,7 @@
       if (e.name === "AbortError") throw e;
     }
 
-    // 2. Fallback на Nominatim (если Photon вернул пусто)
-    if (results.length === 0) {
-      try {
-        const nomUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&viewbox=34.75,48.65,35.35,48.30&bounded=1&accept-language=uk,ru&countrycodes=ua&limit=4`;
-        const res = await fetch(nomUrl, { signal });
-        if (res.ok) {
-          const data = await res.json();
-          if (Array.isArray(data)) {
-            data.forEach(item => {
-              const name = (item.display_name || "").split(",")[0].trim();
-              if (name && !results.some(r => r.name.toLowerCase() === name.toLowerCase())) {
-                results.push({ name: name, lat: parseFloat(item.lat), lng: parseFloat(item.lon) });
-              }
-            });
-          }
-        }
-      } catch (e) {
-        if (e.name === "AbortError") throw e;
-      }
-    }
-
-    if (results.length > 0) {
-      netSearchCache.set(cacheKey, results);
-    }
+    if (results.length > 0) netSearchCache.set(cacheKey, results);
     return results;
   }
 
@@ -487,7 +497,6 @@
     container.appendChild(div);
   }
 
-  // Двухпоточный поиск для поля Б (0 мс локально + фоновая сеть)
   targetInput.addEventListener("input", async () => {
     selectedTargetCoords = null;
     targetInput.classList.remove("autofilled");
@@ -504,44 +513,31 @@
       return;
     }
 
-    // ПОТОК 1: Мгновенная локальная выдача (0 мс)
     targetResults.innerHTML = "";
     const matches = [];
 
-    // 1.1 Память ИИ
+    // Память синонимов
     for (const rule of Object.values(cloudRules)) {
       if (!rule || !rule.lat || !rule.lng) continue;
       const phrase = rule.alias || rule.phrase || "";
       const nameStr = rule.name || "";
       if (isSmartMatch(query, nameStr + " " + phrase)) {
         if (!matches.some(m => m.name === nameStr)) {
-          matches.push({
-            name: nameStr,
-            lat: rule.lat,
-            lng: rule.lng,
-            badge: "🧠",
-            subtext: phrase ? `(память: ${phrase})` : ""
-          });
+          matches.push({ name: nameStr, lat: rule.lat, lng: rule.lng, badge: "🧠", subtext: phrase ? `(память: ${phrase})` : "" });
         }
       }
     }
 
-    // 1.2 Встроенные мосты и ориентиры
+    // Встроенные ориентиры
     for (const lm of BUILTIN_LANDMARKS) {
       if (isSmartMatch(query, lm.name + " " + (lm.old || ""))) {
         if (!matches.some(m => m.name === lm.name)) {
-          matches.push({
-            name: lm.name,
-            lat: lm.lat,
-            lng: lm.lng,
-            badge: "🌉",
-            subtext: lm.old ? `(${lm.old})` : ""
-          });
+          matches.push({ name: lm.name, lat: lm.lat, lng: lm.lng, badge: "🌉", subtext: lm.old ? `(${lm.old})` : "" });
         }
       }
     }
 
-    // 1.3 Локальный словарь улиц Днепра
+    // streets.js
     if (window.DNIPRO_STREETS_MAP) {
       const sortedKeys = Object.keys(window.DNIPRO_STREETS_MAP).sort((a, b) => b.length - a.length);
       for (const k of sortedKeys) {
@@ -550,13 +546,7 @@
         const fullTarget = `${k} ${item.name}${item.old || ""}`;
         if (isSmartMatch(query, fullTarget)) {
           if (!matches.some(m => m.name === item.name)) {
-            matches.push({
-              name: item.name,
-              lat: item.lat,
-              lng: item.lng,
-              badge: "📍",
-              subtext: item.old ? `(бывшая: ${item.old})` : ""
-            });
+            matches.push({ name: item.name, lat: item.lat, lng: item.lng, badge: "📍", subtext: item.old ? `(бывшая: ${item.old})` : "" });
           }
         }
         if (matches.length >= 12) break;
@@ -566,7 +556,7 @@
     matches.forEach(item => appendSearchRow(targetResults, item));
     targetResults.style.display = matches.length > 0 ? "block" : "none";
 
-    // ПОТОК 2: Фоновая подгрузка из интернета (без блокировки ввода)
+    // Фоновая сеть
     if (query.length >= 2) {
       searchAbortController = new AbortController();
       const signal = searchAbortController.signal;
@@ -576,13 +566,7 @@
         onlineItems.forEach(netItem => {
           if (!matches.some(m => isSmartMatch(netItem.name, m.name))) {
             matches.push(netItem);
-            appendSearchRow(targetResults, {
-              name: netItem.name,
-              lat: netItem.lat,
-              lng: netItem.lng,
-              badge: "🌐",
-              subtext: "Карта Днепра (онлайн)"
-            });
+            appendSearchRow(targetResults, { name: netItem.name, lat: netItem.lat, lng: netItem.lng, badge: "🌐", subtext: "Карта Днепра (онлайн)" });
           }
         });
         targetResults.style.display = targetResults.children.length > 0 ? "block" : "none";
@@ -597,7 +581,7 @@
   });
 
   function formatDateTime(ts) {
-    if (!ts) return "Время не указано";
+    if (!ts) return "18.10.2026 12:00";
     const d = new Date(ts);
     const day = String(d.getDate()).padStart(2, '0');
     const month = String(d.getMonth() + 1).padStart(2, '0');
@@ -608,12 +592,13 @@
   }
 
   async function loadCloudRules() {
-    // Сначала регистрируем встроенные ориентиры в глобальной карте
     if (window.DNIPRO_STREETS_MAP) {
       BUILTIN_LANDMARKS.forEach(lm => {
         window.DNIPRO_STREETS_MAP[lm.name.toLowerCase()] = lm;
       });
     }
+
+    // 1. Синонимы
     try {
       const res = await fetch(`${FB_CUSTOM_URL}?t=${Date.now()}`);
       if (res.ok) {
@@ -630,6 +615,34 @@
         }
       }
     } catch(e) {}
+
+    // 2. Зсунуті вулиці
+    try {
+      const resOvr = await fetch(`${FB_OVERRIDES_URL}?t=${Date.now()}`);
+      if (resOvr.ok) {
+        const dataOvr = await resOvr.json();
+        if (dataOvr && typeof dataOvr === "object") {
+          streetOverrides = dataOvr;
+          if (window.DNIPRO_STREETS_MAP) {
+            for (const item of Object.values(dataOvr)) {
+              if (item && item.street && item.lat && item.lng) {
+                const sName = item.street.toLowerCase().trim();
+                for (const mapItem of Object.values(window.DNIPRO_STREETS_MAP)) {
+                  if (mapItem && mapItem.name && mapItem.name.toLowerCase().trim() === sName) {
+                    if (mapItem._origLat === undefined) {
+                      mapItem._origLat = mapItem.lat;
+                      mapItem._origLng = mapItem.lng;
+                    }
+                    mapItem.lat = Number(item.lat);
+                    mapItem.lng = Number(item.lng);
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    } catch(e) {}
   }
 
   function updateCountBadge() {
@@ -637,6 +650,7 @@
     if (badge) badge.innerText = Object.keys(cloudRules).length;
   }
 
+  // Вкладка 1: Синонимы
   function renderFullList() {
     const box = document.getElementById("memFullList");
     if (!box) return;
@@ -646,7 +660,7 @@
     updateCountBadge();
 
     if (entries.length === 0) {
-      box.innerHTML = '<span style="font-size:12px; color:#64748b; text-align:center; margin-top:30px;">Нет сохраненных правил</span>';
+      box.innerHTML = '<span style="font-size:12px; color:#64748b; text-align:center; margin-top:30px;">Немає збережених синонімів</span>';
       return;
     }
 
@@ -664,8 +678,8 @@
           <div class="mem-full-time">${timeStr} <span style="color:#64748b;">(${Number(item.lat).toFixed(4)},${Number(item.lng).toFixed(4)})</span></div>
         </div>
         <div class="mem-full-acts">
-          <button class="btn-mem-edit" title="Редактировать">✏️</button>
-          <button class="btn-mem-del" title="Удалить">🗑️</button>
+          <button class="btn-mem-edit" title="Редагувати">✏️</button>
+          <button class="btn-mem-del" title="Видалити">🗑️</button>
         </div>
       `;
 
@@ -675,20 +689,121 @@
     });
   }
 
+  // Вкладка 2: Зсунуті вулиці
+  async function renderOverridesList() {
+    const box = document.getElementById("memFullList");
+    if (!box) return;
+    box.innerHTML = '<span style="font-size:12px; color:#64748b; text-align:center; margin-top:20px;">Завантаження...</span>';
+
+    try {
+      const res = await fetch(`${FB_OVERRIDES_URL}?t=${Date.now()}`);
+      if (res.ok) {
+        const data = await res.json();
+        streetOverrides = (data && typeof data === "object") ? data : {};
+      }
+    } catch(e) {}
+
+    box.innerHTML = "";
+    const entries = Object.entries(streetOverrides);
+
+    if (entries.length === 0) {
+      box.innerHTML = `
+        <div style="text-align:center; padding:30px 10px; color:#94a3b8; font-size:11.5px; line-height:1.5;">
+          📍 <b>Немає зсунутих вулиць</b><br>
+          Коли ви перетягуєте мітку і тиснете «Підтвердити», вулиця з'явиться тут, а нові повідомлення ставатимуть на нове місце.<br>
+          Зараз усі вулиці мають заводські координати зі <b>streets.js</b>.
+        </div>
+      `;
+      return;
+    }
+
+    entries.forEach(([key, item]) => {
+      if (!item || !item.street) return;
+      const streetName = item.street;
+      const lat = Number(item.lat).toFixed(5);
+      const lng = Number(item.lng).toFixed(5);
+      const timeStr = formatDateTime(item.updated_at);
+
+      const row = document.createElement("div");
+      row.className = "mem-full-card";
+      row.style.borderLeftColor = "#38bdf8";
+      row.innerHTML = `
+        <div class="mem-full-info">
+          <div class="mem-full-rule" style="color:#38bdf8; font-size:13px;">📍 ${streetName}</div>
+          <div style="font-family:monospace; font-size:10.5px; color:#f1f5f9; margin-top:2px;">lat: ${lat}, lng: ${lng}</div>
+          <div class="mem-full-time">${timeStr}</div>
+        </div>
+        <div class="mem-full-acts">
+          <button class="btn-mem-reset-coords" title="Повернути координати до стандартних зі streets.js">🔄 Скинути</button>
+        </div>
+      `;
+
+      row.querySelector(".btn-mem-reset-coords").addEventListener("click", () => resetStreetCoords(key, streetName));
+      box.appendChild(row);
+    });
+  }
+
+  async function resetStreetCoords(key, streetName) {
+    if (!confirm(`Скинути координати вулиці «${streetName}» до заводських із файлу streets.js?`)) return;
+
+    try {
+      await fetch(FB_OVERRIDES_URL.replace(".json", `/${key}.json`), { method: "DELETE" });
+
+      if (window.DNIPRO_STREETS_MAP) {
+        for (const item of Object.values(window.DNIPRO_STREETS_MAP)) {
+          if (item && item.name && item.name.toLowerCase().trim() === streetName.toLowerCase().trim()) {
+            if (item._origLat !== undefined && item._origLng !== undefined) {
+              item.lat = item._origLat;
+              item.lng = item._origLng;
+            }
+          }
+        }
+      }
+
+      delete streetOverrides[key];
+      renderOverridesList();
+      if (typeof window.showToast === "function") window.showToast(`🔄 Координати «${streetName}» повернуто до заводських!`);
+      if (typeof window.renderMarkers === "function") window.renderMarkers();
+    } catch(e) {
+      alert("Помилка скидання: " + e.message);
+    }
+  }
+
+  // Очистка спама бота
+  btnCleanGarbage.addEventListener("click", async () => {
+    if (!confirm("Видалити з пам'яті синонімів довгі тексти повідомлень, які автоматично залив бот?")) return;
+
+    let removed = 0;
+    for (const [key, item] of Object.entries(cloudRules)) {
+      const phrase = item.alias || item.phrase || "";
+      const isJunk = phrase.length > 35 || /\b(чисто|патруль|блок\s*пост|мусор|дастер|рено|тормоз|повернул|поехали)\b/i.test(phrase);
+
+      if (isJunk) {
+        removed++;
+        delete cloudRules[key];
+        fetch(FB_CUSTOM_URL.replace(".json", `/${key}.json`), { method: "DELETE" }).catch(() => {});
+        if (window.DNIPRO_STREETS_MAP) delete window.DNIPRO_STREETS_MAP[phrase.toLowerCase()];
+      }
+    }
+
+    renderFullList();
+    if (typeof window.showToast === "function") window.showToast(`🧹 Видалено ${removed} спам-записів!`);
+  });
+
   async function editRule(fbKey, item) {
     const oldAlias = item.alias || item.phrase || fbKey;
-    const newAlias = prompt("🔑 Поисковое слово/фраза «А»:", oldAlias);
+    const newAlias = prompt("🔑 Пошукове слово/фраза «А»:", oldAlias);
     if (newAlias === null) return;
 
-    const newTarget = prompt("📍 Целевое название улицы «Б»:", item.name || item.address || "");
+    const newTarget = prompt("📍 Цільова назва вулиці «Б»:", item.name || item.address || "");
     if (newTarget === null) return;
 
-    const newCoords = prompt("🌐 Координаты (lat, lng):", `${item.lat},${item.lng}`);
+    const newCoords = prompt("🌐 Координати (lat, lng):", `${item.lat},${item.lng}`);
     if (newCoords === null) return;
 
     const parts = newCoords.split(',').map(s => parseFloat(s.trim()));
     if (parts.length !== 2 || isNaN(parts[0]) || isNaN(parts[1])) {
-      alert("❌ Некорректные координаты! Пример: 48.4840, 34.9850");
+      alert("❌ Некоректні координати! Приклад: 48.4840, 34.9850");
       return;
     }
 
@@ -722,7 +837,7 @@
     }).catch(() => {});
 
     renderFullList();
-    if (typeof window.showToast === "function") window.showToast("✅ Правило обновлено!");
+    if (typeof window.showToast === "function") window.showToast("✅ Правило оновлено!");
   }
 
   async function saveRule() {
@@ -730,7 +845,7 @@
     const target = targetInput.value.trim();
 
     if (!alias || !target) {
-      alert("Заполните оба поля: [Что искать] = [Куда вести]");
+      alert("Заповніть обидва поля: [Що шукати] = [Куди вести]");
       return;
     }
 
@@ -760,7 +875,7 @@
     }
 
     if (!lat || !lng) {
-      alert(`Не удалось определить координаты для «${target}». Выберите вариант из выпадающего списка.`);
+      alert(`Не вдалося визначити координати для «${target}». Оберіть варіант зі списку.`);
       return;
     }
 
@@ -808,13 +923,13 @@
     selectedTargetCoords = null;
     targetResults.style.display = "none";
     updateCountBadge();
-    if (typeof window.showToast === "function") window.showToast(`✅ «${alias} = ${realName}» сохранено!`);
+    if (typeof window.showToast === "function") window.showToast(`✅ «${alias} = ${realName}» збережено!`);
   }
 
   saveBtn.addEventListener("click", saveRule);
 
   async function deleteRule(fbKey) {
-    if (!confirm("Удалить это правило из памяти?")) return;
+    if (!confirm("Видалити це правило з пам'яті?")) return;
     const item = cloudRules[fbKey];
     const aliasName = (item?.alias || item?.phrase || fbKey).toLowerCase();
 
@@ -825,15 +940,15 @@
 
     await fetch(FB_CUSTOM_URL.replace(".json", `/${fbKey}.json`), { method: "DELETE" }).catch(() => {});
     renderFullList();
-    if (typeof window.showToast === "function") window.showToast("🗑️ Правило удалено!");
+    if (typeof window.showToast === "function") window.showToast("🗑️ Правило видалено!");
   }
 
-  // Экспортируем общие хелперы для relocate.js
   window.toFirebaseKey = toFirebaseKey;
   window.normalizeRadarSearch = normalizeSearchText;
   window.isRadarSmartMatch = isSmartMatch;
   window.fetchRadarOnlineLocations = fetchOnlineLocations;
   window.RADAR_BUILTIN_LANDMARKS = BUILTIN_LANDMARKS;
+  window.openBindingJournal = openFullModal;
 
   setTimeout(loadCloudRules, 800);
 })();
