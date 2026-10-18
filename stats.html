@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Аналітика маршруту — Дніпро</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -81,7 +83,7 @@
       box-shadow: 0 0 12px rgba(249, 115, 22, 0.5);
     }
 
-    /* ВКЛАДКИ (5 ШТУК) */
+    /* НАВІГАЦІЯ (6 ВКЛАДОК) */
     .tabs-nav {
       display: flex; gap: 5px; margin-bottom: 14px; background: #0b1120;
       padding: 4px; border-radius: 10px; border: 1px solid #1e293b;
@@ -134,6 +136,47 @@
     .feed-msg-badge { font-size: 9px; font-weight: 800; padding: 1px 5px; border-radius: 4px; }
     .feed-badge-red { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid #ef4444; }
     .feed-badge-green { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid #10b981; }
+
+    /* СТИЛІ ДОДАТКОВОЇ ВКЛАДКИ: БЕЗКІНЕЧНИЙ ГРАФІК З ЗУМОМ */
+    .infinite-chart-layout {
+      display: flex; gap: 12px; align-items: flex-start;
+    }
+    .infinite-sidebar {
+      width: 175px; flex-shrink: 0; background: #070d1d; border: 1px solid #1e293b;
+      border-radius: 10px; padding: 10px; display: flex; flex-direction: column; gap: 6px;
+    }
+    .infinite-sidebar-title {
+      font-size: 10.5px; font-weight: 900; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .infinite-btn-point {
+      display: flex; align-items: center; gap: 7px; padding: 6px 8px; border-radius: 6px;
+      background: #0b1120; border: 1px solid #1e293b; color: #94a3b8; font-size: 11px;
+      font-weight: 800; cursor: pointer; text-align: left; transition: all 0.15s; user-select: none;
+    }
+    .infinite-btn-point:hover { background: #0f172a; color: #f8fafc; }
+    .infinite-btn-point.active {
+      background: #0f172a; border-color: currentColor; color: #fff !important;
+      box-shadow: 0 0 10px currentColor;
+    }
+    .infinite-point-dot {
+      width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0;
+    }
+    .infinite-chart-area {
+      flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px;
+    }
+    .infinite-chart-tools {
+      display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;
+    }
+    .infinite-zoom-btn-group { display: flex; gap: 5px; }
+    .btn-inf-zoom {
+      background: #0f172a; border: 1px solid #334155; color: #94a3b8;
+      padding: 4px 9px; border-radius: 6px; font-size: 10.5px; font-weight: 800; cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-inf-zoom:hover, .btn-inf-zoom.active {
+      background: #0284c7; border-color: #00f3ff; color: #fff; box-shadow: 0 0 8px rgba(0, 243, 255, 0.35);
+    }
 
     /* ХРОНОМЕТРАЖ І ЦИФЕРБЛАТ */
     .timeline-day-switch { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
@@ -384,6 +427,8 @@
     @media (max-width: 650px) {
       .months-year-grid { grid-template-columns: repeat(3, 1fr); }
       .year-summary-strip { grid-template-columns: 1fr; }
+      .infinite-chart-layout { flex-direction: column; }
+      .infinite-sidebar { width: 100%; }
     }
   </style>
 </head>
@@ -416,9 +461,10 @@
       </button>
     </div>
 
-    <!-- НАВІГАЦІЯ (5 ВКЛАДОК) -->
+    <!-- НАВІГАЦІЯ (ВКЛАДКА №3 ВСТАЛА ДРУГОЮ: ТЕКСТИ ➔ ГРАФІК ➔ ХРОНОМЕТРАЖ) -->
     <div class="tabs-nav">
       <button id="tabBtn1" class="tab-btn active" onclick="setTab(1)">💬 Тексти з каналу</button>
+      <button id="tabBtn3" class="tab-btn" onclick="setTab(3)">📈 Довготривалий графік</button>
       <button id="tabBtn2" class="tab-btn" onclick="setTab(2)">⏱️ Хронометраж</button>
       <button id="tabBtn4" class="tab-btn" onclick="setTab(4)">🕒 Години та дні</button>
       <button id="tabBtn5" class="tab-btn" onclick="setTab(5)">📅 По місяцях (Рік)</button>
@@ -440,6 +486,46 @@
 
       <div class="feed-streets-tabs" id="feedStreetPills"></div>
       <div id="streetFeedContainer"></div>
+    </div>
+
+    <!-- ТАБ 3: НОВИЙ ДОВГОТРИВАЛИЙ ГРАФІК (З 1 ЖОВТНЯ, ЗУМ, ВИХІДНІ, 4+ ПОВІДОМЛЕННЯ = 1 БП) -->
+    <div id="tabContent3" class="hud-card" style="display:none;">
+      <div class="hud-card-title">
+        <span>📈 Довготривалий графік активності блокпостів (з 1 жовтня):</span>
+      </div>
+
+      <div class="infinite-chart-layout">
+        <!-- БОКОВА ПАНЕЛЬ КЕРУВАННЯ ТОЧКАМИ (ЛІВОРУЧ ВІД ОСІ Y) -->
+        <div class="infinite-sidebar">
+          <div class="infinite-sidebar-title">
+            <span>Точки маршруту:</span>
+          </div>
+          <div style="display:flex; gap:4px; margin-bottom:6px;">
+            <button class="btn-inf-zoom" style="flex:1;" onclick="toggleAllInfinitePoints(true)">Всі</button>
+            <button class="btn-inf-zoom" style="flex:1;" onclick="toggleAllInfinitePoints(false)">Скинути</button>
+          </div>
+          <div id="infinitePointsButtonsList" style="display:flex; flex-direction:column; gap:5px;"></div>
+        </div>
+
+        <!-- САМЕ ПОЛОТНО ГРАФІКА З ТУЛБАРОМ ЗУМУ -->
+        <div class="infinite-chart-area">
+          <div class="infinite-chart-tools">
+            <span style="font-size:10.5px; color:#94a3b8; font-weight:700;">
+              🔍 Зум: коліщатко миші / щипок пальцями. Рухайте вліво-вправо.
+            </span>
+            <div class="infinite-zoom-btn-group">
+              <button class="btn-inf-zoom" onclick="zoomInfiniteChart('week')">🔍 7 днів</button>
+              <button class="btn-inf-zoom" onclick="zoomInfiniteChart('month')">📅 30 днів</button>
+              <button class="btn-inf-zoom" onclick="zoomInfiniteChart('all')">🌐 З 1 жовтня</button>
+              <button class="btn-inf-zoom" style="color:#ef4444;" onclick="resetInfiniteZoom()">↩️ Скинути зум</button>
+            </div>
+          </div>
+
+          <div class="chart-canvas-wrap" style="height:320px;">
+            <canvas id="canvasInfiniteTimeline"></canvas>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- ТАБ 2: ХРОНОМЕТРАЖ + ЦИФЕРБЛАТ ГОДИН -->
@@ -595,7 +681,6 @@
   </div>
 
   <script>
-    // Запам'ятовуємо, що останній перегляд аналітики був саме на сторінці статистики
     localStorage.setItem("radar_last_analytics_page", "stats.html");
 
     const SECRET_KEY_HASH = "570984";
@@ -639,7 +724,6 @@
     let rawArchive = [];
     
     let activeTabNum = parseInt(localStorage.getItem("stats_active_tab") || "1");
-    if (activeTabNum === 3) activeTabNum = 4;
 
     let feedPeriod = localStorage.getItem("stats_feed_period") || "today";
     let selectedFeedStreet = localStorage.getItem("stats_feed_street") || "all";
@@ -657,7 +741,18 @@
     let routeHourlyChartInstance = null;
     let yearlyMonthsChartInstance = null;
     let timelineIntervalsChartInstance = null;
+    let infiniteChartInstance = null;
     let targetSessionsGlobal = {};
+
+    // Фільтр для довготривалого графіка (вибрані точки)
+    let infiniteSelectedPoints = new Set();
+    try {
+      const savedInf = localStorage.getItem("stats_infinite_points");
+      if (savedInf) infiniteSelectedPoints = new Set(JSON.parse(savedInf));
+      else infiniteSelectedPoints = new Set(["pavlova", "rechport", "krasnozavodska", "vodolechebnitsa", "vodokachka", "naberezhna", "svobody"]);
+    } catch(e) {
+      infiniteSelectedPoints = new Set(["pavlova", "rechport", "krasnozavodska", "vodolechebnitsa", "vodokachka", "naberezhna", "svobody"]);
+    }
 
     function getSavedSet(key) {
       try {
@@ -868,6 +963,7 @@ ${recentReports}
       renderFeedStreetPills();
       renderPillsControls('tab4');
       renderPillsControls('tab5');
+      renderInfiniteSidebar();
 
       setTab(activeTabNum);
       renderAll();
@@ -1045,6 +1141,267 @@ ${recentReports}
       });
     }
 
+    // =========================================================================
+    // 📈 ЛОГІКА ДОВГОТРИВАЛОГО ГРАФІКА З 1 ЖОВТНЯ ТА ЗУМОМ
+    // =========================================================================
+    function renderInfiniteSidebar() {
+      const container = document.getElementById("infinitePointsButtonsList");
+      if (!container) return;
+      container.innerHTML = "";
+
+      TARGET_CHECKPOINTS.forEach(t => {
+        const btn = document.createElement("button");
+        const isActive = infiniteSelectedPoints.has(t.id);
+        btn.className = `infinite-btn-point ${isActive ? 'active' : ''}`;
+        btn.style.color = t.color;
+        btn.innerHTML = `<span class="infinite-point-dot" style="background:${t.color}; box-shadow:0 0 6px ${t.color};"></span><span>${t.name}</span>`;
+        btn.onclick = () => {
+          if (infiniteSelectedPoints.has(t.id)) {
+            infiniteSelectedPoints.delete(t.id);
+          } else {
+            infiniteSelectedPoints.add(t.id);
+          }
+          localStorage.setItem("stats_infinite_points", JSON.stringify(Array.from(infiniteSelectedPoints)));
+          renderInfiniteSidebar();
+          renderInfiniteTimelineChart();
+        };
+        container.appendChild(btn);
+      });
+    }
+
+    window.toggleAllInfinitePoints = function(showAll) {
+      if (showAll) {
+        infiniteSelectedPoints = new Set(TARGET_CHECKPOINTS.map(t => t.id));
+      } else {
+        infiniteSelectedPoints.clear();
+      }
+      localStorage.setItem("stats_infinite_points", JSON.stringify(Array.from(infiniteSelectedPoints)));
+      renderInfiniteSidebar();
+      renderInfiniteTimelineChart();
+    };
+
+    // Підрахунок реальних блокпостів (Мінімум 4 червоних повідомлення до "чисто" або паузи 90 хв)
+    function calculateDailyCheckpoints(reports) {
+      if (!reports || reports.length === 0) return 0;
+      reports.sort((a, b) => a.time - b.time);
+
+      let totalCpCount = 0;
+      let redCount = 0;
+      let lastReportTime = 0;
+      let inDangerSession = false;
+      const SILENCE_GAP_MS = 90 * 60 * 1000;
+
+      reports.forEach(r => {
+        const isClean = checkIsReportClean(r);
+
+        if (lastReportTime > 0 && (r.time - lastReportTime > SILENCE_GAP_MS)) {
+          if (inDangerSession) {
+            totalCpCount++;
+            inDangerSession = false;
+          }
+          redCount = 0;
+        }
+
+        if (isClean) {
+          if (inDangerSession) {
+            totalCpCount++;
+            inDangerSession = false;
+          }
+          redCount = 0;
+        } else {
+          redCount++;
+          if (redCount >= 4) {
+            inDangerSession = true;
+          }
+        }
+        lastReportTime = r.time;
+      });
+
+      if (inDangerSession) {
+        totalCpCount++;
+      }
+
+      return totalCpCount;
+    }
+
+    // Плагін для підсвічування вихідних (Сб та Нд) темним фоном
+    const weekendBackgroundPlugin = {
+      id: 'weekendBackgroundPlugin',
+      beforeDraw: (chart) => {
+        const { ctx, chartArea: { top, bottom }, scales: { x } } = chart;
+        if (!x) return;
+
+        const labels = chart.data.labels || [];
+        labels.forEach((lbl, idx) => {
+          if (typeof lbl === 'string' && (lbl.startsWith('Сб') || lbl.startsWith('Нд'))) {
+            const xPos = x.getPixelForTick(idx);
+            const nextX = idx < labels.length - 1 ? x.getPixelForTick(idx + 1) : x.getPixelForTick(idx) + 30;
+            const prevX = idx > 0 ? x.getPixelForTick(idx - 1) : x.getPixelForTick(idx) - 30;
+            const colWidth = Math.abs(nextX - prevX) / 2;
+
+            ctx.save();
+            ctx.fillStyle = 'rgba(2, 6, 23, 0.65)';
+            ctx.fillRect(xPos - colWidth / 2, top, colWidth, bottom - top);
+            ctx.restore();
+          }
+        });
+      }
+    };
+
+    function renderInfiniteTimelineChart() {
+      const canvas = document.getElementById("canvasInfiniteTimeline");
+      if (!canvas) return;
+      const ctx = canvas.getContext("2d");
+
+      // 1. Формуємо шкалу днів від 1 жовтня 2026 до сьогодні
+      const startDate = new Date(2026, 9, 1); // 1 жовтня 2026
+      const endDate = new Date();
+      endDate.setHours(23, 59, 59, 999);
+
+      const dayNames = ["Нд", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
+      const dateLabels = [];
+      const dayRanges = [];
+
+      let cur = new Date(startDate);
+      while (cur <= endDate) {
+        const y = cur.getFullYear(), m = cur.getMonth(), d = cur.getDate();
+        const startTs = new Date(y, m, d, 0, 0, 0).getTime();
+        const endTs = new Date(y, m, d, 23, 59, 59, 999).getTime();
+        const dow = dayNames[cur.getDay()];
+        const dStr = `${String(d).padStart(2,'0')}.${String(m+1).padStart(2,'0')}`;
+
+        dateLabels.push(`${dow} ${dStr}`);
+        dayRanges.push({ start: startTs, end: endTs, label: `${dow} ${dStr}` });
+
+        cur.setDate(cur.getDate() + 1);
+      }
+
+      // 2. Створюємо криві для кожної точки
+      const datasets = [];
+      let globalMaxCp = 1;
+
+      TARGET_CHECKPOINTS.forEach(t => {
+        if (!infiniteSelectedPoints.has(t.id)) return;
+
+        const tReports = rawArchive.filter(r => {
+          const txt = ((r.text || "") + " " + (r.address || "")).toLowerCase();
+          return t.regex.test(txt);
+        });
+
+        const dayCounts = dayRanges.map(dr => {
+          const inDay = tReports.filter(r => r.time >= dr.start && r.time <= dr.end);
+          const cpCount = calculateDailyCheckpoints(inDay);
+          if (cpCount > globalMaxCp) globalMaxCp = cpCount;
+          return cpCount;
+        });
+
+        datasets.push({
+          label: t.name,
+          data: dayCounts,
+          borderColor: t.color,
+          backgroundColor: t.color + '33',
+          borderWidth: 2.2,
+          tension: 0.35,
+          pointRadius: 3.5,
+          pointHoverRadius: 6,
+          pointBackgroundColor: t.color,
+          pointBorderColor: '#ffffff',
+          pointBorderWidth: 1.5
+        });
+      });
+
+      if (infiniteChartInstance) infiniteChartInstance.destroy();
+
+      infiniteChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: { labels: dateLabels, datasets: datasets },
+        plugins: [weekendBackgroundPlugin],
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: 'rgba(15, 23, 42, 0.95)',
+              titleColor: '#00f3ff',
+              borderColor: '#0284c7',
+              borderWidth: 1,
+              padding: 10,
+              titleFont: { weight: 'bold' },
+              callbacks: {
+                label: (ctx) => ` ${ctx.dataset.label}: ${ctx.raw} БП`
+              }
+            },
+            zoom: {
+              pan: {
+                enabled: true,
+                mode: 'x',
+                modifierKey: null
+              },
+              zoom: {
+                wheel: { enabled: true, speed: 0.08 },
+                pinch: { enabled: true },
+                mode: 'x'
+              },
+              limits: {
+                x: { min: 0, max: dateLabels.length - 1, minRange: 5 }
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: '#1e293b' },
+              ticks: {
+                color: (val) => {
+                  const lbl = dateLabels[val.index];
+                  if (lbl && (lbl.startsWith('Сб') || lbl.startsWith('Нд'))) return '#f59e0b';
+                  return '#94a3b8';
+                },
+                font: { size: 10, weight: 'bold' },
+                maxRotation: 45,
+                minRotation: 0,
+                autoSkip: true,
+                maxTicksLimit: 20
+              }
+            },
+            y: {
+              min: 0,
+              suggestedMax: Math.max(5, globalMaxCp + 1),
+              grid: { color: '#1e293b' },
+              ticks: {
+                color: '#38bdf8',
+                stepSize: 1,
+                font: { size: 11, weight: 'bold' }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    window.zoomInfiniteChart = function(rangeMode) {
+      if (!infiniteChartInstance) return;
+      const totalPoints = infiniteChartInstance.data.labels.length;
+      if (totalPoints === 0) return;
+
+      infiniteChartInstance.resetZoom();
+
+      if (rangeMode === 'week') {
+        const minIdx = Math.max(0, totalPoints - 7);
+        infiniteChartInstance.zoomScale('x', { min: minIdx, max: totalPoints - 1 }, 'default');
+      } else if (rangeMode === 'month') {
+        const minIdx = Math.max(0, totalPoints - 30);
+        infiniteChartInstance.zoomScale('x', { min: minIdx, max: totalPoints - 1 }, 'default');
+      } else if (rangeMode === 'all') {
+        infiniteChartInstance.resetZoom();
+      }
+    };
+
+    window.resetInfiniteZoom = function() {
+      if (infiniteChartInstance) infiniteChartInstance.resetZoom();
+    };
+
     function buildSessionsForTarget(target) {
       const reports = rawArchive.filter(r => {
         const txt = ((r.text || "") + " " + (r.address || "")).toLowerCase();
@@ -1090,11 +1447,10 @@ ${recentReports}
     }
 
     function setTab(num) {
-      if (num === 3) num = 4;
       activeTabNum = num;
       localStorage.setItem("stats_active_tab", num);
 
-      [1, 2, 4, 5, 6].forEach(i => {
+      [1, 2, 3, 4, 5, 6].forEach(i => {
         const content = document.getElementById(`tabContent${i}`);
         const btn = document.getElementById(`tabBtn${i}`);
         if (content) content.style.display = (i === num) ? 'block' : 'none';
@@ -1102,6 +1458,11 @@ ${recentReports}
       });
 
       if (num === 1) renderFeedTab();
+      if (num === 3) {
+        renderInfiniteSidebar();
+        renderInfiniteTimelineChart();
+        if (infiniteChartInstance) infiniteChartInstance.resize();
+      }
       if (num === 2) {
         renderTimelineChart(targetSessionsGlobal, timelineDayOffset);
         renderClockRadar();
@@ -1139,6 +1500,10 @@ ${recentReports}
       });
 
       renderFeedTab();
+      if (activeTabNum === 3) {
+        renderInfiniteSidebar();
+        renderInfiniteTimelineChart();
+      }
       if (activeTabNum === 2) {
         renderTimelineChart(targetSessionsGlobal, timelineDayOffset);
         renderClockRadar();
