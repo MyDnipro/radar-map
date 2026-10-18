@@ -1,5 +1,5 @@
 /**
- * relocate.js — Модуль перенесення міток, 3-рівневого пошуку, роботи зі стопками та ПК/Мобіль-керування (v5.3)
+ * relocate.js — Модуль перенесення міток, 3-рівневого пошуку, підтримки стопок та ПК/Мобіль-керування (v5.4)
  */
 
 (function () {
@@ -7,7 +7,7 @@
   const FIREBASE_KB_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/knowledge_base.json";
 
   // =========================================================================
-  // 1. КОМПАКТНЕ СИГНАЛЬНЕ МЕРЕХТІННЯ (ЖОВТИЙ + СИНІЙ СТРОБ 6-8px, БЕЗ ЗСУВУ LEAFLET)
+  // 1. СТИЛІ КОМПАКТНОГО МЕРЕХТІННЯ (ЖОВТИЙ + СИНІЙ СТРОБ 6-8px, БЕЗ ЗСУВУ LEAFLET)
   // =========================================================================
   if (!document.getElementById("manual-drag-pulse-style")) {
     const style = document.createElement("style");
@@ -169,7 +169,7 @@
 
     const collectedMatches = [];
 
-    // РІВЕНЬ 1: Пам'ять топонімів ("А = Б")
+    // РІВЕНЬ 1: Пам'ять топонімів
     const memMap = getMemoryToponymsMap();
     let resolvedMemoryTarget = null;
 
@@ -201,7 +201,7 @@
       }
     }
 
-    // РІВЕНЬ 2: Локальний довідник streets.js
+    // РІВЕНЬ 2: Довідник streets.js
     if (typeof DNIPRO_STREETS_MAP !== "undefined") {
       for (const [key, item] of Object.entries(DNIPRO_STREETS_MAP)) {
         const matchesQuery = key.includes(q) || (item.old && item.old.toLowerCase().includes(q)) || item.name.toLowerCase().includes(q);
@@ -290,7 +290,7 @@
   }
 
   // =========================================================================
-  // 5. ДІАГНОСТИКА СТОПОК (ПОШУК ВСІХ ТОЧОК У СТОПЦІ / БУТЕРБРОДІ)
+  // 5. ДІАГНОСТИКА СТОПОК ТА ПРИВ'ЯЗКА ДАНИХ
   // =========================================================================
   function findPointsAtMarkerLocation(marker, primaryPoint) {
     const list = [];
@@ -299,13 +299,12 @@
     const latLng = marker && marker.getLatLng ? marker.getLatLng() : (primaryPoint ? L.latLng(primaryPoint.lat, primaryPoint.lng) : null);
     if (!latLng) return list;
 
-    // Перевірка глобальних масивів точок програми
     const allPts = window.points || window.currentPoints || window.radarPoints || window.allPoints || [];
     if (Array.isArray(allPts)) {
       allPts.forEach(pt => {
         if (!pt || !pt.lat || !pt.lng) return;
         const dist = latLng.distanceTo([pt.lat, pt.lng]);
-        if (dist <= 35) { // Радіус злипання стопки до 35 метрів
+        if (dist <= 35) {
           if (!list.some(item => (item._fbKey && item._fbKey === pt._fbKey) || (item.text && item.text === pt.text))) {
             list.push(pt);
           }
@@ -313,7 +312,6 @@
       });
     }
 
-    // Перевірка кешу Firebase
     if (cachedRadarPoints) {
       for (const [k, cp] of Object.entries(cachedRadarPoints)) {
         if (!cp || !cp.lat || !cp.lng) continue;
@@ -360,7 +358,7 @@
   }
 
   // =========================================================================
-  // 6. УНІВЕРСАЛЬНЕ МЕНЮ ДІЙ (ACTION SHEET) З ВИБОРОМ ТОЧКИ ЗІ СТОПКИ
+  // 6. УНІВЕРСАЛЬНЕ МЕНЮ ДІЙ (ACTION SHEET)
   // =========================================================================
   window.openRelocateActionSheet = function (point, marker) {
     const basePoint = point || resolveMarkerPoint(marker);
@@ -467,7 +465,6 @@
     menu.style.display = "flex";
   };
 
-  // Аліас для сумісності з index.html
   window.openActionSheet = window.openRelocateActionSheet;
 
   // =========================================================================
@@ -480,13 +477,12 @@
     if (!mapContainer || mapContainer._desktopMouseHandled) return;
     mapContainer._desktopMouseHandled = true;
 
-    // Залізне глушіння системного меню Opera/Windows на карті
+    // Глушіння системного меню браузера на карті
     mapContainer.addEventListener("contextmenu", function (e) {
       e.preventDefault();
       e.stopPropagation();
     });
 
-    // Запобігання автоскролу коліщатка в браузері
     mapContainer.addEventListener("auxclick", function (e) {
       if (e.button === 1) {
         e.preventDefault();
@@ -494,7 +490,7 @@
       }
     });
 
-    function handleDesktopClickOnTarget(target, isWheelOrRight) {
+    function handleDesktopClickOnTarget(target) {
       if (!target || !window.map) return;
       let clickedMarker = null;
 
@@ -512,28 +508,28 @@
       }
     }
 
-    // 1. Клік коліщатком миші (СКМ / button === 1)
+    // Клік коліщатком миші (СКМ / button === 1)
     mapContainer.addEventListener("mousedown", function (e) {
       if (e.button === 1) {
         e.preventDefault();
         e.stopPropagation();
         const target = e.target.closest(".leaflet-marker-icon, .leaflet-interactive");
-        if (target) handleDesktopClickOnTarget(target, true);
+        if (target) handleDesktopClickOnTarget(target);
       }
     }, true);
 
-    // 2. Правий клік миші (ПКМ / button === 2)
+    // Правий клік миші (ПКМ / button === 2)
     mapContainer.addEventListener("contextmenu", function (e) {
       e.preventDefault();
       e.stopPropagation();
       const target = e.target.closest(".leaflet-marker-icon, .leaflet-interactive");
-      if (target) handleDesktopClickOnTarget(target, true);
+      if (target) handleDesktopClickOnTarget(target);
     }, true);
   }
   setupDesktopInteractions();
 
   // =========================================================================
-  // 8. ПОВНОЦІННИЙ РУЧНИЙ РЕЖИМ (НЕПЕРЕРВНЕ ПЕРЕТЯГУВАННЯ, ЗУМ, ПІДТВЕРДЖЕННЯ)
+  // 8. РУЧНИЙ РЕЖИМ (НЕПЕРЕРВНИЙ РУХ, ЗУМ, ПІДТВЕРДЖЕННЯ БЕЗ ВІДКАТУ НАЗАД)
   // =========================================================================
   let manualMovingMarker = null;
   let manualOriginalLatLng = null;
@@ -556,7 +552,6 @@
     if (!m && window.activeActionMarker) m = window.activeActionMarker;
     if (!p && window.activeActionPoint) p = window.activeActionPoint;
 
-    // Автоматичний підбір маркера зі шарів карти за точкою p
     if (!m && window.map && p) {
       let minDist = Infinity;
       window.map.eachLayer(l => {
@@ -583,7 +578,6 @@
 
     if (m.closePopup) m.closePopup();
 
-    // 1. Вмикаємо перетягування (якщо це коло — забезпечуємо dragging)
     if (m.dragging) {
       m.dragging.enable();
     } else if (L.Handler && L.Handler.MarkerDrag) {
@@ -591,17 +585,12 @@
       m.dragging.enable();
     }
 
-    // 2. Вмикаємо компактне стробове миготіння
     const iconEl = m.getElement ? m.getElement() : (m._icon || m._path);
     if (iconEl) iconEl.classList.add("marker-blinking-active");
 
-    // 3. Заморожуємо автооновлення карти
     window.isManualDragActive = true;
-
-    // 4. Показуємо панель керування
     showManualDragFloatingBar(m.getLatLng().lat, m.getLatLng().lng);
 
-    // 5. Безперервне пересування без скидань при відпусканні
     m.off("drag");
     m.off("dragend");
 
@@ -623,7 +612,6 @@
       }
     });
 
-    // Підтримка масштабування (зуму) без втрати миготіння та перетягування
     if (window.map) {
       window.map.on("zoomend", function () {
         if (window.isManualDragActive && manualMovingMarker) {
@@ -741,8 +729,8 @@
     const p = manualPointObj;
 
     closeManualFloatingBar();
-    window.isManualDragActive = false;
 
+    // 1. Зупиняємо перетягування та знімаємо мерехтіння
     if (manualMovingMarker.dragging) manualMovingMarker.dragging.disable();
     const el = manualMovingMarker.getElement ? manualMovingMarker.getElement() : (manualMovingMarker._icon || manualMovingMarker._path);
     if (el) el.classList.remove("marker-blinking-active");
@@ -750,12 +738,44 @@
     manualMovingMarker.off("drag");
     manualMovingMarker.off("dragend");
 
+    // 2. Оновлюємо координати точки в пам'яті
     if (p) {
       p.lat = lat;
       p.lng = lng;
       p.geo_refined = true;
       p.needs_training = false;
 
+      // Оновлюємо в усіх глобальних масивах index.html (запобігає поверненню на старе місце)
+      const globalArrays = [
+        window.points,
+        window.currentPoints,
+        window.radarPoints,
+        window.allPoints,
+        window.lastPoints
+      ];
+
+      globalArrays.forEach(arr => {
+        if (Array.isArray(arr)) {
+          arr.forEach(item => {
+            if (!item) return;
+            const matchByKey = p._fbKey && item._fbKey && item._fbKey === p._fbKey;
+            const matchByText = p.text && item.text && item.text === p.text;
+            if (matchByKey || matchByText) {
+              item.lat = lat;
+              item.lng = lng;
+              item.geo_refined = true;
+            }
+          });
+        }
+      });
+
+      // Оновлюємо в локальному кеші
+      if (p._fbKey && cachedRadarPoints[p._fbKey]) {
+        cachedRadarPoints[p._fbKey].lat = lat;
+        cachedRadarPoints[p._fbKey].lng = lng;
+      }
+
+      // Відправляємо в Firebase
       if (p._fbKey) {
         fetch(FIREBASE_POINTS_URL.replace(".json", `/${p._fbKey}.json`), {
           method: "PATCH",
@@ -764,6 +784,12 @@
         }).catch(() => {});
       }
     }
+
+    // 3. Фіксуємо сам маркер на новій точці карти
+    manualMovingMarker.setLatLng([lat, lng]);
+
+    // Тільки тепер дозволяємо фонові оновлення
+    window.isManualDragActive = false;
 
     manualMovingMarker = null;
     manualPointObj = null;
@@ -854,7 +880,7 @@
   }
 
   // =========================================================================
-  // 10. ПЕРЕНЕСЕННЯ ЗА АДРЕСОЮ ТА ПІДТВЕРДЖЕННЯ
+  // 10. ПЕРЕНЕСЕННЯ ЗА АДРЕСОЮ
   // =========================================================================
   window.openTrainingModal = function (point, marker) {
     window.activeActionPoint = point;
