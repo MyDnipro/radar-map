@@ -20,7 +20,7 @@
       filter: invert(90%) hue-rotate(180deg) contrast(108%) brightness(96%) saturate(85%) !important;
     }
 
-/* =========================================================================
+    /* =========================================================================
        2. БІЛИЙ ТЕКСТ РАДІО ТА ЕФІРУ В НІЧНОМУ РЕЖИМІ (ТІЛЬКИ ДЛЯ РАДІО)
        ========================================================================= */
     body.night-mode [class*="ticker"],
@@ -47,6 +47,7 @@
     .leaflet-popup-content .report-status-title {
       color: #0f172a !important;
     }
+
     /* =========================================================================
        3. ПЕРЕМИКАННЯ РЕЖИМІВ (ПРОСТИЙ ВОДІЙСЬКИЙ / ПОВНИЙ РОЗРОБНИК)
        ========================================================================= */
@@ -503,7 +504,6 @@
           window.map.removeLayer(trafficLightLayer);
         }
       } else {
-        // У повному режимі ЗАВЖДИ згортаємо панель на старті
         dashPanel.classList.add("collapsed");
         if (btnToggle) {
           btnToggle.style.display = "inline-flex";
@@ -650,6 +650,13 @@
       if (savedPo) manualPointOverrides = JSON.parse(savedPo);
     } catch(e) {}
 
+    // ЧОРНИЙ СПИСОК ВІДВ'ЯЗАНИХ ТОЧОК ВІД СВІТЛОФОРІВ
+    let tlIgnoredPoints = {};
+    try {
+      const savedIgnored = localStorage.getItem("radar_tl_ignored_points");
+      if (savedIgnored) tlIgnoredPoints = JSON.parse(savedIgnored);
+    } catch(e) {}
+
     const isMobile = window.innerWidth < 768;
     const INITIAL_CENTER = [48.462, 35.035];
     const INITIAL_ZOOM = isMobile ? 11.3 : 11.8;
@@ -659,7 +666,6 @@
       zoomSnap: 0.1
     }).setView(INITIAL_CENTER, INITIAL_ZOOM);
 
-    // Єдина надійна підложка Google Maps
     const googleMapLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
       subdomains: ['0', '1', '2', '3'],
       maxZoom: 20,
@@ -872,7 +878,9 @@
 
       const redCheckpoints = [];
       checkpoints.forEach(cp => {
+        const ignoredKeys = tlIgnoredPoints[cp.id] || [];
         const matched = allPoints.filter(p => {
+          if (p._fbKey && ignoredKeys.includes(p._fbKey)) return false;
           const t = ((p.raw_text || p.text || "") + " " + (p.address || "")).replace(/[\r\n]+/g, " ").toLowerCase();
           return cp.keys.some(k => (k === "стан" ? /\bстан\b/i.test(t) && !/остановил/i.test(t) : new RegExp(k, "i").test(t)));
         });
@@ -902,12 +910,62 @@
     function findMarkerByPoint(p) {
       let found = null;
       markersLayer.eachLayer(l => {
-        if (l.getLatLng && Math.abs(l.getLatLng().lat - p.lat) < 0.0005 && Math.abs(l.getLatLng().lng - p.lng) < 0.0005) {
+        if (found) return;
+        if (l.getLatLng && Math.abs(l.getLatLng().lat - p.lat) < 0.0015 && Math.abs(l.getLatLng().lng - p.lng) < 0.0015) {
           found = l;
         }
       });
       return found;
     }
+
+    // Фокусування на точці, яка запалила світлофор
+    window.focusPointOnMap = function(fbKey) {
+      if (!fbKey) return;
+      const p = allPoints.find(x => x._fbKey === fbKey);
+      if (!p) {
+        showToast("⚠️ Точку не знайдено серед активних");
+        return;
+      }
+      map.closePopup();
+      map.flyTo([p.lat, p.lng], 16.5, { animate: true, duration: 0.85 });
+      setTimeout(() => {
+        const m = findMarkerByPoint(p);
+        if (m) {
+          m.openPopup();
+          const el = m.getElement ? m.getElement() : (m._icon || m._path);
+          if (el) {
+            el.classList.add("moving-super-marker");
+            setTimeout(() => el.classList.remove("moving-super-marker"), 2500);
+          }
+        }
+      }, 900);
+    };
+
+    // Відв'язування точки від конкретного світлофора
+    window.unlinkPointFromTrafficLight = function(cpId, fbKey) {
+      if (!cpId || !fbKey) return;
+      if (!tlIgnoredPoints[cpId]) tlIgnoredPoints[cpId] = [];
+      if (!tlIgnoredPoints[cpId].includes(fbKey)) {
+        tlIgnoredPoints[cpId].push(fbKey);
+      }
+      localStorage.setItem("radar_tl_ignored_points", JSON.stringify(tlIgnoredPoints));
+      showToast("🚫 Точку відв'язано від цього світлофора!");
+      map.closePopup();
+      renderTrafficLights();
+      updateRouteStatus();
+    };
+
+    // Скидання відв'язаних точок для світлофора
+    window.resetUnlinkedPointsForCheckpoint = function(cpId) {
+      if (tlIgnoredPoints[cpId]) {
+        delete tlIgnoredPoints[cpId];
+        localStorage.setItem("radar_tl_ignored_points", JSON.stringify(tlIgnoredPoints));
+        showToast("🔄 Прив'язки для світлофора відновлено!");
+        map.closePopup();
+        renderTrafficLights();
+        updateRouteStatus();
+      }
+    };
 
     window.setPointVerdictDirect = async function(fbKey, isClean, btnEl) {
       const p = allPoints.find(x => x._fbKey === fbKey);
@@ -1239,7 +1297,7 @@
 ${allLiveReportsText || "Повідомлень немає"}
 КОМАНДИ:
 1. ПЕРЕМІЩЕННЯ: <<<ACTION:MOVE:{"key":"KEY_ТОЧКИ","street":"Назва вулиці","lat":48.XXXXX,"lng":34.XXXXX}>>>
-2. СТАТУС: <<<ACTION:STATUS:{"key":"KEY_ТОЧКИ","clean":true}>>>
+​2. СТАТУС: <<<ACTION:STATUS:{"key":"KEY_ТОЧКИ","clean":true}>>>
 3. ФІЛЬТР: <<<ACTION:FILTER:{"showGreen":false,"showRed":true}>>>
 4. СЕКТОРИ: <<<ACTION:SECTORS:{"preset":"route"|"all"|"remove_left"}>>>
 5. АНАЛІТИКА: <<<ACTION:NAVIGATE:{"url":"stats.html"}>>>
@@ -1406,7 +1464,9 @@ ${allLiveReportsText || "Повідомлень немає"}
       }
 
       checkpoints.forEach(cp => {
+        const ignoredKeys = tlIgnoredPoints[cp.id] || [];
         const matched = allPoints.filter(p => {
+          if (p._fbKey && ignoredKeys.includes(p._fbKey)) return false;
           const text = ((p.raw_text || p.text || "") + " " + (p.address || "")).toLowerCase();
           return cp.keys.some(k => (k === "стан" ? /\bстан\b/i.test(text) && !/остановил/i.test(text) : new RegExp(k, "i").test(text)));
         });
@@ -1435,9 +1495,9 @@ ${allLiveReportsText || "Повідомлень немає"}
         const iconHtml = `<div class="traffic-pill ${isEditMode ? 'draggable-mode' : ''}"><div class="${redClass}"></div><div class="${greenClass}"></div></div>`;
         const tlIcon = L.divIcon({ className: 'traffic-marker-icon', html: iconHtml, iconSize: [20, 36], iconAnchor: [10, 18] });
 
-        // Інтерактивний попап з кнопками зміни стану
+        // Інтерактивний попап з інтерактивною карткою джерела та кнопкою відв'язування
         let popupHtml = `
-          <div style="padding:6px 8px; font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif; min-width:190px;">
+          <div style="padding:6px 8px; font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif; min-width:215px;">
             <div style="font-weight:900; font-size:12.5px; color:#0284c7; margin-bottom:4px; border-bottom:1px solid #cbd5e1; padding-bottom:3px;">
               🚦 ${cp.name}
             </div>
@@ -1452,13 +1512,22 @@ ${allLiveReportsText || "Повідомлень немає"}
           const fbKeySafe = latest._fbKey || '';
 
           popupHtml += `
-            <div style="font-size:10.5px; color:#475569; margin-bottom:6px; line-height:1.35; background:#f8fafc; padding:4px 6px; border-radius:5px; border:1px solid #e2e8f0;">
-              🕒 <b>${timeStr}</b>: «${msgQuote}»
+            <div onclick="event.stopPropagation(); focusPointOnMap('${fbKeySafe}');" title="Показати цю мітку на карті" style="font-size:10.5px; color:#0f172a; margin-bottom:6px; line-height:1.35; background:#f0f9ff; padding:5px 7px; border-radius:6px; border:1px solid #bae6fd; cursor:pointer; transition:all 0.2s;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:3px;">
+                <span style="color:#0284c7; font-weight:800;">🎯 Джерело сигналу:</span>
+                <span style="font-size:9.5px; color:#0284c7; text-decoration:underline; font-weight:700;">На карті ➔</span>
+              </div>
+              <div style="color:#334155;">🕒 <b>${timeStr}</b>: «${msgQuote}»</div>
             </div>
+
             <div style="display:flex; gap:5px; margin-top:6px;">
               <button onclick="event.stopPropagation(); setPointVerdictDirect('${fbKeySafe}', true); map.closePopup();" style="flex:1; background:#059669; border:none; color:#fff; padding:6px 4px; border-radius:5px; font-size:10.5px; font-weight:900; cursor:pointer;">🟢 Чисто</button>
               <button onclick="event.stopPropagation(); setPointVerdictDirect('${fbKeySafe}', false); map.closePopup();" style="flex:1; background:#dc2626; border:none; color:#fff; padding:6px 4px; border-radius:5px; font-size:10.5px; font-weight:900; cursor:pointer;">🔴 Блокпост</button>
             </div>
+
+            <button onclick="event.stopPropagation(); unlinkPointFromTrafficLight('${cp.id}', '${fbKeySafe}');" style="width:100%; margin-top:6px; background:#fef2f2; border:1px solid #fecaca; color:#dc2626; padding:5px 6px; border-radius:5px; font-size:10px; font-weight:800; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:4px;">
+              🚫 Відв'язати точку від світлофора
+            </button>
           `;
         } else {
           popupHtml += `
@@ -1467,6 +1536,17 @@ ${allLiveReportsText || "Повідомлень немає"}
             </div>
           `;
         }
+
+        const ignoredList = tlIgnoredPoints[cp.id] || [];
+        if (ignoredList.length > 0) {
+          popupHtml += `
+            <div style="font-size:9.5px; color:#64748b; text-align:center; margin-top:5px; border-top:1px dashed #cbd5e1; padding-top:4px;">
+              Відв'язано точок: ${ignoredList.length}
+              <span onclick="event.stopPropagation(); resetUnlinkedPointsForCheckpoint('${cp.id}');" style="color:#0284c7; text-decoration:underline; cursor:pointer; font-weight:700; margin-left:4px;">Скинути</span>
+            </div>
+          `;
+        }
+
         popupHtml += `</div>`;
 
         let marker = trafficMarkersMap[cp.id];
@@ -1719,7 +1799,6 @@ ${allLiveReportsText || "Повідомлень немає"}
 
     applyUiMode(currentUiMode);
 
-    // Перше вікно ЗАВЖДИ згорнуте при старті у режимі розробника
     if (currentUiMode === "full") {
       const panel = document.getElementById("dashPanel");
       if (panel) {
