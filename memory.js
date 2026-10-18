@@ -1,6 +1,10 @@
 /**
- * Radar Dnipro — Модуль памяти топонимов ("А = Б") та Зсунутих вулиць v6.0
- * Дві окремі папки (Синоніми + Зсунуті вулиці), захист від сміття, кнопка очищення
+ * Radar Dnipro — Модуль памяти топонимов ("А = Б") та Зсунутих вулиць v6.5
+ * Дві окремі папки (Синоніми + Зсунуті вулиці)
+ * Додано:
+ * 1. Редагування назв зсунутих вулиць (✏️) безпосередньо у списку
+ * 2. Кнопка «🎯 На карті» з переходом до жовтого пульсуючого маркера-маяка
+ * 3. Клік по жовтому маяку повертає назад до папки «Зсунуті вулиці»
  */
 (function() {
   const FB_CUSTOM_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/custom_streets.json";
@@ -11,6 +15,7 @@
   let currentActiveTab = "synonyms"; // "synonyms" | "overrides"
   let selectedTargetCoords = null;
   let searchAbortController = null;
+  let activeOverrideBeacon = null;
   const netSearchCache = new Map();
 
   // Встроенные народные ориентиры и мосты Днепра (0 мс отклик)
@@ -277,7 +282,14 @@
     .mem-full-info { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1; }
     .mem-full-rule { font-size: 12px; color: #f8fafc; font-weight: 700; word-break: break-word; line-height: 1.35; }
     .mem-full-time { font-size: 10px; color: #94a3b8; display: flex; align-items: center; gap: 5px; font-weight: 600; }
-    .mem-full-acts { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+    .mem-full-acts {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
     .btn-mem-edit {
       background: #0284c7;
       border: 1px solid #38bdf8;
@@ -310,6 +322,71 @@
       font-size: 11px;
       font-weight: 800;
       white-space: nowrap;
+    }
+
+    /* Нові кнопки та стилі для Зсунутих вулиць */
+    .btn-mem-edit-override {
+      background: #1e293b;
+      border: 1px solid #64748b;
+      color: #cbd5e1;
+      padding: 6px 9px;
+      border-radius: 7px;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 800;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+    .btn-mem-edit-override:hover {
+      border-color: #38bdf8;
+      color: #38bdf8;
+      background: #0f172a;
+    }
+    .btn-mem-show-map {
+      background: #0284c7;
+      border: 1px solid #38bdf8;
+      color: #fff;
+      padding: 6px 10px;
+      border-radius: 7px;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 800;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+    .btn-mem-show-map:hover {
+      background: #0369a1;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
+    }
+
+    /* Жовтий пульсуючий маяк на карті */
+    .yellow-beacon-container {
+      background: transparent !important;
+      border: none !important;
+    }
+    @keyframes yellowBeaconPulseGlow {
+      0% {
+        transform: scale(0.85);
+        box-shadow: 0 0 0 0 rgba(250, 204, 21, 0.95), 0 0 10px #facc15;
+      }
+      50% {
+        transform: scale(1.2);
+        box-shadow: 0 0 0 20px rgba(250, 204, 21, 0), 0 0 24px #eab308;
+      }
+      100% {
+        transform: scale(0.85);
+        box-shadow: 0 0 0 0 rgba(250, 204, 21, 0), 0 0 10px #facc15;
+      }
+    }
+    .yellow-beacon-outer {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #facc15;
+      border: 3px solid #ffffff;
+      animation: yellowBeaconPulseGlow 1.25s infinite ease-in-out;
+      cursor: pointer;
+      box-sizing: border-box;
     }
   `;
   document.head.appendChild(style);
@@ -734,13 +811,137 @@
           <div class="mem-full-time">${timeStr}</div>
         </div>
         <div class="mem-full-acts">
+          <button class="btn-mem-edit-override" title="Виправити назву або координати">✏️</button>
+          <button class="btn-mem-show-map" title="Показати місце на карті">🎯 На карті</button>
           <button class="btn-mem-reset-coords" title="Повернути координати до стандартних зі streets.js">🔄 Скинути</button>
         </div>
       `;
 
+      row.querySelector(".btn-mem-edit-override").addEventListener("click", () => editStreetOverride(key, item));
+      row.querySelector(".btn-mem-show-map").addEventListener("click", () => showOverrideOnMap(item));
       row.querySelector(".btn-mem-reset-coords").addEventListener("click", () => resetStreetCoords(key, streetName));
       box.appendChild(row);
     });
+  }
+
+  // Редагування запису у папці «Зсунуті вулиці»
+  async function editStreetOverride(key, item) {
+    const oldStreet = item.street || key;
+    const newStreet = prompt("✏️ Виправте офіційну назву вулиці (без номерів будинків):", oldStreet);
+    if (newStreet === null) return;
+    const cleanStreet = newStreet.trim();
+    if (!cleanStreet) {
+      alert("❌ Назва вулиці не може бути порожньою!");
+      return;
+    }
+
+    const curCoords = `${Number(item.lat).toFixed(5)}, ${Number(item.lng).toFixed(5)}`;
+    const newCoords = prompt("🌐 Координати вулиці (lat, lng):", curCoords);
+    if (newCoords === null) return;
+
+    const parts = newCoords.split(',').map(s => parseFloat(s.trim()));
+    if (parts.length !== 2 || isNaN(parts[0]) || isNaN(parts[1])) {
+      alert("❌ Некоректні координати! Приклад: 48.47595, 34.99346");
+      return;
+    }
+
+    const newLat = Number(parts[0].toFixed(5));
+    const newLng = Number(parts[1].toFixed(5));
+    const newKey = toFirebaseKey(cleanStreet);
+
+    const updatedItem = {
+      street: cleanStreet,
+      lat: newLat,
+      lng: newLng,
+      updated_at: Date.now()
+    };
+
+    // Якщо назва змінилася — видаляємо старий ключ з бази
+    if (newKey !== key) {
+      delete streetOverrides[key];
+      await fetch(FB_OVERRIDES_URL.replace(".json", `/${key}.json`), { method: "DELETE" }).catch(() => {});
+    }
+
+    streetOverrides[newKey] = updatedItem;
+
+    // Оновлюємо в пам'яті карти DNIPRO_STREETS_MAP
+    if (window.DNIPRO_STREETS_MAP) {
+      for (const mapItem of Object.values(window.DNIPRO_STREETS_MAP)) {
+        if (mapItem && mapItem.name && mapItem.name.toLowerCase().trim() === cleanStreet.toLowerCase().trim()) {
+          if (mapItem._origLat === undefined) {
+            mapItem._origLat = mapItem.lat;
+            mapItem._origLng = mapItem.lng;
+          }
+          mapItem.lat = newLat;
+          mapItem.lng = newLng;
+          mapItem._isOverridden = true;
+        }
+      }
+    }
+
+    // Зберігаємо оновлений запис у Firebase
+    await fetch(FB_OVERRIDES_URL.replace(".json", `/${newKey}.json`), {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updatedItem)
+    }).catch(() => {});
+
+    try {
+      localStorage.setItem("radar_street_overrides", JSON.stringify(streetOverrides));
+    } catch(e) {}
+
+    renderOverridesList();
+    if (typeof window.showToast === "function") window.showToast(`✅ Запис оновлено: «${cleanStreet}»!`);
+    if (typeof window.renderMarkers === "function") window.renderMarkers();
+    if (typeof window.renderTrafficLights === "function") window.renderTrafficLights();
+  }
+
+  // Показ місця на карті з жовтим пульсуючим маяком
+  function showOverrideOnMap(item) {
+    if (!item || !item.lat || !item.lng) return;
+    closeFullModal();
+
+    if (!window.map) return;
+
+    if (activeOverrideBeacon) {
+      window.map.removeLayer(activeOverrideBeacon);
+      activeOverrideBeacon = null;
+    }
+
+    const lat = Number(item.lat);
+    const lng = Number(item.lng);
+
+    window.map.flyTo([lat, lng], 17, { animate: true, duration: 0.85 });
+
+    const beaconIcon = L.divIcon({
+      className: 'yellow-beacon-container',
+      html: `<div class="yellow-beacon-outer" title="Натисніть для повернення у список зсунутих вулиць"></div>`,
+      iconSize: [24, 24],
+      iconAnchor: [12, 12]
+    });
+
+    activeOverrideBeacon = L.marker([lat, lng], {
+      icon: beaconIcon,
+      zIndexOffset: 15000,
+      interactive: true
+    }).addTo(window.map);
+
+    // Клік по жовтому шарику повертає назад до папки «Зсунуті вулиці»
+    activeOverrideBeacon.on('click', (e) => {
+      if (e && e.originalEvent) {
+        e.originalEvent.stopPropagation();
+      }
+      if (activeOverrideBeacon) {
+        window.map.removeLayer(activeOverrideBeacon);
+        activeOverrideBeacon = null;
+      }
+      openFullModal();
+      switchTab("overrides");
+    });
+
+    if (typeof window.showToast === "function") {
+      window.showToast(`🎯 «${item.street}»: натисніть на жовту крапку для повернення до списку`, 4000);
+    }
   }
 
   async function resetStreetCoords(key, streetName) {
@@ -949,6 +1150,7 @@
   window.fetchRadarOnlineLocations = fetchOnlineLocations;
   window.RADAR_BUILTIN_LANDMARKS = BUILTIN_LANDMARKS;
   window.openBindingJournal = openFullModal;
+  window.showOverrideOnMap = showOverrideOnMap;
 
   setTimeout(loadCloudRules, 800);
 })();
