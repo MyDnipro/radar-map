@@ -13,7 +13,6 @@ RAW_GEMINI_KEYS = os.environ.get("GEMINI_KEY", "").strip() or os.environ.get("GE
 GEMINI_KEYS = [k.strip() for k in re.split(r'[,;\s]+', RAW_GEMINI_KEYS) if len(k.strip()) > 15]
 
 current_key_index = 0
-# Пріоритетна зв'язка моделей: першочерговий 3.8 Flash, далі резервні Flash-моделі
 SUPPORTED_MODELS = ["gemini-3.8-flash", "gemini-3.5-flash-lite", "gemini-3.5-flash"]
 
 # Базовий URL Firebase Realtime Database
@@ -27,6 +26,7 @@ POINTS_URL = f"{BASE_FB_URL}/points.json" if BASE_FB_URL else ""
 KNOWLEDGE_BASE_URL = f"{BASE_FB_URL}/knowledge_base.json" if BASE_FB_URL else ""
 STATS_ARCHIVE_URL = f"{BASE_FB_URL}/stats_archive.json" if BASE_FB_URL else ""
 CUSTOM_STREETS_URL = f"{BASE_FB_URL}/custom_streets.json" if BASE_FB_URL else ""
+STREET_OVERRIDES_URL = f"{BASE_FB_URL}/street_overrides.json" if BASE_FB_URL else ""
 SPAM_FILTERS_URL = f"{BASE_FB_URL}/spam_filters.json" if BASE_FB_URL else ""
 
 LIFETIME_MS = 40 * 60 * 1000  # 40 хвилин для актуальних міток
@@ -34,6 +34,7 @@ CHANNEL_BASE_URL = "https://t.me/s/dnepr_bez_tck"
 
 PROCESSED_POST_IDS = set()
 CUSTOM_STREETS_CACHE = {}
+STREET_OVERRIDES_CACHE = {}
 DYNAMIC_SPAM_WORDS = set()
 LAST_CLOUD_SYNC = 0
 
@@ -178,7 +179,6 @@ LOCAL_STREETS_DB = [
     {"keys": ["боровск", "молодогвард"], "addr": "вул. Молодогвардійська (під мостами)", "lat": 48.4680, "lng": 35.1220}
 ]
 
-# Правила фільтрації по емодзі та статусах
 QUESTION_EMOJIS = ['?', '❓', '❔', '⁉️', '🤔', '🧐', '🙏']
 CLOUD_PRECIP_EMOJIS = ['🌤️', '⛅', '🌥️', '🌦️', '☁️', '🌧️', '⛈️', '🌩️', '🌨️', '🌪️', '🌫️', '☔', '💧', '💦']
 SUN_ONLY_EMOJIS = ['☀️', '🌞', '🌈']
@@ -210,31 +210,22 @@ DANGER_KEYWORDS = [
 ]
 
 def is_ignored_question(text):
-    """Ігнор-лист для питань і сумнівів."""
     return any(q in text for q in QUESTION_EMOJIS)
 
 def is_message_clean(text):
-    """
-    - Зелена зона: сонце або слова чистоти/норми (якщо немає заперечень).
-    - Червона зона: хмари, опади або небезпечні ключові слова.
-    """
     t = text.lower()
-    
-    # 1. Знаки питань / сумніви — ігноруємо
     if is_ignored_question(text):
         return None
 
-    # 2. Перевіряємо небезпечні фактори (хмари, опади, небезпечні слова)
     has_danger_words = any(w in t for w in DANGER_KEYWORDS)
     has_cloud_or_precip = any(ce in text for ce in CLOUD_PRECIP_EMOJIS)
-    
+
     if has_danger_words or has_cloud_or_precip:
         has_negation = any(nw in t for nw in NEGATION_WORDS)
         if has_danger_words and has_negation:
             return True
         return False
 
-    # 3. Перевіряємо зелену зону ("норм", "чисто", сонце)
     has_pure_sun = any(se in text for se in SUN_ONLY_EMOJIS)
     has_clean_word = bool(CLEAN_REGEX.search(t))
 
@@ -244,9 +235,6 @@ def is_message_clean(text):
 
     return False
 
-# =========================================================================
-# 🔄 РОЗУМНИЙ БАГАТОРАДКОВИЙ ПАРСИНГ
-# =========================================================================
 def split_multiline_reports(raw_post_text):
     if not raw_post_text:
         return []
@@ -287,7 +275,7 @@ def split_multiline_reports(raw_post_text):
     return parsed_reports if parsed_reports else [raw_post_text.strip()]
 
 def sync_cloud_knowledge_and_spam():
-    global CUSTOM_STREETS_CACHE, DYNAMIC_SPAM_WORDS, LAST_CLOUD_SYNC
+    global CUSTOM_STREETS_CACHE, STREET_OVERRIDES_CACHE, DYNAMIC_SPAM_WORDS, LAST_CLOUD_SYNC
     if time.time() - LAST_CLOUD_SYNC < 45:
         return
 
@@ -299,6 +287,11 @@ def sync_cloud_knowledge_and_spam():
             r_streets = requests.get(f"{CUSTOM_STREETS_URL}?t={int(time.time()*1000)}", timeout=5)
             if r_streets.status_code == 200 and r_streets.json():
                 CUSTOM_STREETS_CACHE = r_streets.json()
+
+        if STREET_OVERRIDES_URL:
+            r_overrides = requests.get(f"{STREET_OVERRIDES_URL}?t={int(time.time()*1000)}", timeout=5)
+            if r_overrides.status_code == 200 and r_overrides.json():
+                STREET_OVERRIDES_CACHE = r_overrides.json()
 
         if SPAM_FILTERS_URL:
             r_spam = requests.get(f"{SPAM_FILTERS_URL}?t={int(time.time()*1000)}", timeout=5)
@@ -317,12 +310,21 @@ def geocode_local(text):
     clean_t = text.lower().replace('ё', 'е')
     t = " " + clean_t + " "
 
+    # 1. Приоритет: ручные сдвинутые улицы (street_overrides)
+    for raw_key, data in STREET_OVERRIDES_CACHE.items():
+        if isinstance(data, dict):
+            st_name = (data.get("street") or "").lower().replace('ё', 'е')
+            if st_name and len(st_name) >= 4 and st_name in t:
+                return data.get("street"), float(data.get("lat")), float(data.get("lng"))
+
+    # 2. Синонимы и кастомные правила
     for raw_alias, data in CUSTOM_STREETS_CACHE.items():
         if isinstance(data, dict):
             alias = unquote(raw_alias).lower().replace('ё', 'е')
             if alias in t:
                 return data.get("name", alias), data.get("lat"), data.get("lng")
 
+    # 3. Базовый справочник
     sorted_items = sorted(
         LOCAL_STREETS_DB,
         key=lambda item: max(len(k) for k in item["keys"]),
@@ -364,10 +366,9 @@ def geocode_osm_fallback(text):
     return None, None, None
 
 def get_knowledge_base():
-    """Единый источник знаний теперь опирается на общую таблицу custom_streets"""
     if CUSTOM_STREETS_CACHE:
         return [v for v in CUSTOM_STREETS_CACHE.values() if isinstance(v, dict)]
-    
+
     if not KNOWLEDGE_BASE_URL:
         return []
     try:
@@ -397,26 +398,6 @@ def match_knowledge_base(text, kb_list):
                 except (ValueError, TypeError):
                     pass
     return None
-
-def auto_save_to_knowledge_base(phrase, address, lat, lng):
-    """Сохраняем новые привязки ИИ в единую таблицу custom_streets для синхронизации с фронтендом"""
-    if not CUSTOM_STREETS_URL or not phrase or not address or not lat or not lng:
-        return
-    try:
-        clean_key = re.sub(r'[^a-zA-Z0-9а-яА-ЯіїєґІЇЄҐ_]', '_', phrase.strip().lower())[:40]
-        data = {
-            "alias": phrase.strip().lower(),
-            "phrase": phrase.strip().lower(),
-            "name": address,
-            "address": address,
-            "lat": round(float(lat), 5),
-            "lng": round(float(lng), 5),
-            "time": int(time.time() * 1000)
-        }
-        requests.put(f"{CUSTOM_STREETS_URL.replace('.json', '')}/{clean_key}.json", json=data, timeout=5)
-        log(f"💾 [АВТО-НАВЧАННЯ]: '{phrase}' ➔ {address} збережено в пам'ять (custom_streets)!")
-    except Exception as e:
-        log(f"⚠️ Помилка авто-навчання бази знань: {e}")
 
 def cleanup_old_points():
     now_ms = int(time.time() * 1000)
@@ -540,7 +521,7 @@ def save_point_to_firebase(msg, parsed_result, is_clean, now_ms):
     status_clean = (parsed_result["status"] == "чисто" or is_clean is True)
     color = "green" if status_clean else "red"
     display_text = msg
-    
+
     if status_clean and not re.search(r'\b(?:чисто|норм|нормально)\b', msg, re.I):
         display_text = f"{msg} (чисто)"
 
@@ -553,7 +534,7 @@ def save_point_to_firebase(msg, parsed_result, is_clean, now_ms):
         "color": color,
         "status": "чисто" if status_clean else "опасно",
         "is_clean": status_clean,
-        "geo_refined": True,  # 👈 КРИТИЧЕСКИ ВАЖНО: защищает от сброса координат на клиенте
+        "geo_refined": True,
         "needs_training": parsed_result.get("needs_training", False),
         "time": now_ms,
         "timestamp": now_ms
@@ -614,11 +595,11 @@ def sync_cycle():
 
         is_clean = is_message_clean(msg)
         if is_clean is None:
-            continue  # Пропускаємо питання (ігнор-лист)
+            continue
 
         parsed_result = None
 
-        # Локальна база
+        # Локальна база (враховуючи переозначення street_overrides)
         addr, lat, lng = geocode_local(msg)
         if addr and lat and lng:
             parsed_result = {
@@ -656,7 +637,6 @@ def sync_cycle():
                 }
                 log(f"🗺️ [OSM КАРТА]: '{msg[:45]}' ➔ {osm_addr}")
 
-        # Зберігаємо знайдені точки
         if parsed_result:
             save_point_to_firebase(msg, parsed_result, is_clean, now_ms)
         else:
@@ -685,7 +665,7 @@ def sync_cycle():
                         "needs_training": False
                     }
                     log(f"🤖 [GEMINI AI]: '{msg[:45]}' ➔ {addr}")
-                    auto_save_to_knowledge_base(msg, addr, round(lat, 5), round(lng, 5))
+                    # ВАЖЛИВО: авто-спам у базу знань вимкнено назавжди!
 
             if not parsed_result:
                 water_lat = round(48.5020 + random.uniform(-0.0040, 0.0040), 5)
