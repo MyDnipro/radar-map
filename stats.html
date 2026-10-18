@@ -139,20 +139,21 @@
 
     /* СТИЛІ ДОДАТКОВОЇ ВКЛАДКИ: БЕЗКІНЕЧНИЙ ГРАФІК З ЗУМОМ */
     .infinite-chart-layout {
-      display: flex; gap: 12px; align-items: flex-start;
+      display: flex; gap: 10px; align-items: flex-start;
     }
     .infinite-sidebar {
-      width: 175px; flex-shrink: 0; background: #070d1d; border: 1px solid #1e293b;
-      border-radius: 10px; padding: 10px; display: flex; flex-direction: column; gap: 6px;
+      width: 112px; flex-shrink: 0; background: #070d1d; border: 1px solid #1e293b;
+      border-radius: 10px; padding: 7px; display: flex; flex-direction: column; gap: 5px;
     }
     .infinite-sidebar-title {
-      font-size: 10.5px; font-weight: 900; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px;
-      display: flex; justify-content: space-between; align-items: center;
+      font-size: 9.5px; font-weight: 900; color: #94a3b8; text-transform: uppercase; margin-bottom: 2px;
+      text-align: center;
     }
     .infinite-btn-point {
-      display: flex; align-items: center; gap: 7px; padding: 6px 8px; border-radius: 6px;
-      background: #0b1120; border: 1px solid #1e293b; color: #94a3b8; font-size: 11px;
+      display: flex; align-items: center; gap: 5px; padding: 5px 6px; border-radius: 6px;
+      background: #0b1120; border: 1px solid #1e293b; color: #94a3b8; font-size: 10.5px;
       font-weight: 800; cursor: pointer; text-align: left; transition: all 0.15s; user-select: none;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
     .infinite-btn-point:hover { background: #0f172a; color: #f8fafc; }
     .infinite-btn-point.active {
@@ -160,7 +161,7 @@
       box-shadow: 0 0 10px currentColor;
     }
     .infinite-point-dot {
-      width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0;
+      width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
     }
     .infinite-chart-area {
       flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px;
@@ -171,7 +172,7 @@
     .infinite-zoom-btn-group { display: flex; gap: 5px; }
     .btn-inf-zoom {
       background: #0f172a; border: 1px solid #334155; color: #94a3b8;
-      padding: 4px 9px; border-radius: 6px; font-size: 10.5px; font-weight: 800; cursor: pointer;
+      padding: 4px 8px; border-radius: 6px; font-size: 10px; font-weight: 800; cursor: pointer;
       transition: all 0.2s;
     }
     .btn-inf-zoom:hover, .btn-inf-zoom.active {
@@ -424,11 +425,64 @@
     }
     .btn-del-report:hover { background: #ef4444; color: #fff; }
 
-    @media (max-width: 650px) {
+    /* =========================================================================
+       📱 АВТО-ПОВНОЕКРАННИЙ РЕЖИМ ПРИ ПОВОРОТІ ТЕЛЕФОНУ (LANDSCAPE)
+       ========================================================================= */
+    @media (orientation: landscape) and (max-height: 520px) {
+      body {
+        padding: 4px;
+        overflow: hidden;
+      }
+      .container {
+        max-width: 100vw;
+        height: 100vh;
+      }
+      .hud-header,
+      .ai-stats-card,
+      .filter-bar,
+      .tabs-nav {
+        display: none !important;
+      }
+      #tabContent3 {
+        display: block !important;
+        margin-bottom: 0 !important;
+        padding: 6px !important;
+        height: 100vh !important;
+        border: none !important;
+        border-radius: 0 !important;
+        background: #060913 !important;
+      }
+      #tabContent3 .hud-card-title {
+        display: none !important;
+      }
+      .infinite-chart-layout {
+        height: 100% !important;
+        gap: 6px !important;
+      }
+      .infinite-sidebar {
+        width: 100px !important;
+        padding: 4px !important;
+        gap: 3px !important;
+      }
+      .infinite-btn-point {
+        padding: 3px 5px !important;
+        font-size: 9.5px !important;
+      }
+      .infinite-chart-area {
+        height: 100% !important;
+      }
+      .infinite-chart-tools {
+        margin-bottom: 2px !important;
+      }
+      .infinite-chart-area .chart-canvas-wrap {
+        height: calc(100vh - 42px) !important;
+      }
+    }
+
+    @media (max-width: 650px) and (orientation: portrait) {
       .months-year-grid { grid-template-columns: repeat(3, 1fr); }
       .year-summary-strip { grid-template-columns: 1fr; }
-      .infinite-chart-layout { flex-direction: column; }
-      .infinite-sidebar { width: 100%; }
+      .infinite-sidebar { width: 105px; }
     }
   </style>
 </head>
@@ -488,7 +542,7 @@
       <div id="streetFeedContainer"></div>
     </div>
 
-    <!-- ТАБ 3: НОВИЙ ДОВГОТРИВАЛИЙ ГРАФІК (З 1 ЖОВТНЯ, ЗУМ, ВИХІДНІ, 4+ ПОВІДОМЛЕННЯ = 1 БП) -->
+    <!-- ТАБ 3: НОВИЙ ДОВГОТРИВАЛИЙ ГРАФІК (КОМПАКТНІ НАЗВИ, ЗУМ, ВИХІДНІ, СТЕКЛЯННИЙ ПОПАП НАД ЛІНІЯМИ) -->
     <div id="tabContent3" class="hud-card" style="display:none;">
       <div class="hud-card-title">
         <span>📈 Довготривалий графік активності блокпостів (з 1 жовтня):</span>
@@ -497,27 +551,25 @@
       <div class="infinite-chart-layout">
         <!-- БОКОВА ПАНЕЛЬ КЕРУВАННЯ ТОЧКАМИ (ЛІВОРУЧ ВІД ОСІ Y) -->
         <div class="infinite-sidebar">
-          <div class="infinite-sidebar-title">
-            <span>Точки маршруту:</span>
+          <div class="infinite-sidebar-title">Точки:</div>
+          <div style="display:flex; gap:3px; margin-bottom:4px;">
+            <button class="btn-inf-zoom" style="flex:1; padding:3px 2px;" onclick="toggleAllInfinitePoints(true)">Всі</button>
+            <button class="btn-inf-zoom" style="flex:1; padding:3px 2px;" onclick="toggleAllInfinitePoints(false)">Скинути</button>
           </div>
-          <div style="display:flex; gap:4px; margin-bottom:6px;">
-            <button class="btn-inf-zoom" style="flex:1;" onclick="toggleAllInfinitePoints(true)">Всі</button>
-            <button class="btn-inf-zoom" style="flex:1;" onclick="toggleAllInfinitePoints(false)">Скинути</button>
-          </div>
-          <div id="infinitePointsButtonsList" style="display:flex; flex-direction:column; gap:5px;"></div>
+          <div id="infinitePointsButtonsList" style="display:flex; flex-direction:column; gap:4px;"></div>
         </div>
 
         <!-- САМЕ ПОЛОТНО ГРАФІКА З ТУЛБАРОМ ЗУМУ -->
         <div class="infinite-chart-area">
           <div class="infinite-chart-tools">
-            <span style="font-size:10.5px; color:#94a3b8; font-weight:700;">
-              🔍 Зум: коліщатко миші / щипок пальцями. Рухайте вліво-вправо.
+            <span style="font-size:10px; color:#94a3b8; font-weight:700;">
+              🔍 Зум: коліщатко / щипок. Скрол вліво-вправо.
             </span>
             <div class="infinite-zoom-btn-group">
-              <button class="btn-inf-zoom" onclick="zoomInfiniteChart('week')">🔍 7 днів</button>
-              <button class="btn-inf-zoom" onclick="zoomInfiniteChart('month')">📅 30 днів</button>
-              <button class="btn-inf-zoom" onclick="zoomInfiniteChart('all')">🌐 З 1 жовтня</button>
-              <button class="btn-inf-zoom" style="color:#ef4444;" onclick="resetInfiniteZoom()">↩️ Скинути зум</button>
+              <button class="btn-inf-zoom" onclick="zoomInfiniteChart('week')">7 днів</button>
+              <button class="btn-inf-zoom" onclick="zoomInfiniteChart('month')">30 днів</button>
+              <button class="btn-inf-zoom" onclick="zoomInfiniteChart('all')">Весь час</button>
+              <button class="btn-inf-zoom" style="color:#ef4444;" onclick="resetInfiniteZoom()">↩️ Скинути</button>
             </div>
           </div>
 
@@ -767,14 +819,15 @@
       tab5: { multi: false, selected: getSavedSet("stats_filter_tab5") }
     };
 
+    // КОМПАКТНІ НАЗВИ ТОЧОК
     const TARGET_CHECKPOINTS = [
-      { id: "pavlova", name: "вул. Павлова", fullName: "вул. Академіка Павлова", regex: /(?:академика\s*павлова|академіка\s*павлова|\bпавлова\b)/i, color: "#00f3ff" },
-      { id: "krasnozavodska", name: "Краснозаводська", fullName: "Краснозаводська / Белелюбського / Комбайновий", regex: /(?:белелюб|краснозавод|комбайн|дтрз|ударник)/i, color: "#f59e0b" },
-      { id: "vodolechebnitsa", name: "Водолікарня", fullName: "Водолікарня (пр. Свободи)", regex: /(?:водолечеб|водолікарн|водогрязелечеб)/i, color: "#ec4899" },
+      { id: "pavlova", name: "Павлова", fullName: "вул. Академіка Павлова", regex: /(?:академика\s*павлова|академіка\s*павлова|\bпавлова\b)/i, color: "#00f3ff" },
+      { id: "krasnozavodska", name: "Краснозав.", fullName: "Краснозаводська / Белелюбського / Комбайновий", regex: /(?:белелюб|краснозавод|комбайн|дтрз|ударник)/i, color: "#f59e0b" },
+      { id: "vodolechebnitsa", name: "Водолікар.", fullName: "Водолікарня (пр. Свободи)", regex: /(?:водолечеб|водолікарн|водогрязелечеб)/i, color: "#ec4899" },
       { id: "vodokachka", name: "Водокачка", fullName: "Водокачка (Набережна Заводська)", regex: /(?:водокачк)/i, color: "#3b82f6" },
       { id: "rechport", name: "Річпорт", fullName: "Річпорт (Речной вокзал / Десантники)", regex: /(?:речпорт|річпорт|речной\s*вокзал|річковий\s*вокзал|десантник)/i, color: "#10b981" },
-      { id: "naberezhna", name: "Набережна Зав.", fullName: "Набережна Заводська (Стан 550, РОВД, Кайдаки)", regex: /(?:кайдак|кайдацька|стан\s*550|стан550|ровд.*заводськ)/i, color: "#a855f7" },
-      { id: "svobody", name: "пр. Свободи", fullName: "проспект Свободи (пр. Свободы)", regex: /(?:проспект\s*свобод|пр\s*свобод|пр\.\s*свобод|свободи\b)/i, color: "#eab308" }
+      { id: "naberezhna", name: "Наб. Завод.", fullName: "Набережна Заводська (Стан 550, РОВД, Кайдаки)", regex: /(?:кайдак|кайдацька|стан\s*550|стан550|ровд.*заводськ)/i, color: "#a855f7" },
+      { id: "svobody", name: "Свободи", fullName: "проспект Свободи (пр. Свободы)", regex: /(?:проспект\s*свобод|пр\s*свобод|пр\.\s*свобод|свободи\b)/i, color: "#eab308" }
     ];
 
     const OTHER_SECTORS = [
@@ -836,7 +889,7 @@
           try {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 8000);
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${k}`;
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/{m}:generateContent?key=${k}`;
             const res = await fetch(url, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -997,7 +1050,7 @@ ${recentReports}
 
       const allBtn = document.createElement("button");
       allBtn.className = `btn-feed-street ${selectedFeedStreet === 'all' ? 'active' : ''}`;
-      allBtn.innerText = "🌐 Всі 7 вулиць";
+      allBtn.innerText = "🌐 Всі 7";
       allBtn.onclick = () => selectFeedStreet('all');
       container.appendChild(allBtn);
 
@@ -1180,7 +1233,6 @@ ${recentReports}
       renderInfiniteTimelineChart();
     };
 
-    // Підрахунок реальних блокпостів (Мінімум 4 червоних повідомлення до "чисто" або паузи 90 хв)
     function calculateDailyCheckpoints(reports) {
       if (!reports || reports.length === 0) return 0;
       reports.sort((a, b) => a.time - b.time);
@@ -1247,6 +1299,18 @@ ${recentReports}
         });
       }
     };
+
+    // РЕЄСТРАЦІЯ ПОЗИЦІОНЕРА ДЛЯ ТУЛТІПА: СТРОГО ПІД СТЕЛЕЮ СІТКИ (НАД ЛІНІЯМИ)
+    if (Chart.Tooltip && Chart.Tooltip.positioners) {
+      Chart.Tooltip.positioners.topFixed = function(items) {
+        const pos = Chart.Tooltip.positioners.average.call(this, items);
+        if (!pos) return false;
+        return {
+          x: pos.x,
+          y: this.chart.chartArea.top + 6
+        };
+      };
+    }
 
     function renderInfiniteTimelineChart() {
       const canvas = document.getElementById("canvasInfiniteTimeline");
@@ -1323,14 +1387,27 @@ ${recentReports}
           plugins: {
             legend: { display: false },
             tooltip: {
-              backgroundColor: 'rgba(15, 23, 42, 0.95)',
+              position: 'topFixed',
+              backgroundColor: 'rgba(15, 23, 42, 0.75)', // Напівпрозоре скло
+              borderColor: '#00f3ff',
+              borderWidth: 1.5,
+              padding: 7,
+              boxPadding: 4,
+              usePointStyle: true,
+              titleFont: { size: 11, weight: 'bold' },
               titleColor: '#00f3ff',
-              borderColor: '#0284c7',
-              borderWidth: 1,
-              padding: 10,
-              titleFont: { weight: 'bold' },
+              bodyFont: { size: 10.5, weight: 'bold' },
+              bodyColor: '#ffffff', // Непрозорі чіткі літери
+              filter: function(item) {
+                // ПРИХОВУЄМО ВСІ НУЛІ!
+                return item.raw > 0;
+              },
               callbacks: {
-                label: (ctx) => ` ${ctx.dataset.label}: ${ctx.raw} БП`
+                title: (items) => items[0]?.label || '',
+                label: (ctx) => ` ${ctx.dataset.label}: ${ctx.raw} БП`,
+                afterBody: (items) => {
+                  if (items.length === 0) return ' 🟢 На маршруті чисто';
+                }
               }
             },
             zoom: {
@@ -1533,7 +1610,7 @@ ${recentReports}
 
       const allBtn = document.createElement("button");
       allBtn.className = `clock-street-btn ${selectedClockStreet === 'all' ? 'active' : ''}`;
-      allBtn.innerText = "🌐 Всі 7 вулиць";
+      allBtn.innerText = "🌐 Всі 7";
       allBtn.onclick = () => {
         selectedClockStreet = 'all';
         localStorage.setItem("stats_clock_street", 'all');
