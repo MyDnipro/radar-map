@@ -1,10 +1,11 @@
 /**
- * relocate.js — Модуль перенесення міток, 3-рівневого пошуку, довідника перейменувань та ПК/Мобіль-керування (v5.5)
+ * relocate.js — Модуль перенесення міток, бази синонімів ІІ, шару переозначення вулиць (street_overrides) та ПК/Мобіль-керування (v6.0)
  */
 
 (function () {
   const FIREBASE_POINTS_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/points.json";
   const FIREBASE_KB_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/knowledge_base.json";
+  const FIREBASE_OVERRIDES_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/street_overrides.json";
 
   // =========================================================================
   // 1. ДОВІДНИК ПЕРЕЙМЕНУВАНЬ ДЛЯ ПОПАПІВ (РАНІШЕ / ОРІЄНТИР / НЕ ПЕРЕЙМЕНОВУВАЛАСЬ)
@@ -55,7 +56,117 @@
   };
 
   // =========================================================================
-  // 2. СТИЛІ КОМПАКТНОГО МЕРЕХТІННЯ (ЖОВТИЙ + СИНІЙ СТРОБ 6-8px)
+  // 2. СИСТЕМА ПЕРЕОЗНАЧЕННЯ КООРДИНАТ ВУЛИЦЬ (STREET OVERRIDES)
+  // =========================================================================
+  function toSafeFirebaseKey(str) {
+    return encodeURIComponent(str).replace(/\./g, '%2E');
+  }
+
+  function backupOriginalStreets() {
+    if (typeof DNIPRO_STREETS_MAP === "undefined") return;
+    for (const item of Object.values(DNIPRO_STREETS_MAP)) {
+      if (item && item.lat && item.lng && item._origLat === undefined) {
+        item._origLat = item.lat;
+        item._origLng = item.lng;
+      }
+    }
+  }
+
+  window.syncStreetOverrides = async function () {
+    backupOriginalStreets();
+    try {
+      const res = await fetch(`${FIREBASE_OVERRIDES_URL}?t=${Date.now()}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (!data || typeof data !== "object") return;
+
+      localStorage.setItem("radar_street_overrides", JSON.stringify(data));
+
+      if (typeof DNIPRO_STREETS_MAP !== "undefined") {
+        for (const record of Object.values(data)) {
+          if (!record || !record.street || !record.lat || !record.lng) continue;
+          const targetName = record.street.toLowerCase().trim();
+
+          for (const item of Object.values(DNIPRO_STREETS_MAP)) {
+            if (item && item.name && item.name.toLowerCase().trim() === targetName) {
+              item.lat = Number(record.lat);
+              item.lng = Number(record.lng);
+              item._isOverridden = true;
+            }
+          }
+        }
+      }
+    } catch (e) {}
+  };
+
+  setTimeout(window.syncStreetOverrides, 300);
+  setInterval(window.syncStreetOverrides, 30000);
+
+  async function saveStreetCoordinateOverride(streetName, lat, lng) {
+    if (!streetName || !lat || !lng) return;
+    backupOriginalStreets();
+
+    const cleanName = streetName.trim();
+    const safeKey = toSafeFirebaseKey(cleanName);
+    const payload = {
+      street: cleanName,
+      lat: Number(lat.toFixed(5)),
+      lng: Number(lng.toFixed(5)),
+      updated_at: Date.now()
+    };
+
+    if (typeof DNIPRO_STREETS_MAP !== "undefined") {
+      for (const item of Object.values(DNIPRO_STREETS_MAP)) {
+        if (item && item.name && item.name.toLowerCase().trim() === cleanName.toLowerCase().trim()) {
+          item.lat = payload.lat;
+          item.lng = payload.lng;
+          item._isOverridden = true;
+        }
+      }
+    }
+
+    try {
+      let localOverrides = JSON.parse(localStorage.getItem("radar_street_overrides") || "{}");
+      localOverrides[safeKey] = payload;
+      localStorage.setItem("radar_street_overrides", JSON.stringify(localOverrides));
+    } catch (e) {}
+
+    try {
+      await fetch(FIREBASE_OVERRIDES_URL.replace(".json", `/${safeKey}.json`), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+    } catch (e) {}
+  }
+
+  function detectStreetForPoint(point) {
+    if (!point) return null;
+    if (point.address && point.address !== "Встановлено користувачем" && point.address !== "Мітка на карті") {
+      return point.address;
+    }
+
+    const raw = (point.text || point.raw_text || "").toLowerCase();
+    if (!raw || typeof DNIPRO_STREETS_MAP === "undefined") return null;
+
+    let bestMatch = null;
+    let maxLen = 0;
+
+    for (const item of Object.values(DNIPRO_STREETS_MAP)) {
+      if (!item || !item.name) continue;
+      const clean = item.name.toLowerCase().replace(/(?:вулиця|проспект|просп|провулок|вул|шосе|тупик|узвіз)\.?/gi, "").trim();
+      if (clean.length >= 4 && raw.includes(clean)) {
+        if (clean.length > maxLen) {
+          maxLen = clean.length;
+          bestMatch = item.name;
+        }
+      }
+    }
+    return bestMatch;
+  }
+
+  // =========================================================================
+  // 3. СТИЛІ КОМПАКТНОГО МЕРЕХТІННЯ (ЖОВТИЙ + СИНІЙ СТРОБ 6-8px)
   // =========================================================================
   if (!document.getElementById("manual-drag-pulse-style")) {
     const style = document.createElement("style");
@@ -109,7 +220,7 @@
   setInterval(syncFirebasePointsCache, 25000);
 
   // =========================================================================
-  // 3. ЧИСТЕ ВИТЯГУВАННЯ НАЗВИ ВУЛИЦІ
+  // 4. ЧИСТЕ ВИТЯГУВАННЯ НАЗВИ ВУЛИЦІ (ДЛЯ БАЗИ СИНОНІМІВ)
   // =========================================================================
   function extractCleanLocationPhrase(rawText, targetStreetName) {
     if (!rawText) return "";
@@ -158,14 +269,14 @@
     }
 
     s = s.replace(/^\s*(?:на|по|в|до|от|біля|возле|коло)\s+/i, "");
-    s = s.replace(/\s+(?:на|по|в|до|от)\$/i, "");
+    s = s.replace(/\s+(?:на|по|в|до|от)$/i, "");
     s = s.replace(/\s+/g, " ").trim();
 
     return s.length >= 3 ? s : rawText.trim();
   }
 
   // =========================================================================
-  // 4. ДОСТУП ДО ПАМ'ЯТІ ТОПОНІМІВ "А = Б"
+  // 5. ДОСТУП ДО ПАМ'ЯТІ ТОПОНІМІВ "А = Б"
   // =========================================================================
   function getMemoryToponymsMap() {
     const memoryKeys = ["radar_toponyms", "toponyms_memory", "radar_memory_toponyms", "radar_ab_rules", "radar_learned_rules"];
@@ -197,7 +308,7 @@
   }
 
   // =========================================================================
-  // 5. ТРЬОХРІВНЕВИЙ РОЗУМНИЙ ПОШУК
+  // 6. ТРЬОХРІВНЕВИЙ РОЗУМНИЙ ПОШУК (ПАМ'ЯТЬ + STREETS.JS + ОНЛАЙН)
   // =========================================================================
   let searchDebounceTimer = null;
 
@@ -217,7 +328,7 @@
 
     const collectedMatches = [];
 
-    // РІВЕНЬ 1: Пам'ять
+    // РІВЕНЬ 1: Пам'ять топонімів
     const memMap = getMemoryToponymsMap();
     let resolvedMemoryTarget = null;
 
@@ -243,7 +354,7 @@
       }
     }
 
-    // РІВЕНЬ 2: streets.js
+    // РІВЕНЬ 2: Довідник streets.js (з урахуванням переозначень)
     if (typeof DNIPRO_STREETS_MAP !== "undefined") {
       for (const [key, item] of Object.entries(DNIPRO_STREETS_MAP)) {
         const matchesQuery = key.includes(q) || (item.old && item.old.toLowerCase().includes(q)) || item.name.toLowerCase().includes(q);
@@ -332,7 +443,7 @@
   }
 
   // =========================================================================
-  // 6. НАДІЙНИЙ ПОШУК ОРИГІНАЛЬНИХ ТОЧОК У WINDOW.ALLPOINTS
+  // 7. НАДІЙНИЙ ПОШУК ОРИГІНАЛЬНИХ ТОЧОК У WINDOW.ALLPOINTS
   // =========================================================================
   function getLivePointsFromAllPoints(marker, primaryPoint) {
     const list = [];
@@ -391,7 +502,7 @@
   }
 
   // =========================================================================
-  // 7. МЕНЮ ДІЙ (ACTION SHEET) З ВИБОРОМ ЗІ СТОПКИ
+  // 8. МЕНЮ ДІЙ (ACTION SHEET)
   // =========================================================================
   window.openRelocateActionSheet = function (point, marker) {
     const basePoint = point || resolveMarkerPoint(marker);
@@ -501,7 +612,7 @@
   window.openActionSheet = window.openRelocateActionSheet;
 
   // =========================================================================
-  // 8. ПК-КЕРУВАННЯ: КОЛІЩАТКО (СКМ) ТА ПРАВИЙ КЛІК (ПКМ) БЕЗ МЕНЮ БРАУЗЕРА
+  // 9. ПК-КЕРУВАННЯ: КОЛІЩАТКО (СКМ) ТА ПРАВИЙ КЛІК (ПКМ)
   // =========================================================================
   function setupDesktopInteractions() {
     if (!window.map) return setTimeout(setupDesktopInteractions, 300);
@@ -540,7 +651,6 @@
       }
     }
 
-    // Клік коліщатком (СКМ)
     mapContainer.addEventListener("mousedown", function (e) {
       if (e.button === 1) {
         e.preventDefault();
@@ -550,7 +660,6 @@
       }
     }, true);
 
-    // Правий клік (ПКМ)
     mapContainer.addEventListener("contextmenu", function (e) {
       e.preventDefault();
       e.stopPropagation();
@@ -561,7 +670,7 @@
   setupDesktopInteractions();
 
   // =========================================================================
-  // 9. РУЧНИЙ РЕЖИМ ПЕРЕТЯГУВАННЯ (З ФІКСАЦІЄЮ В ПАМ'ЯТІ ТА FIREBASE)
+  // 10. РУЧНИЙ РЕЖИМ ПЕРЕТЯГУВАННЯ (З ФІКСАЦІЄЮ В WINDOW.ALLPOINTS ТА FIREBASE)
   // =========================================================================
   let manualMovingMarker = null;
   let manualOriginalLatLng = null;
@@ -582,7 +691,6 @@
 
     if (!p && window.activeActionPoint) p = window.activeActionPoint;
 
-    // Якщо маркер не передано прямо — знаходимо його на карті за координатами p
     if (!m && window.map && p) {
       let minDist = Infinity;
       window.map.eachLayer(l => {
@@ -774,10 +882,9 @@
     manualMovingMarker.off("drag");
     manualMovingMarker.off("dragend");
 
-    // 2. Оновлюємо дані точки в пам'яті
+    // 2. Оновлюємо дані точки в головному масиві window.allPoints
     let targetFbKey = p ? p._fbKey : null;
 
-    // Оновлюємо головний масив програми window.allPoints
     if (Array.isArray(window.allPoints)) {
       window.allPoints.forEach(item => {
         if (!item) return;
@@ -802,7 +909,7 @@
       p.needs_training = false;
     }
 
-    // 3. Відправляємо оновлення у Firebase
+    // 3. Відправляємо оновлення самої точки в Firebase
     if (targetFbKey) {
       fetch(FIREBASE_POINTS_URL.replace(".json", `/${targetFbKey}.json`), {
         method: "PATCH",
@@ -811,16 +918,23 @@
       }).catch(() => {});
     }
 
-    // 4. Фіксуємо сам маркер на новій позиції
+    // 4. Оновлюємо координати для всієї вулиці в базі переозначень (street_overrides)
+    const detectedStreet = detectStreetForPoint(p);
+    if (detectedStreet) {
+      saveStreetCoordinateOverride(detectedStreet, lat, lng);
+    }
+
+    // 5. Фіксуємо сам маркер на карті
     manualMovingMarker.setLatLng([lat, lng]);
 
-    // Тільки тепер знімаємо блокування автооновлення
+    // Дозволяємо фонові перемальовки
     window.isManualDragActive = false;
 
     manualMovingMarker = null;
     manualPointObj = null;
 
-    if (typeof showToast === "function") showToast(`✅ Точку зафіксовано на (${lat.toFixed(4)}, ${lng.toFixed(4)})`);
+    const streetNote = detectedStreet ? ` та збережено для «${detectedStreet}»` : "";
+    if (typeof showToast === "function") showToast(`✅ Точку зафіксовано на (${lat.toFixed(4)}, ${lng.toFixed(4)})${streetNote}`);
     if (typeof renderMarkers === "function") renderMarkers();
     if (typeof renderTrafficLights === "function") renderTrafficLights();
 
@@ -828,7 +942,7 @@
   }
 
   // =========================================================================
-  // 10. МОДАЛКА КАЛІБРУВАННЯ ТА КОПІЮВАННЯ ДЛЯ STREETS.JS
+  // 11. МОДАЛКА КАЛІБРУВАННЯ ТА КОПІЮВАННЯ ДЛЯ STREETS.JS
   // =========================================================================
   function showCoordinatesCopyModal(lat, lng) {
     let modal = document.getElementById("coordsCalibrationModal");
@@ -906,7 +1020,7 @@
   }
 
   // =========================================================================
-  // 11. ПЕРЕНЕСЕННЯ ЗА АДРЕСОЮ
+  // 12. ПЕРЕНЕСЕННЯ ЗА АДРЕСОЮ
   // =========================================================================
   window.openTrainingModal = function (point, marker) {
     window.activeActionPoint = point;
@@ -986,6 +1100,19 @@
     p.needs_training = false;
     p.geo_refined = true;
 
+    if (Array.isArray(window.allPoints)) {
+      window.allPoints.forEach(item => {
+        if (!item) return;
+        if ((p._fbKey && item._fbKey === p._fbKey) || (p.text && item.text === p.text)) {
+          item.lat = p.lat;
+          item.lng = p.lng;
+          item.address = p.address;
+          item.needs_training = false;
+          item.geo_refined = true;
+        }
+      });
+    }
+
     if (p._fbKey) {
       fetch(FIREBASE_POINTS_URL.replace(".json", `/${p._fbKey}.json`), {
         method: "PATCH",
@@ -1048,8 +1175,10 @@
   }
 
   // =========================================================================
-  // 12. ЖУРНАЛ ПРИВ'ЯЗОК ІІ ТА ОЧИЩЕННЯ
+  // 13. ЖУРНАЛ КЕРУВАННЯ З ДВОМА ОКРЕМИМИ ВКЛАДКАМИ
   // =========================================================================
+  let currentJournalTab = "synonyms"; // "synonyms" | "overrides"
+
   window.cleanAllExistingRules = async function () {
     if (!confirm("Очистити всі наявні правила в базі від сміття (смайлів, описів авто та слів 'блокпост/чисто')?")) {
       return;
@@ -1108,15 +1237,30 @@
 
       journalModal.innerHTML = `
         <div class="action-sheet-card" style="max-height:85vh; display:flex; flex-direction:column; padding:16px;" onclick="event.stopPropagation()">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid #334155; padding-bottom:8px;">
-            <div style="font-size:14px; font-weight:900; color:#38bdf8;">📚 Журнал прив'язок ІІ</div>
-            <div style="display:flex; gap:8px; align-items:center;">
-              <button onclick="window.cleanAllExistingRules()" style="background:#1e293b; border:1px solid #0284c7; color:#38bdf8; font-size:10px; font-weight:800; padding:5px 8px; border-radius:6px; cursor:pointer;" title="Очистити всі записи від сміття">🧹 Очистити від сміття</button>
-              <span style="cursor:pointer; font-size:16px; color:#94a3b8; font-weight:800; padding:0 4px;" onclick="document.getElementById('bindingJournalModal').style.display='none'">✕</span>
-            </div>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; border-bottom:1px solid #334155; padding-bottom:8px;">
+            <div style="font-size:14px; font-weight:900; color:#38bdf8;">📚 Журнал керування «мозком»</div>
+            <span style="cursor:pointer; font-size:16px; color:#94a3b8; font-weight:800; padding:0 4px;" onclick="document.getElementById('bindingJournalModal').style.display='none'">✕</span>
           </div>
+
+          <!-- ПЕРЕМИКАЧ ДВОХ ВІДОКРЕМЛЕНИХ ПАПОК -->
+          <div style="display:flex; gap:6px; margin-bottom:10px;">
+            <button id="tabBtnSynonyms" onclick="switchJournalTab('synonyms')" style="flex:1; background:#0284c7; color:#fff; border:none; padding:7px 4px; border-radius:8px; font-size:11px; font-weight:800; cursor:pointer;">
+              🧠 Синоніми (А = Б)
+            </button>
+            <button id="tabBtnOverrides" onclick="switchJournalTab('overrides')" style="flex:1; background:#1e293b; color:#94a3b8; border:1px solid #334155; padding:7px 4px; border-radius:8px; font-size:11px; font-weight:800; cursor:pointer;">
+              📍 Зсунуті вулиці
+            </button>
+          </div>
+
+          <!-- ДОДАТКОВІ ІНСТРУМЕНТИ -->
+          <div id="journalToolsBar" style="display:flex; justify-content:flex-end; margin-bottom:8px;">
+            <button onclick="window.cleanAllExistingRules()" style="background:#1e293b; border:1px solid #0284c7; color:#38bdf8; font-size:10px; font-weight:800; padding:4px 8px; border-radius:6px; cursor:pointer;" title="Очистити синоніми від сміття">
+              🧹 Очистити від сміття
+            </button>
+          </div>
+
           <div id="journalItemsList" style="overflow-y:auto; flex:1; display:flex; flex-direction:column; gap:8px;">
-            <div style="text-align:center; padding:20px; color:#94a3b8; font-size:11px;">Завантаження бази знань...</div>
+            <div style="text-align:center; padding:20px; color:#94a3b8; font-size:11px;">Завантаження списку...</div>
           </div>
         </div>
       `;
@@ -1127,54 +1271,169 @@
     renderBindingJournal();
   };
 
+  window.switchJournalTab = function (tab) {
+    currentJournalTab = tab;
+    const btnSyn = document.getElementById("tabBtnSynonyms");
+    const btnOvr = document.getElementById("tabBtnOverrides");
+    const toolsBar = document.getElementById("journalToolsBar");
+
+    if (btnSyn && btnOvr) {
+      if (tab === "synonyms") {
+        btnSyn.style.background = "#0284c7";
+        btnSyn.style.color = "#fff";
+        btnSyn.style.border = "none";
+
+        btnOvr.style.background = "#1e293b";
+        btnOvr.style.color = "#94a3b8";
+        btnOvr.style.border = "1px solid #334155";
+        if (toolsBar) toolsBar.style.display = "flex";
+      } else {
+        btnOvr.style.background = "#0284c7";
+        btnOvr.style.color = "#fff";
+        btnOvr.style.border = "none";
+
+        btnSyn.style.background = "#1e293b";
+        btnSyn.style.color = "#94a3b8";
+        btnSyn.style.border = "1px solid #334155";
+        if (toolsBar) toolsBar.style.display = "none";
+      }
+    }
+    renderBindingJournal();
+  };
+
   async function renderBindingJournal() {
     const listEl = document.getElementById("journalItemsList");
     if (!listEl) return;
 
-    try {
-      const res = await fetch(`${FIREBASE_KB_URL}?t=${Date.now()}`);
-      if (!res.ok) throw new Error();
-      const data = await res.json();
+    if (currentJournalTab === "synonyms") {
+      // ПАПКА 1: Синоніми та сленг (knowledge_base)
+      try {
+        const res = await fetch(`${FIREBASE_KB_URL}?t=${Date.now()}`);
+        if (!res.ok) throw new Error();
+        const data = await res.json();
 
-      if (!data || Object.keys(data).length === 0) {
-        listEl.innerHTML = `<div style="text-align:center; padding:20px; color:#94a3b8; font-size:11px;">База знань порожня.</div>`;
-        return;
+        if (!data || Object.keys(data).length === 0) {
+          listEl.innerHTML = `<div style="text-align:center; padding:20px; color:#94a3b8; font-size:11px;">Папка синонімів порожня.</div>`;
+          return;
+        }
+
+        const entries = Object.entries(data).reverse();
+        let html = "";
+
+        entries.forEach(([key, item]) => {
+          if (!item) return;
+          const phrase = item.phrase || item.text || item.raw_text || "—";
+          const street = item.street || item.name || item.address || "Невідомо";
+          const dateStr = item.created_at ? new Date(item.created_at).toLocaleDateString([], { day: '2-digit', month: '2-digit', year: 'numeric' }) : "18.10.2026";
+          const timeStr = item.created_at ? new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "12:00";
+          const coordsStr = item.lat && item.lng ? `(${Number(item.lat).toFixed(4)}, ${Number(item.lng).toFixed(4)})` : "";
+
+          html += `
+            <div style="background:#0b1120; border:1px solid #1e293b; border-radius:10px; padding:10px; display:flex; justify-content:space-between; align-items:center; gap:8px;">
+              <div style="flex:1; min-width:0;">
+                <div style="font-size:11.5px; font-weight:800; color:#f1f5f9; line-height:1.4;">
+                  «<span style="color:#f87171;">${phrase}</span>» ➔ <span style="color:#38bdf8;">${street}</span>
+                </div>
+                <div style="font-size:9.5px; color:#64748b; margin-top:4px;">
+                  📅 ${dateStr} 🕒 ${timeStr} ${coordsStr}
+                </div>
+              </div>
+              <div style="display:flex; gap:6px; flex-shrink:0;">
+                <button onclick="editJournalRule('${key}', '${encodeURIComponent(phrase)}')" style="background:#0284c7; border:none; color:#fff; width:28px; height:28px; border-radius:6px; cursor:pointer; font-size:12px; display:flex; align-items:center; justify-content:center;" title="Редагувати фразу">✏️</button>
+                <button onclick="deleteJournalRule('${key}')" style="background:#7f1d1d; border:none; color:#fca5a5; width:28px; height:28px; border-radius:6px; cursor:pointer; font-size:12px; display:flex; align-items:center; justify-content:center;" title="Видалити правило">🗑️</button>
+              </div>
+            </div>
+          `;
+        });
+
+        listEl.innerHTML = html;
+      } catch (e) {
+        listEl.innerHTML = `<div style="text-align:center; padding:20px; color:#ef4444; font-size:11px;">Помилка зв'язку з базою синонімів.</div>`;
       }
+    } else {
+      // ПАПКА 2: Зсунуті вулиці (street_overrides)
+      try {
+        const res = await fetch(`${FIREBASE_OVERRIDES_URL}?t=${Date.now()}`);
+        if (!res.ok) throw new Error();
+        const data = await res.json();
 
-      const entries = Object.entries(data).reverse();
-      let html = "";
+        if (!data || Object.keys(data).length === 0) {
+          listEl.innerHTML = `<div style="text-align:center; padding:20px; color:#94a3b8; font-size:11px;">Немає зсунутих вулиць. Всі координати відповідають файлу streets.js.</div>`;
+          return;
+        }
 
-      entries.forEach(([key, item]) => {
-        if (!item) return;
-        const phrase = item.phrase || item.text || item.raw_text || "—";
-        const street = item.street || item.name || item.address || "Невідомо";
-        const dateStr = item.created_at ? new Date(item.created_at).toLocaleDateString([], { day: '2-digit', month: '2-digit', year: 'numeric' }) : "18.10.2026";
-        const timeStr = item.created_at ? new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "12:00";
-        const coordsStr = item.lat && item.lng ? `(${Number(item.lat).toFixed(4)}, ${Number(item.lng).toFixed(4)})` : "";
+        const entries = Object.entries(data);
+        let html = "";
 
-        html += `
-          <div style="background:#0b1120; border:1px solid #1e293b; border-radius:10px; padding:10px; display:flex; justify-content:space-between; align-items:center; gap:8px;">
-            <div style="flex:1; min-width:0;">
-              <div style="font-size:11.5px; font-weight:800; color:#f1f5f9; line-height:1.4;">
-                «<span style="color:#f87171;">${phrase}</span>» ➔ <span style="color:#38bdf8;">${street}</span>
+        entries.forEach(([safeKey, item]) => {
+          if (!item || !item.street) return;
+          const streetName = item.street;
+          const lat = Number(item.lat).toFixed(5);
+          const lng = Number(item.lng).toFixed(5);
+          const dateStr = item.updated_at ? new Date(item.updated_at).toLocaleDateString([], { day: '2-digit', month: '2-digit', year: 'numeric' }) : "18.10.2026";
+          const timeStr = item.updated_at ? new Date(item.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "12:00";
+
+          html += `
+            <div style="background:#0b1120; border:1px solid #1e293b; border-radius:10px; padding:10px; display:flex; justify-content:space-between; align-items:center; gap:8px;">
+              <div style="flex:1; min-width:0;">
+                <div style="font-size:11.5px; font-weight:800; color:#38bdf8; line-height:1.4;">
+                  📍 ${streetName}
+                </div>
+                <div style="font-family:monospace; font-size:10px; color:#f1f5f9; margin-top:2px;">
+                  lat: ${lat}, lng: ${lng}
+                </div>
+                <div style="font-size:9px; color:#64748b; margin-top:2px;">
+                  📅 Відкалібровано: ${dateStr} ${timeStr}
+                </div>
               </div>
-              <div style="font-size:9.5px; color:#64748b; margin-top:4px;">
-                📅 ${dateStr} 🕒 ${timeStr} ${coordsStr}
+              <div style="flex-shrink:0;">
+                <button onclick="resetStreetOverride('${safeKey}', '${encodeURIComponent(streetName)}')" style="background:#1e293b; border:1px solid #ef4444; color:#fca5a5; padding:6px 8px; border-radius:6px; cursor:pointer; font-size:10px; font-weight:800; display:flex; align-items:center; gap:4px;" title="Скинути до стандартних координат із streets.js">
+                  🔄 Скинути
+                </button>
               </div>
             </div>
-            <div style="display:flex; gap:6px; flex-shrink:0;">
-              <button onclick="editJournalRule('${key}', '${encodeURIComponent(phrase)}')" style="background:#0284c7; border:none; color:#fff; width:28px; height:28px; border-radius:6px; cursor:pointer; font-size:12px; display:flex; align-items:center; justify-content:center;" title="Редагувати фразу">✏️</button>
-              <button onclick="deleteJournalRule('${key}')" style="background:#7f1d1d; border:none; color:#fca5a5; width:28px; height:28px; border-radius:6px; cursor:pointer; font-size:12px; display:flex; align-items:center; justify-content:center;" title="Видалити правило">🗑️</button>
-            </div>
-          </div>
-        `;
-      });
+          `;
+        });
 
-      listEl.innerHTML = html;
-    } catch (e) {
-      listEl.innerHTML = `<div style="text-align:center; padding:20px; color:#ef4444; font-size:11px;">Помилка зв'язку з базою знань.</div>`;
+        listEl.innerHTML = html;
+      } catch (e) {
+        listEl.innerHTML = `<div style="text-align:center; padding:20px; color:#ef4444; font-size:11px;">Помилка зв'язку з базою координат.</div>`;
+      }
     }
   }
+
+  window.resetStreetOverride = async function (safeKey, encodedStreetName) {
+    const streetName = decodeURIComponent(encodedStreetName);
+    if (!confirm(`Скинути координати вулиці «${streetName}» до початкових із файлу streets.js?`)) return;
+
+    try {
+      await fetch(FIREBASE_OVERRIDES_URL.replace(".json", `/${safeKey}.json`), { method: "DELETE" });
+
+      if (typeof DNIPRO_STREETS_MAP !== "undefined") {
+        for (const item of Object.values(DNIPRO_STREETS_MAP)) {
+          if (item && item.name && item.name.toLowerCase().trim() === streetName.toLowerCase().trim()) {
+            if (item._origLat !== undefined && item._origLng !== undefined) {
+              item.lat = item._origLat;
+              item.lng = item._origLng;
+            }
+            delete item._isOverridden;
+          }
+        }
+      }
+
+      try {
+        let localOverrides = JSON.parse(localStorage.getItem("radar_street_overrides") || "{}");
+        delete localOverrides[safeKey];
+        localStorage.setItem("radar_street_overrides", JSON.stringify(localOverrides));
+      } catch (e) {}
+
+      if (typeof showToast === "function") showToast(`🔄 Вулицю «${streetName}» повернуто до заводських координат`);
+      if (typeof renderMarkers === "function") renderMarkers();
+      renderBindingJournal();
+    } catch (e) {
+      alert("Помилка скидання: " + e.message);
+    }
+  };
 
   window.deleteJournalRule = async function (key) {
     if (!confirm("Видалити це правило прив'язки назавжди?")) return;
