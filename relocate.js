@@ -1,40 +1,34 @@
 /**
- * relocate.js — Модуль перенесення міток, 3-рівневого пошуку, калібрування координат та ПК-мишки (v5.2)
+ * relocate.js — Модуль перенесення міток, 3-рівневого пошуку, роботи зі стопками та ПК/Мобіль-керування (v5.3)
  */
 
 (function () {
   const FIREBASE_POINTS_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/points.json";
   const FIREBASE_KB_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/knowledge_base.json";
 
-  // 1. Потужне контрастне мерехтіння (Жовтий + Блакитний неон) без конфлікту з координатами Leaflet
+  // =========================================================================
+  // 1. КОМПАКТНЕ СИГНАЛЬНЕ МЕРЕХТІННЯ (ЖОВТИЙ + СИНІЙ СТРОБ 6-8px, БЕЗ ЗСУВУ LEAFLET)
+  // =========================================================================
   if (!document.getElementById("manual-drag-pulse-style")) {
     const style = document.createElement("style");
     style.id = "manual-drag-pulse-style";
     style.innerHTML = `
-      @keyframes markerIntenseYellowBluePulse {
+      @keyframes markerTightYellowBlueStrobe {
         0% {
-          filter: drop-shadow(0 0 5px #0284c7) drop-shadow(0 0 10px #38bdf8);
+          filter: drop-shadow(0 0 3px #0284c7) drop-shadow(0 0 6px #38bdf8);
           opacity: 1;
         }
-        30% {
-          filter: drop-shadow(0 0 14px #facc15) drop-shadow(0 0 24px #eab308) brightness(1.7);
-          opacity: 0.9;
-        }
         50% {
-          filter: drop-shadow(0 0 20px #facc15) drop-shadow(0 0 34px #eab308) brightness(2.1);
-          opacity: 0.45;
-        }
-        75% {
-          filter: drop-shadow(0 0 14px #38bdf8) drop-shadow(0 0 24px #0284c7) brightness(1.7);
-          opacity: 0.85;
+          filter: drop-shadow(0 0 3px #ca8a04) drop-shadow(0 0 7px #facc15) brightness(1.4);
+          opacity: 0.55;
         }
         100% {
-          filter: drop-shadow(0 0 5px #0284c7) drop-shadow(0 0 10px #38bdf8);
+          filter: drop-shadow(0 0 3px #0284c7) drop-shadow(0 0 6px #38bdf8);
           opacity: 1;
         }
       }
       .marker-blinking-active {
-        animation: markerIntenseYellowBluePulse 0.7s infinite ease-in-out !important;
+        animation: markerTightYellowBlueStrobe 0.65s infinite ease-in-out !important;
         z-index: 999999 !important;
         cursor: grab !important;
       }
@@ -45,7 +39,7 @@
     document.head.appendChild(style);
   }
 
-  // Заморожування фонового оновлення під час ручного перетягування (щоб мітка не стрибала назад)
+  // Заморожування фонового оновлення під час ручного перенесення
   window.isManualDragActive = false;
   if (typeof window.renderMarkers === "function") {
     const origRenderMarkers = window.renderMarkers;
@@ -55,8 +49,19 @@
     };
   }
 
+  // Кеш точок з Firebase для надійного підхоплення нових та накладених міток
+  let cachedRadarPoints = {};
+  function syncFirebasePointsCache() {
+    fetch(`${FIREBASE_POINTS_URL}?t=${Date.now()}`)
+      .then(r => r.json())
+      .then(data => { if (data && typeof data === "object") cachedRadarPoints = data; })
+      .catch(() => {});
+  }
+  syncFirebasePointsCache();
+  setInterval(syncFirebasePointsCache, 25000);
+
   // =========================================================================
-  // 1. ЧИСТЕ ВИТЯГУВАННЯ НАЗВИ ВУЛИЦІ (ЗАХИСТ БАЗИ ВІД СМІТТЯ ТА АВТО)
+  // 2. ЧИСТЕ ВИТЯГУВАННЯ НАЗВИ ВУЛИЦІ (ЗАХИСТ БАЗИ ЗНАНЬ ВІД СМІТТЯ)
   // =========================================================================
   function extractCleanLocationPhrase(rawText, targetStreetName) {
     if (!rawText) return "";
@@ -112,7 +117,7 @@
   }
 
   // =========================================================================
-  // 2. ДОСТУП ДО ПАМ'ЯТІ ТОПОНІМІВ "А = Б" (З memory.js)
+  // 3. ДОСТУП ДО ПАМ'ЯТІ ТОПОНІМІВ "А = Б"
   // =========================================================================
   function getMemoryToponymsMap() {
     const memoryKeys = ["radar_toponyms", "toponyms_memory", "radar_memory_toponyms", "radar_ab_rules", "radar_learned_rules"];
@@ -144,7 +149,7 @@
   }
 
   // =========================================================================
-  // 3. ТРЬОХРІВНЕВИЙ РОЗУМНИЙ ПОШУК (ПАМ'ЯТЬ + STREETS.JS + ОНЛАЙН)
+  // 4. ТРЬОХРІВНЕВИЙ РОЗУМНИЙ ПОШУК (ПАМ'ЯТЬ + STREETS.JS + ОНЛАЙН)
   // =========================================================================
   let searchDebounceTimer = null;
 
@@ -164,7 +169,7 @@
 
     const collectedMatches = [];
 
-    // РІВЕНЬ 1: Перевірка Пам'яті топонімів ("А = Б")
+    // РІВЕНЬ 1: Пам'ять топонімів ("А = Б")
     const memMap = getMemoryToponymsMap();
     let resolvedMemoryTarget = null;
 
@@ -191,7 +196,7 @@
           name: matchedCoord.name,
           lat: matchedCoord.lat,
           lng: matchedCoord.lng,
-          label: `🧠 <b>${matchedCoord.name}</b> <span style="font-size:10px; color:#c084fc;">(з Пам'яті топонімів для «${q}»)</span>`
+          label: `🧠 <b>${matchedCoord.name}</b> <span style="font-size:10px; color:#c084fc;">(з Пам'яті топонімів)</span>`
         });
       }
     }
@@ -217,7 +222,7 @@
       }
     }
 
-    // РІВЕНЬ 3: Онлайн-пошук (Photon / OpenStreetMap) якщо локальних мало або натиснуто "Знайти"
+    // РІВЕНЬ 3: Онлайн геокодер (Photon / OSM)
     if (collectedMatches.length < 3 && q.length >= 3) {
       try {
         const onlineQuery = `${q} Дніпро`;
@@ -253,7 +258,6 @@
       } catch (e) {}
     }
 
-    // РЕНДЕР РЕЗУЛЬТАТІВ
     resultsEl.innerHTML = "";
     if (collectedMatches.length === 0) {
       resultsEl.innerHTML = `<div style="padding:8px 10px; font-size:11px; color:#94a3b8;">Вулицю не знайдено. Спробуйте іншу назву.</div>`;
@@ -286,29 +290,108 @@
   }
 
   // =========================================================================
-  // 4. КОНТЕКСТНЕ МЕНЮ ТА КЕРУВАННЯ МИШКОЮ НА ПК
+  // 5. ДІАГНОСТИКА СТОПОК (ПОШУК ВСІХ ТОЧОК У СТОПЦІ / БУТЕРБРОДІ)
+  // =========================================================================
+  function findPointsAtMarkerLocation(marker, primaryPoint) {
+    const list = [];
+    if (primaryPoint) list.push(primaryPoint);
+
+    const latLng = marker && marker.getLatLng ? marker.getLatLng() : (primaryPoint ? L.latLng(primaryPoint.lat, primaryPoint.lng) : null);
+    if (!latLng) return list;
+
+    // Перевірка глобальних масивів точок програми
+    const allPts = window.points || window.currentPoints || window.radarPoints || window.allPoints || [];
+    if (Array.isArray(allPts)) {
+      allPts.forEach(pt => {
+        if (!pt || !pt.lat || !pt.lng) return;
+        const dist = latLng.distanceTo([pt.lat, pt.lng]);
+        if (dist <= 35) { // Радіус злипання стопки до 35 метрів
+          if (!list.some(item => (item._fbKey && item._fbKey === pt._fbKey) || (item.text && item.text === pt.text))) {
+            list.push(pt);
+          }
+        }
+      });
+    }
+
+    // Перевірка кешу Firebase
+    if (cachedRadarPoints) {
+      for (const [k, cp] of Object.entries(cachedRadarPoints)) {
+        if (!cp || !cp.lat || !cp.lng) continue;
+        const dist = latLng.distanceTo([cp.lat, cp.lng]);
+        if (dist <= 35) {
+          if (!list.some(item => item._fbKey === k)) {
+            list.push({ ...cp, _fbKey: k });
+          }
+        }
+      }
+    }
+
+    return list.length > 0 ? list : (primaryPoint ? [primaryPoint] : []);
+  }
+
+  function resolveMarkerPoint(marker) {
+    if (!marker) return null;
+    if (marker.pointData && typeof marker.pointData === "object") return marker.pointData;
+    if (marker._point && typeof marker._point === "object") return marker._point;
+    if (marker.options && marker.options.pointData) return marker.options.pointData;
+
+    let fbKey = null;
+    if (window.markersMap) {
+      for (const [k, m] of Object.entries(window.markersMap)) {
+        if (m === marker) { fbKey = k; break; }
+      }
+    }
+
+    if (fbKey && cachedRadarPoints[fbKey]) {
+      return { ...cachedRadarPoints[fbKey], _fbKey: fbKey };
+    }
+
+    if (marker.getLatLng) {
+      const ll = marker.getLatLng();
+      return {
+        lat: Number(ll.lat.toFixed(5)),
+        lng: Number(ll.lng.toFixed(5)),
+        text: "Мітка на карті",
+        raw_text: "Мітка на карті",
+        _fbKey: fbKey || ""
+      };
+    }
+    return null;
+  }
+
+  // =========================================================================
+  // 6. УНІВЕРСАЛЬНЕ МЕНЮ ДІЙ (ACTION SHEET) З ВИБОРОМ ТОЧКИ ЗІ СТОПКИ
   // =========================================================================
   window.openRelocateActionSheet = function (point, marker) {
-    window.activeActionPoint = point;
+    const basePoint = point || resolveMarkerPoint(marker);
+    const stackedPoints = findPointsAtMarkerLocation(marker, basePoint);
+
     window.activeActionMarker = marker;
+    window.activeActionPoint = stackedPoints[0] || basePoint;
 
     let menu = document.getElementById("universalActionSheetModal");
     if (!menu) {
       menu = document.createElement("div");
       menu.id = "universalActionSheetModal";
       menu.className = "action-sheet-backdrop";
-      menu.style.cssText = "position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:99999; display:flex; align-items:flex-end; justify-content:center; backdrop-filter:blur(3px);";
+      menu.style.cssText = "position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:999999; display:flex; align-items:flex-end; justify-content:center; backdrop-filter:blur(3px);";
       menu.onclick = (e) => {
         if (e.target.id === "universalActionSheetModal") menu.style.display = "none";
       };
 
       menu.innerHTML = `
-        <div class="action-sheet-card" style="background:#0f172a; border:1px solid #334155; border-radius:20px 20px 0 0; width:100%; max-width:440px; padding:18px; display:flex; flex-direction:column; gap:12px; box-shadow:0 -10px 30px rgba(0,0,0,0.8);" onclick="event.stopPropagation()">
+        <div class="action-sheet-card" style="background:#0f172a; border:1px solid #334155; border-radius:20px 20px 0 0; width:100%; max-width:440px; padding:18px; display:flex; flex-direction:column; gap:12px; box-shadow:0 -10px 30px rgba(0,0,0,0.85);" onclick="event.stopPropagation()">
           <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #1e293b; padding-bottom:8px;">
             <div style="font-size:13.5px; font-weight:900; color:#38bdf8; display:flex; align-items:center; gap:6px;">
               <span>🛠️ Дії з міткою</span>
+              <span id="uActionStackBadge" style="display:none; background:#f59e0b; color:#000; font-size:10px; font-weight:900; padding:1px 6px; border-radius:10px;">Стопка</span>
             </div>
             <span style="cursor:pointer; font-size:18px; color:#94a3b8; font-weight:800; padding:0 6px;" onclick="document.getElementById('universalActionSheetModal').style.display='none'">✕</span>
+          </div>
+
+          <div id="uActionStackSelectBox" style="display:none; flex-direction:column; gap:4px;">
+            <div style="font-size:10px; font-weight:800; color:#94a3b8;">ОБЕРІТЬ ПОВІДОМЛЕННЯ ДЛЯ ПЕРЕНЕСЕННЯ:</div>
+            <div id="uActionStackList" style="max-height:120px; overflow-y:auto; display:flex; flex-direction:column; gap:4px;"></div>
           </div>
 
           <div id="uActionQuoteText" style="font-size:11px; color:#cbd5e1; background:#1e293b; padding:8px 10px; border-radius:8px; line-height:1.4; border-left:3px solid #38bdf8;">
@@ -343,38 +426,114 @@
       };
     }
 
+    const badge = document.getElementById("uActionStackBadge");
+    const stackBox = document.getElementById("uActionStackSelectBox");
+    const stackList = document.getElementById("uActionStackList");
     const qEl = document.getElementById("uActionQuoteText");
-    const raw = point ? (point.text || point.raw_text || point.address || "Мітка") : "Мітка";
-    if (qEl) qEl.innerText = `«${raw}»`;
 
+    function renderSelectedQuote(p) {
+      window.activeActionPoint = p;
+      const txt = p ? (p.text || p.raw_text || p.address || "Мітка") : "Мітка";
+      if (qEl) qEl.innerText = `«${txt}»`;
+    }
+
+    if (stackedPoints.length > 1) {
+      if (badge) badge.style.display = "inline-block";
+      if (stackBox) stackBox.style.display = "flex";
+      if (stackList) {
+        stackList.innerHTML = "";
+        stackedPoints.forEach((pt, idx) => {
+          const row = document.createElement("div");
+          row.style.cssText = `background:${idx === 0 ? "#1e293b" : "#0b1120"}; border:1px solid ${idx === 0 ? "#0284c7" : "#334155"}; padding:6px 8px; border-radius:6px; font-size:10.5px; color:#f1f5f9; cursor:pointer;`;
+          row.innerText = `${idx + 1}. ${pt.text || pt.raw_text || "Повідомлення"}`;
+          row.onclick = () => {
+            Array.from(stackList.children).forEach(c => {
+              c.style.background = "#0b1120";
+              c.style.borderColor = "#334155";
+            });
+            row.style.background = "#1e293b";
+            row.style.borderColor = "#0284c7";
+            renderSelectedQuote(pt);
+          };
+          stackList.appendChild(row);
+        });
+      }
+    } else {
+      if (badge) badge.style.display = "none";
+      if (stackBox) stackBox.style.display = "none";
+    }
+
+    renderSelectedQuote(stackedPoints[0] || basePoint);
     menu.style.display = "flex";
   };
 
-  // Клік правою кнопкою миші (ПКМ) на комп'ютері
-  document.addEventListener("contextmenu", function (e) {
-    const markerTarget = e.target.closest(".leaflet-marker-icon, .leaflet-interactive");
-    if (markerTarget && window.map) {
+  // Аліас для сумісності з index.html
+  window.openActionSheet = window.openRelocateActionSheet;
+
+  // =========================================================================
+  // 7. ПК-КЕРУВАННЯ: КОЛІЩАТКО (СКМ) ТА ПРАВИЙ КЛІК (ПКМ) БЕЗ МЕНЮ БРАУЗЕРА
+  // =========================================================================
+  function setupDesktopInteractions() {
+    if (!window.map) return setTimeout(setupDesktopInteractions, 300);
+
+    const mapContainer = window.map.getContainer();
+    if (!mapContainer || mapContainer._desktopMouseHandled) return;
+    mapContainer._desktopMouseHandled = true;
+
+    // Залізне глушіння системного меню Opera/Windows на карті
+    mapContainer.addEventListener("contextmenu", function (e) {
       e.preventDefault();
       e.stopPropagation();
+    });
 
-      let matchedMarker = null;
+    // Запобігання автоскролу коліщатка в браузері
+    mapContainer.addEventListener("auxclick", function (e) {
+      if (e.button === 1) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    });
+
+    function handleDesktopClickOnTarget(target, isWheelOrRight) {
+      if (!target || !window.map) return;
+      let clickedMarker = null;
+
       window.map.eachLayer(l => {
-        if (matchedMarker) return;
+        if (clickedMarker) return;
         const el = l.getElement ? l.getElement() : (l._icon || l._path);
-        if (el && (el === markerTarget || el.contains(markerTarget) || markerTarget.contains(el))) {
-          matchedMarker = l;
+        if (el && (el === target || el.contains(target) || target.contains(el))) {
+          clickedMarker = l;
         }
       });
 
-      if (matchedMarker) {
-        const pt = matchedMarker.pointData || matchedMarker._point || null;
-        window.openRelocateActionSheet(pt, matchedMarker);
+      if (clickedMarker) {
+        const pt = resolveMarkerPoint(clickedMarker);
+        window.openRelocateActionSheet(pt, clickedMarker);
       }
     }
-  });
+
+    // 1. Клік коліщатком миші (СКМ / button === 1)
+    mapContainer.addEventListener("mousedown", function (e) {
+      if (e.button === 1) {
+        e.preventDefault();
+        e.stopPropagation();
+        const target = e.target.closest(".leaflet-marker-icon, .leaflet-interactive");
+        if (target) handleDesktopClickOnTarget(target, true);
+      }
+    }, true);
+
+    // 2. Правий клік миші (ПКМ / button === 2)
+    mapContainer.addEventListener("contextmenu", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      const target = e.target.closest(".leaflet-marker-icon, .leaflet-interactive");
+      if (target) handleDesktopClickOnTarget(target, true);
+    }, true);
+  }
+  setupDesktopInteractions();
 
   // =========================================================================
-  // 5. ПОВНОЦІННИЙ РУЧНИЙ РЕЖИМ (БЕЗПЕРЕРВНИЙ РУХ, ЗУМ, ЖИВІ КООРДИНАТИ)
+  // 8. ПОВНОЦІННИЙ РУЧНИЙ РЕЖИМ (НЕПЕРЕРВНЕ ПЕРЕТЯГУВАННЯ, ЗУМ, ПІДТВЕРДЖЕННЯ)
   // =========================================================================
   let manualMovingMarker = null;
   let manualOriginalLatLng = null;
@@ -388,26 +547,26 @@
       m = pointOrFbKey;
     } else if (typeof pointOrFbKey === "object" && pointOrFbKey !== null) {
       p = pointOrFbKey;
+    } else if (typeof pointOrFbKey === "string") {
+      const fbKey = pointOrFbKey;
+      if (window.markersMap && window.markersMap[fbKey]) m = window.markersMap[fbKey];
+      if (cachedRadarPoints[fbKey]) p = { ...cachedRadarPoints[fbKey], _fbKey: fbKey };
     }
 
     if (!m && window.activeActionMarker) m = window.activeActionMarker;
     if (!p && window.activeActionPoint) p = window.activeActionPoint;
 
-    // Якщо передано fbKey — знаходимо точний маркер
-    if (!m && typeof pointOrFbKey === "string") {
-      const fbKey = pointOrFbKey;
-      if (window.markersMap && window.markersMap[fbKey]) m = window.markersMap[fbKey];
-    }
-
-    // Запасний пошук найближчого маркера на карті
+    // Автоматичний підбір маркера зі шарів карти за точкою p
     if (!m && window.map && p) {
       let minDist = Infinity;
       window.map.eachLayer(l => {
-        if (l instanceof L.Marker && l.getLatLng) {
-          const d = l.getLatLng().distanceTo([p.lat, p.lng]);
-          if (d < minDist && d < 60) {
-            minDist = d;
-            m = l;
+        if (l instanceof L.Marker || (typeof L.CircleMarker !== "undefined" && l instanceof L.CircleMarker)) {
+          if (l.getLatLng) {
+            const d = l.getLatLng().distanceTo([p.lat, p.lng]);
+            if (d < minDist && d < 60) {
+              minDist = d;
+              m = l;
+            }
           }
         }
       });
@@ -419,25 +578,30 @@
     }
 
     manualMovingMarker = m;
-    manualPointObj = p || m.pointData || m._point || { lat: m.getLatLng().lat, lng: m.getLatLng().lng };
+    manualPointObj = p || resolveMarkerPoint(m);
     manualOriginalLatLng = L.latLng(m.getLatLng().lat, m.getLatLng().lng);
 
     if (m.closePopup) m.closePopup();
 
-    // Вмикаємо перетягування
-    if (m.dragging) m.dragging.enable();
+    // 1. Вмикаємо перетягування (якщо це коло — забезпечуємо dragging)
+    if (m.dragging) {
+      m.dragging.enable();
+    } else if (L.Handler && L.Handler.MarkerDrag) {
+      m.dragging = new L.Handler.MarkerDrag(m);
+      m.dragging.enable();
+    }
 
-    // Вмикаємо неонове жовто-блакитне мерехтіння
-    const iconEl = m.getElement ? m.getElement() : m._icon;
+    // 2. Вмикаємо компактне стробове миготіння
+    const iconEl = m.getElement ? m.getElement() : (m._icon || m._path);
     if (iconEl) iconEl.classList.add("marker-blinking-active");
 
-    // Блокуємо скидання координат автооновленням карти
+    // 3. Заморожуємо автооновлення карти
     window.isManualDragActive = true;
 
-    // Показуємо плаваючу панель підтвердження
+    // 4. Показуємо панель керування
     showManualDragFloatingBar(m.getLatLng().lat, m.getLatLng().lng);
 
-    // Дозволяємо пересувати скільки завгодно разів
+    // 5. Безперервне пересування без скидань при відпусканні
     m.off("drag");
     m.off("dragend");
 
@@ -459,12 +623,12 @@
       }
     });
 
-    // Підтримка зуму: не даємо мітці втрачати миготіння та перетягування при масштабуванні
+    // Підтримка масштабування (зуму) без втрати миготіння та перетягування
     if (window.map) {
       window.map.on("zoomend", function () {
         if (window.isManualDragActive && manualMovingMarker) {
           if (manualMovingMarker.dragging) manualMovingMarker.dragging.enable();
-          const el = manualMovingMarker.getElement ? manualMovingMarker.getElement() : manualMovingMarker._icon;
+          const el = manualMovingMarker.getElement ? manualMovingMarker.getElement() : (manualMovingMarker._icon || manualMovingMarker._path);
           if (el) el.classList.add("marker-blinking-active");
         }
       });
@@ -556,7 +720,7 @@
       if (manualOriginalLatLng) manualMovingMarker.setLatLng(manualOriginalLatLng);
       if (manualMovingMarker.dragging) manualMovingMarker.dragging.disable();
 
-      const el = manualMovingMarker.getElement ? manualMovingMarker.getElement() : manualMovingMarker._icon;
+      const el = manualMovingMarker.getElement ? manualMovingMarker.getElement() : (manualMovingMarker._icon || manualMovingMarker._path);
       if (el) el.classList.remove("marker-blinking-active");
 
       manualMovingMarker.off("drag");
@@ -580,7 +744,7 @@
     window.isManualDragActive = false;
 
     if (manualMovingMarker.dragging) manualMovingMarker.dragging.disable();
-    const el = manualMovingMarker.getElement ? manualMovingMarker.getElement() : manualMovingMarker._icon;
+    const el = manualMovingMarker.getElement ? manualMovingMarker.getElement() : (manualMovingMarker._icon || manualMovingMarker._path);
     if (el) el.classList.remove("marker-blinking-active");
 
     manualMovingMarker.off("drag");
@@ -611,6 +775,9 @@
     showCoordinatesCopyModal(lat, lng);
   }
 
+  // =========================================================================
+  // 9. МОДАЛКА КАЛІБРУВАННЯ ТА КОПІЮВАННЯ ДЛЯ STREETS.JS
+  // =========================================================================
   function showCoordinatesCopyModal(lat, lng) {
     let modal = document.getElementById("coordsCalibrationModal");
     if (!modal) {
@@ -687,7 +854,7 @@
   }
 
   // =========================================================================
-  // 6. ВІДКРИТТЯ ТА ПІДТВЕРДЖЕННЯ ПЕРЕНЕСЕННЯ ЗА АДРЕСОЮ
+  // 10. ПЕРЕНЕСЕННЯ ЗА АДРЕСОЮ ТА ПІДТВЕРДЖЕННЯ
   // =========================================================================
   window.openTrainingModal = function (point, marker) {
     window.activeActionPoint = point;
@@ -700,7 +867,7 @@
 
     if (!modal) return;
 
-    const rawText = point.text || point.raw_text || "";
+    const rawText = point ? (point.text || point.raw_text || "") : "";
     if (quoteEl) quoteEl.innerHTML = `«${rawText}»`;
     if (inputEl) {
       inputEl.value = "";
@@ -829,7 +996,7 @@
   }
 
   // =========================================================================
-  // 7. ЖУРНАЛ ПРИВ'ЯЗОК ІІ ТА РУЧНЕ ОЧИЩЕННЯ
+  // 11. ЖУРНАЛ ПРИВ'ЯЗОК ІІ ТА РУЧНЕ ОЧИЩЕННЯ
   // =========================================================================
   window.cleanAllExistingRules = async function () {
     if (!confirm("Очистити всі наявні правила в базі від сміття (смайлів, описів авто та слів 'блокпост/чисто')?")) {
