@@ -1,6 +1,10 @@
 /**
- * relocate.js — Модуль перенесення міток та надійного калібрування вулиць v9.0
- * Повний захист простого режиму + Єдине нове вікно дій + Перенесення всієї стопки (📦) + 4 джерела пошуку (📍 🧠 🌐 🗺️)
+ * relocate.js — Модуль перенесення міток та надійного калібрування вулиць v9.1
+ * - Повний захист простого режиму (жодних меню, перетягувань та попапів дій)
+ * - Єдине сучасне вікно дій для режиму розробника
+ * - Надійна робота з усією стопкою (динамічний підрахунок, виділення всіх рядків, груповий зсув)
+ * - 4-рівневий адресний пошук (📍 🧠 🌐 🗺️) з нормалізацією літер та закінчень
+ * - Безвідмовне закриття вікон (✕, Esc, клік поза вікном)
  */
 
 (function () {
@@ -9,24 +13,24 @@
   const FIREBASE_OVERRIDES_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/street_overrides.json";
 
   // =========================================================================
-  // 1. ПЕРЕВІРКА РЕЖИМУ (ПРОСТИЙ ВОДІЙСЬКИЙ ЧИ РОЗРОБНИК)
+  // 1. БЕЗПЕКА ТА РЕЖИМИ РОБОТИ
   // =========================================================================
   function isSimpleMode() {
     return document.documentElement.classList.contains("mode-simple") ||
            localStorage.getItem("radar_ui_mode") === "simple";
   }
 
-  // Видаляємо старі примітивні вікна з DOM, щоб вони ніколи не спливали
-  function cleanupOldModals() {
-    const oldMarkerSheet = document.getElementById("markerActionSheet");
-    if (oldMarkerSheet) oldMarkerSheet.remove();
-    const oldTrainModal = document.getElementById("trainModal");
-    if (oldTrainModal) oldTrainModal.remove();
+  // Примусово видаляємо застарілі примітивні діалоги з index.html
+  function purgeLegacyModals() {
+    const oldSheet = document.getElementById("markerActionSheet");
+    if (oldSheet) oldSheet.remove();
+    const oldTrain = document.getElementById("trainModal");
+    if (oldTrain) oldTrain.remove();
   }
-  setTimeout(cleanupOldModals, 200);
+  setTimeout(purgeLegacyModals, 150);
 
   // =========================================================================
-  // 2. БЕЗПЕЧНІ КЛЮЧІ FIREBASE ТА НОРМАЛІЗАЦІЯ
+  // 2. БЕЗПЕЧНІ КЛЮЧІ ТА НОРМАЛІЗАЦІЯ ДЛЯ ПОШУКУ
   // =========================================================================
   function toSafeFirebaseKey(str) {
     if (!str) return "key_" + Date.now();
@@ -62,7 +66,7 @@
   }
 
   // =========================================================================
-  // 3. ДОВІДНИК ПЕРЕЙМЕНУВАНЬ ДЛЯ ПОПАПІВ
+  // 3. ДОВІДНИК ПЕРЕЙМЕНУВАНЬ ДЛЯ ПОПАПІВ КАРТИ
   // =========================================================================
   window.getStreetRenameNote = function (rawText) {
     if (!rawText || typeof DNIPRO_STREETS_MAP === "undefined") return "";
@@ -117,7 +121,7 @@
   };
 
   // =========================================================================
-  // 4. СИНХРОНІЗАЦІЯ ТА ЗБЕРЕЖЕННЯ ЗСУВІВ ВУЛИЦЬ
+  // 4. СИНХРОНІЗАЦІЯ ТА ЗБЕРЕЖЕННЯ ЗСУВІВ (STREET OVERRIDES)
   // =========================================================================
   function backupOriginalStreets() {
     if (typeof DNIPRO_STREETS_MAP === "undefined") return;
@@ -243,7 +247,7 @@
   }
 
   // =========================================================================
-  // 5. ПОТУЖНИЙ МУЛЬТИ-ПОШУК З 4 ДЖЕРЕЛ (📍 🧠 🌐 🗺️)
+  // 5. МУЛЬТИ-ПОШУК З 4 ДЖЕРЕЛ (📍 🧠 🌐 🗺️)
   // =========================================================================
   function searchLocalStreets(query) {
     const results = [];
@@ -362,7 +366,7 @@
   }
 
   // =========================================================================
-  // 6. НАДІЙНЕ ЗАКРИТТЯ ВІКОН ТА ЗАХИСТ ВІД ЗБОЇВ (✕ ТА ESC)
+  // 6. НАДІЙНЕ ЗАКРИТТЯ ВІКОН (✕ ТА ESC)
   // =========================================================================
   window.closeAllRelocateModals = function () {
     const ids = ["universalActionSheetModal", "relocateAddressModalCard", "confirmMoveModal"];
@@ -404,7 +408,7 @@
   });
 
   // =========================================================================
-  // 7. НОВЕ МОДАЛЬНЕ ВІКНО «ПЕРЕНЕСТИ ЗА АДРЕСОЮ»
+  // 7. МОДАЛЬНЕ ВІКНО «ПЕРЕНЕСТИ ЗА АДРЕСОЮ»
   // =========================================================================
   let searchDebounceTimer = null;
 
@@ -699,7 +703,7 @@
     window.pendingRelocation = null;
     window.isMovingEntireStack = false;
 
-    const msg = isStack ? `✅ Перенесено всі ${targets.length} мітки зі стопки на: ${pr.streetName}` : `✅ Перенесено на: ${pr.streetName}`;
+    const msg = isStack ? `✅ Перенесено всю стопку (${targets.length}) на: ${pr.streetName}` : `✅ Перенесено на: ${pr.streetName}`;
     if (typeof showToast === "function") showToast(msg, 3500);
 
     if (typeof renderMarkers === "function") renderMarkers();
@@ -707,7 +711,7 @@
   };
 
   // =========================================================================
-  // 8. ЄДИНЕ НОВЕ ВІКНО ДІЙ З МІТКОЮ ТА СТОПКОЮ (📦)
+  // 8. ЄДИНЕ ВІКНО ДІЙ ДЛЯ РОЗРОБНИКА З ПІДТРИМКОЮ СТОПКИ
   // =========================================================================
   function resolveMarkerPoint(marker) {
     if (!marker) return null;
@@ -770,7 +774,7 @@
   window.openRelocateActionSheet = function (point, marker) {
     if (isSimpleMode()) return;
 
-    cleanupOldModals();
+    purgeLegacyModals();
 
     const basePoint = point || resolveMarkerPoint(marker);
     const stackedPoints = getLivePointsFromAllPoints(marker, basePoint);
@@ -804,7 +808,7 @@
           </div>
 
           <div id="uActionStackSelectBox" style="display:none; flex-direction:column; gap:4px;">
-            <div style="font-size:10px; font-weight:800; color:#94a3b8;">ОБЕРІТЬ ПОВІДОМЛЕННЯ:</div>
+            <div id="uActionStackTitle" style="font-size:10px; font-weight:800; color:#94a3b8;">ОБЕРІТЬ ПОВІДОМЛЕННЯ:</div>
             <div id="uActionStackList" style="max-height:120px; overflow-y:auto; display:flex; flex-direction:column; gap:4px;"></div>
           </div>
 
@@ -838,11 +842,6 @@
         menu.style.display = "none";
         window.startDirectManualDrag(window.activeActionPoint, window.activeActionMarker);
       };
-
-      document.getElementById("btnActionToggleAllStack").onclick = () => {
-        window.isMovingEntireStack = !window.isMovingEntireStack;
-        updateStackToggleUI();
-      };
     }
 
     const badge = document.getElementById("uActionStackBadge");
@@ -850,42 +849,65 @@
     const stackBox = document.getElementById("uActionStackSelectBox");
     const stackList = document.getElementById("uActionStackList");
     const qEl = document.getElementById("uActionQuoteText");
+    const lblAddr = document.getElementById("btnActionGoAddressLabel");
+    const lblMan = document.getElementById("btnActionGoManualLabel");
 
-    function renderSelectedQuote(p) {
-      window.activeActionPoint = p;
-      if (qEl) {
-        if (window.isMovingEntireStack) {
-          qEl.innerHTML = `<b style="color:#f59e0b;">📦 Обрано ВСЮ стопку (${stackedPoints.length} повідомлень):</b><br>Перенесено буде всі точки на карті разом!`;
-        } else {
-          const txt = p ? (p.text || p.raw_text || p.address || "Мітка") : "Мітка";
+    function renderUIState() {
+      const currentStack = window.activeStackedPoints || [];
+      const count = currentStack.length;
+
+      if (window.isMovingEntireStack) {
+        if (btnAllStack) {
+          btnAllStack.style.background = "#f59e0b";
+          btnAllStack.style.color = "#000";
+          btnAllStack.innerText = `✅ Вся стопка (${count})`;
+        }
+        if (lblAddr) lblAddr.innerText = `🔍 Перенести ВСЮ стопку (${count}) за адресою`;
+        if (lblMan) lblMan.innerText = `🎯 Перетягнути ВСЮ стопку (${count}) пальцем`;
+
+        if (qEl) {
+          qEl.style.borderLeftColor = "#f59e0b";
+          qEl.innerHTML = `<b style="color:#f59e0b;">📦 Обрано ВСЮ стопку (${count} повідомлень):</b><br>Усі точки буде зміщено одночасно на нове місце!`;
+        }
+
+        if (stackList) {
+          Array.from(stackList.children).forEach(c => {
+            c.style.background = "rgba(245, 158, 11, 0.15)";
+            c.style.borderColor = "#f59e0b";
+          });
+        }
+      } else {
+        if (btnAllStack) {
+          btnAllStack.style.background = "#1e293b";
+          btnAllStack.style.color = "#f59e0b";
+          btnAllStack.innerText = `📦 Всю стопку`;
+        }
+        if (lblAddr) lblAddr.innerText = `🔍 Перенести за адресою (навчити «мозок»)`;
+        if (lblMan) lblMan.innerText = `🎯 Перетягнути пальцем / мишкою`;
+
+        const curP = window.activeActionPoint;
+        const txt = curP ? (curP.text || curP.raw_text || curP.address || "Мітка") : "Мітка";
+        if (qEl) {
+          qEl.style.borderLeftColor = "#38bdf8";
           qEl.innerText = `«${txt}»`;
+        }
+
+        if (stackList) {
+          Array.from(stackList.children).forEach((c, idx) => {
+            const isCur = currentStack[idx] && curP && (currentStack[idx]._fbKey === curP._fbKey || currentStack[idx].text === curP.text);
+            c.style.background = isCur ? "#1e293b" : "#0b1120";
+            c.style.borderColor = isCur ? "#0284c7" : "#334155";
+          });
         }
       }
     }
 
-    function updateStackToggleUI() {
-      const btn = document.getElementById("btnActionToggleAllStack");
-      const lblAddr = document.getElementById("btnActionGoAddressLabel");
-      const lblMan = document.getElementById("btnActionGoManualLabel");
-
-      if (window.isMovingEntireStack) {
-        if (btn) {
-          btn.style.background = "#f59e0b";
-          btn.style.color = "#000";
-          btn.innerText = `✅ Вся стопка (${stackedPoints.length})`;
-        }
-        if (lblAddr) lblAddr.innerText = `🔍 Перенести ВСЮ стопку за адресою`;
-        if (lblMan) lblMan.innerText = `🎯 Перетягнути ВСЮ стопку пальцем`;
-      } else {
-        if (btn) {
-          btn.style.background = "#1e293b";
-          btn.style.color = "#f59e0b";
-          btn.innerText = `📦 Всю стопку`;
-        }
-        if (lblAddr) lblAddr.innerText = `🔍 Перенести за адресою (навчити «мозок»)`;
-        if (lblMan) lblMan.innerText = `🎯 Перетягнути пальцем / мишкою`;
-      }
-      renderSelectedQuote(window.activeActionPoint);
+    if (btnAllStack) {
+      btnAllStack.onclick = (e) => {
+        e.stopPropagation();
+        window.isMovingEntireStack = !window.isMovingEntireStack;
+        renderUIState();
+      };
     }
 
     if (stackedPoints.length > 1) {
@@ -900,18 +922,13 @@
         stackList.innerHTML = "";
         stackedPoints.forEach((pt, idx) => {
           const row = document.createElement("div");
-          row.style.cssText = `background:${idx === 0 ? "#1e293b" : "#0b1120"}; border:1px solid ${idx === 0 ? "#0284c7" : "#334155"}; padding:6px 8px; border-radius:6px; font-size:10.5px; color:#f1f5f9; cursor:pointer;`;
+          row.style.cssText = `background:#0b1120; border:1px solid #334155; padding:6px 8px; border-radius:6px; font-size:10.5px; color:#f1f5f9; cursor:pointer; transition:all 0.15s;`;
           row.innerText = `${idx + 1}. ${pt.text || pt.raw_text || "Повідомлення"}`;
-          row.onclick = () => {
+          row.onclick = (e) => {
+            e.stopPropagation();
             window.isMovingEntireStack = false;
-            updateStackToggleUI();
-            Array.from(stackList.children).forEach(c => {
-              c.style.background = "#0b1120";
-              c.style.borderColor = "#334155";
-            });
-            row.style.background = "#1e293b";
-            row.style.borderColor = "#0284c7";
-            renderSelectedQuote(pt);
+            window.activeActionPoint = pt;
+            renderUIState();
           };
           stackList.appendChild(row);
         });
@@ -922,12 +939,10 @@
       if (stackBox) stackBox.style.display = "none";
     }
 
-    updateStackToggleUI();
-    renderSelectedQuote(stackedPoints[0] || basePoint);
+    renderUIState();
     menu.style.display = "flex";
   };
 
-  // Перехоплюємо виклик старого вікна з index.html
   window.openMarkerActionSheet = function (point, marker) {
     if (isSimpleMode()) return;
     window.openRelocateActionSheet(point, marker);
@@ -983,7 +998,7 @@
   setupDesktopInteractions();
 
   // =========================================================================
-  // 10. РУЧНИЙ РЕЖИМ ПЕРЕТЯГУВАННЯ МІТКИ (ОДНОЇ ЧИ ВСІЄЇ СТОПКИ)
+  // 10. РУЧНИЙ РЕЖИМ ПЕРЕТЯГУВАННЯ МІТКИ ТА СТОПКИ
   // =========================================================================
   let manualMovingMarker = null;
   let manualOriginalLatLng = null;
