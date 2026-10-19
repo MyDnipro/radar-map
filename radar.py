@@ -120,7 +120,7 @@ def is_ad_or_spam(text):
 # =========================================================================
 TARGET_CHECKPOINTS_CONFIG = [
     {"id": "pavlova", "name": "вул. Павлова", "regex": re.compile(r'(?:академика\s*павлова|академіка\s*павлова|\bпавлова\b)', re.IGNORECASE)},
-    {"id": "krasnozavodska", "name": "Краснозаводська", "regex": re.compile(r'(?:белелюб|краснозавод|комбайн|дтрз|ударник)', re.IGNORECASE)},
+    {"id": "krasnozavodska", "name": "Краснозаводська", "regex": re.compile(r'(?:белелюб|краснозавод|комбайн|дтрз|ударник|торус)', re.IGNORECASE)},
     {"id": "vodolechebnitsa", "name": "Водолікарня", "regex": re.compile(r'(?:водолечеб|водолікарн|водогрязелечеб)', re.IGNORECASE)},
     {"id": "vodokachka", "name": "Водокачка", "regex": re.compile(r'(?:водокачк)', re.IGNORECASE)},
     {"id": "rechport", "name": "Річпорт", "regex": re.compile(r'(?:речпорт|річпорт|речной\s*вокзал|річковий\s*вокзал|десантник)', re.IGNORECASE)},
@@ -188,6 +188,10 @@ LOCAL_STREETS_DB = [
     {"keys": ["артем", "січов", "сечевых"], "addr": "вул. Січових Стрільців (Артема)", "lat": 48.4550, "lng": 35.0420},
     {"keys": ["савченк", "черновол", "чорновол"], "addr": "вул. В'ячеслава Чорновола (Савченка)", "lat": 48.4550, "lng": 35.0180},
     {"keys": ["павлов"], "addr": "вул. Академіка Павлова", "lat": 48.4818, "lng": 35.0012},
+
+    # Єдиний вузол для Краснозаводської, Белелюбського та САТ Торус
+    {"keys": ["краснозавод", "белелюб", "комбайн", "дтрз", "торус", "сат торус"], "addr": "вул. Краснозаводська (Белелюбського / САТ)", "lat": 48.4800, "lng": 34.9880},
+
     {"keys": ["водокачк"], "addr": "Водокачка (Набережна Заводська)", "lat": 48.4910, "lng": 34.9480},
     {"keys": ["кайдак", "з'їзд.*кайдак"], "addr": "Кайдацький міст / з'їзд", "lat": 48.4925, "lng": 34.9625},
     {"keys": ["качка"], "addr": "вул. Каруни (Качка / з'їзд)", "lat": 48.4960, "lng": 35.0480},
@@ -206,7 +210,6 @@ CLEAN_KEYWORDS = [
     "норм", "нормально", "нормик", "все норм", "всё норм"
 ]
 
-# Розпізнає "чисто", "без ям", "нет бп", незалежно від знаків оклику та крапок
 CLEAN_REGEX = re.compile(
     r'(?:\b(?:чисто|чистенько|пусто|вільно|спокійно|спокойно|проїзд|ясно|сухо|знялися|пролітайте|зелено|норм|нормально|нормик)\b|без\s*бп|без\s*ям|нет\s*бп|нет\s*блокпост[а-я]*|немає?\s*бп|все\s*чисто|все\s*норм|всё\s*норм)',
     re.IGNORECASE
@@ -231,9 +234,6 @@ def is_ignored_question(text):
     return any(q in text for q in QUESTION_EMOJIS)
 
 def has_meaningful_context(text):
-    """
-    Захист від «голих» назв: якщо немає контексту чистоти або загрози, повідомлення не парситься.
-    """
     t = text.lower()
     has_clean = bool(CLEAN_REGEX.search(t)) or any(se in text for se in SUN_ONLY_EMOJIS)
     has_danger = any(w in t for w in DANGER_KEYWORDS) or any(ce in text for ce in CLOUD_PRECIP_EMOJIS)
@@ -245,7 +245,6 @@ def is_message_clean(text):
     if is_ignored_question(text):
         return None
 
-    # Захист: якщо немає жодного опису (просто "Павлова" чи "Робоча") - не ставимо мітку
     if not has_meaningful_context(text):
         return None
 
@@ -255,11 +254,9 @@ def is_message_clean(text):
     has_danger_words = any(w in t for w in DANGER_KEYWORDS)
     has_negation = any(nw in t for nw in NEGATION_WORDS)
 
-    # Заперечення небезпеки ("без ям", "нет бп", "мусора без тцк", "сняли бп")
     if (has_danger_words or has_cloud_or_precip) and has_negation:
         return True
 
-    # Пріоритет слова "чисто" (включаючи "Огни чисто", "без ям")
     if (has_pure_sun or has_clean_word) and not CLEAN_NEGATION_REGEX.search(t):
         if not (has_danger_words and not has_negation):
             return True
@@ -298,7 +295,6 @@ def split_multiline_reports(raw_post_text):
         if is_ignored_question(clean_line):
             continue
 
-        # Якщо рядок без контексту, але був заголовок статусу
         if not has_meaningful_context(clean_line) and fallback_status:
             clean_line = f"{clean_line} {fallback_status}"
 
@@ -342,25 +338,26 @@ def geocode_local(text):
     clean_t = text.lower().replace('ё', 'е')
     t = " " + clean_t + " "
 
-    # Жорсткий захист Річпорту від зсуву в бік Червоного Каменя / Паруса
+    # Жорсткий захист Річпорту
     if re.search(r'(?:речпорт|річпорт|речной\s*вокзал|річковий\s*вокзал)', t):
         return "Річпорт (Набережна Заводська)", 48.4805, 35.0210
 
-    # 1. Приоритет: ручные сдвинутые улицы (street_overrides)
+    # Жорсткий захист Краснозаводської / Торус
+    if re.search(r'(?:торус|краснозавод|белелюб)', t):
+        return "вул. Краснозаводська (Белелюбського / САТ)", 48.4800, 34.9880
+
     for raw_key, data in STREET_OVERRIDES_CACHE.items():
         if isinstance(data, dict):
             st_name = (data.get("street") or "").lower().replace('ё', 'е')
             if st_name and len(st_name) >= 4 and st_name in t:
                 return data.get("street"), float(data.get("lat")), float(data.get("lng"))
 
-    # 2. Синонимы и кастомные правила
     for raw_alias, data in CUSTOM_STREETS_CACHE.items():
         if isinstance(data, dict):
             alias = unquote(raw_alias).lower().replace('ё', 'е')
             if alias in t:
                 return data.get("name", alias), data.get("lat"), data.get("lng")
 
-    # 3. Базовый справочник
     sorted_items = sorted(
         LOCAL_STREETS_DB,
         key=lambda item: max(len(k) for k in item["keys"]),
@@ -732,7 +729,6 @@ def sync_cycle():
     now_ms = int(time.time() * 1000)
     unresolved_queue = []
 
-    # 1. Локальний прохід
     for unique_key, msg in new_items:
         PROCESSED_POST_IDS.add(unique_key)
 
@@ -740,7 +736,6 @@ def sync_cycle():
             log(f"🚫 [СПАМ / ПИТАННЯ ПРОПУЩЕНО]: '{msg[:45]}'")
             continue
 
-        # Захист: пусті назви без контексту взагалі не беремо в роботу
         if not has_meaningful_context(msg):
             log(f"⚠️ [ПРОПУЩЕНО ГОЛУ НАЗВУ БЕЗ ОПИСУ]: '{msg[:45]}'")
             continue
@@ -751,7 +746,6 @@ def sync_cycle():
 
         parsed_result = None
 
-        # Локальна база (враховуючи пріоритет Річпорту)
         addr, lat, lng = geocode_local(msg)
         if addr and lat and lng:
             parsed_result = {
@@ -763,7 +757,6 @@ def sync_cycle():
             }
             log(f"⚡ [ЛОКАЛЬНО / ДІЛЯНКА]: '{msg[:45]}' ➔ {addr} ({'ЗЕЛЕНА' if is_clean else 'ЧЕРВОНА'})")
 
-        # База знань Firebase (custom_streets)
         if not parsed_result:
             matched_kb = match_knowledge_base(msg, kb_list)
             if matched_kb and matched_kb.get("lat") and matched_kb.get("lng"):
@@ -776,7 +769,6 @@ def sync_cycle():
                 }
                 log(f"🎯 [БАЗА ЗНАНЬ]: '{matched_kb.get('alias') or matched_kb.get('phrase')}' ➔ {parsed_result['address']}")
 
-        # OpenStreetMap
         if not parsed_result:
             osm_addr, osm_lat, osm_lng = geocode_osm_fallback(msg)
             if osm_addr and osm_lat and osm_lng:
@@ -794,7 +786,6 @@ def sync_cycle():
         else:
             unresolved_queue.append((msg, is_clean))
 
-    # 2. Невідомі — пакетом до Gemini
     if unresolved_queue:
         gemini_items = [{"id": i, "text": item[0]} for i, item in enumerate(unresolved_queue)]
         log(f"🚀 Відправка пакету з {len(gemini_items)} невідомих точок до Gemini...")
