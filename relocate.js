@@ -1,9 +1,9 @@
 /**
- * relocate.js — Модуль перенесення міток та калібрування вулиць v9.5
+ * relocate.js — Модуль перенесення міток та калібрування вулиць v9.6
  * - Повний огляд карти без блюру при підтвердженні перенесення
- * - Точний пошук вулиць з DNIPRO_STREETS_MAP (як на головній карті)
- * - Виправлено відображення тексту цитати та назви вулиці
- * - Залізний ручний перенос із збереженням у Firebase та street_overrides
+ * - Точний пошук вулиць з DNIPRO_STREETS_MAP (як на Фото 3)
+ * - Робота миші на ПК: клік роликом (СКМ) та ПКМ відкривають меню
+ * - Надійний ручний перенос із збереженням у Firebase та street_overrides
  */
 
 (function () {
@@ -26,7 +26,7 @@
   }
 
   // =========================================================================
-  // 1. ПОШУК ВУЛИЦЬ (ТОЧНО ЯК НА ГОЛОВНІЙ КАРТІ — ФОТО 3)
+  // 1. ПОШУК ВУЛИЦЬ (ТОЧНО ЗА DNIPRO_STREETS_MAP — ФОТО 3)
   // =========================================================================
   function searchLocalStreets(query) {
     const results = [];
@@ -237,7 +237,6 @@
     const inputEl = document.getElementById("relocateModalInput");
     const resultsEl = document.getElementById("relocateModalResultsBox");
 
-    // ПРАВИЛЬНЕ ВІДОБРАЖЕННЯ ЦИТАТИ (БЕЗ «\${txt}»)
     const rawText = point ? (point.text || point.raw_text || point.address || "Повідомлення") : "Повідомлення";
     if (quoteEl) {
       quoteEl.innerText = "«" + rawText + "»";
@@ -253,13 +252,12 @@
   };
 
   // =========================================================================
-  // 5. ПІДТВЕРДЖЕННЯ ПЕРЕНЕСЕННЯ: ПОВНИЙ ОГЛЯД КАРТИ БЕЗ БЛЮРУ (ФОТО 1 ВИПРАВЛЕНО)
+  // 5. ПІДТВЕРДЖЕННЯ: КАРТА ВІДКРИТА, НІЯКОГО БЛЮРУ
   // =========================================================================
   function selectStreetForRelocation(streetObj) {
     const p = window.activeActionPoint;
     if (!p) return;
 
-    // Закриваємо модалку пошуку, щоб повністю відкрити карту
     const searchModal = document.getElementById("relocateAddressModalCard");
     if (searchModal) searchModal.style.display = "none";
 
@@ -273,7 +271,6 @@
       streetName: targetName
     };
 
-    // Ставимо тимчасовий маркер-маяк у місце перенесення
     if (window.map) {
       if (window._tempPreviewMarker) window.map.removeLayer(window._tempPreviewMarker);
 
@@ -290,11 +287,9 @@
       });
 
       window._tempPreviewMarker = L.marker([streetObj.lat, streetObj.lng], { icon: beaconIcon, zIndexOffset: 12000 }).addTo(window.map);
-      // Камера летить на обране місце для вивчення дороги
       window.map.flyTo([streetObj.lat, streetObj.lng], 16.5, { animate: true, duration: 0.85 });
     }
 
-    // КОМПАКТНА ПЛАШКА ВНИЗУ (ЖОДНОГО ЗАТЕМНЕННЯ ЧИ БЛЮРУ КАРТИ!)
     let bar = document.getElementById("confirmMoveBottomBar");
     if (!bar) {
       bar = document.createElement("div");
@@ -391,7 +386,6 @@
       }).catch(() => {});
     }
 
-    // Завжди фіксуємо сдвиг у street_overrides
     await saveStreetCoordinateOverride(pr.streetName, p.lat, p.lng);
 
     window.pendingRelocation = null;
@@ -402,7 +396,7 @@
   };
 
   // =========================================================================
-  // 6. ЄДИНЕ МЕНЮ ДІЙ
+  // 6. МЕНЮ ДІЙ
   // =========================================================================
   function resolveMarkerPoint(marker) {
     if (!marker) return null;
@@ -421,13 +415,12 @@
           best = p;
         }
       });
-      if (best && minD < 100) return best;
+      if (best && minD < 120) return best;
     }
     return null;
   }
 
   window.openRelocateActionSheet = function (point, marker) {
-    if (isSimpleMode()) return;
     window.closeAllRelocateModals();
 
     const basePoint = point || resolveMarkerPoint(marker);
@@ -498,14 +491,12 @@
   window.openActionSheet = window.openRelocateActionSheet;
 
   // =========================================================================
-  // 7. РУЧНИЙ ПЕРЕНОС ПАЛЬЦЕМ (ФІКСАЦІЯ НАЗАВЖДИ БЕЗ ЗЛІТАНЬ)
+  // 7. РУЧНИЙ ПЕРЕНОС (МИШКОЮ / ПАЛЬЦЕМ)
   // =========================================================================
   let manualMovingMarker = null;
   let manualPointObj = null;
 
   window.startDirectManualDrag = function (pointOrFbKey, optionalMarker) {
-    if (isSimpleMode()) return;
-
     let p = null;
     let m = optionalMarker;
 
@@ -551,7 +542,7 @@
       if (el) el.innerText = `${cur.lat.toFixed(5)}, ${cur.lng.toFixed(5)}`;
     });
 
-    if (typeof showToast === "function") showToast("🎯 Тягніть мітку пальцем у потрібне місце дороги", 3500);
+    if (typeof showToast === "function") showToast("🎯 Тягніть мітку мишкою у потрібне місце дороги", 3500);
   };
 
   function showManualDragFloatingBar(lat, lng) {
@@ -654,7 +645,6 @@
         });
       }
 
-      // Зберігаємо змінені координати конкретного повідомлення у Firebase
       if (p._fbKey) {
         fetch(FIREBASE_POINTS_URL.replace(".json", `/${p._fbKey}.json`), {
           method: "PATCH",
@@ -670,7 +660,6 @@
       }
     }
 
-    // Завжди фіксуємо сдвиг вулиці у street_overrides.json для пам'яті
     if (streetName) {
       await saveStreetCoordinateOverride(streetName, lat, lng);
     }
@@ -683,5 +672,63 @@
     if (typeof renderMarkers === "function") renderMarkers();
     if (typeof renderTrafficLights === "function") renderTrafficLights();
   }
+
+  // =========================================================================
+  // 8. ВІДНОВЛЕНО: ДЕСКТОП-КЛІКИ (РОЛИК МИШІ СКМ ТА ПКМ)
+  // =========================================================================
+  function setupDesktopInteractions() {
+    if (!window.map) return setTimeout(setupDesktopInteractions, 300);
+    const container = window.map.getContainer();
+    if (!container || container._desktopMouseInit) return;
+    container._desktopMouseInit = true;
+
+    function handleDesktopClickOnTarget(target) {
+      if (!target || !window.map) return;
+      let clickedMarker = null;
+
+      window.map.eachLayer(l => {
+        if (clickedMarker) return;
+        const el = l.getElement ? l.getElement() : (l._icon || l._path);
+        if (el && (el === target || el.contains(target) || target.contains(el))) {
+          // Тільки мітки повідомлень
+          if (l instanceof L.Marker && !el.classList.contains("tl-sonar-icon-container")) {
+            clickedMarker = l;
+          }
+        }
+      });
+
+      if (clickedMarker) {
+        const pt = resolveMarkerPoint(clickedMarker);
+        window.openRelocateActionSheet(pt, clickedMarker);
+      }
+    }
+
+    // ПКМ (контекстне меню)
+    container.addEventListener("contextmenu", (e) => {
+      const target = e.target.closest(".leaflet-marker-icon, .leaflet-interactive");
+      if (target && !target.classList.contains("tl-sonar-icon-container")) {
+        e.preventDefault();
+        e.stopPropagation();
+        handleDesktopClickOnTarget(target);
+      }
+    }, true);
+
+    // КЛІК РОЛИКОМ МИШКИ (button === 1)
+    function onMiddleClick(e) {
+      if (e.button === 1) {
+        const target = e.target.closest(".leaflet-marker-icon, .leaflet-interactive");
+        if (target && !target.classList.contains("tl-sonar-icon-container")) {
+          e.preventDefault();
+          e.stopPropagation();
+          handleDesktopClickOnTarget(target);
+        }
+      }
+    }
+
+    container.addEventListener("mousedown", onMiddleClick, true);
+    container.addEventListener("auxclick", onMiddleClick, true);
+  }
+
+  setupDesktopInteractions();
 
 })();
