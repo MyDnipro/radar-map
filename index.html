@@ -37,7 +37,7 @@
       text-shadow: 0 1px 4px rgba(0, 0, 0, 0.95), 0 0 8px rgba(0, 0, 0, 0.9) !important;
     }
 
-    /* ЗАХИСТ ПОПАПІВ: ЗАВЖДИ ЧОРНИЙ КОНТРАСТНИЙ ТЕКСТ */
+    /* ЗАХИСТ ПОПАПІВ: ЗАВЖДИ ЧОРНИЙ КОНТРАСТНИЙ ТЕКСТ НА БІЛОМУ */
     .leaflet-popup-content,
     .leaflet-popup-content *,
     .leaflet-popup-content .report-status-title,
@@ -225,7 +225,7 @@
       border-color: #ef4444;
     }
 
-    /* Анімація пульсації групи */
+    /* Анімація пульсації свіжих міток */
     @keyframes pulseGroupDanger {
       0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.85); }
       70% { box-shadow: 0 0 0 12px rgba(220, 38, 38, 0); }
@@ -671,9 +671,7 @@
 
     const isMobile = window.innerWidth < 768;
     
-    // =========================================================================
     // СТАРТОВИЙ ЕКРАН ЗМІЩЕНИЙ НА Ж/М ПОКРОВСЬКИЙ
-    // =========================================================================
     const INITIAL_CENTER = [48.478, 34.975];
     const INITIAL_ZOOM = isMobile ? 11.6 : 12.0;
 
@@ -824,9 +822,13 @@
       closeMarkerActionSheet();
     });
 
+    // =========================================================================
+    // 🛡️ БЕЗДОГАННИЙ РОЗРАХУНОК СТАТУСУ (ЧИСТО ЗАВЖДИ ЗЕЛЕНЕ)
+    // =========================================================================
     function isCleanPoint(p) {
       if (!p) return false;
 
+      // 1. Ручні кліки користувача в цій сесії
       if (p._fbKey && manualPointOverrides[p._fbKey]) {
         return manualPointOverrides[p._fbKey].is_clean;
       }
@@ -835,18 +837,16 @@
         .replace(/[\r\n]+/g, " ")
         .toLowerCase();
 
-      for (const rule of learnedRules) {
-        if (rule && rule.phrase && rawCombined.includes(rule.phrase.toLowerCase())) {
-          return rule.is_clean;
-        }
+      // 2. ПЕРШИЙ І ГОЛОВНИЙ ПРІОРИТЕТ: явне слово "чисто", смайли або заперечення загрози
+      const hasCleanExplicit = /(?:👍|👌|💚|🌻|☀️|🌞|🍏|🟢|\b(?:чисто|чистенько|пусто|вільно|спокійно|спокойно|проїзд|проїхав|проехали|норм|нормально|нормик|добре|зелено)\b|без\s*ям|без\s*бп|нет\s*бп|немає?\s*бп|все\s*чисто|все\s*норм|всё\s*норм)/i.test(rawCombined);
+      const hasCleanNegation = /(?:не\s*норм|не\s*чисто|не\s*спок|не\s*тихо)/i.test(rawCombined);
+
+      if (hasCleanExplicit && !hasCleanNegation) {
+        return true; // ЖОДНІ ПРАВИЛА НЕ ЗДАТНІ ПЕРЕБИТИ СЛОВО "ЧИСТО"!
       }
 
-      // Заперечення небезпеки (без ям, нет бп) гарантують статус "Чисто"
-      if (/(?:без\s*ям|нет\s*бп|немає?\s*бп|без\s*тцк|без\s*мусоров)/i.test(rawCombined)) {
-        return true;
-      }
-
-      const negationWords = ["нет", "немає", "убрали", "прибрали", "сняли", "зняли", "поехали", "поїхали", "уехали", "пропали", "чисто по", "немає вже", "уже чисто"];
+      // 3. Заперечення небезпеки ("мусора снялись", "поехали бп")
+      const negationWords = ["нет", "немає", "убрали", "прибрали", "сняли", "зняли", "поехали", "поїхали", "уехали", "пропали", "немає вже", "уже чисто"];
       const hasNegation = negationWords.some(nw => rawCombined.includes(nw));
 
       const dangerKeywords = ["мент", "полиц", "поліц", "бп", "блокпост", "патруль", "тормоз", "стоят", "облав", "тцк", "бусик", "мусор", "зупиня", "шмонал", "пишут"];
@@ -857,12 +857,14 @@
         return false;
       }
 
-      if (/(?:не\s*норм|не\s*чисто|не\s*спок|не\s*тихо)/i.test(rawCombined)) return false;
-
-      if (/(?:👍|👌|💚|🌻|☀️|🌞|🍏|🟢|\b(?:чисто|чистенько|пусто|вільно|спокійно|спокойно|проїзд|проїхав|проехали|норм|нормально|нормик|добре|зелено)\b|все\s*чисто|все\s*норм|всё\s*норм)/i.test(rawCombined)) {
-        return true;
+      // 4. Обучені правила (тільки якщо в тексті не було прямого "чисто")
+      for (const rule of learnedRules) {
+        if (rule && rule.phrase && rawCombined.includes(rule.phrase.toLowerCase())) {
+          return rule.is_clean;
+        }
       }
 
+      // 5. Серверний статус
       if (p.is_clean === true || p.status === "чисто" || p.color === "green") return true;
       if (p.is_clean === false || p.status === "опасно" || p.color === "red") return false;
 
@@ -885,7 +887,7 @@
     }
 
     // =========================================================================
-    // РЕЄСТР 7 КОНТРОЛЬНИХ СВІТЛОФОРІВ МАРШРУТУ (БЕЗ ДУБЛІВ ТА БЕЗ ВОГНІВ)
+    // 🚦 РЕЄСТР 7 КОНТРОЛЬНИХ СВІТЛОФОРІВ МАРШРУТУ (БЕЗ ДУБЛІВ ТА БЕЗ ВОГНІВ)
     // =========================================================================
     let checkpoints = [
       { id: "kaidak_rovd", name: "РОВД / Кайдацький з'їзд", lat: 48.4908, lng: 34.9585, keys: ["кайдак", "кайдац", "ровд", "райотдел", "з'їзд.*кайдак", "съезд.*кайдак", "спуск.*кайдак"] },
@@ -1022,18 +1024,6 @@
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ is_clean: isClean, color: p.color, status: p.status })
-        }).catch(() => {});
-      }
-
-      const rawText = (p.text || p.raw_text || "").replace(/[\r\n]+/g, " ");
-      let phrase = rawText.replace(/^(?:❓|\bчисто\b|\bбп\b|\bпатруль\b|\(чисто\))/gi, "").trim().toLowerCase();
-      if (phrase.length >= 3) {
-        learnedRules.push({ phrase: phrase, is_clean: isClean });
-        localStorage.setItem("radar_learned_rules", JSON.stringify(learnedRules));
-        fetch(FIREBASE_KB_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ phrase: phrase, is_clean: isClean, updated_at: Date.now() })
         }).catch(() => {});
       }
 
@@ -1736,7 +1726,6 @@ ${allLiveReportsText || "Повідомлень немає"}
               needsTraining: !!p.needs_training
             };
           }
-          // Якщо хоча б одна мітка свіжа — мигає вся група
           if (now - time <= FRESH_THRESHOLD_MS) {
             clusters[groupKey].isFresh = true;
           }
@@ -1870,7 +1859,6 @@ ${allLiveReportsText || "Повідомлень немає"}
     });
     setInterval(loadPoints, 15000);
 
-    // ВІДОБРАЖЕННЯ ОБ'ЇЗДУ ВІД ШІ-ШТУРМАНА
     const navRouteLayer = L.layerGroup().addTo(map);
 
     async function checkAndDrawNavRoute() {
@@ -1953,7 +1941,7 @@ ${allLiveReportsText || "Повідомлень немає"}
     setTimeout(checkAndDrawNavRoute, 400);
   </script>
 
-  <!-- МОДУЛІ ДОДАТКА (Збережені повністю) -->
+  <!-- МОДУЛІ ДОДАТКА (ЗБЕРЕЖЕНІ ПОВНІСТЮ) -->
   <script src="relocate.js"></script>
   <script src="memory.js"></script>
   <script src="timeline.js"></script>
