@@ -13,28 +13,16 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="style.css" />
   <style>
-    /* ПРИОРИТЕТ И АНИМАЦИЯ МИГАНИЯ МЕТОК */
-    @keyframes radarPulseDanger {
-      0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.85); }
-      70% { box-shadow: 0 0 0 14px rgba(220, 38, 38, 0); }
-      100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
-    }
-    @keyframes radarPulseClean {
-      0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.85); }
-      70% { box-shadow: 0 0 0 14px rgba(16, 185, 129, 0); }
-      100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
-    }
-    .radar-circle.fresh.color-red {
-      animation: radarPulseDanger 1.4s infinite !important;
-    }
-    .radar-circle.fresh.color-green {
-      animation: radarPulseClean 1.4s infinite !important;
-    }
-
+    /* =========================================================================
+       1. КОНТРАСТНА ЧИТАБЕЛЬНА НІЧНА ТЕМА КАРТИ
+       ========================================================================= */
     #map.night-mode .leaflet-tile-pane {
       filter: invert(90%) hue-rotate(180deg) contrast(108%) brightness(96%) saturate(85%) !important;
     }
 
+    /* =========================================================================
+       2. БІЛИЙ ТЕКСТ РАДІО ТА ЕФІРУ В НІЧНОМУ РЕЖИМІ
+       ========================================================================= */
     body.night-mode [class*="ticker"],
     body.night-mode [class*="ticker"] *,
     body.night-mode [id*="ticker"],
@@ -59,6 +47,9 @@
       color: #0f172a !important;
     }
 
+    /* =========================================================================
+       3. ПЕРЕМИКАННЯ РЕЖИМІВ (ПРОСТИЙ ВОДІЙСЬКИЙ / ПОВНИЙ РОЗРОБНИК)
+       ========================================================================= */
     html.mode-simple #aiPillPanel,
     html.mode-simple #routeStatusBar,
     html.mode-simple #routeSubmenu,
@@ -185,8 +176,16 @@
       border-radius: 12px !important;
       margin: 0 !important;
     }
-    html.mode-simple #btnRefresh span:first-child { font-size: 16px !important; line-height: 1 !important; }
-    html.mode-simple #btnRefresh span:last-child { font-size: 11.5px !important; font-weight: 800 !important; line-height: 1 !important; }
+    html.mode-simple #btnRefresh span:first-child {
+      font-size: 16px !important;
+      line-height: 1 !important;
+    }
+    html.mode-simple #btnRefresh span:last-child {
+      font-size: 11.5px !important;
+      font-weight: 800 !important;
+      line-height: 1 !important;
+      text-align: left !important;
+    }
 
     .toast-msg {
       position: absolute !important;
@@ -195,6 +194,7 @@
       left: 50% !important;
       transform: translateX(-50%) !important;
       z-index: 3500;
+      display: none;
     }
 
     .nav-route-banner {
@@ -216,6 +216,39 @@
       color: #f8fafc;
       white-space: nowrap;
     }
+    .nav-route-banner button {
+      background: #1e293b;
+      border: 1px solid #475569;
+      color: #94a3b8;
+      border-radius: 6px;
+      padding: 2px 8px;
+      font-size: 10.5px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .nav-route-banner button:hover {
+      color: #fff;
+      border-color: #ef4444;
+    }
+
+    /* Анімація пульсації для свіжих міток */
+    @keyframes pulseGroupDanger {
+      0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.85); }
+      70% { box-shadow: 0 0 0 12px rgba(220, 38, 38, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+    }
+    @keyframes pulseGroupClean {
+      0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.85); }
+      70% { box-shadow: 0 0 0 12px rgba(16, 185, 129, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    }
+    .radar-circle.fresh.color-red {
+      animation: pulseGroupDanger 1.4s infinite !important;
+    }
+    .radar-circle.fresh.color-green {
+      animation: pulseGroupClean 1.4s infinite !important;
+    }
   </style>
   <link rel="manifest" href="manifest.json">
   <meta name="mobile-web-app-capable" content="yes">
@@ -236,7 +269,7 @@
 
   <div id="transferBanner" class="transfer-banner">⏳ Виконується перенесення мітки...</div>
 
-  <!-- ДАШБОРД -->
+  <!-- 1. ДАШБОРД (ВІКНО ТОЧОК) -->
   <div id="dashPanel" class="dashboard collapsed">
     <div id="dashHeader" class="dash-header">
       <div class="points-count" id="countText" title="Точки на карті">
@@ -257,10 +290,9 @@
     <div id="collapsibleBody" class="collapsible-body">
       <div class="subtitle" id="sectorSubtitle">📍 Режим: Мій маршрут</div>
       
-      <!-- ПОШУКОВИЙ МОДУЛЬ З 3 ДЖЕРЕЛ -->
       <div class="search-box">
         <div class="search-input-wrap">
-          <input type="text" id="streetSearchInput" class="search-input" placeholder="🔍 Пошук по мітках, вулицях та світлофорах..." autocomplete="off">
+          <input type="text" id="streetSearchInput" class="search-input" placeholder="🔍 Вулиця, ділянка або повідомлення..." autocomplete="off">
           <button id="searchClearBtn" class="search-clear-btn" onclick="clearStreetSearch()">✕</button>
         </div>
         <div id="searchResults" class="search-results"></div>
@@ -305,7 +337,7 @@
     </div>
   </div>
 
-  <!-- ШІ ПАНЕЛЬ -->
+  <!-- 2. ШІ (ВЕРСІЯ v4.0) -->
   <div id="aiPillPanel" class="ai-pill-panel compact">
     <div id="aiPillHeader" class="ai-pill-compact-content">
       <div class="ai-titleBadge" onclick="toggleAiPillExpand()">
@@ -343,14 +375,14 @@
     </div>
   </div>
 
-  <!-- МІЙ ШЛЯХ СТАТУС -->
+  <!-- 3. МІЙ ШЛЯХ (НИЗ ЛІВОРУЧ) -->
   <div id="routeStatusBar" class="route-status-bar" onclick="toggleRouteSubmenu(event)">
     <span id="routeStatusIcon">🟢</span>
     <span id="routeStatusText">Мій шлях: Чисто</span>
     <span id="routeSubmenuArrow" style="font-size:10px; color:#94a3b8; margin-left:2px;">▴</span>
   </div>
 
-  <!-- МЕНЮ МАРШРУТУ -->
+  <!-- ПІДМЕНЮ МАРШРУТУ -->
   <div id="routeSubmenu" class="route-submenu" onclick="event.stopPropagation()">
     <div class="route-submenu-header">
       <span>🛣️ Маршрут та райони міста</span>
@@ -370,6 +402,7 @@
     </div>
   </div>
 
+  <!-- 4. КНОПКА СТАТИСТИКИ -->
   <a href="javascript:void(0)" id="btnStatsHud" onclick="event.preventDefault(); window.location.href = (localStorage.getItem('radar_last_analytics_page') || 'stats.html');" title="Аналітика блокпостів">
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
       <rect x="3" y="12" width="4.5" height="9" rx="2" fill="#00f3ff" />
@@ -378,6 +411,7 @@
     </svg>
   </a>
 
+  <!-- КНОПКИ ВНИЗУ СПРАВА -->
   <div class="bottom-right-cluster">
     <div id="btnRefresh" onclick="refreshRadarClick()">
       <span>🔄</span>
@@ -388,11 +422,54 @@
     </div>
   </div>
 
+  <!-- ДІАЛОГ ДІЙ ДЛЯ МЕТКИ -->
+  <div id="markerActionSheet" class="action-sheet-backdrop" onclick="closeMarkerActionSheet(event)">
+    <div class="action-sheet-card" onclick="event.stopPropagation()">
+      <div class="action-sheet-title">
+        <span>🎯 Переміщення мітки</span>
+        <span style="cursor:pointer; font-size:16px; padding:0 4px;" onclick="closeMarkerActionSheet()">✕</span>
+      </div>
+      <button class="btn-sheet-act" style="background:#0284c7; color:#fff;" onclick="sheetStartManualDrag()">✋ Перемістити вручну пальцем</button>
+      <button class="btn-sheet-act" style="background:#1e293b; color:#38bdf8; border:1px solid #0284c7;" onclick="sheetStartTrainModal()">📍 Перемістити за адресою зі списку</button>
+    </div>
+  </div>
+
+  <!-- МОДАЛКА ПЕРЕНОСУ ЗА АДРЕСОЮ -->
+  <div id="trainModal" class="train-modal-backdrop" onclick="closeTrainModal(event)">
+    <div class="train-modal-card" onclick="event.stopPropagation()">
+      <div class="train-header">
+        <span>📍 Переміщення за адресою</span>
+        <span style="cursor:pointer; font-size:16px; padding:0 4px;" onclick="closeTrainModal()">✕</span>
+      </div>
+      <div class="train-text-quote" id="trainTextQuote">...</div>
+      <div class="train-input-row">
+        <input type="text" id="trainCustomInput" class="train-input" placeholder="🔍 Почніть вводити назву вулиці..." autocomplete="off" onkeydown="if(event.key==='Enter') executeCustomTrain();">
+        <button class="btn-train-search" onclick="executeCustomTrain()">Знайти</button>
+        <div id="trainSearchResults" class="search-results"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ДІАЛОГ ПІДТВЕРДЖЕННЯ ПЕРЕНОСУ -->
+  <div id="confirmMoveModal" class="confirm-modal-backdrop">
+    <div class="confirm-modal-card">
+      <div style="font-size:13px; font-weight:800; color:#38bdf8; margin-bottom:4px;">📍 Перевірте нове місце:</div>
+      <div id="confirmStreetName" style="font-size:12px; color:#e2e8f0; margin-bottom:10px; background:#1e293b; padding:6px 10px; border-radius:8px;">вул. ...</div>
+      <div style="display:flex; gap:6px;">
+        <button class="btn-confirm-act ok" onclick="finalizeMoveConfirm(true)">✅ Підтвердити</button>
+        <button class="btn-confirm-act cancel" onclick="finalizeMoveConfirm(false)">↩️ Скасувати</button>
+        <button class="btn-confirm-act manual" onclick="finalizeMoveManual()">✋ Вручну</button>
+      </div>
+    </div>
+  </div>
+
   <div id="toast" class="toast-msg">✅ Збережено!</div>
 
+  <!-- БІБЛІОТЕКИ ТА ДОВІДНИК ВУЛИЦЬ -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="streets.js"></script>
 
+  <!-- ОСНОВНИЙ СКРИПТ КАРТИ -->
   <script>
     const SECRET_KEY_HASH = "570984";
     const _VAULT_PREFIX = String.fromCharCode(65, 81, 46, 65, 98, 56, 82, 78, 54);
@@ -455,6 +532,7 @@
       renderMarkers();
       if (typeof renderTrafficLights === "function") renderTrafficLights();
       updateRouteStatus();
+      window.dispatchEvent(new CustomEvent('radar:uiModeChanged', { detail: mode }));
       if (window.map) setTimeout(() => window.map.invalidateSize(), 150);
     }
 
@@ -464,6 +542,10 @@
         return;
       }
       applyUiMode("full");
+      const panel = document.getElementById("dashPanel");
+      if (panel) panel.classList.add("collapsed");
+      const btn = document.getElementById("btnToggle");
+      if (btn) btn.innerText = "▼";
       showToast("👑 Режим розробника активовано!");
     }
 
@@ -473,17 +555,37 @@
     }
 
     function requestAdminLogin() {
-      const token = prompt("🔐 Введіть персональний GitHub токен (ghp_...):");
+      const token = prompt("🔐 Введіть персональний GitHub токен (ghp_...):\n(Вхід виконується 1 раз, пристрій запам'ятовується)");
       if (!token) return;
       const clean = token.trim();
       if (clean.startsWith("ghp_") && clean.length >= 35) {
         localStorage.setItem("radar_admin_token", clean);
         localStorage.setItem("github_radar_token", clean);
         applyUiMode("full");
-        showToast("🔓 Авторизовано!");
+        showToast("🔓 Авторизовано! Доступ розробника активний.");
       } else {
-        alert("❌ Недійсний токен!");
+        alert("❌ Недійсний токен! Токен повинен починатися з 'ghp_' (довжина від 35 символів).");
       }
+    }
+
+    const countTextEl = document.getElementById("countText");
+    let countPressTimer = null;
+    function startCountPress() {
+      countPressTimer = setTimeout(() => {
+        if (navigator.vibrate) navigator.vibrate(60);
+        requestAdminLogin();
+      }, 700);
+    }
+    function cancelCountPress() {
+      if (countPressTimer) { clearTimeout(countPressTimer); countPressTimer = null; }
+    }
+    if (countTextEl) {
+      countTextEl.addEventListener("mousedown", startCountPress);
+      countTextEl.addEventListener("mouseup", cancelCountPress);
+      countTextEl.addEventListener("mouseleave", cancelCountPress);
+      countTextEl.addEventListener("touchstart", startCountPress, { passive: true });
+      countTextEl.addEventListener("touchend", cancelCountPress);
+      countTextEl.addEventListener("touchcancel", cancelCountPress);
     }
 
     function togglePanelCollapse(e) {
@@ -495,8 +597,47 @@
       setTimeout(() => { if (map) map.invalidateSize(); }, 120);
     }
 
+    function verifyGeminiAuthorization(forcePrompt = false) {
+      const savedAuth = localStorage.getItem("radar_gemini_unlocked");
+      if (savedAuth === SECRET_KEY_HASH && !forcePrompt) return true;
+      const entered = prompt("🔐 Введіть пароль для активації ШІ-штурмана:\n(Підказка: телефон батьків)");
+      if (entered === SECRET_KEY_HASH) {
+        localStorage.setItem("radar_gemini_unlocked", SECRET_KEY_HASH);
+        showToast("🔓 ШІ-штурман активовано!");
+        return true;
+      } else if (entered !== null) {
+        alert("❌ Невірний пароль! Доступ до ШІ заблоковано.");
+      }
+      return false;
+    }
+
+    function getDecryptedGeminiPool() {
+      if (localStorage.getItem("radar_gemini_unlocked") !== SECRET_KEY_HASH) return [];
+      const builtins = _VAULT_SHARDS.map(shard => _VAULT_PREFIX + shard.join(''));
+      const rawStored = localStorage.getItem("gemini_api_key") || "";
+      const customKeys = rawStored.split(/[,;\s]+/).map(k => k.trim()).filter(k => k.length > 20);
+      return [...new Set([...builtins, ...customKeys])];
+    }
+
     const FIREBASE_POINTS_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/points.json";
     const FIREBASE_CONFIG_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/config/traffic_lights.json";
+    const FIREBASE_KB_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/knowledge_base.json";
+
+    function isSpamMessage(text) {
+      if (!text) return false;
+      const t = text.toLowerCase();
+      const spamWords = [
+        "поддержите", "поддержка", "покупка бота", "покупка", "репост",
+        "сделайте репост", "пригласите друзей", "поделитесь ссылкой",
+        "продолжать работу", "улучшать функционал", "развивать проект",
+        "ссылка на бота", "описании группы", "описании канала", "группа вам полезна",
+        "напоминаем", "у нас есть бот", "бот с картой", "пробный доступ",
+        "события живут", "метки появляются", "без отдельных приложений",
+        "бесплатный пробный", "подписчик", "всё прямо в telegram",
+        "наш бот", "t.me/", "http://", "https://"
+      ];
+      return spamWords.some(w => t.includes(w));
+    }
 
     const LIFETIME_MS = 40 * 60 * 1000;
     const FRESH_THRESHOLD_MS = 10 * 60 * 1000;
@@ -511,6 +652,16 @@
     let filterShowGreen = true;
     let filterShowRed = true;
 
+    let activeActionPoint = null;
+    let activeActionMarker = null;
+    let pendingRelocation = null;
+
+    let learnedRules = [];
+    try {
+      const storedRules = localStorage.getItem("radar_learned_rules");
+      if (storedRules) learnedRules = JSON.parse(storedRules);
+    } catch(e) {}
+
     let manualPointOverrides = {};
     try {
       const savedPo = localStorage.getItem("radar_point_overrides");
@@ -524,27 +675,32 @@
     } catch(e) {}
 
     const isMobile = window.innerWidth < 768;
-    const INITIAL_CENTER = [48.462, 35.035];
-    const INITIAL_ZOOM = isMobile ? 11.3 : 11.8;
+    
+    // СДВИГ СТАРТОВОГО ЭКРАНА В СТОРОНУ ПОКРОВСКОГО
+    const INITIAL_CENTER = [48.478, 34.975];
+    const INITIAL_ZOOM = isMobile ? 11.6 : 12.0;
 
     const map = L.map('map', { 
       zoomControl: false,
       zoomSnap: 0.1
     }).setView(INITIAL_CENTER, INITIAL_ZOOM);
 
-    L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+    const googleMapLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
       subdomains: ['0', '1', '2', '3'],
       maxZoom: 20,
       attribution: 'Google Maps'
     }).addTo(map);
 
     let mapTheme = localStorage.getItem("radar_map_theme") || "day";
+
     function applyMapTheme(theme) {
       const mapEl = document.getElementById("map");
       const icon = document.getElementById("themeHeaderIcon");
+      
       mapEl.classList.remove("night-mode");
       document.body.classList.remove("night-mode");
       document.documentElement.classList.remove("night-mode");
+
       if (theme === "night") {
         mapEl.classList.add("night-mode");
         document.body.classList.add("night-mode");
@@ -554,13 +710,19 @@
         if (icon) icon.innerText = "☀️";
       }
     }
+
     function toggleMapTheme() {
       mapTheme = (mapTheme === "day") ? "night" : "day";
       localStorage.setItem("radar_map_theme", mapTheme);
       applyMapTheme(mapTheme);
       showToast(mapTheme === "night" ? "🌙 Увімкнено нічну тему" : "☀️ Увімкнено денну тему");
     }
+
     applyMapTheme(mapTheme);
+
+    window.addEventListener('resize', () => {
+      setTimeout(() => { if (map) map.invalidateSize(); }, 120);
+    });
 
     const markersLayer = L.layerGroup().addTo(map);
     const trafficLightLayer = L.layerGroup().addTo(map);
@@ -587,45 +749,127 @@
     } catch(e) {}
 
     const SECTOR_DEFS = {
-      s1: { name: "Парус — Вокзал — Робоча", keys: ["парус", "покровськ", "комунар", "речпорт", "річпорт", "водокачк", "стан.*550", "водолікарн", "свобод", "кайдак", "павлов", "белелюб", "краснозавод", "комбайн", "вокзал", "старомостов", "озерк", "робоч", "криворізьк", "каштанов", "савченк", "чорновол"], bounds: { minLat: 48.435, maxLat: 48.510, minLng: 34.800, maxLng: 35.038 } },
-      s2: { name: "Центр — Нагірка — Перемога", keys: ["центр", "міст.*сіті", "яворницьк", "нагірк", "гагарін", "науки", "перемог", "артем", "січов.*стрільц"], bounds: { minLat: 48.410, maxLat: 48.480, minLng: 35.038, maxLng: 35.120 } },
-      s3: { name: "Тополя — 12 Квартал — Поля", keys: ["12.*квартал", "топол", "сокіл", "шинн", "хмельницьк", "поля", "кіров", "титов"], bounds: { minLat: 48.320, maxLat: 48.445, minLng: 34.920, maxLng: 35.130 } },
-      s4: { name: "Мазепи — Нігояна — Західний", keys: ["мазеп", "петровськ", "нігоян", "калінін", "огни", "вогні", "західн"], bounds: { minLat: 48.450, maxLat: 48.485, minLng: 34.910, maxLng: 34.980 } },
-      s5: { name: "Лівий: Шосе — Калинова", keys: ["донецьк.*шосе", "караван", "лівобереж", "калинов", "янтарн"], bounds: { minLat: 48.480, maxLat: 48.560, minLng: 34.930, maxLng: 35.070 } },
-      s6: { name: "Лівий: Слобожанський — Сонячний", keys: ["слобожанськ", "правд", "сонячн", "малиновськ", "придніпров", "бик"], bounds: { minLat: 48.440, maxLat: 48.540, minLng: 35.040, maxLng: 35.160 } }
+      s1: { name: "Парус — Вокзал — Робоча", keys: ["парус", "покровськ", "комунар", "трофимов", "червон.*кам", "набережн.*завод", "речпорт", "річпорт", "водокачк", "стан.*550", "водолікарн", "свобод", "кайдак", "павлов", "белелюб", "краснозавод", "комбайн", "вокзал", "старомостов", "озерк", "курчатов", "шмідт", "бандер", "робоч", "канатн", "криворізьк", "каштанов", "савченк", "чорновол"], bounds: { minLat: 48.435, maxLat: 48.510, minLng: 34.800, maxLng: 35.038 } },
+      s2: { name: "Центр — Нагірка — Перемога", keys: ["центр", "міст.*сіті", "яворницьк", "нагірк", "гагарін", "науки", "перемог", "артем", "січов.*стрільц", "карл.*маркс", "чкалов", "дзержинськ", "комсомольськ", "плеханов", "ленін", "бородинськ"], bounds: { minLat: 48.410, maxLat: 48.480, minLng: 35.038, maxLng: 35.120 } },
+      s3: { name: "Тополя — 12 Квартал — Поля", keys: ["12.*квартал", "топол", "сокіл", "шинн", "хмельницьк", "поля", "кіров", "титов", "аеропорт", "барвінківськ", "переїзд.*мирн", "тещин.*язик", "гавриленк", "ребінін", "вакуленчук", "стромцов"], bounds: { minLat: 48.320, maxLat: 48.445, minLng: 34.920, maxLng: 35.130 } },
+      s4: { name: "Мазепи — Нігояна — Західний", keys: ["мазеп", "петровськ", "нігоян", "калінін", "огни", "вогні", "західн", "чечел", "камчатськ", "калдирськ", "лак"], bounds: { minLat: 48.450, maxLat: 48.485, minLng: 34.910, maxLng: 34.980 } },
+      s5: { name: "Лівий: Шосе — Калинова", keys: ["донецьк.*шосе", "караван", "лівобереж", "калинов", "янтарн", "клочко", "фрунзенськ", "інгульськ", "моторн", "петрозаводськ"], bounds: { minLat: 48.480, maxLat: 48.560, minLng: 34.930, maxLng: 35.070 } },
+      s6: { name: "Лівий: Слобожанський — Сонячний", keys: ["слобожанськ", "правд", "сонячн", "малиновськ", "придніпров", "бик", "золоті ключі", "молодогвард", "карун", "косіор", "калнишевськ"], bounds: { minLat: 48.440, maxLat: 48.540, minLng: 35.040, maxLng: 35.160 } }
     };
+
+    function toggleRouteSubmenu(e) {
+      if (e) e.stopPropagation();
+      const menu = document.getElementById("routeSubmenu");
+      const arrow = document.getElementById("routeSubmenuArrow");
+      const isOpen = menu.style.display === "flex";
+      menu.style.display = isOpen ? "none" : "flex";
+      arrow.innerText = isOpen ? "▴" : "▾";
+      if (!isOpen) syncSectorCheckboxesUI();
+    }
+
+    function closeRouteSubmenu() {
+      const menu = document.getElementById("routeSubmenu");
+      const arrow = document.getElementById("routeSubmenuArrow");
+      if (menu) menu.style.display = "none";
+      if (arrow) arrow.innerText = "▴";
+    }
+
+    function onSubmenuSectorChange() {
+      activeSectors = [];
+      ["s1", "s2", "s3", "s4", "s5", "s6"].forEach(id => {
+        const el = document.getElementById(`sub_sec_${id}`);
+        if (el && el.checked) activeSectors.push(id);
+      });
+      if (activeSectors.length === 0) activeSectors = ['s1'];
+      localStorage.setItem("radar_active_sectors", JSON.stringify(activeSectors));
+      syncSectorCheckboxesUI();
+      renderMarkers();
+      renderTrafficLights();
+      updateRouteStatus();
+    }
+
+    function syncSectorCheckboxesUI() {
+      ["s1", "s2", "s3", "s4", "s5", "s6"].forEach(id => {
+        const elSub = document.getElementById(`sub_sec_${id}`);
+        const isAct = activeSectors.includes(id);
+        if (elSub) elSub.checked = isAct;
+      });
+
+      const isOnlyRoute = activeSectors.length === 1 && activeSectors[0] === "s1";
+      const isAll = activeSectors.length === 6;
+
+      const qSubRoute = document.getElementById("btnQuickSubRoute");
+      const qSubAll = document.getElementById("btnQuickSubAll");
+      if (qSubRoute) qSubRoute.classList.toggle("active", isOnlyRoute);
+      if (qSubAll) qSubAll.classList.toggle("active", isAll);
+
+      const subtitle = document.getElementById("sectorSubtitle");
+      if (subtitle) {
+        if (isOnlyRoute) subtitle.innerText = "📍 Режим: Мій маршрут";
+        else if (isAll) subtitle.innerText = "🌐 Режим: Весь Дніпро";
+        else subtitle.innerText = `🎯 Обрано секторів: ${activeSectors.length}`;
+      }
+    }
+
+    function setSectorPreset(type) {
+      if (type === 'route') activeSectors = ['s1'];
+      else if (type === 'all') activeSectors = ['s1', 's2', 's3', 's4', 's5', 's6'];
+      localStorage.setItem("radar_active_sectors", JSON.stringify(activeSectors));
+      syncSectorCheckboxesUI();
+      renderMarkers();
+      renderTrafficLights();
+      updateRouteStatus();
+      showToast(type === 'route' ? "🎯 Тільки мій шлях!" : "🌐 Весь Дніпро!");
+    }
+
+    map.on('click', () => { 
+      closeRouteSubmenu();
+      closeMarkerActionSheet();
+    });
 
     function isCleanPoint(p) {
       if (!p) return false;
+
       if (p._fbKey && manualPointOverrides[p._fbKey]) {
         return manualPointOverrides[p._fbKey].is_clean;
       }
+
       const rawCombined = ((p.raw_text || "") + " " + (p.text || "") + " " + (p.address || ""))
         .replace(/[\r\n]+/g, " ")
         .toLowerCase();
 
-      // Заперечення небезпеки (без ям, нет бп) гарантують статус "Чисто"
-      if (/(?:без\s*ям|нет\s*бп|немає?\s*бп|без\s*тцк)/i.test(rawCombined)) {
-        return true;
-      }
-
-      const dangerKeywords = ["мент", "полиц", "поліц", "бп", "блокпост", "патруль", "тормоз", "стоят", "облав", "тцк", "бусик", "мусор", "зупиня", "шмонал"];
-      const negationWords = ["нет", "немає", "убрали", "прибрали", "сняли", "зняли", "поехали", "поїхали", "уехали", "пропали", "немає вже"];
-
-      const hasDanger = dangerKeywords.some(w => rawCombined.includes(w));
-      const hasNegation = negationWords.some(nw => rawCombined.includes(nw));
-
-      if (hasDanger && !hasNegation) return false;
-      if (hasDanger && hasNegation) return true;
-
-      // Перевірка на слово "чисто" (включаючи "огни чисто", знаки оклику тощо)
-      if (/(?:👍|👌|💚|☀️|🌞|🍏|🟢|\b(?:чисто|чистенько|пусто|вільно|спокійно|спокойно|проїзд|зелено|норм|нормально)\b)/i.test(rawCombined)) {
-        if (!/(?:не\s*норм|не\s*чисто|не\s*спок)/i.test(rawCombined)) {
-          return true;
+      for (const rule of learnedRules) {
+        if (rule && rule.phrase && rawCombined.includes(rule.phrase.toLowerCase())) {
+          return rule.is_clean;
         }
       }
 
+      // Заперечення небезпеки (без ям, нет бп) гарантують статус "Чисто"
+      if (/(?:без\s*ям|нет\s*бп|немає?\s*бп|без\s*тцк|без\s*мусоров)/i.test(rawCombined)) {
+        return true;
+      }
+
+      const negationWords = ["нет", "немає", "убрали", "прибрали", "сняли", "зняли", "поехали", "поїхали", "уехали", "пропали", "чисто по", "немає вже", "уже чисто"];
+      const hasNegation = negationWords.some(nw => rawCombined.includes(nw));
+
+      const dangerKeywords = ["мент", "полиц", "поліц", "бп", "блокпост", "патруль", "тормоз", "стоят", "облав", "тцк", "бусик", "мусор", "зупиня", "шмонал", "пишут"];
+      const hasDanger = dangerKeywords.some(w => rawCombined.includes(w));
+
+      if (hasDanger) {
+        if (hasNegation) return true;
+        return false;
+      }
+
+      if (/(?:не\s*норм|не\s*чисто|не\s*спок|не\s*тихо)/i.test(rawCombined)) return false;
+
+      // Слово чисто та позитивні смайлики
+      if (/(?:👍|👌|💚|🌻|☀️|🌞|🍏|🟢|\b(?:чисто|чистенько|пусто|вільно|спокійно|спокойно|проїзд|проїхав|проехали|норм|нормально|нормик|добре|зелено)\b|все\s*чисто|все\s*норм|всё\s*норм)/i.test(rawCombined)) {
+        return true;
+      }
+
       if (p.is_clean === true || p.status === "чисто" || p.color === "green") return true;
+      if (p.is_clean === false || p.status === "опасно" || p.color === "red") return false;
+
       return false;
     }
 
@@ -633,7 +877,7 @@
       if (currentUiMode === "simple") return true;
       if (p.needs_training) return true;
       if (activeSectors.length === 6) return true;
-      const fullText = ((p.raw_text || p.text || "") + " " + (p.address || "")).toLowerCase();
+      const fullText = ((p.raw_text || p.text || "") + " " + (p.address || "")).replace(/[\r\n]+/g, " ").toLowerCase();
       const lat = p.lat, lng = p.lng;
       return activeSectors.some(secId => {
         const def = SECTOR_DEFS[secId];
@@ -644,30 +888,603 @@
       });
     }
 
+    function updateRouteStatus() {
+      if (currentUiMode === "simple") return;
+      const bar = document.getElementById("routeStatusBar");
+      const icon = document.getElementById("routeStatusIcon");
+      const text = document.getElementById("routeStatusText");
+      if (!bar) return;
+
+      if (!showRouteStatusBar) {
+        bar.style.display = "none";
+        return;
+      }
+      bar.style.display = "inline-flex";
+
+      const redCheckpoints = [];
+      checkpoints.forEach(cp => {
+        const ignoredKeys = tlIgnoredPoints[cp.id] || [];
+        const matched = allPoints.filter(p => {
+          if (p._fbKey && ignoredKeys.includes(p._fbKey)) return false;
+          const t = ((p.raw_text || p.text || "") + " " + (p.address || "")).replace(/[\r\n]+/g, " ").toLowerCase();
+          return cp.keys.some(k => (k === "стан" ? /\bстан\b/i.test(t) && !/остановил/i.test(t) : new RegExp(k, "i").test(t)));
+        });
+        matched.sort((a,b) => (b.time||0) - (a.time||0));
+        const latest = matched[0];
+        if (latest && !isCleanPoint(latest)) {
+          let shortName = cp.name.split('(')[0].replace(/вул\.\s*/i, '').replace(/РОВД\s*\/\s*/i, '').trim();
+          redCheckpoints.push(shortName);
+        }
+      });
+
+      if (redCheckpoints.length > 0) {
+        bar.classList.add("danger");
+        if (icon) icon.innerText = "🔴";
+        if (redCheckpoints.length === 1) {
+          if (text) text.innerText = `Мій шлях: Увага (${redCheckpoints[0]})!`;
+        } else {
+          if (text) text.innerText = `Мій шлях: ${redCheckpoints.length} БП (${redCheckpoints.slice(0, 2).join(', ')}${redCheckpoints.length > 2 ? '...' : ''})!`;
+        }
+      } else {
+        bar.classList.remove("danger");
+        if (icon) icon.innerText = "🟢";
+        if (text) text.innerText = "Мій шлях: Чисто";
+      }
+    }
+
+    function findMarkerByPoint(p) {
+      let found = null;
+      markersLayer.eachLayer(l => {
+        if (found) return;
+        if (l.getLatLng && Math.abs(l.getLatLng().lat - p.lat) < 0.0015 && Math.abs(l.getLatLng().lng - p.lng) < 0.0015) {
+          found = l;
+        }
+      });
+      return found;
+    }
+
+    window.focusPointOnMap = function(fbKey) {
+      if (!fbKey) return;
+      const p = allPoints.find(x => x._fbKey === fbKey);
+      if (!p) {
+        showToast("⚠️ Точку не знайдено серед активних");
+        return;
+      }
+      map.closePopup();
+      map.flyTo([p.lat, p.lng], 16.5, { animate: true, duration: 0.85 });
+      setTimeout(() => {
+        const m = findMarkerByPoint(p);
+        if (m) {
+          m.openPopup();
+          const el = m.getElement ? m.getElement() : (m._icon || m._path);
+          if (el) {
+            el.classList.add("moving-super-marker");
+            setTimeout(() => el.classList.remove("moving-super-marker"), 2500);
+          }
+        }
+      }, 900);
+    };
+
+    window.unlinkPointFromTrafficLight = function(cpId, fbKey) {
+      if (!cpId || !fbKey) return;
+      if (!tlIgnoredPoints[cpId]) tlIgnoredPoints[cpId] = [];
+      if (!tlIgnoredPoints[cpId].includes(fbKey)) {
+        tlIgnoredPoints[cpId].push(fbKey);
+      }
+      localStorage.setItem("radar_tl_ignored_points", JSON.stringify(tlIgnoredPoints));
+      showToast("🚫 Точку відв'язано від цього світлофора!");
+      map.closePopup();
+      renderTrafficLights();
+      updateRouteStatus();
+    };
+
+    window.resetUnlinkedPointsForCheckpoint = function(cpId) {
+      if (tlIgnoredPoints[cpId]) {
+        delete tlIgnoredPoints[cpId];
+        localStorage.setItem("radar_tl_ignored_points", JSON.stringify(tlIgnoredPoints));
+        showToast("🔄 Прив'язки для світлофора відновлено!");
+        map.closePopup();
+        renderTrafficLights();
+        updateRouteStatus();
+      }
+    };
+
+    window.setPointVerdictDirect = async function(fbKey, isClean, btnEl) {
+      const p = allPoints.find(x => x._fbKey === fbKey);
+      if (!p) return;
+      
+      p.is_clean = isClean;
+      p.color = isClean ? "green" : "red";
+      p.status = isClean ? "чисто" : "опасно";
+
+      manualPointOverrides[fbKey] = { is_clean: isClean, color: p.color, status: p.status, time: Date.now() };
+      localStorage.setItem("radar_point_overrides", JSON.stringify(manualPointOverrides));
+
+      if (btnEl) {
+        const row = btnEl.closest('.report-row-item');
+        if (row) {
+          const title = row.querySelector('.report-status-title');
+          if (title) title.innerHTML = `${isClean ? "🟢" : "🔴"} ${p.text || p.raw_text || ""}`;
+        }
+      }
+
+      if (fbKey) {
+        fetch(FIREBASE_POINTS_URL.replace(".json", `/${fbKey}.json`), {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ is_clean: isClean, color: p.color, status: p.status })
+        }).catch(() => {});
+      }
+
+      const rawText = (p.text || p.raw_text || "").replace(/[\r\n]+/g, " ");
+      let phrase = rawText.replace(/^(?:❓|\bчисто\b|\bбп\b|\bпатруль\b|\(чисто\))/gi, "").trim().toLowerCase();
+      if (phrase.length >= 3) {
+        learnedRules.push({ phrase: phrase, is_clean: isClean });
+        localStorage.setItem("radar_learned_rules", JSON.stringify(learnedRules));
+        fetch(FIREBASE_KB_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phrase: phrase, is_clean: isClean, updated_at: Date.now() })
+        }).catch(() => {});
+      }
+
+      showToast(isClean ? "🟢 Встановлено: ЧИСТО!" : "🔴 Встановлено: БЛОКПОСТ!");
+      renderMarkers();
+      renderTrafficLights();
+      updateRouteStatus();
+    };
+
+    window.notifyAiAboutPoint = function(fbKey) {
+      const p = allPoints.find(x => x._fbKey === fbKey);
+      if (!p) return;
+      if (!aiPillPanel.classList.contains("expanded")) toggleAiPillExpand();
+      const rawText = p.text || p.raw_text || "";
+      aiInlineInput.value = `Перенеси мітку [KEY:${fbKey}]: "${rawText}" на...`;
+      aiInlineInput.focus();
+      showToast("🤖 Мітку передано ШІ-штурману!");
+    };
+
+    function openMarkerActionSheet(point, marker) {
+      if (currentUiMode === "simple") return;
+      activeActionPoint = point;
+      activeActionMarker = marker || findMarkerByPoint(point);
+      document.getElementById("markerActionSheet").style.display = "flex";
+    }
+
+    function closeMarkerActionSheet(e) {
+      if (e && e.target && e.target.id !== "markerActionSheet" && !e.target.closest(".action-sheet-card")) return;
+      document.getElementById("markerActionSheet").style.display = "none";
+    }
+
+    function sheetStartManualDrag() {
+      closeMarkerActionSheet();
+      if (!activeActionPoint) return;
+      startDirectManualDrag(activeActionPoint._fbKey);
+    }
+
+    function sheetStartTrainModal() {
+      closeMarkerActionSheet();
+      if (!activeActionPoint) return;
+      openTrainingModal(activeActionPoint, activeActionMarker);
+    }
+
+    window.startDirectManualDrag = function(fbKey) {
+      const p = allPoints.find(x => x._fbKey === fbKey);
+      if (!p) return;
+      let m = findMarkerByPoint(p);
+      if (!m) return;
+
+      m.options.autoPan = true;
+      m.options.autoPanPadding = [60, 60];
+      m.options.autoPanSpeed = 15;
+      m.dragging.enable();
+
+      const iconEl = m.getElement()?.querySelector('.radar-circle');
+      if (iconEl) iconEl.classList.add('moving-super-marker');
+
+      showToast("✋ Тягніть мітку пальцем на потрібне місце!");
+
+      m.once('dragend', async (e) => {
+        m.dragging.disable();
+        if (iconEl) iconEl.classList.remove('moving-super-marker');
+        const pos = e.target.getLatLng();
+
+        p.lat = Number(pos.lat.toFixed(5));
+        p.lng = Number(pos.lng.toFixed(5));
+        p.needs_training = false;
+        p.geo_refined = true;
+        p.address = "Встановлено користувачем";
+
+        if (p._fbKey) {
+          fetch(FIREBASE_POINTS_URL.replace(".json", `/${p._fbKey}.json`), {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ lat: p.lat, lng: p.lng, needs_training: false, geo_refined: true, address: p.address })
+          }).catch(() => {});
+        }
+
+        showToast("✅ Мітку зафіксовано на новому місці!");
+        renderMarkers();
+        renderTrafficLights();
+        updateRouteStatus();
+      });
+    };
+
+    async function executeAiActionDirective(actionType, payload) {
+      if (actionType === "NAVIGATE") {
+        if (payload.url) window.location.href = payload.url;
+      } else if (actionType === "FILTER") {
+        if (payload.showGreen !== undefined) filterShowGreen = !!payload.showGreen;
+        if (payload.showRed !== undefined) filterShowRed = !!payload.showRed;
+        renderMarkers();
+        showToast(`🎯 Фільтр: Зелені ${filterShowGreen ? 'ВКЛ' : 'ВИМК'}`);
+      } else if (actionType === "SECTORS") {
+        if (Array.isArray(payload.sectors) && payload.sectors.length > 0) activeSectors = payload.sectors;
+        else if (payload.preset === "route") activeSectors = ['s1'];
+        else if (payload.preset === "all") activeSectors = ['s1', 's2', 's3', 's4', 's5', 's6'];
+        else if (payload.remove_left) {
+          activeSectors = activeSectors.filter(s => s !== 's5' && s !== 's6');
+          if (activeSectors.length === 0) activeSectors = ['s1'];
+        }
+        localStorage.setItem("radar_active_sectors", JSON.stringify(activeSectors));
+        syncSectorCheckboxesUI();
+        renderMarkers();
+        renderTrafficLights();
+        updateRouteStatus();
+        showToast(`🎯 Сектори оновлено!`);
+      } else if (actionType === "FLYTO") {
+        let lat = Number(payload.lat), lng = Number(payload.lng);
+        if (lat && lng && !isNaN(lat) && !isNaN(lng)) {
+          map.flyTo([lat, lng], 16, { animate: true, duration: 0.85 });
+          showToast(`🎯 Фокус наведено!`);
+        }
+      } else if (actionType === "MOVE" || actionType === "RELOCATE") {
+        let p = null;
+        if (payload.key) p = allPoints.find(x => x._fbKey === payload.key);
+        if (!p && payload.target_text) {
+          const q = payload.target_text.toLowerCase();
+          p = allPoints.find(x => ((x.text || '') + ' ' + (x.raw_text || '')).toLowerCase().includes(q));
+        }
+        if (!p && allPoints.length > 0) p = allPoints[allPoints.length - 1];
+        if (!p) return;
+
+        let lat = Number(payload.lat), lng = Number(payload.lng);
+        let street = payload.street || payload.address || "Нове місце";
+
+        if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
+          const resolved = resolveLocationFromText(street);
+          if (resolved) { lat = resolved.lat; lng = resolved.lng; street = resolved.name; }
+        }
+        if (!lat || !lng) return;
+
+        p.lat = lat; p.lng = lng; p.address = street; p.needs_training = false; p.geo_refined = true;
+        map.flyTo([lat, lng], 15, { animate: true, duration: 0.85 });
+
+        if (p._fbKey) {
+          fetch(FIREBASE_POINTS_URL.replace(".json", `/${p._fbKey}.json`), {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ lat: p.lat, lng: p.lng, address: street, needs_training: false, geo_refined: true })
+          }).catch(() => {});
+        }
+        renderMarkers();
+        showToast(`🚀 ШІ переніс точку ➔ ${street}!`);
+      }
+    }
+
     let checkpoints = [
-      { id: "kaidak_rovd", name: "РОВД / Кайдацький з'їзд", lat: 48.4925, lng: 34.9625, keys: ["кайдак", "ровд", "з'їзд.*кайдак"] },
+      { id: "kaidak_rovd", name: "РОВД / Кайдацький з'їзд", lat: 48.4925, lng: 34.9625, keys: ["кайдак", "ровд", "з'їзд.*кайдак", "съезд.*кайдак"] },
       { id: "vodolechebnitsa", name: "Водолікарня (пр. Свободи)", lat: 48.4848, lng: 34.9735, keys: ["водолечеб", "водолікарн", "пр свободи"] },
       { id: "kombainoviy", name: "Комбайновий (Белелюбського)", lat: 48.4795, lng: 34.9845, keys: ["комбайн", "ударник"] },
-      { id: "krasnozavodska", name: "Краснозаводська", lat: 48.4812, lng: 34.9940, keys: ["краснозавод", "белелюб", "дтрз"] },
-      { id: "pavlova", name: "вул. Павлова", lat: 48.4818, lng: 35.0012, keys: ["павлова"] },
-      { id: "rechport", name: "Річпорт", lat: 48.4805, lng: 35.0210, keys: ["речпорт", "річпорт", "речной вокзал"] },
-      { id: "vodokachka", name: "Водокачка", lat: 48.4910, lng: 34.9480, keys: ["водокачк"] },
-      { id: "stan_550", name: "Стан 550", lat: 48.4865, lng: 34.9850, keys: ["стан 550", "стан550"] }
+      { id: "krasnozavodska", name: "Краснозаводська", fullName: "Краснозаводська / Белелюбського", lat: 48.4800, lng: 34.9880, keys: ["краснозавод", "белелюб", "дтрз", "торус"] },
+      { id: "pavlova", name: "вул. Павлова", fullName: "вул. Академіка Павлова", lat: 48.4818, lng: 35.0012, keys: ["павлова"] },
+      { id: "rechport", name: "Річпорт", fullName: "Річпорт (Речной вокзал)", lat: 48.4805, lng: 35.0210, keys: ["речпорт", "річпорт", "речной вокзал"] },
+      { id: "vodokachka", name: "Водокачка", fullName: "Водокачка (Набережна Заводська)", lat: 48.4910, lng: 34.9480, keys: ["водокачк"] },
+      { id: "stan_550", name: "Стан 550", fullName: "Стан 550 (Набережна Заводська)", lat: 48.4865, lng: 34.9850, keys: ["стан 550", "стан550"] }
     ];
+
+    window.deleteSinglePoint = async function(fbKey) {
+      if (!confirm("Видалити це повідомлення як невідповідне/хибне?")) return;
+      showToast("⏳ Видаляю повідомлення з сервера...");
+      if (fbKey) {
+        try {
+          await fetch(FIREBASE_POINTS_URL.replace(".json", `/${fbKey}.json`), { method: "DELETE" });
+        } catch(e) {}
+      }
+      allPoints = allPoints.filter(p => p._fbKey !== fbKey);
+      renderMarkers();
+      renderTrafficLights();
+      updateRouteStatus();
+      showToast("🗑️ Повідомлення успішно видалено!");
+    };
+
+    const aiPillPanel = document.getElementById("aiPillPanel");
+    const aiPillHeader = document.getElementById("aiPillHeader");
+    const aiInlineInput = document.getElementById("aiInlineInput");
+    const aiChatBox = document.getElementById("aiChatBox");
+    const btnAiPillToggle = document.getElementById("btnAiPillToggle");
+
+    let geminiChatHistory = [];
+
+    L.DomEvent.disableClickPropagation(aiPillPanel);
+    L.DomEvent.disableScrollPropagation(aiPillPanel);
+    L.DomEvent.disableClickPropagation(document.getElementById("dashPanel"));
+    L.DomEvent.disableClickPropagation(document.getElementById("routeStatusBar"));
+    L.DomEvent.disableClickPropagation(document.getElementById("routeSubmenu"));
+    L.DomEvent.disableClickPropagation(document.getElementById("btnStatsHud"));
+    L.DomEvent.disableClickPropagation(document.getElementById("markerActionSheet"));
+    L.DomEvent.disableClickPropagation(document.getElementById("trainModal"));
+    L.DomEvent.disableClickPropagation(document.getElementById("confirmMoveModal"));
+
+    function toggleAiPillExpand(e) {
+      if (e && (e.target.closest('textarea') || e.target.closest('.btn-ai-send') || e.target.closest('.ai-mini-chip') || e.target.closest('span[title]'))) return;
+      const isExpanded = aiPillPanel.classList.toggle("expanded");
+      aiPillPanel.classList.toggle("compact", !isExpanded);
+      btnAiPillToggle.innerText = isExpanded ? "▲" : "▼";
+      if (isExpanded) {
+        verifyGeminiAuthorization();
+        setTimeout(() => { aiChatBox.scrollTop = aiChatBox.scrollHeight; if (map) map.invalidateSize(); }, 150);
+      } else {
+        aiPillPanel.style.top = "15px"; aiPillPanel.style.right = "15px"; aiPillPanel.style.left = "auto";
+        setTimeout(() => { if (map) map.invalidateSize(); }, 150);
+      }
+    }
+
+    function clearAiChatHistory(e) {
+      if (e) e.stopPropagation();
+      geminiChatHistory = [];
+      aiChatBox.innerHTML = `<div class="ai-msg bot">🧹 Діалог очищено. Готовий до нових команд!</div>`;
+      showToast("💬 Діалог очищено!");
+    }
+
+    function sendAiQuick(txt) {
+      aiInlineInput.value = txt;
+      submitAiChatMessage();
+    }
+
+    aiInlineInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        submitAiChatMessage();
+      }
+    });
+
+    function configureGeminiKey(e) {
+      if (e) e.stopPropagation();
+      verifyGeminiAuthorization(true);
+    }
+
+    async function executeGeminiRequestPool(promptPayload) {
+      if (!verifyGeminiAuthorization()) throw new Error("ШІ заблоковано.");
+      const apiKeys = getDecryptedGeminiPool();
+      if (apiKeys.length === 0) throw new Error("Немає доступних ключів Gemini.");
+      const models = ['gemini-3.8-flash', 'gemini-3.5-flash-lite', 'gemini-3.5-flash'];
+      let lastErr = null;
+
+      for (const k of apiKeys) {
+        for (const m of models) {
+          try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 8000);
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${k}`;
+            const res = await fetch(url, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(promptPayload),
+              signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+            if (res.ok) {
+              const data = await res.json();
+              return { model: m, data: data };
+            } else {
+              const errJson = await res.json().catch(() => ({}));
+              lastErr = errJson.error?.message || `HTTP ${res.status}`;
+            }
+          } catch (e) {
+            lastErr = e.name === 'AbortError' ? 'Таймаут (8с)' : e.message;
+          }
+        }
+      }
+      throw new Error(lastErr || "Всі ключі вичерпали квоту.");
+    }
+
+    async function submitAiChatMessage() {
+      const query = aiInlineInput.value.trim();
+      if (!query) return;
+      if (!verifyGeminiAuthorization()) return;
+
+      aiInlineInput.value = "";
+      const userBubble = document.createElement("div");
+      userBubble.className = "ai-msg user";
+      userBubble.innerText = query;
+      aiChatBox.appendChild(userBubble);
+
+      const loadingBubble = document.createElement("div");
+      loadingBubble.className = "ai-msg bot loading";
+      loadingBubble.innerText = "🧠 ШІ аналізує та виконує...";
+      aiChatBox.appendChild(loadingBubble);
+      aiChatBox.scrollTop = aiChatBox.scrollHeight;
+
+      const now = Date.now();
+      const allLiveReportsText = allPoints.map((p, idx) => {
+        const diffMin = Math.round((now - (p.time || p.timestamp || 0)) / 60000);
+        const st = isCleanPoint(p) ? "ЧИСТО" : "БЛОКПОСТ";
+        return `• [KEY:${p._fbKey || idx}] [${diffMin}хв тому] ${st}: "${p.text || p.raw_text || ''}" [${p.address || ''}] (lat:${p.lat}, lng:${p.lng})`;
+      }).join('\n');
+
+      const systemInstructionText = `
+Ти — високоінтелектуальний військово-дорожній ШІ-штурман у місті Дніпро для водія (v4.0).
+ТОЧКИ НА КАРТІ:
+${allLiveReportsText || "Повідомлень немає"}
+КОМАНДИ:
+1. ПЕРЕМІЩЕННЯ: <<<ACTION:MOVE:{"key":"KEY_ТОЧКИ","street":"Назва вулиці","lat":48.XXXXX,"lng":34.XXXXX}>>>
+2. СТАТУС: <<<ACTION:STATUS:{"key":"KEY_ТОЧКИ","clean":true}>>>
+3. ФІЛЬТР: <<<ACTION:FILTER:{"showGreen":false,"showRed":true}>>>
+4. СЕКТОРИ: <<<ACTION:SECTORS:{"preset":"route"|"all"|"remove_left"}>>>
+5. АНАЛІТИКА: <<<ACTION:NAVIGATE:{"url":"stats.html"}>>>
+`;
+
+      geminiChatHistory.push({ role: "user", parts: [{ text: query }] });
+      if (geminiChatHistory.length > 8) geminiChatHistory = geminiChatHistory.slice(-8);
+
+      try {
+        const resObj = await executeGeminiRequestPool({
+          contents: [{ role: "user", parts: [{ text: systemInstructionText + "\n\nКористувач: " + query }] }],
+          generationConfig: { temperature: 0.2 }
+        });
+
+        let rawReply = resObj.data.candidates?.[0]?.content?.parts?.[0]?.text || "Готово.";
+        const actionMatches = rawReply.match(/<<<ACTION:(.*?)>>>/g);
+        if (actionMatches) {
+          actionMatches.forEach(tag => {
+            try {
+              const inner = tag.replace("<<<ACTION:", "").replace(">>>", "").trim();
+              const colon = inner.indexOf(":");
+              if (colon !== -1) {
+                const actType = inner.substring(0, colon).trim();
+                const payload = JSON.parse(inner.substring(colon + 1).trim());
+                executeAiActionDirective(actType, payload);
+              }
+            } catch(e) {}
+          });
+        }
+
+        const cleanReply = rawReply.replace(/<<<ACTION:[\s\S]*?>>>/g, '').trim();
+        loadingBubble.className = "ai-msg bot";
+        loadingBubble.innerText = cleanReply;
+        aiChatBox.scrollTop = aiChatBox.scrollHeight;
+      } catch (err) {
+        loadingBubble.className = "ai-msg bot";
+        loadingBubble.innerHTML = `<span style="color:#ef4444;">⚠️ ${err.message}</span>`;
+        aiChatBox.scrollTop = aiChatBox.scrollHeight;
+      }
+    }
+
+    function toggleTlDropdown() {
+      const drop = document.getElementById("tlDropdown");
+      const arrow = document.getElementById("tlDropdownArrow");
+      const isVis = drop.style.display === "flex";
+      drop.style.display = isVis ? "none" : "flex";
+      arrow.innerText = isVis ? "▾" : "▴";
+    }
+
+    function toggleServerDropdown() {
+      const drop = document.getElementById("serverDropdown");
+      const arrow = document.getElementById("serverDropdownArrow");
+      if (!drop) return;
+      const isVis = drop.style.display === "flex";
+      drop.style.display = isVis ? "none" : "flex";
+      if (arrow) arrow.innerText = isVis ? "▾" : "▴";
+    }
+
+    async function triggerGitHubActions() {
+      let token = getAdminToken();
+      if (!token) {
+        requestAdminLogin();
+        return;
+      }
+      showToast("⏳ Відправка сигналу на GitHub Actions...");
+      try {
+        const res = await fetch("https://api.github.com/repos/MyDnipro/radar-map/actions/workflows/radar.yml/dispatches", {
+          method: "POST",
+          headers: { "Accept": "application/vnd.github.v3+json", "Authorization": `Bearer ${token.trim()}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ ref: "main" })
+        });
+        if (res.status === 204) {
+          showToast("✅ Радар 24/7 перезапущено на GitHub!");
+        } else {
+          showToast("❌ Помилка перезапуску");
+        }
+      } catch (err) {
+        showToast("❌ Помилка з'єднання");
+      }
+    }
+
+    function changeGitHubToken(e) {
+      if (e) e.stopPropagation();
+      requestAdminLogin();
+    }
+
+    function toggleTrafficLights() {
+      showTrafficLights = !showTrafficLights;
+      localStorage.setItem("radar_tl_visible", showTrafficLights);
+      updateTrafficLightsBtnUI();
+      if (showTrafficLights && currentUiMode === "full") {
+        if (!map.hasLayer(trafficLightLayer)) map.addLayer(trafficLightLayer);
+        renderTrafficLights();
+        showToast("🚦 Світлофори увімкнено!");
+      } else {
+        if (map.hasLayer(trafficLightLayer)) map.removeLayer(trafficLightLayer);
+        showToast("🙈 Світлофори приховано!");
+      }
+    }
+
+    function updateTrafficLightsBtnUI() {
+      const icon = document.getElementById("btnToggleTlIcon");
+      const text = document.getElementById("btnToggleTlText");
+      if (!text) return;
+      if (showTrafficLights) {
+        if (icon) icon.innerText = "👁️";
+        text.innerText = "Сховати світлофори";
+      } else {
+        if (icon) icon.innerText = "🙈";
+        text.innerText = "Показати світлофори";
+      }
+    }
+
+    async function toggleEditMode() {
+      if (!showTrafficLights) toggleTrafficLights();
+      isEditMode = !isEditMode;
+      const btnText = document.getElementById("btnSetupText");
+      if (isEditMode) {
+        if (btnText) btnText.innerText = "Зафіксувати позиції";
+        showToast("📍 Перетягуйте світлофори по карті.");
+      } else {
+        if (btnText) btnText.innerText = "Розставити (рухати)";
+        await syncCheckpointsToCloud();
+        showToast("✅ Позиції збережено!");
+      }
+      renderTrafficLights();
+    }
+
+    async function syncCheckpointsToCloud() {
+      localStorage.setItem("dnepr_radar_checkpoints_v2", JSON.stringify(checkpoints));
+      try {
+        await fetch(FIREBASE_CONFIG_URL, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(checkpoints) });
+      } catch (e) {}
+    }
+
+    async function loadCheckpointsFromCloud() {
+      try {
+        const local = localStorage.getItem("dnepr_radar_checkpoints_v2");
+        if (local) {
+          const parsed = JSON.parse(local);
+          if (Array.isArray(parsed) && parsed.length > 0) checkpoints = parsed;
+        }
+        const res = await fetch(`${FIREBASE_CONFIG_URL}?t=${Date.now()}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && data.length > 0) checkpoints = data;
+        }
+      } catch (e) {}
+    }
 
     function renderTrafficLights() {
       if (!showTrafficLights || currentUiMode === "simple") {
         if (map.hasLayer(trafficLightLayer)) map.removeLayer(trafficLightLayer);
         return;
       }
-      if (!map.hasLayer(trafficLightLayer)) map.addLayer(trafficLightLayer);
+      if (!map.hasLayer(trafficLightLayer)) {
+        map.addLayer(trafficLightLayer);
+      }
 
       checkpoints.forEach(cp => {
         const ignoredKeys = tlIgnoredPoints[cp.id] || [];
         const matched = allPoints.filter(p => {
           if (p._fbKey && ignoredKeys.includes(p._fbKey)) return false;
           const text = ((p.raw_text || p.text || "") + " " + (p.address || "")).toLowerCase();
-          return cp.keys.some(k => new RegExp(k, "i").test(text));
+          return cp.keys.some(k => (k === "стан" ? /\bстан\b/i.test(text) && !/остановил/i.test(text) : new RegExp(k, "i").test(text)));
         });
         matched.sort((a, b) => (b.time || 0) - (a.time || 0));
         let latest = matched[0];
@@ -694,21 +1511,83 @@
         const iconHtml = `<div class="traffic-pill ${isEditMode ? 'draggable-mode' : ''}"><div class="${redClass}"></div><div class="${greenClass}"></div></div>`;
         const tlIcon = L.divIcon({ className: 'traffic-marker-icon', html: iconHtml, iconSize: [20, 36], iconAnchor: [10, 18] });
 
+        let popupHtml = `
+          <div style="padding:6px 8px; font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif; min-width:215px;">
+            <div style="font-weight:900; font-size:12.5px; color:#0284c7; margin-bottom:4px; border-bottom:1px solid #cbd5e1; padding-bottom:3px;">
+              🚦 ${cp.name}
+            </div>
+            <div style="font-size:11px; font-weight:800; margin-bottom:6px; color:${latest ? (isClean ? '#16a34a' : '#dc2626') : '#64748b'};">
+              Поточний стан: ${statusTitle}
+            </div>
+        `;
+
+        if (latest) {
+          const timeStr = latest.time ? new Date(latest.time).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' }) : '';
+          const msgQuote = (latest.text || latest.raw_text || '').replace(/[\r\n]+/g, ' ').slice(0, 90);
+          const fbKeySafe = latest._fbKey || '';
+
+          popupHtml += `
+            <div onclick="event.stopPropagation(); focusPointOnMap('${fbKeySafe}');" title="Показати цю мітку на карті" style="font-size:10.5px; color:#0f172a; margin-bottom:6px; line-height:1.35; background:#f0f9ff; padding:5px 7px; border-radius:6px; border:1px solid #bae6fd; cursor:pointer; transition:all 0.2s;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:3px;">
+                <span style="color:#0284c7; font-weight:800;">🎯 Джерело сигналу:</span>
+                <span style="font-size:9.5px; color:#0284c7; text-decoration:underline; font-weight:700;">На карті ➔</span>
+              </div>
+              <div style="color:#334155;">🕒 <b>${timeStr}</b>: «${msgQuote}»</div>
+            </div>
+
+            <div style="display:flex; gap:5px; margin-top:6px;">
+              <button onclick="event.stopPropagation(); setPointVerdictDirect('${fbKeySafe}', true); map.closePopup();" style="flex:1; background:#059669; border:none; color:#fff; padding:6px 4px; border-radius:5px; font-size:10.5px; font-weight:900; cursor:pointer;">🟢 Чисто</button>
+              <button onclick="event.stopPropagation(); setPointVerdictDirect('${fbKeySafe}', false); map.closePopup();" style="flex:1; background:#dc2626; border:none; color:#fff; padding:6px 4px; border-radius:5px; font-size:10.5px; font-weight:900; cursor:pointer;">🔴 Блокпост</button>
+            </div>
+
+            <button onclick="event.stopPropagation(); unlinkPointFromTrafficLight('${cp.id}', '${fbKeySafe}');" style="width:100%; margin-top:6px; background:#fef2f2; border:1px solid #fecaca; color:#dc2626; padding:5px 6px; border-radius:5px; font-size:10px; font-weight:800; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:4px;">
+              🚫 Відв'язати точку від світлофора
+            </button>
+          `;
+        } else {
+          popupHtml += `
+            <div style="font-size:10.5px; color:#64748b; margin-bottom:6px;">
+              Немає свіжих звітів за останні 40 хв.
+            </div>
+          `;
+        }
+
+        const ignoredList = tlIgnoredPoints[cp.id] || [];
+        if (ignoredList.length > 0) {
+          popupHtml += `
+            <div style="font-size:9.5px; color:#64748b; text-align:center; margin-top:5px; border-top:1px dashed #cbd5e1; padding-top:4px;">
+              Відв'язано точок: ${ignoredList.length}
+              <span onclick="event.stopPropagation(); resetUnlinkedPointsForCheckpoint('${cp.id}');" style="color:#0284c7; text-decoration:underline; cursor:pointer; font-weight:700; margin-left:4px;">Скинути</span>
+            </div>
+          `;
+        }
+
+        popupHtml += `</div>`;
+
         let marker = trafficMarkersMap[cp.id];
         if (marker) {
           marker.setIcon(tlIcon);
-          if (!trafficLightLayer.hasLayer(marker)) trafficLightLayer.addLayer(marker);
+          marker.setPopupContent(popupHtml);
+          if (!trafficLightLayer.hasLayer(marker)) {
+            trafficLightLayer.addLayer(marker);
+          }
+          if (isEditMode) marker.dragging.enable();
+          else marker.dragging.disable();
         } else {
           marker = L.marker([cp.lat, cp.lng], { icon: tlIcon, zIndexOffset: 2000, draggable: isEditMode });
+          marker.bindPopup(popupHtml);
+          marker.on('dragend', async (e) => {
+            const pos = e.target.getLatLng();
+            cp.lat = Number(pos.lat.toFixed(5)); cp.lng = Number(pos.lng.toFixed(5));
+            await syncCheckpointsToCloud();
+          });
           trafficLightLayer.addLayer(marker);
           trafficMarkersMap[cp.id] = marker;
         }
       });
     }
 
-    // =========================================================================
-    // 🔍 ПОШУКОВИЙ ДВИГУН З 3 ДЖЕРЕЛ
-    // =========================================================================
+    // ПОШУКОВИЙ МОДУЛЬ (3 ДЖЕРЕЛА: МІТКИ, ВУЛИЦІ, СВІТЛОФОРИ)
     const streetSearchInput = document.getElementById("streetSearchInput");
     const searchResults = document.getElementById("searchResults");
     const searchClearBtn = document.getElementById("searchClearBtn");
@@ -717,7 +1596,7 @@
       const query = streetSearchInput.value.trim();
       searchClearBtn.style.display = query.length > 0 ? "block" : "none";
       if (query.length < 2) { searchResults.style.display = "none"; return; }
-      execute3SourceSearch(query);
+      executeSmartSearch(query);
     });
 
     function clearStreetSearch() {
@@ -726,69 +1605,104 @@
       searchResults.style.display = "none";
     }
 
-    function execute3SourceSearch(query) {
+    function executeSmartSearch(query) {
       if (!query) return;
       const lower = query.toLowerCase();
       searchResults.innerHTML = "";
       const results = [];
 
-      // ДЖЕРЕЛО 1: Активні повідомлення на карті
+      // 1. Активні мітки
       allPoints.forEach(p => {
-        const txt = (p.text || p.raw_text || "").toLowerCase();
-        if (txt.includes(lower)) {
+        const full = ((p.text || '') + ' ' + (p.raw_text || '')).toLowerCase();
+        if (full.includes(lower)) {
           results.push({
-            type: "active_report",
-            label: `📢 <b>Мітка (${isCleanPoint(p) ? '🟢 Чисто' : '🔴 БП'}):</b> ${p.text || p.raw_text}`,
+            name: `📢 ${p.text || p.raw_text}`,
             lat: p.lat,
             lng: p.lng
           });
         }
       });
 
-      // ДЖЕРЕЛО 2: База перейменованих та відомих вулиць (streets.js)
-      for (const [key, item] of Object.entries(DNIPRO_STREETS_MAP)) {
-        if (key.includes(lower) || (item.old && item.old.toLowerCase().includes(lower)) || item.name.toLowerCase().includes(lower)) {
-          if (!results.some(r => r.lat === item.lat && r.lng === item.lng)) {
-            let note = item.type === "renamed" ? `(стара: ${item.old})` : "";
-            results.push({
-              type: "street",
-              label: `📍 <b>${item.name}</b> <small style="color:#64748b;">${note}</small>`,
-              lat: item.lat,
-              lng: item.lng
-            });
+      // 2. Вулиці Дніпра
+      if (typeof DNIPRO_STREETS_MAP !== 'undefined') {
+        for (const [key, item] of Object.entries(DNIPRO_STREETS_MAP)) {
+          if (key.includes(lower) || (item.old && item.old.toLowerCase().includes(lower)) || item.name.toLowerCase().includes(lower)) {
+            if (!results.some(m => m.name === item.name)) {
+              results.push({ name: `📍 ${item.name}`, lat: item.lat, lng: item.lng });
+            }
           }
         }
       }
 
-      // ДЖЕРЕЛО 3: Світлофори та стратегічні контрольні пости
+      // 3. Світлофори
       checkpoints.forEach(cp => {
         if (cp.name.toLowerCase().includes(lower) || cp.keys.some(k => lower.includes(k))) {
-          results.push({
-            type: "traffic_light",
-            label: `🚦 <b>Світлофор:</b> ${cp.name}`,
-            lat: cp.lat,
-            lng: cp.lng
-          });
+          if (!results.some(m => m.name === cp.name)) {
+            results.push({ name: `🚦 ${cp.name}`, lat: cp.lat, lng: cp.lng });
+          }
         }
       });
 
       results.slice(0, 8).forEach(item => {
         const div = document.createElement("div");
         div.className = "search-item";
-        div.innerHTML = item.label;
+        div.innerHTML = `<b>${item.name}</b>`;
         div.onclick = () => {
           map.flyTo([item.lat, item.lng], 16.5, { animate: true, duration: 0.85 });
           searchResults.style.display = "none";
         };
         searchResults.appendChild(div);
       });
-
       searchResults.style.display = results.length > 0 ? "block" : "none";
     }
 
-    // =========================================================================
-    // 🎨 ОТРИСОВКА МАРКЕРІВ (ПРІОРИТЕТ ЧЕРВОНОГО + ПОВНЕ МИГАННЯ КЛАСТЕРА)
-    // =========================================================================
+    async function loadPoints() {
+      if (pendingRelocation) return;
+      try {
+        const res = await fetch(`${FIREBASE_POINTS_URL}?t=${Date.now()}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!data) { allPoints = []; renderMarkers(); renderTrafficLights(); updateRouteStatus(); return; }
+        const now = Date.now();
+
+        allPoints = Object.entries(data).map(([key, p]) => {
+          if (!p || typeof p !== 'object' || !p.lat || !p.lng) return null;
+          p._fbKey = key;
+          if (p.raw_text) p.raw_text = p.raw_text.replace(/[\r\n]+/g, " ").trim();
+          if (p.text) p.text = p.text.replace(/[\r\n]+/g, " ").trim();
+
+          if (manualPointOverrides[key]) {
+            p.is_clean = manualPointOverrides[key].is_clean;
+            p.color = manualPointOverrides[key].color;
+            p.status = manualPointOverrides[key].status;
+          }
+
+          const fullText = (p.text || "") + " " + (p.raw_text || "");
+          if (isSpamMessage(fullText)) return null;
+
+          const isWater = (p.lat >= 48.498 && p.lat <= 48.506 && p.lng >= 34.922 && p.lng <= 34.934);
+          if ((p.needs_training || isWater) && !p.geo_refined && !manualPointOverrides[key]) {
+            if (typeof resolveLocationFromText === "function") {
+              const resolved = resolveLocationFromText(fullText);
+              if (resolved) {
+                p.lat = resolved.lat; p.lng = resolved.lng; p.address = resolved.name;
+                p.needs_training = false;
+              }
+            }
+          }
+          return p;
+        }).filter(p => p && (now - (p.time || p.timestamp || 0)) <= LIFETIME_MS);
+
+        renderMarkers();
+        renderTrafficLights();
+        updateRouteStatus();
+        window.allPoints = allPoints;
+        window.dispatchEvent(new CustomEvent('radar:pointsUpdated', { detail: allPoints }));
+      } catch (err) {
+        console.error("Помилка loadPoints:", err);
+      }
+    }
+
     function renderMarkers() {
       try {
         markersLayer.clearLayers();
@@ -864,13 +1778,31 @@
               }
             } catch(e) {}
 
-            listHtml += `
-              <div class="report-row-item" style="border-bottom: 1px solid #334155; padding-bottom: 5px; margin-bottom: 5px;">
-                <div class="report-status-title" style="font-weight:800; font-size:12px; color:#0f172a; line-height:1.35;">${clean ? "🟢" : "🔴"} ${pt.text || pt.raw_text || ""}</div>
-                <div style="font-size:10px; color:#64748b; margin-top:2px;">🕒 ${timeStr} | Зникне через: ${remMin} хв</div>
-                ${renameNote ? ('<div style="font-size:10px; color:#0284c7; margin-top:4px; background:#f0f9ff; padding:3px 6px; border-radius:4px; border:1px solid #bae6fd;">' + renameNote + '</div>') : ''}
-              </div>
-            `;
+            if (isSimple) {
+              listHtml += `
+                <div class="report-row-item" style="border-bottom: 1px solid #334155; padding-bottom: 5px; margin-bottom: 5px;">
+                  <div class="report-status-title" style="font-weight:800; font-size:12px; color:#0f172a; line-height:1.35;">${clean ? "🟢" : "🔴"} ${pt.text || pt.raw_text || ""}</div>
+                  <div style="font-size:10px; color:#64748b; margin-top:2px;">🕒 ${timeStr} | Зникне через: ${remMin} хв</div>
+                  ${renameNote ? ('<div style="font-size:10px; color:#0284c7; margin-top:4px; background:#f0f9ff; padding:3px 6px; border-radius:4px; border:1px solid #bae6fd;">' + renameNote + '</div>') : ''}
+                </div>
+              `;
+            } else {
+              listHtml += `
+                <div class="report-row-item" style="border-bottom: 1px solid #334155; padding-bottom: 7px; margin-bottom: 7px;">
+                  <div class="report-status-title" style="font-weight:700; font-size:12px; color:#0f172a; line-height:1.35;">${clean ? "🟢" : "🔴"} ${pt.text || pt.raw_text || ""}</div>
+                  <div style="font-size:10px; color:#64748b; margin-top:2px;">🕒 ${timeStr} | Зникне через: ${remMin} хв</div>
+                  ${renameNote ? ('<div style="font-size:10px; color:#0284c7; margin-top:4px; background:#f0f9ff; padding:3px 6px; border-radius:4px; border:1px solid #bae6fd;">' + renameNote + '</div>') : ''}
+                  <div style="display:flex; gap:4px; margin-top:6px;">
+                    <button onclick="event.stopPropagation(); setPointVerdictDirect('${fbKeySafe}', true, this)" style="flex:1; background:#059669; border:none; color:#fff; padding:5px 3px; border-radius:5px; font-size:10px; font-weight:800; cursor:pointer;">🟢 Чисто</button>
+                    <button onclick="event.stopPropagation(); setPointVerdictDirect('${fbKeySafe}', false, this)" style="flex:1; background:#dc2626; border:none; color:#fff; padding:5px 3px; border-radius:5px; font-size:10px; font-weight:800; cursor:pointer;">🔴 Блокпост</button>
+                  </div>
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-top:5px;">
+                    <span onclick="event.stopPropagation(); notifyAiAboutPoint('${fbKeySafe}')" style="color:#0284c7; font-weight:800; font-size:9.5px; cursor:pointer;" title="Передати мітку ШІ">🤖 Повідомити ШІ</span>
+                    <span onclick="event.stopPropagation(); deleteSinglePoint('${fbKeySafe}')" style="color:#ef4444; font-weight:800; font-size:9.5px; cursor:pointer;" title="Видалити повідомлення">🗑️ Видалити</span>
+                  </div>
+                </div>
+              `;
+            }
           });
 
           const popupContent = `
@@ -887,6 +1819,28 @@
           const marker = L.marker([renderLat, renderLng], { icon: dotIcon, zIndexOffset: zOffset, draggable: false });
           marker.bindPopup(popupContent, { autoClose: true, closeOnClick: true });
 
+          if (!isSimple) {
+            let pressTimer = null;
+            let startX = 0, startY = 0;
+            marker.on('add', () => {
+              const el = marker.getElement();
+              if (!el) return;
+              el.addEventListener('touchstart', (e) => {
+                startX = e.touches[0].clientX; startY = e.touches[0].clientY;
+                pressTimer = setTimeout(() => {
+                  if (navigator.vibrate) navigator.vibrate(50);
+                  openMarkerActionSheet(cluster.points[0], marker);
+                }, 450);
+              }, { passive: true });
+              el.addEventListener('touchmove', (e) => {
+                if (pressTimer && Math.hypot(e.touches[0].clientX - startX, e.touches[0].clientY - startY) > 8) {
+                  clearTimeout(pressTimer); pressTimer = null;
+                }
+              }, { passive: true });
+              el.addEventListener('touchend', () => { if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } });
+            });
+          }
+
           markersLayer.addLayer(marker);
           visibleCount += cluster.points.length;
         });
@@ -897,29 +1851,112 @@
       }
     }
 
-    async function loadPoints() {
-      try {
-        const res = await fetch(`${FIREBASE_POINTS_URL}?t=${Date.now()}`);
-        if (!res.ok) return;
-        const data = await res.json();
-        if (!data) { allPoints = []; renderMarkers(); renderTrafficLights(); return; }
-        const now = Date.now();
+    applyUiMode(currentUiMode);
 
-        allPoints = Object.entries(data).map(([key, p]) => {
-          if (!p || typeof p !== 'object' || !p.lat || !p.lng) return null;
-          p._fbKey = key;
-          return p;
-        }).filter(p => p && (now - (p.time || p.timestamp || 0)) <= LIFETIME_MS);
-
-        renderMarkers();
-        renderTrafficLights();
-        window.allPoints = allPoints;
-      } catch (err) {}
+    if (currentUiMode === "full") {
+      const panel = document.getElementById("dashPanel");
+      if (panel) {
+        panel.classList.add("collapsed");
+        const btn = document.getElementById("btnToggle");
+        if (btn) btn.innerText = "▼";
+      }
     }
 
-    applyUiMode(currentUiMode);
-    loadPoints();
+    // Завантаження точок та світлофорів при запуску
+    loadCheckpointsFromCloud().then(() => {
+      loadPoints();
+    });
     setInterval(loadPoints, 15000);
+
+    // ВІДОБРАЖЕННЯ ОБ'ЇЗДУ ШІ
+    const navRouteLayer = L.layerGroup().addTo(map);
+
+    async function checkAndDrawNavRoute() {
+      const rawRoute = localStorage.getItem("radar_active_nav_route");
+      if (!rawRoute) return;
+
+      try {
+        const routeData = JSON.parse(rawRoute);
+        if (!routeData || !Array.isArray(routeData.points) || routeData.points.length < 2) return;
+
+        navRouteLayer.clearLayers();
+
+        let latLngs = routeData.points;
+        try {
+          const coordStr = routeData.points.map(p => `${p[1]},${p[0]}`).join(';');
+          const controller = new AbortController();
+          const tId = setTimeout(() => controller.abort(), 2500);
+          const osrmRes = await fetch(`https://router.project-osrm.org/route/v1/driving/${coordStr}?overview=full&geometries=geojson`, { signal: controller.signal });
+          clearTimeout(tId);
+          if (osrmRes.ok) {
+            const osrmData = await osrmRes.json();
+            if (osrmData.routes && osrmData.routes[0] && osrmData.routes[0].geometry) {
+              latLngs = osrmData.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+            }
+          }
+        } catch(e) {
+          latLngs = routeData.points;
+        }
+
+        const polyGlow = L.polyline(latLngs, {
+          color: '#00f3ff',
+          weight: 5.5,
+          opacity: 0.28,
+          lineCap: 'round',
+          lineJoin: 'round'
+        }).addTo(navRouteLayer);
+
+        const polyMain = L.polyline(latLngs, {
+          color: '#38bdf8',
+          weight: 2.8,
+          opacity: 0.95,
+          lineCap: 'round',
+          lineJoin: 'round'
+        }).addTo(navRouteLayer);
+
+        const startHtml = '<div style="width:12px; height:12px; border-radius:50%; background:#10b981; border:2px solid #fff; box-shadow:0 0 8px #10b981;"></div>';
+        const endHtml = '<div style="width:12px; height:12px; border-radius:50%; background:#00f3ff; border:2px solid #fff; box-shadow:0 0 8px #00f3ff;"></div>';
+
+        const startIcon = L.divIcon({ className: 'custom-dot-marker', html: startHtml, iconSize: [12, 12], iconAnchor: [6, 6] });
+        const endIcon = L.divIcon({ className: 'custom-dot-marker', html: endHtml, iconSize: [12, 12], iconAnchor: [6, 6] });
+
+        L.marker(latLngs[0], { icon: startIcon }).addTo(navRouteLayer);
+        L.marker(latLngs[latLngs.length - 1], { icon: endIcon }).addTo(navRouteLayer);
+
+        map.fitBounds(polyMain.getBounds(), { padding: [60, 60], maxZoom: 16 });
+
+        let banner = document.getElementById("navRouteFloatingBanner");
+        if (!banner) {
+          banner = document.createElement("div");
+          banner.id = "navRouteFloatingBanner";
+          banner.className = "nav-route-banner";
+          document.body.appendChild(banner);
+        }
+        banner.innerHTML = `
+          <span>🛣️ <b>Об'їзд:</b> ${routeData.title || 'Маршрут'}</span>
+          <button onclick="clearNavRoute()">✕ Скинути</button>
+        `;
+        banner.style.display = "flex";
+      } catch(e) {}
+    }
+
+    window.clearNavRoute = function() {
+      localStorage.removeItem("radar_active_nav_route");
+      navRouteLayer.clearLayers();
+      const banner = document.getElementById("navRouteFloatingBanner");
+      if (banner) banner.style.display = "none";
+      if (typeof showToast === "function") showToast("🛣️ Маршрут об'їзду прибрано");
+    };
+
+    setTimeout(checkAndDrawNavRoute, 400);
   </script>
+
+  <!-- МОДУЛІ ДОДАТКА (Всі на місці) -->
+  <script src="relocate.js"></script>
+  <script src="memory.js"></script>
+  <script src="timeline.js"></script>
+  <script src="ticker.js"></script>
+  <script src="keepawake.js"></script>
+  <script src="gps.js"></script>
 </body>
 </html>
