@@ -13,16 +13,10 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="style.css" />
   <style>
-    /* =========================================================================
-       1. КОНТРАСТНА ЧИТАБЕЛЬНА НІЧНА ТЕМА КАРТИ
-       ========================================================================= */
     #map.night-mode .leaflet-tile-pane {
       filter: invert(90%) hue-rotate(180deg) contrast(108%) brightness(96%) saturate(85%) !important;
     }
 
-    /* =========================================================================
-       2. БІЛИЙ ТЕКСТ РАДІО ТА ЕФІРУ В НІЧНОМУ РЕЖИМІ
-       ========================================================================= */
     body.night-mode [class*="ticker"],
     body.night-mode [class*="ticker"] *,
     body.night-mode [id*="ticker"],
@@ -37,7 +31,6 @@
       text-shadow: 0 1px 4px rgba(0, 0, 0, 0.95), 0 0 8px rgba(0, 0, 0, 0.9) !important;
     }
 
-    /* ЗАХИСТ ПОПАПІВ: ЗАВЖДИ ЧОРНИЙ КОНТРАСТНИЙ ТЕКСТ НА БІЛОМУ */
     .leaflet-popup-content,
     .leaflet-popup-content *,
     .leaflet-popup-content .report-status-title,
@@ -48,9 +41,6 @@
       color: #0f172a !important;
     }
 
-    /* =========================================================================
-       3. ПЕРЕМИКАННЯ РЕЖИМІВ (ПРОСТИЙ ВОДІЙСЬКИЙ / ПОВНИЙ РОЗРОБНИК)
-       ========================================================================= */
     html.mode-simple #aiPillPanel,
     html.mode-simple #routeStatusBar,
     html.mode-simple #routeSubmenu,
@@ -225,7 +215,6 @@
       border-color: #ef4444;
     }
 
-    /* Анімація пульсації свіжих міток */
     @keyframes pulseGroupDanger {
       0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.85); }
       70% { box-shadow: 0 0 0 12px rgba(220, 38, 38, 0); }
@@ -243,13 +232,25 @@
       animation: pulseGroupClean 1.4s infinite !important;
     }
   </style>
-  <link rel="manifest" href="manifest.json">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
   <script>
+    // 1. ПРИНУДИТЕЛЬНОЕ УНИЧТОЖЕНИЕ SERVICE WORKER И КЭША
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js').catch(() => {});
+      navigator.serviceWorker.getRegistrations().then(registrations => {
+        for (let registration of registrations) {
+          registration.unregister();
+        }
+      });
     }
+    if ('caches' in window) {
+      caches.keys().then(names => {
+        for (let name of names) caches.delete(name);
+      });
+    }
+
+    // 2. АВТОМАТИЧЕСКАЯ ОЧИСТКА ОШИБОЧНЫХ ПРАВИЛ ИЗ LOCALSTORAGE
+    localStorage.removeItem("radar_learned_rules");
+    localStorage.removeItem("radar_point_overrides");
+
     const _initToken = localStorage.getItem("radar_admin_token") || localStorage.getItem("github_radar_token") || "";
     const _initIsAdmin = typeof _initToken === "string" && _initToken.startsWith("ghp_") && _initToken.length >= 35;
     let _initMode = localStorage.getItem("radar_ui_mode") || "simple";
@@ -262,14 +263,13 @@
 
   <div id="transferBanner" class="transfer-banner">⏳ Виконується перенесення мітки...</div>
 
-  <!-- 1. ДАШБОРД (ВІКНО ТОЧОК) -->
+  <!-- ДАШБОРД -->
   <div id="dashPanel" class="dashboard collapsed">
     <div id="dashHeader" class="dash-header">
       <div class="points-count" id="countText" title="Точки на карті">
         <span>Точок: 0</span>
       </div>
       
-      <!-- Кнопка День / Ніч -->
       <button id="btnThemeHeader" class="btn-theme-inline" onclick="toggleMapTheme()" title="Зміна теми (День / Ніч)">
         <span id="themeHeaderIcon">☀️</span>
       </button>
@@ -284,7 +284,6 @@
     <div id="collapsibleBody" class="collapsible-body">
       <div class="subtitle" id="sectorSubtitle">📍 Режим: Мій маршрут</div>
       
-      <!-- ПОШУКОВИЙ МОДУЛЬ З 3 ДЖЕРЕЛ -->
       <div class="search-box">
         <div class="search-input-wrap">
           <input type="text" id="streetSearchInput" class="search-input" placeholder="🔍 Вулиця, ділянка, світлофор або повідомлення..." autocomplete="off">
@@ -332,7 +331,7 @@
     </div>
   </div>
 
-  <!-- 2. ШІ (ВЕРСІЯ v4.0) -->
+  <!-- ШІ ПАНЕЛЬ -->
   <div id="aiPillPanel" class="ai-pill-panel compact">
     <div id="aiPillHeader" class="ai-pill-compact-content">
       <div class="ai-titleBadge" onclick="toggleAiPillExpand()">
@@ -370,14 +369,14 @@
     </div>
   </div>
 
-  <!-- 3. МІЙ ШЛЯХ (НИЗ ЛІВОРУЧ) -->
+  <!-- МІЙ ШЛЯХ СТАТУС -->
   <div id="routeStatusBar" class="route-status-bar" onclick="toggleRouteSubmenu(event)">
     <span id="routeStatusIcon">🟢</span>
     <span id="routeStatusText">Мій шлях: Чисто</span>
     <span id="routeSubmenuArrow" style="font-size:10px; color:#94a3b8; margin-left:2px;">▴</span>
   </div>
 
-  <!-- ПІДМЕНЮ МАРШРУТУ -->
+  <!-- МЕНЮ МАРШРУТУ -->
   <div id="routeSubmenu" class="route-submenu" onclick="event.stopPropagation()">
     <div class="route-submenu-header">
       <span>🛣️ Маршрут та райони міста</span>
@@ -397,7 +396,6 @@
     </div>
   </div>
 
-  <!-- 4. КНОПКА СТАТИСТИКИ -->
   <a href="javascript:void(0)" id="btnStatsHud" onclick="event.preventDefault(); window.location.href = (localStorage.getItem('radar_last_analytics_page') || 'stats.html');" title="Аналітика блокпостів">
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
       <rect x="3" y="12" width="4.5" height="9" rx="2" fill="#00f3ff" />
@@ -406,7 +404,6 @@
     </svg>
   </a>
 
-  <!-- КНОПКИ ВНИЗУ СПРАВА -->
   <div class="bottom-right-cluster">
     <div id="btnRefresh" onclick="refreshRadarClick()">
       <span>🔄</span>
@@ -417,7 +414,6 @@
     </div>
   </div>
 
-  <!-- ДІАЛОГ ДІЙ ДЛЯ МЕТКИ -->
   <div id="markerActionSheet" class="action-sheet-backdrop" onclick="closeMarkerActionSheet(event)">
     <div class="action-sheet-card" onclick="event.stopPropagation()">
       <div class="action-sheet-title">
@@ -429,7 +425,6 @@
     </div>
   </div>
 
-  <!-- МОДАЛКА ПЕРЕНОСУ ЗА АДРЕСОЮ -->
   <div id="trainModal" class="train-modal-backdrop" onclick="closeTrainModal(event)">
     <div class="train-modal-card" onclick="event.stopPropagation()">
       <div class="train-header">
@@ -445,7 +440,6 @@
     </div>
   </div>
 
-  <!-- ДІАЛОГ ПІДТВЕРДЖЕННЯ ПЕРЕНОСУ -->
   <div id="confirmMoveModal" class="confirm-modal-backdrop">
     <div class="confirm-modal-card">
       <div style="font-size:13px; font-weight:800; color:#38bdf8; margin-bottom:4px;">📍 Перевірте нове місце:</div>
@@ -460,11 +454,9 @@
 
   <div id="toast" class="toast-msg">✅ Збережено!</div>
 
-  <!-- БІБЛІОТЕКИ ТА ДОВІДНИК ВУЛИЦЬ -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="streets.js"></script>
 
-  <!-- ОСНОВНИЙ СКРИПТ КАРТИ -->
   <script>
     const SECRET_KEY_HASH = "570984";
     const _VAULT_PREFIX = String.fromCharCode(65, 81, 46, 65, 98, 56, 82, 78, 54);
@@ -652,26 +644,12 @@
     let pendingRelocation = null;
 
     let learnedRules = [];
-    try {
-      const storedRules = localStorage.getItem("radar_learned_rules");
-      if (storedRules) learnedRules = JSON.parse(storedRules);
-    } catch(e) {}
-
     let manualPointOverrides = {};
-    try {
-      const savedPo = localStorage.getItem("radar_point_overrides");
-      if (savedPo) manualPointOverrides = JSON.parse(savedPo);
-    } catch(e) {}
-
     let tlIgnoredPoints = {};
-    try {
-      const savedIgnored = localStorage.getItem("radar_tl_ignored_points");
-      if (savedIgnored) tlIgnoredPoints = JSON.parse(savedIgnored);
-    } catch(e) {}
 
     const isMobile = window.innerWidth < 768;
     
-    // СТАРТОВИЙ ЕКРАН ЗМІЩЕНИЙ НА Ж/М ПОКРОВСЬКИЙ
+    // Початковий центр зсунутий на ж/м Покровський
     const INITIAL_CENTER = [48.478, 34.975];
     const INITIAL_ZOOM = isMobile ? 11.6 : 12.0;
 
@@ -823,29 +801,24 @@
     });
 
     // =========================================================================
-    // 🛡️ БЕЗДОГАННИЙ РОЗРАХУНОК СТАТУСУ (ЧИСТО ЗАВЖДИ ЗЕЛЕНЕ)
+    // 🛡️ БЕЗДОГАННИЙ РОЗРАХУНОК СТАТУСУ (ЧИСТО = ЗЕЛЕНИЙ 100%)
     // =========================================================================
     function isCleanPoint(p) {
       if (!p) return false;
-
-      // 1. Ручні кліки користувача в цій сесії
-      if (p._fbKey && manualPointOverrides[p._fbKey]) {
-        return manualPointOverrides[p._fbKey].is_clean;
-      }
 
       const rawCombined = ((p.raw_text || "") + " " + (p.text || "") + " " + (p.address || ""))
         .replace(/[\r\n]+/g, " ")
         .toLowerCase();
 
-      // 2. ПЕРШИЙ І ГОЛОВНИЙ ПРІОРИТЕТ: явне слово "чисто", смайли або заперечення загрози
+      // 1. АБСОЛЮТНИЙ ПРІОРИТЕТ: явне слово "чисто", "норм" тощо (ігноруємо будь-які червоні прапори сервера!)
       const hasCleanExplicit = /(?:👍|👌|💚|🌻|☀️|🌞|🍏|🟢|\b(?:чисто|чистенько|пусто|вільно|спокійно|спокойно|проїзд|проїхав|проехали|норм|нормально|нормик|добре|зелено)\b|без\s*ям|без\s*бп|нет\s*бп|немає?\s*бп|все\s*чисто|все\s*норм|всё\s*норм)/i.test(rawCombined);
       const hasCleanNegation = /(?:не\s*норм|не\s*чисто|не\s*спок|не\s*тихо)/i.test(rawCombined);
 
       if (hasCleanExplicit && !hasCleanNegation) {
-        return true; // ЖОДНІ ПРАВИЛА НЕ ЗДАТНІ ПЕРЕБИТИ СЛОВО "ЧИСТО"!
+        return true; // ЗАВЖДИ ЗЕЛЕНИЙ
       }
 
-      // 3. Заперечення небезпеки ("мусора снялись", "поехали бп")
+      // 2. Заперечення небезпеки ("знялися", "поїхали")
       const negationWords = ["нет", "немає", "убрали", "прибрали", "сняли", "зняли", "поехали", "поїхали", "уехали", "пропали", "немає вже", "уже чисто"];
       const hasNegation = negationWords.some(nw => rawCombined.includes(nw));
 
@@ -857,14 +830,7 @@
         return false;
       }
 
-      // 4. Обучені правила (тільки якщо в тексті не було прямого "чисто")
-      for (const rule of learnedRules) {
-        if (rule && rule.phrase && rawCombined.includes(rule.phrase.toLowerCase())) {
-          return rule.is_clean;
-        }
-      }
-
-      // 5. Серверний статус
+      // 3. Серверний статус (якщо в тексті не було слова чисто)
       if (p.is_clean === true || p.status === "чисто" || p.color === "green") return true;
       if (p.is_clean === false || p.status === "опасно" || p.color === "red") return false;
 
@@ -886,9 +852,7 @@
       });
     }
 
-    // =========================================================================
-    // 🚦 РЕЄСТР 7 КОНТРОЛЬНИХ СВІТЛОФОРІВ МАРШРУТУ (БЕЗ ДУБЛІВ ТА БЕЗ ВОГНІВ)
-    // =========================================================================
+    // 7 КОНТРОЛЬНИХ СВІТЛОФОРІВ (БЕЗ ДУБЛІВ ТА БЕЗ ВОГНІВ)
     let checkpoints = [
       { id: "kaidak_rovd", name: "РОВД / Кайдацький з'їзд", lat: 48.4908, lng: 34.9585, keys: ["кайдак", "кайдац", "ровд", "райотдел", "з'їзд.*кайдак", "съезд.*кайдак", "спуск.*кайдак"] },
       { id: "vodolechebnitsa", name: "Водолікарня (пр. Свободи)", lat: 48.4848, lng: 34.9735, keys: ["водолечеб", "водолікарн", "водоликарн", "водогряз", "грязелечеб", "просп.*свобод", "пр.*свобод", "свободи", "свободы"] },
@@ -1007,9 +971,6 @@
       p.is_clean = isClean;
       p.color = isClean ? "green" : "red";
       p.status = isClean ? "чисто" : "опасно";
-
-      manualPointOverrides[fbKey] = { is_clean: isClean, color: p.color, status: p.status, time: Date.now() };
-      localStorage.setItem("radar_point_overrides", JSON.stringify(manualPointOverrides));
 
       if (btnEl) {
         const row = btnEl.closest('.report-row-item');
@@ -1254,7 +1215,7 @@
           try {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 8000);
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${k}`;
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key={k}`;
             const res = await fetch(url, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -1575,9 +1536,6 @@ ${allLiveReportsText || "Повідомлень немає"}
       });
     }
 
-    // =========================================================================
-    // 🔍 ПОШУКОВИЙ МОДУЛЬ (3 ДЖЕРЕЛА: МІТКИ, ВУЛИЦІ, СВІТЛОФОРИ)
-    // =========================================================================
     const streetSearchInput = document.getElementById("streetSearchInput");
     const searchResults = document.getElementById("searchResults");
     const searchClearBtn = document.getElementById("searchClearBtn");
@@ -1601,7 +1559,6 @@ ${allLiveReportsText || "Повідомлень немає"}
       searchResults.innerHTML = "";
       const results = [];
 
-      // 1. Активні мітки
       allPoints.forEach(p => {
         const full = ((p.text || '') + ' ' + (p.raw_text || '')).toLowerCase();
         if (full.includes(lower)) {
@@ -1613,7 +1570,6 @@ ${allLiveReportsText || "Повідомлень немає"}
         }
       });
 
-      // 2. Вулиці Дніпра
       if (typeof DNIPRO_STREETS_MAP !== 'undefined') {
         for (const [key, item] of Object.entries(DNIPRO_STREETS_MAP)) {
           if (key.includes(lower) || (item.old && item.old.toLowerCase().includes(lower)) || item.name.toLowerCase().includes(lower)) {
@@ -1624,7 +1580,6 @@ ${allLiveReportsText || "Повідомлень немає"}
         }
       }
 
-      // 3. Світлофори
       checkpoints.forEach(cp => {
         if (cp.name.toLowerCase().includes(lower) || cp.keys.some(k => lower.includes(k))) {
           if (!results.some(m => m.name === cp.name)) {
@@ -1661,17 +1616,11 @@ ${allLiveReportsText || "Повідомлень немає"}
           if (p.raw_text) p.raw_text = p.raw_text.replace(/[\r\n]+/g, " ").trim();
           if (p.text) p.text = p.text.replace(/[\r\n]+/g, " ").trim();
 
-          if (manualPointOverrides[key]) {
-            p.is_clean = manualPointOverrides[key].is_clean;
-            p.color = manualPointOverrides[key].color;
-            p.status = manualPointOverrides[key].status;
-          }
-
           const fullText = (p.text || "") + " " + (p.raw_text || "");
           if (isSpamMessage(fullText)) return null;
 
           const isWater = (p.lat >= 48.498 && p.lat <= 48.506 && p.lng >= 34.922 && p.lng <= 34.934);
-          if ((p.needs_training || isWater) && !p.geo_refined && !manualPointOverrides[key]) {
+          if ((p.needs_training || isWater) && !p.geo_refined) {
             if (typeof resolveLocationFromText === "function") {
               const resolved = resolveLocationFromText(fullText);
               if (resolved) {
@@ -1693,9 +1642,6 @@ ${allLiveReportsText || "Повідомлень немає"}
       }
     }
 
-    // =========================================================================
-    // 🎨 ОТРИСОВКА МАРКЕРІВ (ПРІОРИТЕТ ЧЕРВОНОГО + ПУЛЬСАЦІЯ ВСІЄЇ ГРУПИ)
-    // =========================================================================
     function renderMarkers() {
       try {
         markersLayer.clearLayers();
@@ -1806,7 +1752,6 @@ ${allLiveReportsText || "Повідомлень немає"}
             </div>
           `;
 
-          // ЧЕРВОНА ТОЧКА ЗАВЖДИ ЗВЕРХУ ЗЕЛЕНОЇ
           const zOffset = clean ? 500 : 1200;
           const marker = L.marker([renderLat, renderLng], { icon: dotIcon, zIndexOffset: zOffset, draggable: false });
           marker.bindPopup(popupContent, { autoClose: true, closeOnClick: true });
@@ -1941,7 +1886,6 @@ ${allLiveReportsText || "Повідомлень немає"}
     setTimeout(checkAndDrawNavRoute, 400);
   </script>
 
-  <!-- МОДУЛІ ДОДАТКА (ЗБЕРЕЖЕНІ ПОВНІСТЮ) -->
   <script src="relocate.js"></script>
   <script src="memory.js"></script>
   <script src="timeline.js"></script>
