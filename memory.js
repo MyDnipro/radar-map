@@ -1,10 +1,9 @@
 /**
- * Radar Dnipro — Модуль памяти топонимов ("А = Б") та Зсунутих вулиць v6.5
- * Дві окремі папки (Синоніми + Зсунуті вулиці)
- * Додано:
- * 1. Редагування назв зсунутих вулиць (✏️) безпосередньо у списку
- * 2. Кнопка «🎯 На карті» з переходом до жовтого пульсуючого маркера-маяка
- * 3. Клік по жовтому маяку повертає назад до папки «Зсунуті вулиці»
+ * Radar Dnipro — Модуль памяти топонимов ("А = Б") та Зсунутих вулиць v6.6
+ * - Повний підрахунок усіх збережених правил у бейджі (синоніми + зсунуті)
+ * - Редагування назв зсунутих вулиць (✏️) безпосередньо у списку
+ * - Кнопка «🎯 На карті» з переходом до жовтого пульсуючого маркера-маяка
+ * - Підтримка полів street та name для повної сумісності
  */
 (function() {
   const FB_CUSTOM_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/custom_streets.json";
@@ -18,7 +17,6 @@
   let activeOverrideBeacon = null;
   const netSearchCache = new Map();
 
-  // Встроенные народные ориентиры и мосты Днепра (0 мс отклик)
   const BUILTIN_LANDMARKS = [
     { name: "Центральний міст (Новий міст)", old: "Новый мост, Новий міст, Центральный мост", lat: 48.47750, lng: 35.05680 },
     { name: "Амурський міст (Старий міст)", old: "Старый мост, Старий міст, Амурский мост", lat: 48.48820, lng: 35.02750 },
@@ -87,7 +85,6 @@
     return false;
   }
 
-  // Стили
   const style = document.createElement("style");
   style.textContent = `
     #memWidget {
@@ -323,8 +320,6 @@
       font-weight: 800;
       white-space: nowrap;
     }
-
-    /* Нові кнопки та стилі для Зсунутих вулиць */
     .btn-mem-edit-override {
       background: #1e293b;
       border: 1px solid #64748b;
@@ -359,7 +354,6 @@
       box-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
     }
 
-    /* Жовтий пульсуючий маяк на карті */
     .yellow-beacon-container {
       background: transparent !important;
       border: none !important;
@@ -391,7 +385,6 @@
   `;
   document.head.appendChild(style);
 
-  // Разметка
   const widget = document.createElement("div");
   widget.id = "memWidget";
   widget.innerHTML = `
@@ -429,7 +422,6 @@
       <span id="memFullCloseBtn" style="cursor:pointer; font-size:20px; padding:0 8px; color:#94a3b8;">✕</span>
     </div>
 
-    <!-- ДВЕ ОТДЕЛЬНЫЕ ПАПКИ -->
     <div style="display:flex; gap:6px; margin-bottom:2px;">
       <button id="memTabSynonymsBtn" class="mem-tab-btn" style="background:#9333ea; color:#fff;">
         🧠 Синоніми (А = Б)
@@ -439,7 +431,6 @@
       </button>
     </div>
 
-    <!-- ТУЛБАР ДЛЯ СИНОНИМОВ -->
     <div id="memSynonymsTools" style="display:flex; justify-content:flex-end;">
       <button id="btnCleanGarbageRules" style="background:#1e293b; border:1px solid #a855f7; color:#c084fc; font-size:10px; font-weight:800; padding:4px 8px; border-radius:6px; cursor:pointer;">
         🧹 Очистити спам від бота
@@ -527,7 +518,6 @@
   viewAllBtn.addEventListener("click", openFullModal);
   fullCloseBtn.addEventListener("click", closeFullModal);
 
-  // Поиск по сети
   async function fetchOnlineLocations(query, signal) {
     const cacheKey = normalizeSearchText(query) || query.toLowerCase().trim();
     if (netSearchCache.has(cacheKey)) return netSearchCache.get(cacheKey);
@@ -593,7 +583,6 @@
     targetResults.innerHTML = "";
     const matches = [];
 
-    // Память синонимов
     for (const rule of Object.values(cloudRules)) {
       if (!rule || !rule.lat || !rule.lng) continue;
       const phrase = rule.alias || rule.phrase || "";
@@ -605,7 +594,6 @@
       }
     }
 
-    // Встроенные ориентиры
     for (const lm of BUILTIN_LANDMARKS) {
       if (isSmartMatch(query, lm.name + " " + (lm.old || ""))) {
         if (!matches.some(m => m.name === lm.name)) {
@@ -614,7 +602,6 @@
       }
     }
 
-    // streets.js
     if (window.DNIPRO_STREETS_MAP) {
       const sortedKeys = Object.keys(window.DNIPRO_STREETS_MAP).sort((a, b) => b.length - a.length);
       for (const k of sortedKeys) {
@@ -633,7 +620,6 @@
     matches.forEach(item => appendSearchRow(targetResults, item));
     targetResults.style.display = matches.length > 0 ? "block" : "none";
 
-    // Фоновая сеть
     if (query.length >= 2) {
       searchAbortController = new AbortController();
       const signal = searchAbortController.signal;
@@ -668,6 +654,16 @@
     return `📅 ${day}.${month}.${year} 🕒 ${hours}:${minutes}`;
   }
 
+  // Оновлення лічильника: показує СУМУ синонімів та зсунутих вулиць
+  function updateCountBadge() {
+    const badge = document.getElementById("memCountBadge");
+    if (badge) {
+      const synCount = Object.keys(cloudRules || {}).length;
+      const ovrCount = Object.keys(streetOverrides || {}).length;
+      badge.innerText = synCount + ovrCount;
+    }
+  }
+
   async function loadCloudRules() {
     if (window.DNIPRO_STREETS_MAP) {
       BUILTIN_LANDMARKS.forEach(lm => {
@@ -675,7 +671,7 @@
       });
     }
 
-    // 1. Синонимы
+    // 1. Синоніми
     try {
       const res = await fetch(`${FB_CUSTOM_URL}?t=${Date.now()}`);
       if (res.ok) {
@@ -688,7 +684,6 @@
               window.DNIPRO_STREETS_MAP[aliasName] = item;
             }
           });
-          updateCountBadge();
         }
       }
     } catch(e) {}
@@ -702,8 +697,9 @@
           streetOverrides = dataOvr;
           if (window.DNIPRO_STREETS_MAP) {
             for (const item of Object.values(dataOvr)) {
-              if (item && item.street && item.lat && item.lng) {
-                const sName = item.street.toLowerCase().trim();
+              const recName = item.street || item.name;
+              if (item && recName && item.lat && item.lng) {
+                const sName = recName.toLowerCase().trim();
                 for (const mapItem of Object.values(window.DNIPRO_STREETS_MAP)) {
                   if (mapItem && mapItem.name && mapItem.name.toLowerCase().trim() === sName) {
                     if (mapItem._origLat === undefined) {
@@ -720,14 +716,15 @@
         }
       }
     } catch(e) {}
+
+    updateCountBadge();
+    if (fullModal.style.display === "flex") {
+      if (currentActiveTab === "overrides") renderOverridesList();
+      else renderFullList();
+    }
   }
 
-  function updateCountBadge() {
-    const badge = document.getElementById("memCountBadge");
-    if (badge) badge.innerText = Object.keys(cloudRules).length;
-  }
-
-  // Вкладка 1: Синонимы
+  // Вкладка 1: Синоніми
   function renderFullList() {
     const box = document.getElementById("memFullList");
     if (!box) return;
@@ -770,18 +767,10 @@
   async function renderOverridesList() {
     const box = document.getElementById("memFullList");
     if (!box) return;
-    box.innerHTML = '<span style="font-size:12px; color:#64748b; text-align:center; margin-top:20px;">Завантаження...</span>';
-
-    try {
-      const res = await fetch(`${FB_OVERRIDES_URL}?t=${Date.now()}`);
-      if (res.ok) {
-        const data = await res.json();
-        streetOverrides = (data && typeof data === "object") ? data : {};
-      }
-    } catch(e) {}
 
     box.innerHTML = "";
     const entries = Object.entries(streetOverrides);
+    updateCountBadge();
 
     if (entries.length === 0) {
       box.innerHTML = `
@@ -795,8 +784,8 @@
     }
 
     entries.forEach(([key, item]) => {
-      if (!item || !item.street) return;
-      const streetName = item.street;
+      const streetName = item.street || item.name;
+      if (!item || !streetName) return;
       const lat = Number(item.lat).toFixed(5);
       const lng = Number(item.lng).toFixed(5);
       const timeStr = formatDateTime(item.updated_at);
@@ -824,9 +813,8 @@
     });
   }
 
-  // Редагування запису у папці «Зсунуті вулиці»
   async function editStreetOverride(key, item) {
-    const oldStreet = item.street || key;
+    const oldStreet = item.street || item.name || key;
     const newStreet = prompt("✏️ Виправте офіційну назву вулиці (без номерів будинків):", oldStreet);
     if (newStreet === null) return;
     const cleanStreet = newStreet.trim();
@@ -851,12 +839,12 @@
 
     const updatedItem = {
       street: cleanStreet,
+      name: cleanStreet,
       lat: newLat,
       lng: newLng,
       updated_at: Date.now()
     };
 
-    // Якщо назва змінилася — видаляємо старий ключ з бази
     if (newKey !== key) {
       delete streetOverrides[key];
       await fetch(FB_OVERRIDES_URL.replace(".json", `/${key}.json`), { method: "DELETE" }).catch(() => {});
@@ -864,7 +852,6 @@
 
     streetOverrides[newKey] = updatedItem;
 
-    // Оновлюємо в пам'яті карти DNIPRO_STREETS_MAP
     if (window.DNIPRO_STREETS_MAP) {
       for (const mapItem of Object.values(window.DNIPRO_STREETS_MAP)) {
         if (mapItem && mapItem.name && mapItem.name.toLowerCase().trim() === cleanStreet.toLowerCase().trim()) {
@@ -879,7 +866,6 @@
       }
     }
 
-    // Зберігаємо оновлений запис у Firebase
     await fetch(FB_OVERRIDES_URL.replace(".json", `/${newKey}.json`), {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -896,7 +882,6 @@
     if (typeof window.renderTrafficLights === "function") window.renderTrafficLights();
   }
 
-  // Показ місця на карті з жовтим пульсуючим маяком
   function showOverrideOnMap(item) {
     if (!item || !item.lat || !item.lng) return;
     closeFullModal();
@@ -926,7 +911,6 @@
       interactive: true
     }).addTo(window.map);
 
-    // Клік по жовтому шарику повертає назад до папки «Зсунуті вулиці»
     activeOverrideBeacon.on('click', (e) => {
       if (e && e.originalEvent) {
         e.originalEvent.stopPropagation();
@@ -940,7 +924,8 @@
     });
 
     if (typeof window.showToast === "function") {
-      window.showToast(`🎯 «${item.street}»: натисніть на жовту крапку для повернення до списку`, 4000);
+      const streetLabel = item.street || item.name || "Вулиця";
+      window.showToast(`🎯 «${streetLabel}»: натисніть на жовту крапку для повернення до списку`, 4000);
     }
   }
 
@@ -970,7 +955,6 @@
     }
   }
 
-  // Очистка спама бота
   btnCleanGarbage.addEventListener("click", async () => {
     if (!confirm("Видалити з пам'яті синонімів довгі тексти повідомлень, які автоматично залив бот?")) return;
 
@@ -1151,6 +1135,8 @@
   window.RADAR_BUILTIN_LANDMARKS = BUILTIN_LANDMARKS;
   window.openBindingJournal = openFullModal;
   window.showOverrideOnMap = showOverrideOnMap;
+  window.loadCloudRules = loadCloudRules;
+  window.renderOverridesList = renderOverridesList;
 
   setTimeout(loadCloudRules, 800);
 })();
