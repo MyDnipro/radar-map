@@ -1,15 +1,17 @@
 /**
- * Radar Dnipro — Модуль "Радіо ефір" (ticker.js)
- * - 4 рядки на екрані + скрол ВСІХ повідомлень за сьогодні (00:00 - 24:00)
- * - Кнопка 📻 чітко по центру (left: 50%, transform: translateX(-50%))
- * - У повному режимі: над повідомленнями доступний перемикач "Мій шлях / Все місто"
- * - У простому режимі: перемикач прихований, ефір автоматично транслює все місто
- * - Клікабельний ТІЛЬКИ кружок (🟢/🔴) на початку рядка для переходу до точки
- * - Розумний динамічний ластик під відкриті вікна/попапи
+ * Radar Dnipro — Модуль "Радіо ефір" (ticker.js) v5.0
+ * - 4 рядки за замовчуванням + розгортання на весь екран (кнопка ⤢ / ⤡)
+ * - Автоматична темна підкладка («скло») при розгортанні для зручного читання
+ * - Скрол ВСІХ повідомлень за сьогодні (з 00:00 до 24:00)
+ * - Кнопка 📻 строго по центру (left: 50%, transform: translateX(-50%))
+ * - Вкладки "Мій шлях / Все місто" збережені в повному обсязі
+ * - Клікабельний ТІЛЬКИ кружок (🟢/🔴) для точного переходу до точки
+ * - Розумний ластик під відкриті попапи у компактному режимі
  */
 (function() {
   let isRadioActive = localStorage.getItem("radar_radio_active") === "true";
   let radioMode = localStorage.getItem("radar_radio_mode") || "route";
+  let isExpanded = false;
   let lastDataSignature = "";
 
   const STATS_ARCHIVE_URL = (window.FIREBASE_POINTS_URL 
@@ -82,12 +84,21 @@
       pointer-events: none;
       user-select: none;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      transition: opacity 0.15s ease;
+      transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    /* Верхня панель: вкладки + кнопка розгортання */
+    .radio-header-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      pointer-events: auto !important;
+      margin-bottom: 3px;
+      gap: 6px;
     }
 
     /* Перемикач над текстом у повному режимі */
     .radio-mode-switcher {
-      pointer-events: auto !important;
       display: inline-flex;
       align-items: center;
       gap: 2px;
@@ -96,8 +107,6 @@
       border: 1px solid rgba(56, 189, 248, 0.35);
       border-radius: 14px;
       padding: 1px 3px;
-      margin-bottom: 3px;
-      align-self: flex-start;
     }
     .radio-mode-tab {
       cursor: pointer;
@@ -115,7 +124,33 @@
       box-shadow: 0 0 8px rgba(2, 132, 199, 0.6);
     }
 
-    /* Скрол-список на 4 рядки по 24px (висота 96px) */
+    /* Кнопка розгортання на весь екран */
+    .radio-expand-btn {
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 900;
+      padding: 2px 8px;
+      border-radius: 10px;
+      color: #38bdf8;
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(6px);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+      transition: all 0.15s ease;
+    }
+    .radio-expand-btn:hover {
+      background: #0284c7;
+      color: #ffffff;
+      box-shadow: 0 0 8px rgba(2, 132, 199, 0.6);
+    }
+    .radio-expand-btn:active {
+      transform: scale(0.92);
+    }
+
+    /* Скрол-список (за замовчуванням 4 рядки по 24px) */
     .radio-scroll-list {
       display: block !important;
       height: 96px !important;
@@ -127,6 +162,7 @@
       -webkit-overflow-scrolling: touch !important;
       overscroll-behavior: contain !important;
       scrollbar-width: none;
+      transition: height 0.22s cubic-bezier(0.16, 1, 0.3, 1), max-height 0.22s cubic-bezier(0.16, 1, 0.3, 1);
     }
     .radio-scroll-list::-webkit-scrollbar {
       display: none;
@@ -178,6 +214,7 @@
       pointer-events: none;
     }
 
+    /* Кольори за замовчуванням (без підкладки) */
     .radio-msg-line.clean,
     .radio-msg-line.clean * {
       color: #000000 !important;
@@ -193,6 +230,48 @@
       -webkit-text-stroke: 0 !important;
       filter: none !important;
     }
+
+    /* =========================================================================
+       РОЗГОРНУТИЙ СТАН НА ВЕСЬ ЕКРАН (ТЕМНА ПІДКЛАДКА + ЧІТКИЙ ТЕКСТ)
+       ========================================================================= */
+    #radioFeedOverlay.expanded {
+      background: rgba(15, 23, 42, 0.94) !important;
+      backdrop-filter: blur(14px) !important;
+      border: 1.5px solid #0284c7 !important;
+      border-radius: 16px !important;
+      padding: 10px 12px !important;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.9) !important;
+      pointer-events: auto !important;
+      z-index: 2500 !important;
+    }
+
+    #radioFeedOverlay.expanded .radio-scroll-list {
+      height: calc(100vh - 170px) !important;
+      max-height: calc(100vh - 170px) !important;
+      padding-right: 2px;
+    }
+
+    #radioFeedOverlay.expanded .radio-msg-line {
+      height: 28px !important;
+      line-height: 28px !important;
+      border-bottom: 1px solid rgba(51, 65, 85, 0.45);
+    }
+
+    #radioFeedOverlay.expanded .radio-msg-line.clean,
+    #radioFeedOverlay.expanded .radio-msg-line.clean * {
+      color: #f8fafc !important;
+    }
+    #radioFeedOverlay.expanded .radio-msg-line.clean .radio-msg-time {
+      color: #38bdf8 !important;
+    }
+
+    #radioFeedOverlay.expanded .radio-msg-line.danger,
+    #radioFeedOverlay.expanded .radio-msg-line.danger * {
+      color: #fca5a5 !important;
+    }
+    #radioFeedOverlay.expanded .radio-msg-line.danger .radio-msg-time {
+      color: #ef4444 !important;
+    }
   `;
   document.head.appendChild(style);
 
@@ -206,6 +285,9 @@
   const feedBox = document.createElement("div");
   feedBox.id = "radioFeedOverlay";
 
+  const headerBar = document.createElement("div");
+  headerBar.className = "radio-header-bar";
+
   const switcher = document.createElement("div");
   switcher.className = "radio-mode-switcher";
   switcher.innerHTML = `
@@ -213,10 +295,19 @@
     <span class="radio-mode-tab ${radioMode === 'city' ? 'active' : ''}" data-mode="city">Все місто</span>
   `;
 
+  const expandBtn = document.createElement("div");
+  expandBtn.id = "btnRadioExpand";
+  expandBtn.className = "radio-expand-btn";
+  expandBtn.title = "Розгорнути на весь екран";
+  expandBtn.innerText = "⤢";
+
+  headerBar.appendChild(switcher);
+  headerBar.appendChild(expandBtn);
+
   const scrollList = document.createElement("div");
   scrollList.className = "radio-scroll-list";
 
-  feedBox.appendChild(switcher);
+  feedBox.appendChild(headerBar);
   feedBox.appendChild(scrollList);
   document.body.appendChild(feedBox);
 
@@ -229,9 +320,22 @@
     feedBox.addEventListener(evt, (e) => e.stopPropagation(), { passive: true });
   });
 
-  // Ластик під попапи
+  // Перемикання розгортання
+  expandBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    isExpanded = !isExpanded;
+    feedBox.classList.toggle("expanded", isExpanded);
+    expandBtn.innerText = isExpanded ? "⤡" : "⤢";
+    expandBtn.title = isExpanded ? "Згорнути до 4 рядків" : "Розгорнути на весь екран";
+
+    if (isExpanded) {
+      scrollList.querySelectorAll(".radio-msg-line").forEach(r => r.style.opacity = "1");
+    }
+  });
+
+  // Ластик під попапи (активний тільки у згорнутому стані)
   function updateSmartMask() {
-    if (!isRadioActive || feedBox.style.display === "none") return;
+    if (!isRadioActive || feedBox.style.display === "none" || isExpanded) return;
 
     const popupWrapper = document.querySelector(".leaflet-popup");
     const rows = scrollList.querySelectorAll(".radio-msg-line");
@@ -276,14 +380,12 @@
     return t;
   }
 
-  // Початок поточної доби (00:00:00.000)
   function getStartOfDayMs() {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
     return d.getTime();
   }
 
-  // Сховище повідомлень поточної доби з дедуплікацією
   const todayMessagesMap = new Map();
 
   function getMsgDedupKey(p) {
@@ -318,7 +420,6 @@
     const sod = getStartOfDayMs();
     let hasNew = false;
 
-    // Очищення повідомлень попередніх днів при настанні опівночі
     for (const [k, v] of todayMessagesMap.entries()) {
       if (getCleanTimestamp(v) < sod) {
         todayMessagesMap.delete(k);
@@ -342,7 +443,6 @@
     return hasNew;
   }
 
-  // Завантаження архіву за сьогодні з Firebase
   async function loadTodayArchive() {
     try {
       const res = await fetch(`${STATS_ARCHIVE_URL}?t=${Date.now()}`);
@@ -366,6 +466,11 @@
     if (!isRadioActive) {
       feedBox.style.display = "none";
       radioBtn.classList.remove("active");
+      if (isExpanded) {
+        isExpanded = false;
+        feedBox.classList.remove("expanded");
+        expandBtn.innerText = "⤢";
+      }
       return;
     }
 
@@ -376,11 +481,12 @@
     const activeMode = isSimple ? "city" : radioMode;
 
     switcher.style.display = isSimple ? "none" : "inline-flex";
+    headerBar.style.justifyContent = isSimple ? "flex-end" : "space-between";
+
     switcher.querySelectorAll(".radio-mode-tab").forEach(el => {
       el.classList.toggle("active", el.getAttribute("data-mode") === activeMode);
     });
 
-    // Підхоплюємо свіжі точки з карти
     if (window.allPoints && Array.isArray(window.allPoints)) {
       mergePointsIntoTodayFeed(window.allPoints);
     }
@@ -392,7 +498,7 @@
     filteredPts.sort((a, b) => getCleanTimestamp(b) - getCleanTimestamp(a));
 
     const newestTime = filteredPts.length > 0 ? getCleanTimestamp(filteredPts[0]) : 0;
-    const signature = `${isSimple ? 's' : 'f'}_${activeMode}_${filteredPts.length}_${newestTime}`;
+    const signature = `${isSimple ? 's' : 'f'}_${activeMode}_${filteredPts.length}_${newestTime}_${isExpanded ? 'exp' : 'col'}`;
 
     if (!forceRebuild && signature === lastDataSignature) {
       return;
@@ -485,7 +591,6 @@
     if (isRadioActive) renderRadioFeed(false);
   }, 4000);
 
-  // Первинна побудова та підтягування архіву
   setTimeout(() => {
     renderRadioFeed(true);
     loadTodayArchive();
