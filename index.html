@@ -37,6 +37,7 @@
       text-shadow: 0 1px 4px rgba(0, 0, 0, 0.95), 0 0 8px rgba(0, 0, 0, 0.9) !important;
     }
 
+    /* ЗАХИСТ ПОПАПІВ: ЗАВЖДИ ЧОРНИЙ КОНТРАСТНИЙ ТЕКСТ */
     .leaflet-popup-content,
     .leaflet-popup-content *,
     .leaflet-popup-content .report-status-title,
@@ -176,16 +177,8 @@
       border-radius: 12px !important;
       margin: 0 !important;
     }
-    html.mode-simple #btnRefresh span:first-child {
-      font-size: 16px !important;
-      line-height: 1 !important;
-    }
-    html.mode-simple #btnRefresh span:last-child {
-      font-size: 11.5px !important;
-      font-weight: 800 !important;
-      line-height: 1 !important;
-      text-align: left !important;
-    }
+    html.mode-simple #btnRefresh span:first-child { font-size: 16px !important; line-height: 1 !important; }
+    html.mode-simple #btnRefresh span:last-child { font-size: 11.5px !important; font-weight: 800 !important; line-height: 1 !important; text-align: left !important; }
 
     .toast-msg {
       position: absolute !important;
@@ -232,7 +225,7 @@
       border-color: #ef4444;
     }
 
-    /* Анімація пульсації для свіжих міток */
+    /* Анімація пульсації групи */
     @keyframes pulseGroupDanger {
       0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.85); }
       70% { box-shadow: 0 0 0 12px rgba(220, 38, 38, 0); }
@@ -276,6 +269,7 @@
         <span>Точок: 0</span>
       </div>
       
+      <!-- Кнопка День / Ніч -->
       <button id="btnThemeHeader" class="btn-theme-inline" onclick="toggleMapTheme()" title="Зміна теми (День / Ніч)">
         <span id="themeHeaderIcon">☀️</span>
       </button>
@@ -290,9 +284,10 @@
     <div id="collapsibleBody" class="collapsible-body">
       <div class="subtitle" id="sectorSubtitle">📍 Режим: Мій маршрут</div>
       
+      <!-- ПОШУКОВИЙ МОДУЛЬ З 3 ДЖЕРЕЛ -->
       <div class="search-box">
         <div class="search-input-wrap">
-          <input type="text" id="streetSearchInput" class="search-input" placeholder="🔍 Вулиця, ділянка або повідомлення..." autocomplete="off">
+          <input type="text" id="streetSearchInput" class="search-input" placeholder="🔍 Вулиця, ділянка, світлофор або повідомлення..." autocomplete="off">
           <button id="searchClearBtn" class="search-clear-btn" onclick="clearStreetSearch()">✕</button>
         </div>
         <div id="searchResults" class="search-results"></div>
@@ -676,7 +671,9 @@
 
     const isMobile = window.innerWidth < 768;
     
-    // СДВИГ СТАРТОВОГО ЭКРАНА В СТОРОНУ ПОКРОВСКОГО
+    // =========================================================================
+    // СТАРТОВИЙ ЕКРАН ЗМІЩЕНИЙ НА Ж/М ПОКРОВСЬКИЙ
+    // =========================================================================
     const INITIAL_CENTER = [48.478, 34.975];
     const INITIAL_ZOOM = isMobile ? 11.6 : 12.0;
 
@@ -749,12 +746,12 @@
     } catch(e) {}
 
     const SECTOR_DEFS = {
-      s1: { name: "Парус — Вокзал — Робоча", keys: ["парус", "покровськ", "комунар", "трофимов", "червон.*кам", "набережн.*завод", "речпорт", "річпорт", "водокачк", "стан.*550", "водолікарн", "свобод", "кайдак", "павлов", "белелюб", "краснозавод", "комбайн", "вокзал", "старомостов", "озерк", "курчатов", "шмідт", "бандер", "робоч", "канатн", "криворізьк", "каштанов", "савченк", "чорновол"], bounds: { minLat: 48.435, maxLat: 48.510, minLng: 34.800, maxLng: 35.038 } },
-      s2: { name: "Центр — Нагірка — Перемога", keys: ["центр", "міст.*сіті", "яворницьк", "нагірк", "гагарін", "науки", "перемог", "артем", "січов.*стрільц", "карл.*маркс", "чкалов", "дзержинськ", "комсомольськ", "плеханов", "ленін", "бородинськ"], bounds: { minLat: 48.410, maxLat: 48.480, minLng: 35.038, maxLng: 35.120 } },
-      s3: { name: "Тополя — 12 Квартал — Поля", keys: ["12.*квартал", "топол", "сокіл", "шинн", "хмельницьк", "поля", "кіров", "титов", "аеропорт", "барвінківськ", "переїзд.*мирн", "тещин.*язик", "гавриленк", "ребінін", "вакуленчук", "стромцов"], bounds: { minLat: 48.320, maxLat: 48.445, minLng: 34.920, maxLng: 35.130 } },
-      s4: { name: "Мазепи — Нігояна — Західний", keys: ["мазеп", "петровськ", "нігоян", "калінін", "огни", "вогні", "західн", "чечел", "камчатськ", "калдирськ", "лак"], bounds: { minLat: 48.450, maxLat: 48.485, minLng: 34.910, maxLng: 34.980 } },
-      s5: { name: "Лівий: Шосе — Калинова", keys: ["донецьк.*шосе", "караван", "лівобереж", "калинов", "янтарн", "клочко", "фрунзенськ", "інгульськ", "моторн", "петрозаводськ"], bounds: { minLat: 48.480, maxLat: 48.560, minLng: 34.930, maxLng: 35.070 } },
-      s6: { name: "Лівий: Слобожанський — Сонячний", keys: ["слобожанськ", "правд", "сонячн", "малиновськ", "придніпров", "бик", "золоті ключі", "молодогвард", "карун", "косіор", "калнишевськ"], bounds: { minLat: 48.440, maxLat: 48.540, minLng: 35.040, maxLng: 35.160 } }
+      s1: { name: "Парус — Вокзал — Робоча", keys: ["парус", "покровськ", "комунар", "трофимов", "червон.*кам", "набережн.*завод", "речпорт", "річпорт", "ричпор", "речпор", "водокачк", "стан.*550", "водолікарн", "водолечеб", "свобод", "кайдак", "павлов", "белелюб", "краснозавод", "комбайн", "торус", "вокзал", "старомостов", "озерк", "робоч", "криворізьк", "каштанов", "савченк", "чорновол"], bounds: { minLat: 48.435, maxLat: 48.510, minLng: 34.800, maxLng: 35.038 } },
+      s2: { name: "Центр — Нагірка — Перемога", keys: ["центр", "міст.*сіті", "яворницьк", "нагірк", "гагарін", "науки", "перемог", "артем", "січов.*стрільц", "карл.*маркс", "чкалов"], bounds: { minLat: 48.410, maxLat: 48.480, minLng: 35.038, maxLng: 35.120 } },
+      s3: { name: "Тополя — 12 Квартал — Поля", keys: ["12.*квартал", "топол", "сокіл", "шинн", "хмельницьк", "поля", "кіров", "титов", "аеропорт", "барвінківськ", "тещин.*язик"], bounds: { minLat: 48.320, maxLat: 48.445, minLng: 34.920, maxLng: 35.130 } },
+      s4: { name: "Мазепи — Нігояна — Західний", keys: ["мазеп", "петровськ", "нігоян", "калінін", "огни", "вогні", "західн"], bounds: { minLat: 48.450, maxLat: 48.485, minLng: 34.910, maxLng: 34.980 } },
+      s5: { name: "Лівий: Шосе — Калинова", keys: ["донецьк.*шосе", "караван", "лівобереж", "калинов", "янтарн", "клочко"], bounds: { minLat: 48.480, maxLat: 48.560, minLng: 34.930, maxLng: 35.070 } },
+      s6: { name: "Лівий: Слобожанський — Сонячний", keys: ["слобожанськ", "правд", "сонячн", "малиновськ", "придніпров", "бик"], bounds: { minLat: 48.440, maxLat: 48.540, minLng: 35.040, maxLng: 35.160 } }
     };
 
     function toggleRouteSubmenu(e) {
@@ -862,7 +859,6 @@
 
       if (/(?:не\s*норм|не\s*чисто|не\s*спок|не\s*тихо)/i.test(rawCombined)) return false;
 
-      // Слово чисто та позитивні смайлики
       if (/(?:👍|👌|💚|🌻|☀️|🌞|🍏|🟢|\b(?:чисто|чистенько|пусто|вільно|спокійно|спокойно|проїзд|проїхав|проехали|норм|нормально|нормик|добре|зелено)\b|все\s*чисто|все\s*норм|всё\s*норм)/i.test(rawCombined)) {
         return true;
       }
@@ -888,6 +884,19 @@
       });
     }
 
+    // =========================================================================
+    // РЕЄСТР 7 КОНТРОЛЬНИХ СВІТЛОФОРІВ МАРШРУТУ (БЕЗ ДУБЛІВ ТА БЕЗ ВОГНІВ)
+    // =========================================================================
+    let checkpoints = [
+      { id: "kaidak_rovd", name: "РОВД / Кайдацький з'їзд", lat: 48.4908, lng: 34.9585, keys: ["кайдак", "кайдац", "ровд", "райотдел", "з'їзд.*кайдак", "съезд.*кайдак", "спуск.*кайдак"] },
+      { id: "vodolechebnitsa", name: "Водолікарня (пр. Свободи)", lat: 48.4848, lng: 34.9735, keys: ["водолечеб", "водолікарн", "водоликарн", "водогряз", "грязелечеб", "просп.*свобод", "пр.*свобод", "свободи", "свободы"] },
+      { id: "vodokachka", name: "Водокачка", fullName: "Водокачка (Набережна Заводська)", lat: 48.4910, lng: 34.9480, keys: ["водокачк", "стара.*водокачк", "старая.*водокачка"] },
+      { id: "stan_550", name: "Стан 550", fullName: "Стан 550 (Набережна Заводська)", lat: 48.4865, lng: 34.9850, keys: ["стан 550", "стан550", "\\b550\\b"] },
+      { id: "krasnozavodska", name: "Краснозаводська (Белелюбського)", fullName: "вул. Краснозаводська / Белелюбського / САТ Торус", lat: 48.4800, lng: 34.9880, keys: ["краснозавод", "белелюб", "білелюб", "комбайн", "торус", "дтрз", "сат", "ударник"] },
+      { id: "pavlova", name: "вул. Павлова", fullName: "вул. Академіка Павлова", lat: 48.4818, lng: 35.0012, keys: ["павлов", "автосалон"] },
+      { id: "rechport", name: "Річпорт", fullName: "Річпорт (Речной вокзал)", lat: 48.4805, lng: 35.0210, keys: ["речпорт", "річпорт", "ричпор", "речпор", "речной вокзал", "річковий вокзал", "десантник"] }
+    ];
+
     function updateRouteStatus() {
       if (currentUiMode === "simple") return;
       const bar = document.getElementById("routeStatusBar");
@@ -907,7 +916,7 @@
         const matched = allPoints.filter(p => {
           if (p._fbKey && ignoredKeys.includes(p._fbKey)) return false;
           const t = ((p.raw_text || p.text || "") + " " + (p.address || "")).replace(/[\r\n]+/g, " ").toLowerCase();
-          return cp.keys.some(k => (k === "стан" ? /\bстан\b/i.test(t) && !/остановил/i.test(t) : new RegExp(k, "i").test(t)));
+          return cp.keys.some(k => (k === "\\b550\\b" ? /\b550\b/.test(t) : new RegExp(k, "i").test(t)));
         });
         matched.sort((a,b) => (b.time||0) - (a.time||0));
         const latest = matched[0];
@@ -1171,17 +1180,6 @@
         showToast(`🚀 ШІ переніс точку ➔ ${street}!`);
       }
     }
-
-    let checkpoints = [
-      { id: "kaidak_rovd", name: "РОВД / Кайдацький з'їзд", lat: 48.4925, lng: 34.9625, keys: ["кайдак", "ровд", "з'їзд.*кайдак", "съезд.*кайдак"] },
-      { id: "vodolechebnitsa", name: "Водолікарня (пр. Свободи)", lat: 48.4848, lng: 34.9735, keys: ["водолечеб", "водолікарн", "пр свободи"] },
-      { id: "kombainoviy", name: "Комбайновий (Белелюбського)", lat: 48.4795, lng: 34.9845, keys: ["комбайн", "ударник"] },
-      { id: "krasnozavodska", name: "Краснозаводська", fullName: "Краснозаводська / Белелюбського", lat: 48.4800, lng: 34.9880, keys: ["краснозавод", "белелюб", "дтрз", "торус"] },
-      { id: "pavlova", name: "вул. Павлова", fullName: "вул. Академіка Павлова", lat: 48.4818, lng: 35.0012, keys: ["павлова"] },
-      { id: "rechport", name: "Річпорт", fullName: "Річпорт (Речной вокзал)", lat: 48.4805, lng: 35.0210, keys: ["речпорт", "річпорт", "речной вокзал"] },
-      { id: "vodokachka", name: "Водокачка", fullName: "Водокачка (Набережна Заводська)", lat: 48.4910, lng: 34.9480, keys: ["водокачк"] },
-      { id: "stan_550", name: "Стан 550", fullName: "Стан 550 (Набережна Заводська)", lat: 48.4865, lng: 34.9850, keys: ["стан 550", "стан550"] }
-    ];
 
     window.deleteSinglePoint = async function(fbKey) {
       if (!confirm("Видалити це повідомлення як невідповідне/хибне?")) return;
@@ -1484,7 +1482,7 @@ ${allLiveReportsText || "Повідомлень немає"}
         const matched = allPoints.filter(p => {
           if (p._fbKey && ignoredKeys.includes(p._fbKey)) return false;
           const text = ((p.raw_text || p.text || "") + " " + (p.address || "")).toLowerCase();
-          return cp.keys.some(k => (k === "стан" ? /\bстан\b/i.test(text) && !/остановил/i.test(text) : new RegExp(k, "i").test(text)));
+          return cp.keys.some(k => (k === "\\b550\\b" ? /\b550\b/.test(text) : new RegExp(k, "i").test(text)));
         });
         matched.sort((a, b) => (b.time || 0) - (a.time || 0));
         let latest = matched[0];
@@ -1587,7 +1585,9 @@ ${allLiveReportsText || "Повідомлень немає"}
       });
     }
 
-    // ПОШУКОВИЙ МОДУЛЬ (3 ДЖЕРЕЛА: МІТКИ, ВУЛИЦІ, СВІТЛОФОРИ)
+    // =========================================================================
+    // 🔍 ПОШУКОВИЙ МОДУЛЬ (3 ДЖЕРЕЛА: МІТКИ, ВУЛИЦІ, СВІТЛОФОРИ)
+    // =========================================================================
     const streetSearchInput = document.getElementById("streetSearchInput");
     const searchResults = document.getElementById("searchResults");
     const searchClearBtn = document.getElementById("searchClearBtn");
@@ -1703,6 +1703,9 @@ ${allLiveReportsText || "Повідомлень немає"}
       }
     }
 
+    // =========================================================================
+    // 🎨 ОТРИСОВКА МАРКЕРІВ (ПРІОРИТЕТ ЧЕРВОНОГО + ПУЛЬСАЦІЯ ВСІЄЇ ГРУПИ)
+    // =========================================================================
     function renderMarkers() {
       try {
         markersLayer.clearLayers();
@@ -1862,13 +1865,12 @@ ${allLiveReportsText || "Повідомлень немає"}
       }
     }
 
-    // Завантаження точок та світлофорів при запуску
     loadCheckpointsFromCloud().then(() => {
       loadPoints();
     });
     setInterval(loadPoints, 15000);
 
-    // ВІДОБРАЖЕННЯ ОБ'ЇЗДУ ШІ
+    // ВІДОБРАЖЕННЯ ОБ'ЇЗДУ ВІД ШІ-ШТУРМАНА
     const navRouteLayer = L.layerGroup().addTo(map);
 
     async function checkAndDrawNavRoute() {
@@ -1951,7 +1953,7 @@ ${allLiveReportsText || "Повідомлень немає"}
     setTimeout(checkAndDrawNavRoute, 400);
   </script>
 
-  <!-- МОДУЛІ ДОДАТКА (Всі на місці) -->
+  <!-- МОДУЛІ ДОДАТКА (Збережені повністю) -->
   <script src="relocate.js"></script>
   <script src="memory.js"></script>
   <script src="timeline.js"></script>
