@@ -7,19 +7,14 @@ import requests
 from urllib.parse import unquote
 from datetime import datetime, timezone, timedelta
 
-# Часовий пояс України (Дніпро)
 UA_TZ = timezone(timedelta(hours=3))
 
-# =========================================================================
-# ⚙️ НАЛАШТУВАННЯ ТА API КЛЮЧІ GEMINI
-# =========================================================================
 RAW_GEMINI_KEYS = os.environ.get("GEMINI_KEY", "").strip() or os.environ.get("GEMINI_KEYS", "").strip()
 GEMINI_KEYS = [k.strip() for k in re.split(r'[,;\s]+', RAW_GEMINI_KEYS) if len(k.strip()) > 15]
 
 current_key_index = 0
 SUPPORTED_MODELS = ["gemini-3.8-flash", "gemini-3.5-flash-lite", "gemini-3.5-flash"]
 
-# Базовий URL Firebase Realtime Database
 FIREBASE_URL = os.environ.get("FIREBASE_URL", "").strip()
 if FIREBASE_URL and not FIREBASE_URL.endswith(".json"):
     BASE_FB_URL = FIREBASE_URL.rstrip("/")
@@ -34,7 +29,7 @@ STREET_OVERRIDES_URL = f"{BASE_FB_URL}/street_overrides.json" if BASE_FB_URL els
 SPAM_FILTERS_URL = f"{BASE_FB_URL}/spam_filters.json" if BASE_FB_URL else ""
 TRAFFIC_STATS_HISTORY_URL = f"{BASE_FB_URL}/config/traffic_stats_history.json" if BASE_FB_URL else ""
 
-LIFETIME_MS = 40 * 60 * 1000  # 40 хвилин для актуальних міток
+LIFETIME_MS = 40 * 60 * 1000
 CHANNEL_BASE_URL = "https://t.me/s/dnepr_bez_tck"
 
 PROCESSED_POST_IDS = set()
@@ -61,9 +56,6 @@ def rotate_to_next_key():
     log(f"🔄 Перемикання на Gemini API Key #{current_key_index + 1} з {len(GEMINI_KEYS)}")
     return get_active_gemini_key()
 
-# =========================================================================
-# 🚫 ФІЛЬТРАЦІЯ СПАМУ ТА РЕКЛАМИ
-# =========================================================================
 AD_FILTER_REGEX = re.compile(
     r'(?:'
     r'напоминаем.*?бот|'
@@ -115,9 +107,6 @@ def is_ad_or_spam(text):
             return True
     return False
 
-# =========================================================================
-# 📍 РЕЄСТР ЦІЛЬОВИХ СВІТЛОФОРІВ ДЛЯ СТАТИСТИКИ ТА МОНІТОРИНГУ
-# =========================================================================
 TARGET_CHECKPOINTS_CONFIG = [
     {"id": "pavlova", "name": "вул. Павлова", "regex": re.compile(r'(?:академ[іи]ка\s*павлова|\bпавлов[а-я]*)', re.IGNORECASE)},
     {"id": "krasnozavodska", "name": "Краснозаводська", "regex": re.compile(r'(?:белелюб|білелюб|краснозавод|комбайн|дтрз|ударник|торус|сат\s*торус|\bсат\b)', re.IGNORECASE)},
@@ -187,7 +176,7 @@ LOCAL_STREETS_DB = [
     {"keys": ["карла маркс", "яворниц", "яворницьк"], "addr": "просп. Дмитра Яворницького (К. Маркса)", "lat": 48.4650, "lng": 35.0350},
     {"keys": ["артем", "січов", "сечевых"], "addr": "вул. Січових Стрільців (Артема)", "lat": 48.4550, "lng": 35.0420},
     {"keys": ["савченк", "черновол", "чорновол"], "addr": "вул. В'ячеслава Чорновола (Савченка)", "lat": 48.4550, "lng": 35.0180},
-    {"keys": ["павлов"], "addr": "вул. Академіка Павлова", "lat": 48.4818, "lng": 35.0012},
+    {"keys": ["павлов"], "addr": "вул. Академіка Павлова", "lat": 48.4818, lng: 35.0012},
 
     # Єдиний вузол: Краснозаводська / Белелюбського / САТ Торус
     {"keys": ["краснозавод", "белелюб", "білелюб", "комбайн", "дтрз", "торус", "сат торус", "ударник"], "addr": "вул. Краснозаводська (Белелюбського / САТ)", "lat": 48.4800, "lng": 34.9880},
@@ -209,15 +198,8 @@ QUESTION_EMOJIS = ['?', '❓', '❔', '⁉️', '🤔', '🧐', '🙏']
 CLOUD_PRECIP_EMOJIS = ['🌤️', '⛅', '🌥️', '🌦️', '☁️', '🌧️', '⛈️', '🌩️', '🌨️', '🌪️', '🌫️', '☔', '💧', '💦']
 SUN_ONLY_EMOJIS = ['☀️', '🌞', '🌈', '🍏', '🟢']
 
-CLEAN_KEYWORDS = [
-    "чисто", "чистенько", "пусто", "вільно", "спокійно", "спокойно", "проїзд",
-    "без бп", "без ям", "нет бп", "нет блокпоста", "немає бп", "нема бп",
-    "ясно", "сухо", "знялися", "пролітайте", "все чисто", "зелено",
-    "норм", "нормально", "нормик", "все норм", "всё норм"
-]
-
 CLEAN_REGEX = re.compile(
-    r'(?:\b(?:чисто|чистенько|пусто|вільно|спокійно|спокойно|проїзд|ясно|сухо|знялися|пролітайте|зелено|норм|нормально|нормик)\b|без\s*бп|без\s*ям|нет\s*бп|нет\s*блокпост[а-я]*|немає?\s*бп|все\s*чисто|все\s*норм|всё\s*норм)',
+    r'(?:\b(?:чисто|чистенько|пусто|вільно|спокійно|спокойно|проїзд|проїхав|проехали|ясно|сухо|знялися|пролітайте|зелено|норм|нормально|нормик)\b|без\s*бп|без\s*ям|нет\s*бп|нет\s*блокпост[а-я]*|немає?\s*бп|все\s*чисто|все\s*норм|всё\s*норм)',
     re.IGNORECASE
 )
 
@@ -256,24 +238,23 @@ def is_message_clean(text):
 
     has_pure_sun = any(se in text for se in SUN_ONLY_EMOJIS)
     has_clean_word = bool(CLEAN_REGEX.search(t))
-    has_cloud_or_precip = any(ce in text for ce in CLOUD_PRECIP_EMOJIS)
+    has_clean_negation = bool(CLEAN_NEGATION_REGEX.search(t))
+
+    # ЖЕЛЕЗНЫЙ ПРИОРИТЕТ "ЧИСТО": если есть слово "чисто" и нет "не чисто" — это ВСЕГДА True!
+    if (has_clean_word or has_pure_sun) and not has_clean_negation:
+        return True
+
     has_danger_words = any(w in t for w in DANGER_KEYWORDS)
+    has_cloud_or_precip = any(ce in text for ce in CLOUD_PRECIP_EMOJIS)
     has_negation = any(nw in t for nw in NEGATION_WORDS)
 
     if (has_danger_words or has_cloud_or_precip) and has_negation:
         return True
 
-    if (has_pure_sun or has_clean_word) and not CLEAN_NEGATION_REGEX.search(t):
-        if not (has_danger_words and not has_negation):
-            return True
-
     if has_danger_words or has_cloud_or_precip:
         return False
 
-    if has_pure_sun or has_clean_word:
-        return True
-
-    return None
+    return False
 
 def split_multiline_reports(raw_post_text):
     if not raw_post_text:
@@ -344,7 +325,7 @@ def geocode_local(text):
     clean_t = text.lower().replace('ё', 'е')
     t = " " + clean_t + " "
 
-    # 1. Жорсткий захист Річпорту (ігнорує вектори руху на інші масиви)
+    # 1. Жорсткий захист Річпорту
     if re.search(r'(?:р[еі]чпорт|р[еі]чпор\b|речной\s*вокзал|річковий\s*вокзал)', t):
         return "Річпорт (Набережна Заводська)", 48.4805, 35.0210
 
@@ -749,7 +730,6 @@ def sync_cycle():
             log(f"🚫 [СПАМ / ПИТАННЯ ПРОПУЩЕНО]: '{msg[:45]}'")
             continue
 
-        # Захист: голі назви без дорожнього контексту взагалі не створюють міток
         if not has_meaningful_context(msg):
             log(f"⚠️ [ПРОПУЩЕНО ГОЛУ НАЗВУ БЕЗ ОПИСУ]: '{msg[:45]}'")
             continue
