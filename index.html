@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <meta name="color-scheme" content="light only">
-  <title>Радар Дніпро v4.0</title>
+  <title>Радар Дніпро v5.0</title>
   <link rel="icon" type="image/png" href="icon.png">
   <link rel="apple-touch-icon" href="icon.png">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -259,7 +259,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      pointer-events: none !important; /* Не блокує кліки на сусідні мітки */
+      pointer-events: none !important;
     }
     .tl-sonar-wrapper {
       position: absolute;
@@ -351,7 +351,6 @@
       100% { width: var(--sonar-diameter); height: var(--sonar-diameter); opacity: 0; border: 1px solid #38bdf8; }
     }
 
-    /* Анімація для зеленого (спокійна, стабільна) */
     .tl-sonar-wrapper.green .tl-sonar-wave:nth-child(1) {
       animation: sonarPulseClean var(--sonar-clean-speed) infinite cubic-bezier(0.15, 0.6, 0.35, 1);
       animation-delay: 0s;
@@ -365,7 +364,6 @@
       animation-delay: calc(var(--sonar-clean-speed) * 2 / 3);
     }
 
-    /* Анімація для червоного (динамічний розгін за кількістю повідомлень) */
     .tl-sonar-wrapper.red .tl-sonar-wave:nth-child(1) {
       animation: sonarPulseDanger var(--dyn-danger-speed, var(--sonar-danger-base-speed)) infinite cubic-bezier(0.15, 0.6, 0.35, 1);
       animation-delay: 0s;
@@ -516,13 +514,13 @@
     </div>
   </div>
 
-  <!-- 2. ШІ (ВЕРСІЯ v4.0) -->
+  <!-- 2. ШІ (ВЕРСІЯ v5.0) -->
   <div id="aiPillPanel" class="ai-pill-panel compact">
     <div id="aiPillHeader" class="ai-pill-compact-content">
       <div class="ai-titleBadge" onclick="toggleAiPillExpand()">
         <span style="font-size:14px;">🤖</span>
         <span id="aiPillLabel">ШІ</span>
-        <span class="ai-version-badge">v4.0</span>
+        <span class="ai-version-badge">v5.0</span>
         <span style="font-size:9px; color:#64748b; margin-left:3px;">✥</span>
       </div>
       <div style="display:flex; align-items:center; gap:4px;">
@@ -535,7 +533,7 @@
     <div class="ai-pill-body" id="aiPillBody">
       <div id="aiChatBox" class="ai-chat-box">
         <div class="ai-msg bot">
-          👋 Вітаю! Я ваш ШІ-штурман (Карта v4.0). Всі інженерні інструменти готові до роботи!
+          👋 Вітаю! Я ваш ШІ-штурман (Карта v5.0). Всі 9 світлофорів та оновлений маршрут активовані!
         </div>
       </div>
 
@@ -543,7 +541,7 @@
         <span class="ai-mini-chip" onclick="sendAiQuick('Скрий зелені точки')">🟢 Без зелених</span>
         <span class="ai-mini-chip" onclick="sendAiQuick('Покажи всі точки')">🌐 Всі точки</span>
         <span class="ai-mini-chip" onclick="sendAiQuick('Відключи Лівий берег від моніторингу')">🌉 Без Лівого</span>
-        <span class="ai-mini-chip" onclick="sendAiQuick('Світлофор Річпорт переключи на авто режим')">🔄 Річпорт авто</span>
+        <span class="ai-mini-chip" onclick="sendAiQuick('Світлофор Канатна стан')">🚦 Канатна стан</span>
         <span class="ai-mini-chip" onclick="sendAiQuick('Відкрий аналітику')">📊 Аналітика</span>
       </div>
 
@@ -571,10 +569,10 @@
       <button id="btnQuickSubAll" class="btn-submenu-quick" onclick="setSectorPreset('all')">🌐 Весь Дніпро</button>
     </div>
     <div class="route-submenu-list">
-      <label class="sector-sub-item"><input type="checkbox" id="sub_sec_s1" onchange="onSubmenuSectorChange()"> 📍 Парус — Вокзал — Робоча</label>
+      <label class="sector-sub-item"><input type="checkbox" id="sub_sec_s1" onchange="onSubmenuSectorChange()"> 📍 Парус — Вокзал — Робоча — Канатна</label>
       <label class="sector-sub-item"><input type="checkbox" id="sub_sec_s2" onchange="onSubmenuSectorChange()"> 🏙️ Центр, Нагірка, Перемога</label>
       <label class="sector-sub-item"><input type="checkbox" id="sub_sec_s3" onchange="onSubmenuSectorChange()"> 🚗 Тополя, 12 Квартал, Поля</label>
-      <label class="sector-sub-item"><input type="checkbox" id="sub_sec_s4" onchange="onSubmenuSectorChange()"> 🏭 Мазепи, Нігояна, Західний</label>
+      <label class="sector-sub-item"><input type="checkbox" id="sub_sec_s4" onchange="onSubmenuSectorChange()"> 🏭 Мазепи, Нігояна, Щепкіна, Західний</label>
       <label class="sector-sub-item"><input type="checkbox" id="sub_sec_s5" onchange="onSubmenuSectorChange()"> 🌉 Лівий берег (Шосе, Калинова)</label>
       <label class="sector-sub-item"><input type="checkbox" id="sub_sec_s6" onchange="onSubmenuSectorChange()"> 🏢 Лівий берег (Слобожанський)</label>
     </div>
@@ -1072,10 +1070,10 @@
     } catch(e) {}
 
     const SECTOR_DEFS = {
-      s1: { name: "Парус — Вокзал — Робоча", keys: ["парус", "покровськ", "комунар", "трофимов", "червон.*кам", "набережн.*завод", "речпорт", "річпорт", "ричпор", "речпор", "водокачк", "стан.*550", "водолікарн", "водолечеб", "свобод", "кайдак", "павлов", "белелюб", "краснозавод", "комбайн", "торус", "вокзал", "старомостов", "озерк", "робоч", "криворізьк", "каштанов", "савченк", "чорновол"], bounds: { minLat: 48.435, maxLat: 48.510, minLng: 34.800, maxLng: 35.038 } },
+      s1: { name: "Парус — Вокзал — Робоча — Канатна", keys: ["парус", "покровськ", "комунар", "трофимов", "червон.*кам", "набережн.*завод", "речпорт", "річпорт", "ричпор", "речпор", "водокачк", "стан.*550", "водолікарн", "водолечеб", "свобод", "кайдак", "павлов", "белелюб", "краснозавод", "комбайн", "торус", "вокзал", "старомостов", "озерк", "робоч", "криворізьк", "каштанов", "савченк", "чорновол", "канатн", "інфекцій", "инфекцион"], bounds: { minLat: 48.435, maxLat: 48.510, minLng: 34.800, maxLng: 35.038 } },
       s2: { name: "Центр — Нагірка — Перемога", keys: ["центр", "міст.*сіті", "яворницьк", "нагірк", "гагарін", "науки", "перемог", "артем", "січов.*стрільц", "карл.*маркс", "чкалов"], bounds: { minLat: 48.410, maxLat: 48.480, minLng: 35.038, maxLng: 35.120 } },
       s3: { name: "Тополя — 12 Квартал — Поля", keys: ["12.*квартал", "топол", "сокіл", "шинн", "хмельницьк", "поля", "кіров", "титов", "аеропорт", "барвінківськ", "тещин.*язик"], bounds: { minLat: 48.320, maxLat: 48.445, minLng: 34.920, maxLng: 35.130 } },
-      s4: { name: "Мазепи — Нігояна — Західний", keys: ["мазеп", "петровськ", "нігоян", "калінін", "огни", "вогні", "західн"], bounds: { minLat: 48.450, maxLat: 48.485, minLng: 34.910, maxLng: 34.995 } },
+      s4: { name: "Мазепи — Нігояна — Щепкіна — Західний", keys: ["мазеп", "петровськ", "нігоян", "калінін", "огни", "вогні", "західн", "щепкін", "щепкин"], bounds: { minLat: 48.450, maxLat: 48.485, minLng: 34.910, maxLng: 34.995 } },
       s5: { name: "Лівий: Шосе — Калинова", keys: ["донецьк.*шосе", "караван", "лівобереж", "калинов", "янтарн", "клочко"], bounds: { minLat: 48.480, maxLat: 48.560, minLng: 34.930, maxLng: 35.070 } },
       s6: { name: "Лівий: Слобожанський — Сонячний", keys: ["слобожанськ", "правд", "сонячн", "малиновськ", "придніпров", "бик"], bounds: { minLat: 48.440, maxLat: 48.540, minLng: 35.040, maxLng: 35.160 } }
     };
@@ -1194,7 +1192,7 @@
       });
     }
 
-    // 🚦 7 КОНТРОЛЬНИХ СВІТЛОФОРІВ
+    // 🚦 9 КОНТРОЛЬНИХ СВІТЛОФОРІВ (ВКЛЮЧАЮЧИ КАНАТНУ ТА ЩЕПКІНА)
     let checkpoints = [
       { id: "kaidak_rovd", name: "РОВД / Кайдацький з'їзд", lat: 48.4908, lng: 34.9585, keys: ["кайдак", "кайдац", "ровд", "райотдел", "з'їзд.*кайдак", "съезд.*кайдак", "спуск.*кайдак"] },
       { id: "vodolechebnitsa", name: "Водолікарня (просп. Свободи)", lat: 48.4848, lng: 34.9735, keys: ["водолечеб", "водолікарн", "водоликарн", "водогряз", "грязелечеб", "просп.*свобод", "пр.*свобод", "свободи", "свободы"] },
@@ -1202,7 +1200,9 @@
       { id: "stan_550", name: "Стан 550", fullName: "Стан 550 (Набережна Заводська)", lat: 48.4865, lng: 34.9850, keys: ["стан 550", "стан550", "\\b550\\b"] },
       { id: "krasnozavodska", name: "Краснозаводська (Белелюбського)", fullName: "вул. Краснозаводська / Белелюбського / САТ Торус", lat: 48.4800, lng: 34.9880, keys: ["краснозавод", "белелюб", "білелюб", "комбайн", "торус", "дтрз", "сат", "ударник"] },
       { id: "pavlova", name: "вул. Павлова", fullName: "вул. Академіка Павлова (Автосалони)", lat: 48.48022, lng: 35.00658, keys: ["павлов", "автосалон"] },
-      { id: "rechport", name: "Річпорт", fullName: "Річпорт (Речной вокзал)", lat: 48.48094, lng: 35.02514, keys: ["речпорт", "річпорт", "ричпор", "речпор", "речной вокзал", "річковий вокзал", "десантник"] }
+      { id: "rechport", name: "Річпорт", fullName: "Річпорт (Речной вокзал)", lat: 48.48094, lng: 35.02514, keys: ["речпорт", "річпорт", "ричпор", "речпор", "речной вокзал", "річковий вокзал", "десантник"] },
+      { id: "kanatna", name: "вул. Канатна", fullName: "вул. Канатна (Інфекційна лікарня №21)", lat: 48.46350, lng: 35.00980, keys: ["канатн", "інфекцій", "инфекцион", "21 лікарн", "21 больниц"] },
+      { id: "schepkina", name: "вул. Щепкіна", fullName: "вул. Щепкіна", lat: 48.47350, lng: 34.99680, keys: ["щепкін", "щепкин"] }
     ];
 
     function updateRouteStatus() {
@@ -1575,7 +1575,7 @@
       }).join('\n');
 
       const systemInstructionText = `
-Ти — високоінтелектуальний військово-дорожній ШІ-штурман у місті Дніпро для водія (v4.0).
+Ти — високоінтелектуальний військово-дорожній ШІ-штурман у місті Дніпро для водія (v5.0).
 ТОЧКИ НА КАРТІ:
 ${allLiveReportsText || "Повідомлень немає"}
 КОМАНДИ:
@@ -1721,12 +1721,29 @@ ${allLiveReportsText || "Повідомлень немає"}
         const local = localStorage.getItem("dnepr_radar_checkpoints_v2");
         if (local) {
           const parsed = JSON.parse(local);
-          if (Array.isArray(parsed) && parsed.length > 0) checkpoints = parsed;
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            checkpoints.forEach(defaultCp => {
+              const found = parsed.find(p => p.id === defaultCp.id);
+              if (found) {
+                defaultCp.lat = found.lat;
+                defaultCp.lng = found.lng;
+              }
+            });
+          }
         }
         const res = await fetch(`${FIREBASE_CONFIG_URL}?t=${Date.now()}`);
         if (res.ok) {
           const data = await res.json();
-          if (Array.isArray(data) && data.length > 0) checkpoints = data;
+          if (Array.isArray(data) && data.length > 0) {
+            checkpoints.forEach(defaultCp => {
+              const found = data.find(p => p.id === defaultCp.id);
+              if (found) {
+                defaultCp.lat = found.lat;
+                defaultCp.lng = found.lng;
+              }
+            });
+            await syncCheckpointsToCloud();
+          }
         }
       } catch (e) {}
     }
@@ -1751,10 +1768,8 @@ ${allLiveReportsText || "Повідомлень немає"}
           return cp.keys.some(k => (k === "\\b550\\b" ? /\b550\b/.test(text) : new RegExp(k, "i").test(text)));
         });
 
-        // Сортуємо від найсвіжіших до старіших
         matched.sort((a, b) => (b.time || 0) - (a.time || 0));
 
-        // Зникає, якщо немає свіжих звітів за останні 40 хв (окрім режиму розстановки)
         if (matched.length === 0 && !isEditMode) {
           if (trafficMarkersMap[cp.id]) {
             trafficLightLayer.removeLayer(trafficMarkersMap[cp.id]);
@@ -1769,17 +1784,12 @@ ${allLiveReportsText || "Повідомлень немає"}
         let dangerCount = 0;
 
         if (matched.length > 0) {
-          // Якщо останній звіт Чисто — статус Чисто, якщо БП — статус БП
           isClean = isCleanPoint(matched[0]);
           colorClass = isClean ? "green" : "red";
           statusTitle = isClean ? "🟢 ЧИСТО" : "🔴 УВАГА / БЛОКПОСТ";
-
-          // Рахуємо кількість червоних звітів на цьому світлофорі
           dangerCount = matched.filter(p => !isCleanPoint(p)).length;
         }
 
-        // ДИНАМІЧНА ШВИДКІСТЬ БЛОКПОСТА:
-        // Базова частота (1 звіт) - крок за кожен додатковий звіт (ліміт floor 0.6с)
         let dynDangerSpeed = sonarSettings.dangerBaseSpeed;
         if (dangerCount > 1) {
           dynDangerSpeed = Math.max(0.6, sonarSettings.dangerBaseSpeed - (dangerCount - 1) * sonarSettings.dangerStep);
@@ -1804,7 +1814,6 @@ ${allLiveReportsText || "Повідомлень немає"}
           iconAnchor: [90, 90]
         });
 
-        // ПОБУДОВА СПИСКУ ВСІХ ПОВІДОМЛЕНЬ У СВІТЛОФОРІ
         let reportsListHtml = "";
         const now = Date.now();
 
