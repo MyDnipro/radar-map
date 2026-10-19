@@ -8,7 +8,7 @@
   let userMarker = null;
   let accuracyCircle = null;
 
-  // Визначаємо стартову позицію з index.html (з фокусом на Покровський)
+  // Стартова позиція огляду міста з index.html (ж/м Покровський)
   function getHomeCenter() {
     return (typeof window.INITIAL_CENTER !== 'undefined' && Array.isArray(window.INITIAL_CENTER))
       ? window.INITIAL_CENTER
@@ -44,16 +44,16 @@
 
     if (!userMarker) {
       const pulseHtml = `
-        <div style="position:relative; width:20px; height:20px;">
-          <div style="position:absolute; width:100%; height:100%; border-radius:50%; background:#00f3ff; opacity:0.8; animation: pulseGps 1.5s infinite;"></div>
-          <div style="position:absolute; top:3px; left:3px; width:14px; height:14px; border-radius:50%; background:#0284c7; border:2px solid #ffffff; box-shadow:0 0 6px rgba(0,0,0,0.5);"></div>
+        <div style="position:relative; width:22px; height:22px;">
+          <div style="position:absolute; width:100%; height:100%; border-radius:50%; background:#00f3ff; opacity:0.75; animation: pulseGps 1.5s infinite;"></div>
+          <div style="position:absolute; top:4px; left:4px; width:14px; height:14px; border-radius:50%; background:#0284c7; border:2.5px solid #ffffff; box-shadow:0 0 8px rgba(0,0,0,0.6);"></div>
         </div>
       `;
       const gpsIcon = L.divIcon({
         className: 'user-gps-marker',
         html: pulseHtml,
-        iconSize: [20, 20],
-        iconAnchor: [10, 10]
+        iconSize: [22, 22],
+        iconAnchor: [11, 11]
       });
 
       userMarker = L.marker(latLng, { icon: gpsIcon, zIndexOffset: 3000 }).addTo(window.map);
@@ -62,14 +62,14 @@
     }
   }
 
-  // Додавання стилю пульсації для GPS-маркера
+  // Стиль пульсації маркера
   if (!document.getElementById("gpsMarkerStyle")) {
     const style = document.createElement("style");
     style.id = "gpsMarkerStyle";
     style.innerHTML = `
       @keyframes pulseGps {
         0% { transform: scale(0.9); opacity: 0.9; }
-        70% { transform: scale(2.2); opacity: 0; }
+        70% { transform: scale(2.4); opacity: 0; }
         100% { transform: scale(0.9); opacity: 0; }
       }
     `;
@@ -103,13 +103,8 @@
         accuracyCircle = null;
       }
 
-      // Плавне повернення до єдиного стартового ракурсу (Покровський)
-      if (window.map) {
-        window.map.flyTo(getHomeCenter(), getHomeZoom(), { animate: true, duration: 0.85 });
-      }
-
       if (typeof window.showToast === "function") {
-        window.showToast("🧭 Навігацію вимкнено (огляд маршруту)");
+        window.showToast("🧭 Навігацію вимкнено");
       }
     } else {
       // УВІМКНЕННЯ НАВІГАЦІЇ
@@ -117,7 +112,12 @@
       updateGpsBtnUI(true);
 
       if (typeof window.showToast === "function") {
-        window.showToast("📡 Пошук супутників GPS...");
+        window.showToast("📡 Пошук GPS...");
+      }
+
+      // Карта гарантовано виставляється в стартовий огляд міста (як на Фото 1)
+      if (window.map) {
+        window.map.flyTo(getHomeCenter(), getHomeZoom(), { animate: true, duration: 0.5 });
       }
 
       watchId = navigator.geolocation.watchPosition(
@@ -128,32 +128,37 @@
           const accuracy = pos.coords.accuracy || 20;
           const latLng = [lat, lng];
 
+          // Малюємо синю крапку положення
           ensureUserMarker(latLng);
 
-          // Коло радіуса точності GPS
+          // Коло похибки
           if (!accuracyCircle) {
             accuracyCircle = L.circle(latLng, {
               radius: accuracy,
               color: '#00f3ff',
               weight: 1,
-              opacity: 0.5,
+              opacity: 0.45,
               fillColor: '#00f3ff',
-              fillOpacity: 0.12
+              fillOpacity: 0.1
             }).addTo(window.map);
           } else {
             accuracyCircle.setLatLng(latLng);
             accuracyCircle.setRadius(accuracy);
           }
 
-          // Центруємо карту на водієві
-          window.map.setView(latLng, 16, { animate: true });
+          // ЖОДНОГО НАБЛИЖЕННЯ КАРТИ ДО ЗУМУ 16!
+          // Масштаб огляду міста не чіпаємо взагалі.
+          // Якщо водій раптом виїхав за межі поточного екрана — лише м'яко панорамуємо без зміни масштабу.
+          if (!window.map.getBounds().contains(latLng)) {
+            window.map.panTo(latLng);
+          }
         },
         (err) => {
           console.warn("Помилка GPS:", err.message);
           if (typeof window.showToast === "function") {
-            window.showToast("⚠️ Не вдалося отримати координати GPS");
+            window.showToast("⚠️ Не вдалося визначити координати GPS");
           }
-          window.toggleGpsMode(); // вимикаємо активний стан
+          window.toggleGpsMode();
         },
         {
           enableHighAccuracy: true,
