@@ -176,7 +176,7 @@ LOCAL_STREETS_DB = [
     {"keys": ["карла маркс", "яворниц", "яворницьк"], "addr": "просп. Дмитра Яворницького (К. Маркса)", "lat": 48.4650, "lng": 35.0350},
     {"keys": ["артем", "січов", "сечевых"], "addr": "вул. Січових Стрільців (Артема)", "lat": 48.4550, "lng": 35.0420},
     {"keys": ["савченк", "черновол", "чорновол"], "addr": "вул. В'ячеслава Чорновола (Савченка)", "lat": 48.4550, "lng": 35.0180},
-    {"keys": ["павлов"], "addr": "вул. Академіка Павлова", "lat": 48.4818, lng: 35.0012},
+    {"keys": ["павлов"], "addr": "вул. Академіка Павлова", "lat": 48.4818, "lng": 35.0012},
 
     # Єдиний вузол: Краснозаводська / Белелюбського / САТ Торус
     {"keys": ["краснозавод", "белелюб", "білелюб", "комбайн", "дтрз", "торус", "сат торус", "ударник"], "addr": "вул. Краснозаводська (Белелюбського / САТ)", "lat": 48.4800, "lng": 34.9880},
@@ -240,7 +240,6 @@ def is_message_clean(text):
     has_clean_word = bool(CLEAN_REGEX.search(t))
     has_clean_negation = bool(CLEAN_NEGATION_REGEX.search(t))
 
-    # ЖЕЛЕЗНЫЙ ПРИОРИТЕТ "ЧИСТО": если есть слово "чисто" и нет "не чисто" — это ВСЕГДА True!
     if (has_clean_word or has_pure_sun) and not has_clean_negation:
         return True
 
@@ -337,21 +336,22 @@ def geocode_local(text):
     if re.search(r'(?:водолечеб|водолікарн|водоликарн|грязелечеб|водогряз)', t):
         return "Водолікарня (просп. Свободи)", 48.4848, 34.9735
 
-    # 4. Ручні переозначення
+    # 4. Вечні вогні
+    if re.search(r'(?:вечн[ыеі]*\s*во?гн|во?гн[іиея]\b)', t):
+        return "просп. Сергія Нігояна (Вечні вогні)", 48.4765, 34.9860
+
     for raw_key, data in STREET_OVERRIDES_CACHE.items():
         if isinstance(data, dict):
             st_name = (data.get("street") or "").lower().replace('ё', 'е')
             if st_name and len(st_name) >= 4 and st_name in t:
                 return data.get("street"), float(data.get("lat")), float(data.get("lng"))
 
-    # 5. Хмарні правила
     for raw_alias, data in CUSTOM_STREETS_CACHE.items():
         if isinstance(data, dict):
             alias = unquote(raw_alias).lower().replace('ё', 'е')
             if alias in t:
                 return data.get("name", alias), data.get("lat"), data.get("lng")
 
-    # 6. Базовий реєстр
     sorted_items = sorted(
         LOCAL_STREETS_DB,
         key=lambda item: max(len(k) for k in item["keys"]),
