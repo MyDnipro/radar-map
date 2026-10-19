@@ -1,6 +1,6 @@
 /**
  * Radar Dnipro — Модуль "Радіо ефір" (ticker.js)
- * - 4 рядки на екрані + скрол до 100 повідомлень
+ * - 4 рядки на екрані + скрол ВСІХ повідомлень за сьогодні (00:00 - 24:00)
  * - Кнопка 📻 чітко по центру (left: 50%, transform: translateX(-50%))
  * - У повному режимі: над повідомленнями доступний перемикач "Мій шлях / Все місто"
  * - У простому режимі: перемикач прихований, ефір автоматично транслює все місто
@@ -11,6 +11,10 @@
   let isRadioActive = localStorage.getItem("radar_radio_active") === "true";
   let radioMode = localStorage.getItem("radar_radio_mode") || "route";
   let lastDataSignature = "";
+
+  const STATS_ARCHIVE_URL = (window.FIREBASE_POINTS_URL 
+    ? window.FIREBASE_POINTS_URL.replace("points.json", "stats_archive.json") 
+    : "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/stats_archive.json");
 
   // 8 контрольних точок маршруту водія
   const CHECKPOINT_REGEXES = [
@@ -272,6 +276,91 @@
     return t;
   }
 
+  // Початок поточної доби (00:00:00.000)
+  function getStartOfDayMs() {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d.getTime();
+  }
+
+  // Сховище повідомлень поточної доби з дедуплікацією
+  const todayMessagesMap = new Map();
+
+  function getMsgDedupKey(p) {
+    if (p._fbKey) return String(p._fbKey);
+    const t = getCleanTimestamp(p);
+    const txt = (p.text || p.raw_text || p.address || "").trim().toLowerCase();
+    return `${t}_${txt}`;
+  }
+
+  // Завантаження локального кешу
+  try {
+    const cached = JSON.parse(localStorage.getItem("radar_today_radio_feed") || "[]");
+    const sod = getStartOfDayMs();
+    if (Array.isArray(cached)) {
+      cached.forEach(p => {
+        if (p && getCleanTimestamp(p) >= sod) {
+          todayMessagesMap.set(getMsgDedupKey(p), p);
+        }
+      });
+    }
+  } catch(e) {}
+
+  function saveTodayCache() {
+    try {
+      const arr = Array.from(todayMessagesMap.values());
+      localStorage.setItem("radar_today_radio_feed", JSON.stringify(arr));
+    } catch(e) {}
+  }
+
+  function mergePointsIntoTodayFeed(pts) {
+    if (!Array.isArray(pts) || pts.length === 0) return false;
+    const sod = getStartOfDayMs();
+    let hasNew = false;
+
+    // Очищення повідомлень попередніх днів при настанні опівночі
+    for (const [k, v] of todayMessagesMap.entries()) {
+      if (getCleanTimestamp(v) < sod) {
+        todayMessagesMap.delete(k);
+        hasNew = true;
+      }
+    }
+
+    pts.forEach(p => {
+      if (!p) return;
+      const t = getCleanTimestamp(p);
+      if (t >= sod) {
+        const k = getMsgDedupKey(p);
+        if (!todayMessagesMap.has(k)) {
+          todayMessagesMap.set(k, p);
+          hasNew = true;
+        }
+      }
+    });
+
+    if (hasNew) saveTodayCache();
+    return hasNew;
+  }
+
+  // Завантаження архіву за сьогодні з Firebase
+  async function loadTodayArchive() {
+    try {
+      const res = await fetch(`${STATS_ARCHIVE_URL}?t=${Date.now()}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (!data) return;
+
+      const list = Object.entries(data).map(([key, val]) => {
+        if (!val || typeof val !== 'object') return null;
+        return { ...val, _fbKey: key };
+      }).filter(Boolean);
+
+      if (mergePointsIntoTodayFeed(list)) {
+        renderRadioFeed(false);
+      }
+    } catch(e) {}
+  }
+
   // 3. ВІДОБРАЖЕННЯ ПОВІДОМЛЕНЬ
   function renderRadioFeed(forceRebuild = false) {
     if (!isRadioActive) {
@@ -286,19 +375,24 @@
     const isSimple = document.documentElement.classList.contains("mode-simple");
     const activeMode = isSimple ? "city" : radioMode;
 
-    // Перемикач виводиться у повному режимі і ховається у простому
     switcher.style.display = isSimple ? "none" : "inline-flex";
     switcher.querySelectorAll(".radio-mode-tab").forEach(el => {
       el.classList.toggle("active", el.getAttribute("data-mode") === activeMode);
     });
 
-    const allPts = (window.allPoints && Array.isArray(window.allPoints)) ? window.allPoints.slice() : [];
-    const filteredPts = (activeMode === "route") ? allPts.filter(isCheckpointMessage) : allPts;
+    // Підхоплюємо свіжі точки з карти
+    if (window.allPoints && Array.isArray(window.allPoints)) {
+      mergePointsIntoTodayFeed(window.allPoints);
+    }
+
+    const sod = getStartOfDayMs();
+    let allToday = Array.from(todayMessagesMap.values()).filter(p => getCleanTimestamp(p) >= sod);
+
+    const filteredPts = (activeMode === "route") ? allToday.filter(isCheckpointMessage) : allToday;
     filteredPts.sort((a, b) => getCleanTimestamp(b) - getCleanTimestamp(a));
 
-    const top100 = filteredPts.slice(0, 100);
-    const newestTime = top100.length > 0 ? getCleanTimestamp(top100[0]) : 0;
-    const signature = `${isSimple ? 's' : 'f'}_${activeMode}_${top100.length}_${newestTime}`;
+    const newestTime = filteredPts.length > 0 ? getCleanTimestamp(filteredPts[0]) : 0;
+    const signature = `${isSimple ? 's' : 'f'}_${activeMode}_${filteredPts.length}_${newestTime}`;
 
     if (!forceRebuild && signature === lastDataSignature) {
       return;
@@ -308,13 +402,15 @@
     const prevScroll = scrollList.scrollTop;
     scrollList.innerHTML = "";
 
-    if (top100.length === 0) {
-      scrollList.innerHTML = `<div class="radio-msg-line clean" style="opacity:0.65;">📻 Повідомлень немає</div>`;
+    if (filteredPts.length === 0) {
+      scrollList.innerHTML = `<div class="radio-msg-line clean" style="opacity:0.65;">📻 Повідомлень за сьогодні немає</div>`;
       return;
     }
 
-    top100.forEach(p => {
-      const isClean = (typeof window.isCleanPoint === "function") ? window.isCleanPoint(p) : (p.color === "green");
+    filteredPts.forEach(p => {
+      const isClean = (typeof window.isCleanPoint === "function") 
+        ? window.isCleanPoint(p) 
+        : (p.color === "green" || p.is_clean === true);
       const dot = isClean ? "🟢" : "🔴";
       const statusClass = isClean ? "clean" : "danger";
 
@@ -373,7 +469,10 @@
     }
   });
 
-  window.addEventListener('radar:pointsUpdated', () => {
+  window.addEventListener('radar:pointsUpdated', (e) => {
+    if (e.detail && Array.isArray(e.detail)) {
+      mergePointsIntoTodayFeed(e.detail);
+    }
     if (isRadioActive) renderRadioFeed(false);
   });
 
@@ -386,5 +485,9 @@
     if (isRadioActive) renderRadioFeed(false);
   }, 4000);
 
-  setTimeout(() => renderRadioFeed(true), 600);
+  // Первинна побудова та підтягування архіву
+  setTimeout(() => {
+    renderRadioFeed(true);
+    loadTodayArchive();
+  }, 600);
 })();
