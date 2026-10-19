@@ -13,10 +13,16 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="style.css" />
   <style>
+    /* =========================================================================
+       1. КОНТРАСТНА ЧИТАБЕЛЬНА НІЧНА ТЕМА КАРТИ
+       ========================================================================= */
     #map.night-mode .leaflet-tile-pane {
       filter: invert(90%) hue-rotate(180deg) contrast(108%) brightness(96%) saturate(85%) !important;
     }
 
+    /* =========================================================================
+       2. БІЛИЙ ТЕКСТ РАДІО ТА ЕФІРУ В НІЧНОМУ РЕЖИМІ
+       ========================================================================= */
     body.night-mode [class*="ticker"],
     body.night-mode [class*="ticker"] *,
     body.night-mode [id*="ticker"],
@@ -31,6 +37,7 @@
       text-shadow: 0 1px 4px rgba(0, 0, 0, 0.95), 0 0 8px rgba(0, 0, 0, 0.9) !important;
     }
 
+    /* ЗАХИСТ ПОПАПІВ: ЗАВЖДИ ЧОРНИЙ КОНТРАСТНИЙ ТЕКСТ НА БІЛОМУ */
     .leaflet-popup-content,
     .leaflet-popup-content *,
     .leaflet-popup-content .report-status-title,
@@ -41,6 +48,9 @@
       color: #0f172a !important;
     }
 
+    /* =========================================================================
+       3. ПЕРЕМИКАННЯ РЕЖИМІВ (ПРОСТИЙ ВОДІЙСЬКИЙ / ПОВНИЙ РОЗРОБНИК)
+       ========================================================================= */
     html.mode-simple #aiPillPanel,
     html.mode-simple #routeStatusBar,
     html.mode-simple #routeSubmenu,
@@ -215,6 +225,7 @@
       border-color: #ef4444;
     }
 
+    /* Анімація пульсації свіжих міток */
     @keyframes pulseGroupDanger {
       0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.85); }
       70% { box-shadow: 0 0 0 12px rgba(220, 38, 38, 0); }
@@ -233,7 +244,7 @@
     }
   </style>
   <script>
-    // 1. ПРИНУДИТЕЛЬНОЕ УНИЧТОЖЕНИЕ SERVICE WORKER И КЭША
+    // ПРИМУСОВЕ ОЧИЩЕННЯ СТАРОГО SERVICE WORKER ТА КЕШУ
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.getRegistrations().then(registrations => {
         for (let registration of registrations) {
@@ -247,10 +258,6 @@
       });
     }
 
-    // 2. АВТОМАТИЧЕСКАЯ ОЧИСТКА ОШИБОЧНЫХ ПРАВИЛ ИЗ LOCALSTORAGE
-    localStorage.removeItem("radar_learned_rules");
-    localStorage.removeItem("radar_point_overrides");
-
     const _initToken = localStorage.getItem("radar_admin_token") || localStorage.getItem("github_radar_token") || "";
     const _initIsAdmin = typeof _initToken === "string" && _initToken.startsWith("ghp_") && _initToken.length >= 35;
     let _initMode = localStorage.getItem("radar_ui_mode") || "simple";
@@ -263,13 +270,14 @@
 
   <div id="transferBanner" class="transfer-banner">⏳ Виконується перенесення мітки...</div>
 
-  <!-- ДАШБОРД -->
+  <!-- 1. ДАШБОРД (ВІКНО ТОЧОК) -->
   <div id="dashPanel" class="dashboard collapsed">
     <div id="dashHeader" class="dash-header">
       <div class="points-count" id="countText" title="Точки на карті">
         <span>Точок: 0</span>
       </div>
       
+      <!-- Кнопка День / Ніч -->
       <button id="btnThemeHeader" class="btn-theme-inline" onclick="toggleMapTheme()" title="Зміна теми (День / Ніч)">
         <span id="themeHeaderIcon">☀️</span>
       </button>
@@ -284,6 +292,7 @@
     <div id="collapsibleBody" class="collapsible-body">
       <div class="subtitle" id="sectorSubtitle">📍 Режим: Мій маршрут</div>
       
+      <!-- ПОШУКОВИЙ МОДУЛЬ З 3 ДЖЕРЕЛ -->
       <div class="search-box">
         <div class="search-input-wrap">
           <input type="text" id="streetSearchInput" class="search-input" placeholder="🔍 Вулиця, ділянка, світлофор або повідомлення..." autocomplete="off">
@@ -331,7 +340,7 @@
     </div>
   </div>
 
-  <!-- ШІ ПАНЕЛЬ -->
+  <!-- 2. ШІ (ВЕРСІЯ v4.0) -->
   <div id="aiPillPanel" class="ai-pill-panel compact">
     <div id="aiPillHeader" class="ai-pill-compact-content">
       <div class="ai-titleBadge" onclick="toggleAiPillExpand()">
@@ -369,14 +378,14 @@
     </div>
   </div>
 
-  <!-- МІЙ ШЛЯХ СТАТУС -->
+  <!-- 3. МІЙ ШЛЯХ (НИЗ ЛІВОРУЧ) -->
   <div id="routeStatusBar" class="route-status-bar" onclick="toggleRouteSubmenu(event)">
     <span id="routeStatusIcon">🟢</span>
     <span id="routeStatusText">Мій шлях: Чисто</span>
     <span id="routeSubmenuArrow" style="font-size:10px; color:#94a3b8; margin-left:2px;">▴</span>
   </div>
 
-  <!-- МЕНЮ МАРШРУТУ -->
+  <!-- ПІДМЕНЮ МАРШРУТУ -->
   <div id="routeSubmenu" class="route-submenu" onclick="event.stopPropagation()">
     <div class="route-submenu-header">
       <span>🛣️ Маршрут та райони міста</span>
@@ -396,14 +405,16 @@
     </div>
   </div>
 
+  <!-- 4. КНОПКА СТАТИСТИКИ -->
   <a href="javascript:void(0)" id="btnStatsHud" onclick="event.preventDefault(); window.location.href = (localStorage.getItem('radar_last_analytics_page') || 'stats.html');" title="Аналітика блокпостів">
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+    <svg width="20" height="20" viewBox="0 24 24" fill="none">
       <rect x="3" y="12" width="4.5" height="9" rx="2" fill="#00f3ff" />
       <rect x="9.75" y="7" width="4.5" height="14" rx="2" fill="#00f3ff" />
       <rect x="16.5" y="3" width="4.5" height="18" rx="2" fill="#00f3ff" />
     </svg>
   </a>
 
+  <!-- КНОПКИ ВНИЗУ СПРАВА -->
   <div class="bottom-right-cluster">
     <div id="btnRefresh" onclick="refreshRadarClick()">
       <span>🔄</span>
@@ -414,6 +425,7 @@
     </div>
   </div>
 
+  <!-- ДІАЛОГ ДІЙ ДЛЯ МЕТКИ -->
   <div id="markerActionSheet" class="action-sheet-backdrop" onclick="closeMarkerActionSheet(event)">
     <div class="action-sheet-card" onclick="event.stopPropagation()">
       <div class="action-sheet-title">
@@ -425,6 +437,7 @@
     </div>
   </div>
 
+  <!-- МОДАЛКА ПЕРЕНОСУ ЗА АДРЕСОЮ -->
   <div id="trainModal" class="train-modal-backdrop" onclick="closeTrainModal(event)">
     <div class="train-modal-card" onclick="event.stopPropagation()">
       <div class="train-header">
@@ -440,6 +453,7 @@
     </div>
   </div>
 
+  <!-- ДІАЛОГ ПІДТВЕРДЖЕННЯ ПЕРЕНОСУ -->
   <div id="confirmMoveModal" class="confirm-modal-backdrop">
     <div class="confirm-modal-card">
       <div style="font-size:13px; font-weight:800; color:#38bdf8; margin-bottom:4px;">📍 Перевірте нове місце:</div>
@@ -454,9 +468,11 @@
 
   <div id="toast" class="toast-msg">✅ Збережено!</div>
 
+  <!-- БІБЛІОТЕКИ ТА ДОВІДНИК ВУЛИЦЬ -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="streets.js"></script>
 
+  <!-- ОСНОВНИЙ СКРИПТ КАРТИ -->
   <script>
     const SECRET_KEY_HASH = "570984";
     const _VAULT_PREFIX = String.fromCharCode(65, 81, 46, 65, 98, 56, 82, 78, 54);
@@ -606,9 +622,19 @@
       return [...new Set([...builtins, ...customKeys])];
     }
 
+    // =========================================================================
+    // 🌐 URL-АДРЕСИ FIREBASE (ВКЛЮЧАЮЧИ ПАПКУ ЗСУНУТИХ МІТОК)
+    // =========================================================================
     const FIREBASE_POINTS_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/points.json";
     const FIREBASE_CONFIG_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/config/traffic_lights.json";
     const FIREBASE_KB_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/knowledge_base.json";
+    const FIREBASE_OVERRIDES_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/street_overrides.json";
+
+    // Експорт у window для роботи relocate.js
+    window.FIREBASE_POINTS_URL = FIREBASE_POINTS_URL;
+    window.FIREBASE_CONFIG_URL = FIREBASE_CONFIG_URL;
+    window.FIREBASE_KB_URL = FIREBASE_KB_URL;
+    window.FIREBASE_OVERRIDES_URL = FIREBASE_OVERRIDES_URL;
 
     function isSpamMessage(text) {
       if (!text) return false;
@@ -810,12 +836,12 @@
         .replace(/[\r\n]+/g, " ")
         .toLowerCase();
 
-      // 1. АБСОЛЮТНИЙ ПРІОРИТЕТ: явне слово "чисто", "норм" тощо (ігноруємо будь-які червоні прапори сервера!)
+      // 1. АБСОЛЮТНИЙ ПРІОРИТЕТ: явне слово "чисто", "норм" тощо
       const hasCleanExplicit = /(?:👍|👌|💚|🌻|☀️|🌞|🍏|🟢|\b(?:чисто|чистенько|пусто|вільно|спокійно|спокойно|проїзд|проїхав|проехали|норм|нормально|нормик|добре|зелено)\b|без\s*ям|без\s*бп|нет\s*бп|немає?\s*бп|все\s*чисто|все\s*норм|всё\s*норм)/i.test(rawCombined);
       const hasCleanNegation = /(?:не\s*норм|не\s*чисто|не\s*спок|не\s*тихо)/i.test(rawCombined);
 
       if (hasCleanExplicit && !hasCleanNegation) {
-        return true; // ЗАВЖДИ ЗЕЛЕНИЙ
+        return true;
       }
 
       // 2. Заперечення небезпеки ("знялися", "поїхали")
@@ -852,15 +878,19 @@
       });
     }
 
-    // 7 КОНТРОЛЬНИХ СВІТЛОФОРІВ (БЕЗ ДУБЛІВ ТА БЕЗ ВОГНІВ)
+    // =========================================================================
+    // 🚦 7 КОНТРОЛЬНИХ СВІТЛОФОРІВ З ВАШИМИ ТОЧНИМИ КООРДИНАТАМИ
+    // =========================================================================
     let checkpoints = [
       { id: "kaidak_rovd", name: "РОВД / Кайдацький з'їзд", lat: 48.4908, lng: 34.9585, keys: ["кайдак", "кайдац", "ровд", "райотдел", "з'їзд.*кайдак", "съезд.*кайдак", "спуск.*кайдак"] },
       { id: "vodolechebnitsa", name: "Водолікарня (пр. Свободи)", lat: 48.4848, lng: 34.9735, keys: ["водолечеб", "водолікарн", "водоликарн", "водогряз", "грязелечеб", "просп.*свобод", "пр.*свобод", "свободи", "свободы"] },
       { id: "vodokachka", name: "Водокачка", fullName: "Водокачка (Набережна Заводська)", lat: 48.4910, lng: 34.9480, keys: ["водокачк", "стара.*водокачк", "старая.*водокачка"] },
       { id: "stan_550", name: "Стан 550", fullName: "Стан 550 (Набережна Заводська)", lat: 48.4865, lng: 34.9850, keys: ["стан 550", "стан550", "\\b550\\b"] },
       { id: "krasnozavodska", name: "Краснозаводська (Белелюбського)", fullName: "вул. Краснозаводська / Белелюбського / САТ Торус", lat: 48.4800, lng: 34.9880, keys: ["краснозавод", "белелюб", "білелюб", "комбайн", "торус", "дтрз", "сат", "ударник"] },
-      { id: "pavlova", name: "вул. Павлова", fullName: "вул. Академіка Павлова", lat: 48.4818, lng: 35.0012, keys: ["павлов", "автосалон"] },
-      { id: "rechport", name: "Річпорт", fullName: "Річпорт (Речной вокзал)", lat: 48.4805, lng: 35.0210, keys: ["речпорт", "річпорт", "ричпор", "речпор", "речной вокзал", "річковий вокзал", "десантник"] }
+      // ТОЧНІ КООРДИНАТИ ЗІ СКРІНШОТА:
+      { id: "pavlova", name: "вул. Павлова", fullName: "вул. Академіка Павлова (Автосалони)", lat: 48.48022, lng: 35.00658, keys: ["павлов", "автосалон"] },
+      // ТОЧНІ КООРДИНАТИ ЗІ СКРІНШОТА:
+      { id: "rechport", name: "Річпорт", fullName: "Річпорт (Речной вокзал)", lat: 48.48094, lng: 35.02514, keys: ["речпорт", "річпорт", "ричпор", "речпор", "речной вокзал", "річковий вокзал", "десантник"] }
     ];
 
     function updateRouteStatus() {
@@ -1028,6 +1058,9 @@
       openTrainingModal(activeActionPoint, activeActionMarker);
     }
 
+    // =========================================================================
+    // ✋ РУЧНЕ ПЕРЕМІЩЕННЯ З ГАРАНТОВАНИМ ЗБЕРЕЖЕННЯМ В STREET_OVERRIDES
+    // =========================================================================
     window.startDirectManualDrag = function(fbKey) {
       const p = allPoints.find(x => x._fbKey === fbKey);
       if (!p) return;
@@ -1053,17 +1086,35 @@
         p.lng = Number(pos.lng.toFixed(5));
         p.needs_training = false;
         p.geo_refined = true;
-        p.address = "Встановлено користувачем";
 
+        // 1. Оновлення живої мітки в базі
         if (p._fbKey) {
           fetch(FIREBASE_POINTS_URL.replace(".json", `/${p._fbKey}.json`), {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ lat: p.lat, lng: p.lng, needs_training: false, geo_refined: true, address: p.address })
+            body: JSON.stringify({ lat: p.lat, lng: p.lng, needs_training: false, geo_refined: true })
           }).catch(() => {});
         }
 
-        showToast("✅ Мітку зафіксовано на новому місці!");
+        // 2. Збереження в базу зсунутих міток street_overrides для постійного пріоритету
+        const rawPhrase = (p.text || p.raw_text || p.address || "").replace(/[\r\n]+/g, " ").trim();
+        const cleanStreetKey = rawPhrase.replace(/^(?:❓|\bчисто\b|\bбп\b|\bпатруль\b|\(чисто\))/gi, "").trim();
+
+        if (cleanStreetKey.length >= 3) {
+          fetch(FIREBASE_OVERRIDES_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              street: cleanStreetKey,
+              lat: p.lat,
+              lng: p.lng,
+              source_text: rawPhrase,
+              updated_at: Date.now()
+            })
+          }).catch(() => {});
+        }
+
+        showToast("✅ Мітку збережено в базу зсунутих точок!");
         renderMarkers();
         renderTrafficLights();
         updateRouteStatus();
@@ -1215,7 +1266,7 @@
           try {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 8000);
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key={k}`;
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${k}`;
             const res = await fetch(url, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -1536,6 +1587,9 @@ ${allLiveReportsText || "Повідомлень немає"}
       });
     }
 
+    // =========================================================================
+    // 🔍 ПОШУКОВИЙ МОДУЛЬ (3 ДЖЕРЕЛА: МІТКИ, ВУЛИЦІ, СВІТЛОФОРИ)
+    // =========================================================================
     const streetSearchInput = document.getElementById("streetSearchInput");
     const searchResults = document.getElementById("searchResults");
     const searchClearBtn = document.getElementById("searchClearBtn");
@@ -1559,6 +1613,7 @@ ${allLiveReportsText || "Повідомлень немає"}
       searchResults.innerHTML = "";
       const results = [];
 
+      // 1. Активні мітки
       allPoints.forEach(p => {
         const full = ((p.text || '') + ' ' + (p.raw_text || '')).toLowerCase();
         if (full.includes(lower)) {
@@ -1570,6 +1625,7 @@ ${allLiveReportsText || "Повідомлень немає"}
         }
       });
 
+      // 2. Вулиці Дніпра
       if (typeof DNIPRO_STREETS_MAP !== 'undefined') {
         for (const [key, item] of Object.entries(DNIPRO_STREETS_MAP)) {
           if (key.includes(lower) || (item.old && item.old.toLowerCase().includes(lower)) || item.name.toLowerCase().includes(lower)) {
@@ -1580,6 +1636,7 @@ ${allLiveReportsText || "Повідомлень немає"}
         }
       }
 
+      // 3. Світлофори
       checkpoints.forEach(cp => {
         if (cp.name.toLowerCase().includes(lower) || cp.keys.some(k => lower.includes(k))) {
           if (!results.some(m => m.name === cp.name)) {
