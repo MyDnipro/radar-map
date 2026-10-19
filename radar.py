@@ -114,7 +114,9 @@ TARGET_CHECKPOINTS_CONFIG = [
     {"id": "vodokachka", "name": "Водокачка", "regex": re.compile(r'(?:водокачк)', re.IGNORECASE)},
     {"id": "rechport", "name": "Річпорт", "regex": re.compile(r'(?:р[еі]чпорт|р[еі]чпор\b|речной\s*вокзал|річковий\s*вокзал|десантник)', re.IGNORECASE)},
     {"id": "kaidak_rovd", "name": "РОВД / Кайдаки", "regex": re.compile(r'(?:кайдак|кайдац|ровд|райотдел)', re.IGNORECASE)},
-    {"id": "stan_550", "name": "Стан 550", "regex": re.compile(r'(?:стан\s*550|стан550|\b550\b)', re.IGNORECASE)}
+    {"id": "stan_550", "name": "Стан 550", "regex": re.compile(r'(?:стан\s*550|стан550|\b550\b)', re.IGNORECASE)},
+    {"id": "kanatna", "name": "вул. Канатна", "regex": re.compile(r'(?:канатн|інфекцій|инфекцион|21\s*лікарн|21\s*больниц)', re.IGNORECASE)},
+    {"id": "schepkina", "name": "вул. Щепкіна", "regex": re.compile(r'(?:щепкін|щепкин)', re.IGNORECASE)}
 ]
 
 LOCAL_STREETS_DB = [
@@ -177,6 +179,12 @@ LOCAL_STREETS_DB = [
     {"keys": ["артем", "січов", "сечевых"], "addr": "вул. Січових Стрільців (Артема)", "lat": 48.4550, "lng": 35.0420},
     {"keys": ["савченк", "черновол", "чорновол"], "addr": "вул. В'ячеслава Чорновола (Савченка)", "lat": 48.4550, "lng": 35.0180},
     
+    # Канатна та Інфекційна лікарня №21
+    {"keys": ["канатн", "інфекцій", "инфекцион", "21 лікарн", "21 больниц"], "addr": "вул. Канатна (Інфекційна лікарня №21)", "lat": 48.46350, "lng": 35.00980},
+
+    # Щепкіна
+    {"keys": ["щепкін", "щепкин"], "addr": "вул. Щепкіна", "lat": 48.47350, "lng": 34.99680},
+
     # Павлова (Ауді Центр)
     {"keys": ["павлов"], "addr": "вул. Академіка Павлова", "lat": 48.48022, "lng": 35.00658},
 
@@ -339,11 +347,20 @@ def geocode_local(text):
             if st_name and len(st_name) >= 3 and st_name in t:
                 return data.get("street"), float(data.get("lat")), float(data.get("lng"))
 
-    # 1. Жорсткий захист Річпорту (точні координати зі скріншота)
+    # =========================================================================
+    # ЗАЛІЗНИЙ ПРІОРИТЕТ ДЛЯ КАНАТНОЇ ТА ЩЕПКІНА (ПЕРЕД РОБОЧОЮ / НІГОЯНА)
+    # =========================================================================
+    if re.search(r'(?:канатн|інфекцій|инфекцион|21\s*лікарн|21\s*больниц)', t):
+        return "вул. Канатна (Інфекційна лікарня №21)", 48.46350, 35.00980
+
+    if re.search(r'(?:щепкін|щепкин)', t):
+        return "вул. Щепкіна", 48.47350, 34.99680
+
+    # 1. Жорсткий захист Річпорту (точні координати)
     if re.search(r'(?:р[еі]чпорт|р[еі]чпор\b|речной\s*вокзал|річковий\s*вокзал)', t):
         return "Річпорт (Набережна Заводська)", 48.48094, 35.02514
 
-    # 2. Жорсткий захист Павлова (точні координати біля Ауді Центру)
+    # 2. Жорсткий захист Павлова (біля Ауді Центру)
     if re.search(r'(?:академ[іи]ка\s*павлова|\bпавлов[а-я]*)', t):
         return "вул. Академіка Павлова", 48.48022, 35.00658
 
@@ -400,7 +417,7 @@ def geocode_osm_fallback(text):
             continue
         try:
             url = f"https://nominatim.openstreetmap.org/search?format=json&q={requests.utils.quote(query + ', Дніпро')}&countrycodes=ua&limit=1"
-            headers = {"User-Agent": "DniproRadarMap/4.0"}
+            headers = {"User-Agent": "DniproRadarMap/5.0"}
             r = requests.get(url, headers=headers, timeout=5)
             if r.status_code == 200:
                 data = r.json()
@@ -840,7 +857,7 @@ def sync_cycle():
             save_point_to_firebase(msg, parsed_result, is_clean, now_ms)
 
 if __name__ == "__main__":
-    log(f"🚀 Запуск оновленого радара 24/7 v4.0 (Завантажено {len(GEMINI_KEYS)} API ключів)...")
+    log(f"🚀 Запуск оновленого радара 24/7 v5.0 (Завантажено {len(GEMINI_KEYS)} API ключів)...")
     start_time = time.time()
     MAX_RUNTIME_SEC = 5 * 3600 + 40 * 60
 
