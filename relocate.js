@@ -1,14 +1,13 @@
 /**
- * relocate.js — Модуль перенесення міток та калібрування вулиць v9.6
- * - Повний огляд карти без блюру при підтвердженні перенесення
- * - Точний пошук вулиць з DNIPRO_STREETS_MAP (як на Фото 3)
- * - Робота миші на ПК: клік роликом (СКМ) та ПКМ відкривають меню
- * - Надійний ручний перенос із збереженням у Firebase та street_overrides
+ * relocate.js — Модуль перенесення міток та калібрування вулиць v10.0
+ * Додано: Гібридний пошук вулиць (Локальна база + OpenStreetMap / Nominatim)
  */
 
 (function () {
   const FIREBASE_POINTS_URL = window.FIREBASE_POINTS_URL || "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/points.json";
   const FIREBASE_OVERRIDES_URL = window.FIREBASE_OVERRIDES_URL || "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/street_overrides.json";
+
+  let searchAbortController = null;
 
   function isSimpleMode() {
     return document.documentElement.classList.contains("mode-simple") ||
@@ -25,9 +24,7 @@
     ).replace(/%/g, "_").slice(0, 80);
   }
 
-  // =========================================================================
-  // 1. ПОШУК ВУЛИЦЬ (ТОЧНО ЗА DNIPRO_STREETS_MAP — ФОТО 3)
-  // =========================================================================
+  // 1. Пошук у локальній базі streets.js
   function searchLocalStreets(query) {
     const results = [];
     if (!query || typeof DNIPRO_STREETS_MAP === "undefined") return results;
@@ -46,18 +43,63 @@
             name: item.name,
             lat: Number(item.lat),
             lng: Number(item.lng),
-            label: `📍 <b>${item.name}</b>${sub}`
+            label: `📍 <b>${item.name}</b>${sub}`,
+            source: "local"
           });
         }
       }
-      if (results.length >= 10) break;
+      if (results.length >= 8) break;
     }
     return results;
   }
 
-  // =========================================================================
-  // 2. ЗБЕРЕЖЕННЯ В STREET_OVERRIDES
-  // =========================================================================
+  // 2. Пошук через інтернет (OpenStreetMap Nominatim для Дніпра)
+  async function searchOnlineStreets(query, signal) {
+    const onlineResults = [];
+    if (!query || query.length < 3) return onlineResults;
+
+    try {
+      const cleanQ = query.replace(/[,\.!\?\(\)]/g, " ").trim();
+      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cleanQ + ", Дніпро")}&countrycodes=ua&limit=6&accept-language=uk,ru`;
+      
+      const res = await fetch(url, {
+        headers: { "User-Agent": "DniproRadarMap/5.0" },
+        signal: signal
+      });
+
+      if (!res.ok) return onlineResults;
+      const data = await res.json();
+
+      if (Array.isArray(data)) {
+        data.forEach(item => {
+          const lat = parseFloat(item.lat);
+          const lng = parseFloat(item.lon);
+
+          // Обмежуємося межами Дніпра та найближчого передмістя
+          if (lat >= 48.25 && lat <= 48.70 && lng >= 34.70 && lng <= 35.40) {
+            let title = item.display_name.split(",")[0].trim();
+            if (!/^(вул|просп|пров|шосе|тупик|пл|бульв)/i.test(title)) {
+              title = `вул. ${title}`;
+            }
+
+            onlineResults.push({
+              name: title,
+              lat: Number(lat.toFixed(5)),
+              lng: Number(lng.toFixed(5)),
+              label: `🌐 <b>${title}</b> <span style="color:#38bdf8; font-size:10px;">(з інтернету)</span>`,
+              source: "osm"
+            });
+          }
+        });
+      }
+    } catch (e) {
+      if (e.name !== "AbortError") {
+        console.warn("Помилка пошуку OSM:", e);
+      }
+    }
+    return onlineResults;
+  }
+
   async function saveStreetCoordinateOverride(streetName, lat, lng) {
     if (!streetName || !lat || !lng) return;
     const cleanName = streetName.replace(/[\r\n]+/g, " ").trim();
@@ -71,12 +113,22 @@
     };
 
     if (typeof DNIPRO_STREETS_MAP !== "undefined") {
+      let matched = false;
       for (const item of Object.values(DNIPRO_STREETS_MAP)) {
         if (item && item.name && item.name.toLowerCase().trim() === cleanName.toLowerCase().trim()) {
           item.lat = payload.lat;
           item.lng = payload.lng;
           item._isOverridden = true;
+          matched = true;
         }
+      }
+      if (!matched) {
+        DNIPRO_STREETS_MAP[cleanName.toLowerCase()] = {
+          name: cleanName,
+          lat: payload.lat,
+          lng: payload.lng,
+          type: "not_renamed"
+        };
       }
     }
 
@@ -117,9 +169,6 @@
     return cleaned.length >= 3 ? cleaned : raw;
   }
 
-  // =========================================================================
-  // 3. ЗАКРИТТЯ ВІКОН
-  // =========================================================================
   window.closeAllRelocateModals = function () {
     const ids = ["universalActionSheetModal", "relocateAddressModalCard", "confirmMoveBottomBar"];
     ids.forEach(id => {
@@ -132,6 +181,10 @@
       window.map.removeLayer(window._tempPreviewMarker);
       window._tempPreviewMarker = null;
     }
+    if (searchAbortController) {
+      searchAbortController.abort();
+      searchAbortController = null;
+    }
   };
 
   document.addEventListener("keydown", function (e) {
@@ -141,22 +194,19 @@
     }
   });
 
-  // =========================================================================
-  // 4. МОДАЛЬНЕ ВІКНО «ПЕРЕНЕСТИ ЗА АДРЕСОЮ»
-  // =========================================================================
   function ensureRelocateAddressModal() {
     let modal = document.getElementById("relocateAddressModalCard");
     if (!modal) {
       modal = document.createElement("div");
       modal.id = "relocateAddressModalCard";
       modal.className = "action-sheet-backdrop";
-      modal.style.cssText = "position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:9999999; display:none; align-items:center; justify-content:center;";
+      modal.style.cssText = "position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:9999999; display:none; align-items:center; justify-content:center; backdrop-filter:blur(3px);";
 
       modal.innerHTML = `
         <div style="background:#0f172a; border:2px solid #0284c7; border-radius:18px; width:92%; max-width:420px; padding:16px; display:flex; flex-direction:column; gap:10px; box-shadow:0 0 25px rgba(2,132,199,0.4);" onclick="event.stopPropagation()">
           <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #1e293b; padding-bottom:8px;">
             <div style="font-size:13.5px; font-weight:900; color:#38bdf8; display:flex; align-items:center; gap:6px;">
-              <span>📍 Переміщення за адресою</span>
+              <span>📍 Пошук адреси (База + Інтернет)</span>
             </div>
             <span id="modalCardCloseX" style="cursor:pointer; font-size:20px; color:#94a3b8; font-weight:800; padding:0 6px;">✕</span>
           </div>
@@ -166,11 +216,11 @@
           </div>
 
           <div style="position:relative; display:flex; gap:6px;">
-            <input type="text" id="relocateModalInput" placeholder="Почніть вводити назву вулиці..." style="flex:1; background:#0b1120; border:1px solid #0284c7; color:#fff; padding:10px; border-radius:8px; font-size:12px; outline:none; box-sizing:border-box;">
+            <input type="text" id="relocateModalInput" placeholder="Введіть назву вулиці (напр. Канатна, Савченко)..." style="flex:1; background:#0b1120; border:1px solid #0284c7; color:#fff; padding:10px; border-radius:8px; font-size:12px; outline:none; box-sizing:border-box;">
             <button id="relocateModalFindBtn" style="background:#0284c7; border:none; color:#fff; font-size:11.5px; font-weight:800; padding:0 14px; border-radius:8px; cursor:pointer;">
               Знайти
             </button>
-            <div id="relocateModalResultsBox" style="position:absolute; top:100%; left:0; width:100%; background:#0f172a; border:1.5px solid #0284c7; border-radius:8px; max-height:220px; overflow-y:auto; z-index:10005; display:none; margin-top:5px; box-shadow:0 10px 30px rgba(0,0,0,0.95);"></div>
+            <div id="relocateModalResultsBox" style="position:absolute; top:100%; left:0; width:100%; background:#0f172a; border:1.5px solid #0284c7; border-radius:8px; max-height:240px; overflow-y:auto; z-index:10005; display:none; margin-top:5px; box-shadow:0 10px 30px rgba(0,0,0,0.95);"></div>
           </div>
 
           <button id="relocateModalCancelBtn" style="background:transparent; border:1px solid #334155; color:#94a3b8; padding:8px; border-radius:8px; font-size:11px; font-weight:700; cursor:pointer; margin-top:2px;">
@@ -186,8 +236,12 @@
       const input = document.getElementById("relocateModalInput");
       const btnFind = document.getElementById("relocateModalFindBtn");
 
+      let debounceTimer = null;
       input.addEventListener("input", () => {
-        executeSearchFlow(input.value.trim());
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+          executeSearchFlow(input.value.trim());
+        }, 220);
       });
 
       btnFind.onclick = () => {
@@ -197,7 +251,7 @@
     return modal;
   }
 
-  function executeSearchFlow(query) {
+  async function executeSearchFlow(query) {
     const box = document.getElementById("relocateModalResultsBox");
     if (!box) return;
 
@@ -206,25 +260,56 @@
       return;
     }
 
-    const matches = searchLocalStreets(query);
-
-    if (matches.length === 0) {
-      box.innerHTML = `<div style="padding:10px; font-size:11.5px; color:#f87171;">Вулицю не знайдено. Введіть іншу назву.</div>`;
-      box.style.display = "block";
-      return;
+    if (searchAbortController) {
+      searchAbortController.abort();
     }
+    searchAbortController = new AbortController();
 
     box.innerHTML = "";
-    matches.forEach(item => {
+    const localMatches = searchLocalStreets(query);
+
+    function renderItemRow(item) {
       const row = document.createElement("div");
-      row.style.cssText = "padding:9px 12px; font-size:12px; color:#cbd5e1; cursor:pointer; border-bottom:1px solid #1e293b;";
+      row.style.cssText = "padding:9px 12px; font-size:12px; color:#cbd5e1; cursor:pointer; border-bottom:1px solid #1e293b; display:flex; align-items:center; justify-content:space-between;";
       row.innerHTML = item.label;
       row.onmouseover = () => row.style.background = "#1e293b";
       row.onmouseout = () => row.style.background = "transparent";
       row.onclick = () => selectStreetForRelocation(item);
       box.appendChild(row);
-    });
+    }
+
+    if (localMatches.length > 0) {
+      localMatches.forEach(renderItemRow);
+      box.style.display = "block";
+    }
+
+    // Показуємо індикатор онлайн-пошуку
+    const loadingRow = document.createElement("div");
+    loadingRow.id = "osmSearchLoadingRow";
+    loadingRow.style.cssText = "padding:7px 12px; font-size:11px; color:#38bdf8; background:#0b1120; border-top:1px dashed #334155;";
+    loadingRow.innerHTML = "🌐 Пошук по всій карті Дніпра (OSM)...";
+    box.appendChild(loadingRow);
     box.style.display = "block";
+
+    const onlineMatches = await searchOnlineStreets(query, searchAbortController.signal);
+    const existingLoader = document.getElementById("osmSearchLoadingRow");
+    if (existingLoader) existingLoader.remove();
+
+    let addedOnline = 0;
+    onlineMatches.forEach(onItem => {
+      const alreadyHas = localMatches.some(l => 
+        l.name.toLowerCase().replace(/^(вул\.|просп\.|пров\.)\s*/i, "").trim() === 
+        onItem.name.toLowerCase().replace(/^(вул\.|просп\.|пров\.)\s*/i, "").trim()
+      );
+      if (!alreadyHas) {
+        renderItemRow(onItem);
+        addedOnline++;
+      }
+    });
+
+    if (localMatches.length === 0 && addedOnline === 0) {
+      box.innerHTML = `<div style="padding:11px; font-size:11.5px; color:#f87171; text-align:center;">Вулицю не знайдено ні в базі, ні в карті Дніпра.</div>`;
+    }
   }
 
   window.openTrainingModal = function (point, marker) {
@@ -251,9 +336,6 @@
     modal.style.display = "flex";
   };
 
-  // =========================================================================
-  // 5. ПІДТВЕРДЖЕННЯ: КАРТА ВІДКРИТА, НІЯКОГО БЛЮРУ
-  // =========================================================================
   function selectStreetForRelocation(streetObj) {
     const p = window.activeActionPoint;
     if (!p) return;
@@ -316,7 +398,7 @@
 
     bar.innerHTML = `
       <div style="font-size:11.5px; color:#cbd5e1; line-height:1.4;">
-        📍 Перенести мітку на офіційну вулицю:<br>
+        📍 Перенести мітку на адресу:<br>
         <b style="color:#38bdf8; font-size:13px;">${targetName}</b>?
       </div>
       <div style="display:flex; gap:6px;">
@@ -395,9 +477,6 @@
     if (typeof renderTrafficLights === "function") renderTrafficLights();
   };
 
-  // =========================================================================
-  // 6. МЕНЮ ДІЙ
-  // =========================================================================
   function resolveMarkerPoint(marker) {
     if (!marker) return null;
     if (marker.pointData && marker.pointData.lat) return marker.pointData;
@@ -454,7 +533,7 @@
 
           <div style="display:flex; flex-direction:column; gap:8px;">
             <button id="btnActionGoAddress" style="background:linear-gradient(135deg, #0284c7, #0369a1); border:none; color:#fff; padding:12px; border-radius:10px; font-size:12px; font-weight:800; display:flex; align-items:center; justify-content:center; gap:8px; cursor:pointer;">
-              <span>🔍 Перенести за адресою</span>
+              <span>🔍 Перенести за адресою (Пошук / Інтернет)</span>
             </button>
 
             <button id="btnActionGoManual" style="background:#1e293b; border:1px solid #0284c7; color:#38bdf8; padding:12px; border-radius:10px; font-size:12px; font-weight:800; display:flex; align-items:center; justify-content:center; gap:8px; cursor:pointer;">
@@ -490,9 +569,6 @@
   window.openMarkerActionSheet = window.openRelocateActionSheet;
   window.openActionSheet = window.openRelocateActionSheet;
 
-  // =========================================================================
-  // 7. РУЧНИЙ ПЕРЕНОС (МИШКОЮ / ПАЛЬЦЕМ)
-  // =========================================================================
   let manualMovingMarker = null;
   let manualPointObj = null;
 
@@ -673,9 +749,6 @@
     if (typeof renderTrafficLights === "function") renderTrafficLights();
   }
 
-  // =========================================================================
-  // 8. ВІДНОВЛЕНО: ДЕСКТОП-КЛІКИ (РОЛИК МИШІ СКМ ТА ПКМ)
-  // =========================================================================
   function setupDesktopInteractions() {
     if (!window.map) return setTimeout(setupDesktopInteractions, 300);
     const container = window.map.getContainer();
@@ -690,7 +763,6 @@
         if (clickedMarker) return;
         const el = l.getElement ? l.getElement() : (l._icon || l._path);
         if (el && (el === target || el.contains(target) || target.contains(el))) {
-          // Тільки мітки повідомлень
           if (l instanceof L.Marker && !el.classList.contains("tl-sonar-icon-container")) {
             clickedMarker = l;
           }
@@ -703,7 +775,6 @@
       }
     }
 
-    // ПКМ (контекстне меню)
     container.addEventListener("contextmenu", (e) => {
       const target = e.target.closest(".leaflet-marker-icon, .leaflet-interactive");
       if (target && !target.classList.contains("tl-sonar-icon-container")) {
@@ -713,7 +784,6 @@
       }
     }, true);
 
-    // КЛІК РОЛИКОМ МИШКИ (button === 1)
     function onMiddleClick(e) {
       if (e.button === 1) {
         const target = e.target.closest(".leaflet-marker-icon, .leaflet-interactive");
