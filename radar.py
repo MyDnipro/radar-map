@@ -116,7 +116,7 @@ def is_ad_or_spam(text):
     return False
 
 # =========================================================================
-# 📍 БАЗА ТОПОНІМІВ ДНІПРА ТА ЦІЛЬОВІ ТОЧКИ ДЛЯ СТАТИСТИКИ
+# 📍 БАЗА ТОПОНІМІВ ТА СТАТИСТИКА
 # =========================================================================
 TARGET_CHECKPOINTS_CONFIG = [
     {"id": "pavlova", "name": "вул. Павлова", "regex": re.compile(r'(?:академика\s*павлова|академіка\s*павлова|\bпавлова\b)', re.IGNORECASE)},
@@ -188,25 +188,27 @@ LOCAL_STREETS_DB = [
     {"keys": ["артем", "січов", "сечевых"], "addr": "вул. Січових Стрільців (Артема)", "lat": 48.4550, "lng": 35.0420},
     {"keys": ["савченк", "черновол", "чорновол"], "addr": "вул. В'ячеслава Чорновола (Савченка)", "lat": 48.4550, "lng": 35.0180},
     {"keys": ["павлов"], "addr": "вул. Академіка Павлова", "lat": 48.4818, "lng": 35.0012},
-    {"keys": ["речпорт", "річпорт"], "addr": "Річпорт (Набережна Заводська)", "lat": 48.4805, "lng": 35.0210},
     {"keys": ["водокачк"], "addr": "Водокачка (Набережна Заводська)", "lat": 48.4910, "lng": 34.9480},
     {"keys": ["кайдак", "з'їзд.*кайдак"], "addr": "Кайдацький міст / з'їзд", "lat": 48.4925, "lng": 34.9625},
     {"keys": ["качка"], "addr": "вул. Каруни (Качка / з'їзд)", "lat": 48.4960, "lng": 35.0480},
-    {"keys": ["боровск", "молодогвард"], "addr": "вул. Молодогвардійська (під мостами)", "lat": 48.4680, "lng": 35.1220}
+    {"keys": ["боровск", "молодогвард"], "addr": "вул. Молодогвардійська (під мостами)", "lat": 48.4680, "lng": 35.1220},
+    {"keys": ["огни", "вогні", "вечные огни", "вечні вогні"], "addr": "просп. Сергія Нігояна (Вечні вогні)", "lat": 48.4765, "lng": 34.9860}
 ]
 
 QUESTION_EMOJIS = ['?', '❓', '❔', '⁉️', '🤔', '🧐', '🙏']
 CLOUD_PRECIP_EMOJIS = ['🌤️', '⛅', '🌥️', '🌦️', '☁️', '🌧️', '⛈️', '🌩️', '🌨️', '🌪️', '🌫️', '☔', '💧', '💦']
-SUN_ONLY_EMOJIS = ['☀️', '🌞', '🌈']
+SUN_ONLY_EMOJIS = ['☀️', '🌞', '🌈', '🍏', '🟢']
 
 CLEAN_KEYWORDS = [
     "чисто", "чистенько", "пусто", "вільно", "спокійно", "спокойно", "проїзд",
-    "без бп", "ясно", "сухо", "знялися", "пролітайте", "все чисто", "зелено",
+    "без бп", "без ям", "нет бп", "нет блокпоста", "немає бп", "нема бп",
+    "ясно", "сухо", "знялися", "пролітайте", "все чисто", "зелено",
     "норм", "нормально", "нормик", "все норм", "всё норм"
 ]
 
+# Розпізнає "чисто", "без ям", "нет бп", незалежно від знаків оклику та крапок
 CLEAN_REGEX = re.compile(
-    r'(?:\b(?:чисто|чистенько|пусто|вільно|спокійно|спокойно|проїзд|ясно|сухо|знялися|пролітайте|зелено|норм|нормально|нормик)\b|без\s*бп|все\s*чисто|все\s*норм|всё\s*норм)',
+    r'(?:\b(?:чисто|чистенько|пусто|вільно|спокійно|спокойно|проїзд|ясно|сухо|знялися|пролітайте|зелено|норм|нормально|нормик)\b|без\s*бп|без\s*ям|нет\s*бп|нет\s*блокпост[а-я]*|немає?\s*бп|все\s*чисто|все\s*норм|всё\s*норм)',
     re.IGNORECASE
 )
 
@@ -217,39 +219,58 @@ CLEAN_NEGATION_REGEX = re.compile(
 
 NEGATION_WORDS = [
     "нет", "немає", "убрали", "прибрали", "сняли", "зняли",
-    "поехали", "поїхали", "уехали", "пропали", "немає вже"
+    "поехали", "поїхали", "уехали", "пропали", "немає вже", "без тцк", "без мусоров"
 ]
 
 DANGER_KEYWORDS = [
     "мент", "полиц", "поліц", "бп", "блокпост", "патруль",
-    "тормоз", "стоят", "облав", "тцк", "бусик", "мусор", "зупиня", "шмонал"
+    "тормоз", "стоят", "облав", "тцк", "бусик", "мусор", "зупиня", "шмонал", "пишут", "готовят"
 ]
 
 def is_ignored_question(text):
     return any(q in text for q in QUESTION_EMOJIS)
+
+def has_meaningful_context(text):
+    """
+    Захист від «голих» назв: якщо немає контексту чистоти або загрози, повідомлення не парситься.
+    """
+    t = text.lower()
+    has_clean = bool(CLEAN_REGEX.search(t)) or any(se in text for se in SUN_ONLY_EMOJIS)
+    has_danger = any(w in t for w in DANGER_KEYWORDS) or any(ce in text for ce in CLOUD_PRECIP_EMOJIS)
+    has_neg = any(nw in t for nw in NEGATION_WORDS)
+    return has_clean or has_danger or has_neg
 
 def is_message_clean(text):
     t = text.lower()
     if is_ignored_question(text):
         return None
 
-    has_danger_words = any(w in t for w in DANGER_KEYWORDS)
-    has_cloud_or_precip = any(ce in text for ce in CLOUD_PRECIP_EMOJIS)
-
-    if has_danger_words or has_cloud_or_precip:
-        has_negation = any(nw in t for nw in NEGATION_WORDS)
-        if has_danger_words and has_negation:
-            return True
-        return False
+    # Захист: якщо немає жодного опису (просто "Павлова" чи "Робоча") - не ставимо мітку
+    if not has_meaningful_context(text):
+        return None
 
     has_pure_sun = any(se in text for se in SUN_ONLY_EMOJIS)
     has_clean_word = bool(CLEAN_REGEX.search(t))
+    has_cloud_or_precip = any(ce in text for ce in CLOUD_PRECIP_EMOJIS)
+    has_danger_words = any(w in t for w in DANGER_KEYWORDS)
+    has_negation = any(nw in t for nw in NEGATION_WORDS)
 
-    if has_pure_sun or has_clean_word:
-        if not CLEAN_NEGATION_REGEX.search(t):
+    # Заперечення небезпеки ("без ям", "нет бп", "мусора без тцк", "сняли бп")
+    if (has_danger_words or has_cloud_or_precip) and has_negation:
+        return True
+
+    # Пріоритет слова "чисто" (включаючи "Огни чисто", "без ям")
+    if (has_pure_sun or has_clean_word) and not CLEAN_NEGATION_REGEX.search(t):
+        if not (has_danger_words and not has_negation):
             return True
 
-    return False
+    if has_danger_words or has_cloud_or_precip:
+        return False
+
+    if has_pure_sun or has_clean_word:
+        return True
+
+    return None
 
 def split_multiline_reports(raw_post_text):
     if not raw_post_text:
@@ -277,13 +298,8 @@ def split_multiline_reports(raw_post_text):
         if is_ignored_question(clean_line):
             continue
 
-        stripped_status = re.sub(r'(?:' + '|'.join(CLEAN_KEYWORDS) + r')\b', '', clean_line, flags=re.I).strip(' .,!?:;-')
-        if len(stripped_status) < 3:
-            continue
-
-        has_local_clean = is_message_clean(clean_line)
-        has_local_danger = any(w in clean_line.lower() for w in DANGER_KEYWORDS) or any(ce in clean_line for ce in CLOUD_PRECIP_EMOJIS)
-        if has_local_clean is False and not has_local_danger and fallback_status:
+        # Якщо рядок без контексту, але був заголовок статусу
+        if not has_meaningful_context(clean_line) and fallback_status:
             clean_line = f"{clean_line} {fallback_status}"
 
         parsed_reports.append(clean_line)
@@ -326,6 +342,10 @@ def geocode_local(text):
     clean_t = text.lower().replace('ё', 'е')
     t = " " + clean_t + " "
 
+    # Жорсткий захист Річпорту від зсуву в бік Червоного Каменя / Паруса
+    if re.search(r'(?:речпорт|річпорт|речной\s*вокзал|річковий\s*вокзал)', t):
+        return "Річпорт (Набережна Заводська)", 48.4805, 35.0210
+
     # 1. Приоритет: ручные сдвинутые улицы (street_overrides)
     for raw_key, data in STREET_OVERRIDES_CACHE.items():
         if isinstance(data, dict):
@@ -349,14 +369,14 @@ def geocode_local(text):
 
     for item in sorted_items:
         for k in item["keys"]:
-            pattern = re.compile(k.replace('ё', 'е'), re.IGNORECASE)
+            pattern = re.compile(r'\b' + k.replace('ё', 'е'), re.IGNORECASE)
             if pattern.search(t):
                 return item["addr"], item["lat"], item["lng"]
 
     return None, None, None
 
 def geocode_osm_fallback(text):
-    clean = re.sub(r'(?:чисто|пусто|вільно|спокійно|спокойно|норм|нормально|бп|блокпост|патруль|роздають|хмари|сині|дощ|сонце|сонечко|🌞|☀️)\b', '', text, flags=re.I).strip()
+    clean = re.sub(r'(?:чисто|пусто|вільно|спокійно|спокойно|норм|нормально|бп|блокпост|патруль|роздають|хмари|сині|дощ|сонце|сонечко|без\s*ям|без\s*бп|нет\s*бп|🌞|☀️)\b', '', text, flags=re.I).strip()
     words = [w for w in re.split(r'[,+\n/]', clean) if len(w.strip()) >= 4]
     if not words:
         words = [clean]
@@ -437,9 +457,6 @@ def cleanup_old_points():
     except Exception as e:
         log(f"⚠️ Помилка очищення Firebase: {e}")
 
-# =========================================================================
-# 📊 ДОВГОТРИВАЛА АГРЕГАЦІЯ СТАТИСТИКИ (4+ ПОВІДОМЛЕННЯ ДО ЧИСТО = 1 БП)
-# =========================================================================
 def calculate_checkpoint_episodes(reports):
     if not reports:
         return 0
@@ -483,7 +500,6 @@ def update_traffic_stats_history():
     if not STATS_ARCHIVE_URL or not TRAFFIC_STATS_HISTORY_URL:
         return
 
-    # Запускаємо раз на 15 хвилин
     if time.time() - LAST_STATS_AGGREGATION < 15 * 60:
         return
 
@@ -502,7 +518,6 @@ def update_traffic_stats_history():
         if not reports_list:
             return
 
-        # Завантажуємо вже існуючу історію, щоб не втратити старі дні
         existing_history = {}
         try:
             r_hist = requests.get(TRAFFIC_STATS_HISTORY_URL, timeout=8)
@@ -511,7 +526,6 @@ def update_traffic_stats_history():
         except Exception:
             existing_history = {}
 
-        # Групуємо звіти по днях (з 01.10.2026)
         day_groups = {}
         min_date_str = "2026-10-01"
 
@@ -529,7 +543,6 @@ def update_traffic_stats_history():
                 day_groups[date_str] = []
             day_groups[date_str].append(r)
 
-        # Рахуємо БП для кожного дня та точки
         updated_history = dict(existing_history)
 
         for date_str, day_reps in day_groups.items():
@@ -546,7 +559,6 @@ def update_traffic_stats_history():
                 cp_count = calculate_checkpoint_episodes(matched_reps)
                 updated_history[date_str][cp_id] = cp_count
 
-        # Зберігаємо агреговані сухі цифри у Firebase
         r_save = requests.put(TRAFFIC_STATS_HISTORY_URL, json=updated_history, timeout=10)
         if r_save.status_code == 200:
             log(f"📊 [ДОВГОТРИВАЛА СТАТИСТИКА]: Успішно оновлено {len(updated_history)} днів у traffic_stats_history.json")
@@ -656,7 +668,7 @@ def save_point_to_firebase(msg, parsed_result, is_clean, now_ms):
     color = "green" if status_clean else "red"
     display_text = msg
 
-    if status_clean and not re.search(r'\b(?:чисто|норм|нормально)\b', msg, re.I):
+    if status_clean and not re.search(r'\b(?:чисто|норм|нормально|без ям|нет бп)\b', msg, re.I):
         display_text = f"{msg} (чисто)"
 
     point_data = {
@@ -728,13 +740,18 @@ def sync_cycle():
             log(f"🚫 [СПАМ / ПИТАННЯ ПРОПУЩЕНО]: '{msg[:45]}'")
             continue
 
+        # Захист: пусті назви без контексту взагалі не беремо в роботу
+        if not has_meaningful_context(msg):
+            log(f"⚠️ [ПРОПУЩЕНО ГОЛУ НАЗВУ БЕЗ ОПИСУ]: '{msg[:45]}'")
+            continue
+
         is_clean = is_message_clean(msg)
         if is_clean is None:
             continue
 
         parsed_result = None
 
-        # Локальна база (враховуючи переозначення street_overrides)
+        # Локальна база (враховуючи пріоритет Річпорту)
         addr, lat, lng = geocode_local(msg)
         if addr and lat and lng:
             parsed_result = {
@@ -820,7 +837,6 @@ if __name__ == "__main__":
     start_time = time.time()
     MAX_RUNTIME_SEC = 5 * 3600 + 40 * 60
 
-    # Однократний запуск агрегації при старті
     try:
         update_traffic_stats_history()
     except Exception as e:
