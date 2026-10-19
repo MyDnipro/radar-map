@@ -1,16 +1,14 @@
 /**
- * relocate.js — Модуль перенесення міток та надійного калібрування вулиць v9.1
- * - Повний захист простого режиму (жодних меню, перетягувань та попапів дій)
- * - Єдине сучасне вікно дій для режиму розробника
- * - Надійна робота з усією стопкою (динамічний підрахунок, виділення всіх рядків, груповий зсув)
- * - 4-рівневий адресний пошук (📍 🧠 🌐 🗺️) з нормалізацією літер та закінчень
- * - Безвідмовне закриття вікон (✕, Esc, клік поза вікном)
+ * relocate.js — Модуль перенесення міток та надійного калібрування вулиць v9.2
+ * - Гарантоване збереження будь-якого ручного зсуву у street_overrides
+ * - Автоматична синхронізація з віджетом «Мозок» (memory.js)
+ * - Збереження полів street та name для повної сумісності
  */
 
 (function () {
-  const FIREBASE_POINTS_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/points.json";
-  const FIREBASE_CUSTOM_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/custom_streets.json";
-  const FIREBASE_OVERRIDES_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/street_overrides.json";
+  const FIREBASE_POINTS_URL = window.FIREBASE_POINTS_URL || "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/points.json";
+  const FIREBASE_CUSTOM_URL = window.FIREBASE_CUSTOM_URL || "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/custom_streets.json";
+  const FIREBASE_OVERRIDES_URL = window.FIREBASE_OVERRIDES_URL || "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/street_overrides.json";
 
   // =========================================================================
   // 1. БЕЗПЕКА ТА РЕЖИМИ РОБОТИ
@@ -20,7 +18,6 @@
            localStorage.getItem("radar_ui_mode") === "simple";
   }
 
-  // Примусово видаляємо застарілі примітивні діалоги з index.html
   function purgeLegacyModals() {
     const oldSheet = document.getElementById("markerActionSheet");
     if (oldSheet) oldSheet.remove();
@@ -145,8 +142,9 @@
 
       if (typeof DNIPRO_STREETS_MAP !== "undefined") {
         for (const record of Object.values(data)) {
-          if (!record || !record.street || !record.lat || !record.lng) continue;
-          const targetName = record.street.toLowerCase().trim();
+          const recName = record.street || record.name;
+          if (!record || !recName || !record.lat || !record.lng) continue;
+          const targetName = recName.toLowerCase().trim();
 
           for (const item of Object.values(DNIPRO_STREETS_MAP)) {
             if (item && item.name && item.name.toLowerCase().trim() === targetName) {
@@ -171,6 +169,7 @@
     const safeKey = toSafeFirebaseKey(cleanName);
     const payload = {
       street: cleanName,
+      name: cleanName,
       lat: Number(lat.toFixed(5)),
       lng: Number(lng.toFixed(5)),
       updated_at: Date.now()
@@ -199,6 +198,11 @@
         body: JSON.stringify(payload)
       });
     } catch (e) {}
+
+    // Миттєвий сигнал у «Мозок» на оновлення списку
+    if (typeof window.loadCloudRules === "function") {
+      window.loadCloudRules();
+    }
   }
 
   function detectOfficialStreetForPoint(point) {
@@ -366,7 +370,7 @@
   }
 
   // =========================================================================
-  // 6. НАДІЙНЕ ЗАКРИТТЯ ВІКОН (✕ ТА ESC)
+  // 6. НАДІЙНЕ ЗАКРИТТЯ ВІКОН
   // =========================================================================
   window.closeAllRelocateModals = function () {
     const ids = ["universalActionSheetModal", "relocateAddressModalCard", "confirmMoveModal"];
@@ -544,10 +548,10 @@
       const isStack = window.isMovingEntireStack && window.activeStackedPoints && window.activeStackedPoints.length > 1;
       if (quoteEl) {
         if (isStack) {
-          quoteEl.innerHTML = `📦 <b>Перенесення всієї стопки</b> (${window.activeStackedPoints.length} повідомлень разом)`;
+          quoteEl.innerHTML = `📦 <b>Перенесення всієї стопки</b> (\${window.activeStackedPoints.length} повідомлень разом)`;
         } else {
           const txt = point ? (point.text || point.raw_text || point.address || "Повідомлення") : "Повідомлення";
-          quoteEl.innerText = `«${txt}»`;
+          quoteEl.innerText = `«\${txt}»`;
         }
       }
 
@@ -617,8 +621,8 @@
     const promptEl = document.getElementById("confirmPromptDesc");
     if (promptEl) {
       promptEl.innerHTML = isStack
-        ? `Перенести <b>ВСЮ СТОПКУ (${window.activeStackedPoints.length} мітки)</b> на:<br><b id="confirmStreetName" style="color:#38bdf8; font-size:13px;">${targetName}</b>?`
-        : `Перенести мітку на офіційну вулицю:<br><b id="confirmStreetName" style="color:#38bdf8; font-size:13px;">${targetName}</b>?`;
+        ? `Перенести <b>ВСЮ СТОПКУ (\${window.activeStackedPoints.length} мітки)</b> на:<br><b id="confirmStreetName" style="color:#38bdf8; font-size:13px;">\${targetName}</b>?`
+        : `Перенести мітку на офіційну вулицю:<br><b id="confirmStreetName" style="color:#38bdf8; font-size:13px;">\${targetName}</b>?`;
     }
 
     confirmModal.style.display = "flex";
@@ -665,7 +669,7 @@
       }
 
       if (p._fbKey) {
-        fetch(FIREBASE_POINTS_URL.replace(".json", `/${p._fbKey}.json`), {
+        fetch(FIREBASE_POINTS_URL.replace(".json", `/\${p._fbKey}.json`), {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -692,7 +696,7 @@
           time: Date.now()
         };
         if (window.DNIPRO_STREETS_MAP) window.DNIPRO_STREETS_MAP[cleanAlias] = rule;
-        fetch(FIREBASE_CUSTOM_URL.replace(".json", `/${safeK}.json`), {
+        fetch(FIREBASE_CUSTOM_URL.replace(".json", `/\${safeK}.json`), {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(rule)
@@ -703,7 +707,7 @@
     window.pendingRelocation = null;
     window.isMovingEntireStack = false;
 
-    const msg = isStack ? `✅ Перенесено всю стопку (${targets.length}) на: ${pr.streetName}` : `✅ Перенесено на: ${pr.streetName}`;
+    const msg = isStack ? `✅ Перенесено всю стопку (${targets.length}) на: ${pr.streetName}` : `✅ Перенесено на: \${pr.streetName}`;
     if (typeof showToast === "function") showToast(msg, 3500);
 
     if (typeof renderMarkers === "function") renderMarkers();
@@ -860,14 +864,14 @@
         if (btnAllStack) {
           btnAllStack.style.background = "#f59e0b";
           btnAllStack.style.color = "#000";
-          btnAllStack.innerText = `✅ Вся стопка (${count})`;
+          btnAllStack.innerText = `✅ Вся стопка (\${count})`;
         }
-        if (lblAddr) lblAddr.innerText = `🔍 Перенести ВСЮ стопку (${count}) за адресою`;
-        if (lblMan) lblMan.innerText = `🎯 Перетягнути ВСЮ стопку (${count}) пальцем`;
+        if (lblAddr) lblAddr.innerText = `🔍 Перенести ВСЮ стопку (\${count}) за адресою`;
+        if (lblMan) lblMan.innerText = `🎯 Перетягнути ВСЮ стопку (\${count}) пальцем`;
 
         if (qEl) {
           qEl.style.borderLeftColor = "#f59e0b";
-          qEl.innerHTML = `<b style="color:#f59e0b;">📦 Обрано ВСЮ стопку (${count} повідомлень):</b><br>Усі точки буде зміщено одночасно на нове місце!`;
+          qEl.innerHTML = `<b style="color:#f59e0b;">📦 Обрано ВСЮ стопку (\${count} повідомлень):</b><br>Усі точки буде зміщено одночасно на нове місце!`;
         }
 
         if (stackList) {
@@ -889,7 +893,7 @@
         const txt = curP ? (curP.text || curP.raw_text || curP.address || "Мітка") : "Мітка";
         if (qEl) {
           qEl.style.borderLeftColor = "#38bdf8";
-          qEl.innerText = `«${txt}»`;
+          qEl.innerText = `«\${txt}»`;
         }
 
         if (stackList) {
@@ -912,7 +916,7 @@
 
     if (stackedPoints.length > 1) {
       if (badge) {
-        badge.innerText = `Стопка (${stackedPoints.length})`;
+        badge.innerText = `Стопка (\${stackedPoints.length})`;
         badge.style.display = "inline-block";
       }
       if (btnAllStack) btnAllStack.style.display = "inline-block";
@@ -923,7 +927,7 @@
         stackedPoints.forEach((pt, idx) => {
           const row = document.createElement("div");
           row.style.cssText = `background:#0b1120; border:1px solid #334155; padding:6px 8px; border-radius:6px; font-size:10.5px; color:#f1f5f9; cursor:pointer; transition:all 0.15s;`;
-          row.innerText = `${idx + 1}. ${pt.text || pt.raw_text || "Повідомлення"}`;
+          row.innerText = `${idx + 1}.${pt.text || pt.raw_text || "Повідомлення"}`;
           row.onclick = (e) => {
             e.stopPropagation();
             window.isMovingEntireStack = false;
@@ -950,7 +954,7 @@
   window.openActionSheet = window.openRelocateActionSheet;
 
   // =========================================================================
-  // 9. ДЕСКТОП-КЛІКИ (ТІЛЬКИ В РЕЖИМІ РОЗРОБНИКА)
+  // 9. ДЕСКТОП-КЛІКИ
   // =========================================================================
   function setupDesktopInteractions() {
     if (!window.map) return setTimeout(setupDesktopInteractions, 300);
@@ -1085,7 +1089,7 @@
 
     const isStack = window.isMovingEntireStack && window.activeStackedPoints && window.activeStackedPoints.length > 1;
     const toastTxt = isStack
-      ? `🎯 Перетягуйте мітку: змістяться всі ${window.activeStackedPoints.length} точок зі стопки!`
+      ? `🎯 Перетягуйте мітку: змістяться всі \${window.activeStackedPoints.length} точок зі стопки!`
       : `🎯 Перетягуйте мітку вільно у потрібне місце дороги`;
     if (typeof showToast === "function") showToast(toastTxt, 3500);
   };
@@ -1120,7 +1124,7 @@
             <span style="font-size:10px; color:#94a3b8; font-weight:normal;">(рухайте мітку)</span>
           </div>
           <div id="manualDragLiveCoords" style="font-family:monospace; font-size:11px; color:#38bdf8; background:#1e293b; padding:2px 6px; border-radius:5px;">
-            ${lat.toFixed(5)}, ${lng.toFixed(5)}
+            ${lat.toFixed(5)},${lng.toFixed(5)}
           </div>
         </div>
         <div style="display:flex; gap:6px;">
@@ -1140,9 +1144,9 @@
       document.getElementById("btnCopyLiveCoords").onclick = () => {
         if (!manualMovingMarker) return;
         const cur = manualMovingMarker.getLatLng();
-        const code = `lat: ${Number(cur.lat.toFixed(5))}, lng: ${Number(cur.lng.toFixed(5))}`;
+        const code = `lat: ${Number(cur.lat.toFixed(5))}, lng:${Number(cur.lng.toFixed(5))}`;
         copyToClipboard(code);
-        if (typeof showToast === "function") showToast(`📋 Скопійовано: ${code}`);
+        if (typeof showToast === "function") showToast(`📋 Скопійовано: \${code}`);
       };
 
       document.getElementById("btnConfirmManualDrag").onclick = finishManualDragSuccess;
@@ -1160,7 +1164,7 @@
 
   function updateManualFloatingCoords(lat, lng) {
     const el = document.getElementById("manualDragLiveCoords");
-    if (el) el.innerText = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+    if (el) el.innerText = `${lat.toFixed(5)},${lng.toFixed(5)}`;
   }
 
   function closeManualFloatingBar() {
@@ -1189,6 +1193,9 @@
     if (typeof showToast === "function") showToast("↩️ Перенесення скасовано");
   }
 
+  // =========================================================================
+  // ГОЛОВНЕ ВИПРАВЛЕННЯ: БЕЗВІДМОВНИЙ ЗАПИС У STREET_OVERRIDES
+  // =========================================================================
   async function finishManualDragSuccess() {
     if (!manualMovingMarker) return;
 
@@ -1209,7 +1216,15 @@
     const isStack = window.isMovingEntireStack && window.activeStackedPoints && window.activeStackedPoints.length > 1;
     const targets = isStack ? window.activeStackedPoints : (p ? [p] : []);
 
+    // 1. Спроба знайти офіційну вулицю
     let detectedStreet = detectOfficialStreetForPoint(p);
+
+    // 2. Безвідмовний фолбек: якщо точного збігу в словнику немає — беремо очищений текст повідомлення
+    if (!detectedStreet && p) {
+      const raw = (p.text || p.raw_text || p.address || "").replace(/[\r\n]+/g, " ");
+      const cleaned = raw.replace(/\b(чисто|норм|нормально|бп|блокпост|патруль|полиция|поліція|мусора|стоят|шмонают|зупиняють|\(чисто\))\b/gi, "").trim();
+      detectedStreet = cleaned.length >= 3 ? cleaned : (p.address || "Зсунута точка");
+    }
 
     targets.forEach(itemPt => {
       let targetFbKey = itemPt._fbKey;
@@ -1234,7 +1249,7 @@
       if (detectedStreet) itemPt.address = detectedStreet;
 
       if (targetFbKey) {
-        fetch(FIREBASE_POINTS_URL.replace(".json", `/${targetFbKey}.json`), {
+        fetch(FIREBASE_POINTS_URL.replace(".json", `/\${targetFbKey}.json`), {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -1248,6 +1263,7 @@
       }
     });
 
+    // 3. ЗАВЖДИ зберігаємо в street_overrides без блокувань!
     if (detectedStreet) {
       await saveStreetCoordinateOverride(detectedStreet, lat, lng);
     }
@@ -1260,8 +1276,8 @@
     manualPointObj = null;
 
     const toastMsg = isStack
-      ? `✅ Зсунуто всю стопку (${targets.length} мітки): (${lat.toFixed(4)}, ${lng.toFixed(4)})`
-      : `✅ Зсув збережено: (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
+      ? `✅ Зсунуто всю стопку (\${targets.length} мітки): (${lat.toFixed(4)},${lng.toFixed(4)})`
+      : `✅ Зсув збережено: «\${detectedStreet}»`;
     if (typeof showToast === "function") showToast(toastMsg, 4000);
 
     if (typeof renderMarkers === "function") renderMarkers();
