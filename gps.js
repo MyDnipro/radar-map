@@ -1,5 +1,6 @@
 /**
- * gps.js — Модуль GPS-навігації та відстеження місця розташування (v4.0)
+ * gps.js — Модуль GPS-навігації та відстеження місця розташування (v5.0)
+ * Дизайн: ядро з плавним переливом кольорів + м'яка біла хвиля-спалах
  */
 
 (function() {
@@ -8,7 +9,7 @@
   let userMarker = null;
   let accuracyCircle = null;
 
-  // Стартова позиція огляду міста з index.html (ж/м Покровський)
+  // Стартова позиція огляду міста з index.html
   function getHomeCenter() {
     return (typeof window.INITIAL_CENTER !== 'undefined' && Array.isArray(window.INITIAL_CENTER))
       ? window.INITIAL_CENTER
@@ -38,42 +39,93 @@
     }
   }
 
+  // Стилі переливу кольорів ядра та білої спалах-хвилі
+  if (!document.getElementById("gpsMarkerStyle")) {
+    const style = document.createElement("style");
+    style.id = "gpsMarkerStyle";
+    style.innerHTML = `
+      @keyframes gpsColorShift {
+        0% { background: #00f3ff; box-shadow: 0 0 10px #00f3ff; }
+        33% { background: #3b82f6; box-shadow: 0 0 10px #3b82f6; }
+        66% { background: #a855f7; box-shadow: 0 0 10px #a855f7; }
+        100% { background: #00f3ff; box-shadow: 0 0 10px #00f3ff; }
+      }
+      @keyframes gpsWhiteFlashPulse {
+        0% {
+          transform: translate(-50%, -50%) scale(0.6);
+          opacity: 0.95;
+          border-color: #ffffff;
+          box-shadow: 0 0 8px #ffffff;
+        }
+        60% {
+          opacity: 0.45;
+          border-color: rgba(255, 255, 255, 0.8);
+        }
+        100% {
+          transform: translate(-50%, -50%) scale(2.8);
+          opacity: 0;
+          border-color: rgba(255, 255, 255, 0);
+          box-shadow: 0 0 18px rgba(255, 255, 255, 0);
+        }
+      }
+      .gps-user-wrap {
+        position: relative;
+        width: 26px;
+        height: 26px;
+      }
+      .gps-white-wave {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        border: 2px solid #ffffff;
+        animation: gpsWhiteFlashPulse 1.8s infinite cubic-bezier(0.15, 0.6, 0.35, 1);
+        pointer-events: none;
+      }
+      .gps-white-wave:nth-child(2) {
+        animation-delay: 0.9s;
+      }
+      .gps-core-dot {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        border: 2px solid #ffffff;
+        animation: gpsColorShift 4s infinite linear;
+        z-index: 2;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
   // Створення маркера поточної позиції користувача
   function ensureUserMarker(latLng) {
     if (!window.map) return;
 
     if (!userMarker) {
       const pulseHtml = `
-        <div style="position:relative; width:22px; height:22px;">
-          <div style="position:absolute; width:100%; height:100%; border-radius:50%; background:#00f3ff; opacity:0.75; animation: pulseGps 1.5s infinite;"></div>
-          <div style="position:absolute; top:4px; left:4px; width:14px; height:14px; border-radius:50%; background:#0284c7; border:2.5px solid #ffffff; box-shadow:0 0 8px rgba(0,0,0,0.6);"></div>
+        <div class="gps-user-wrap">
+          <div class="gps-white-wave"></div>
+          <div class="gps-white-wave"></div>
+          <div class="gps-core-dot"></div>
         </div>
       `;
       const gpsIcon = L.divIcon({
         className: 'user-gps-marker',
         html: pulseHtml,
-        iconSize: [22, 22],
-        iconAnchor: [11, 11]
+        iconSize: [26, 26],
+        iconAnchor: [13, 13]
       });
 
       userMarker = L.marker(latLng, { icon: gpsIcon, zIndexOffset: 3000 }).addTo(window.map);
     } else {
       userMarker.setLatLng(latLng);
     }
-  }
-
-  // Стиль пульсації маркера
-  if (!document.getElementById("gpsMarkerStyle")) {
-    const style = document.createElement("style");
-    style.id = "gpsMarkerStyle";
-    style.innerHTML = `
-      @keyframes pulseGps {
-        0% { transform: scale(0.9); opacity: 0.9; }
-        70% { transform: scale(2.4); opacity: 0; }
-        100% { transform: scale(0.9); opacity: 0; }
-      }
-    `;
-    document.head.appendChild(style);
   }
 
   // Перемикання режиму навігації
@@ -115,7 +167,6 @@
         window.showToast("📡 Пошук GPS...");
       }
 
-      // Карта гарантовано виставляється в стартовий огляд міста (як на Фото 1)
       if (window.map) {
         window.map.flyTo(getHomeCenter(), getHomeZoom(), { animate: true, duration: 0.5 });
       }
@@ -128,27 +179,24 @@
           const accuracy = pos.coords.accuracy || 20;
           const latLng = [lat, lng];
 
-          // Малюємо синю крапку положення
           ensureUserMarker(latLng);
 
           // Коло похибки
           if (!accuracyCircle) {
             accuracyCircle = L.circle(latLng, {
               radius: accuracy,
-              color: '#00f3ff',
+              color: '#ffffff',
               weight: 1,
-              opacity: 0.45,
+              opacity: 0.55,
               fillColor: '#00f3ff',
-              fillOpacity: 0.1
+              fillOpacity: 0.08
             }).addTo(window.map);
           } else {
             accuracyCircle.setLatLng(latLng);
             accuracyCircle.setRadius(accuracy);
           }
 
-          // ЖОДНОГО НАБЛИЖЕННЯ КАРТИ ДО ЗУМУ 16!
-          // Масштаб огляду міста не чіпаємо взагалі.
-          // Якщо водій раптом виїхав за межі поточного екрана — лише м'яко панорамуємо без зміни масштабу.
+          // М'яке панорамування без стрибків масштабу
           if (!window.map.getBounds().contains(latLng)) {
             window.map.panTo(latLng);
           }
