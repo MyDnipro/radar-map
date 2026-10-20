@@ -1,6 +1,8 @@
 /**
- * relocate.js — Модуль перенесення міток та калібрування вулиць v10.0
- * Додано: Гібридний пошук вулиць (Локальна база + OpenStreetMap / Nominatim)
+ * relocate.js — Модуль перенесення міток та калібрування вулиць v10.5
+ * Додано:
+ * - Гібридний пошук вулиць (Локальна база + OpenStreetMap / Nominatim)
+ * - Автоматичне збереження правил у «пам'ять мозку» (memory.js / custom_streets.json)
  */
 
 (function () {
@@ -62,10 +64,7 @@
       const cleanQ = query.replace(/[,\.!\?\(\)]/g, " ").trim();
       const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cleanQ + ", Дніпро")}&countrycodes=ua&limit=6&accept-language=uk,ru`;
       
-      const res = await fetch(url, {
-        headers: { "User-Agent": "DniproRadarMap/5.0" },
-        signal: signal
-      });
+      const res = await fetch(url, { signal: signal });
 
       if (!res.ok) return onlineResults;
       const data = await res.json();
@@ -283,7 +282,6 @@
       box.style.display = "block";
     }
 
-    // Показуємо індикатор онлайн-пошуку
     const loadingRow = document.createElement("div");
     loadingRow.id = "osmSearchLoadingRow";
     loadingRow.style.cssText = "padding:7px 12px; font-size:11px; color:#38bdf8; background:#0b1120; border-top:1px dashed #334155;";
@@ -470,6 +468,12 @@
 
     await saveStreetCoordinateOverride(pr.streetName, p.lat, p.lng);
 
+    // АВТОМАТИЧНО ВНОСИМО ПРАВИЛО В МОЗОК (memory.js)
+    if (typeof window.saveMemorySynonymFromRelocate === "function") {
+      const rawMsg = p.text || p.raw_text || p.address || "";
+      window.saveMemorySynonymFromRelocate(rawMsg, pr.streetName, p.lat, p.lng);
+    }
+
     window.pendingRelocation = null;
     if (typeof showToast === "function") showToast(`✅ Перенесено на: «${pr.streetName}»`, 3500);
 
@@ -489,12 +493,12 @@
       allPts.forEach(p => {
         if (!p || !p.lat || !p.lng) return;
         const d = pos.distanceTo([p.lat, p.lng]);
-        if (d < minD) {
+        if (d < minD && d < 120) {
           minD = d;
           best = p;
         }
       });
-      if (best && minD < 120) return best;
+      if (best) return best;
     }
     return null;
   }
@@ -738,6 +742,12 @@
 
     if (streetName) {
       await saveStreetCoordinateOverride(streetName, lat, lng);
+
+      // АВТОМАТИЧНО ВНОСИМО ПРАВИЛО В МОЗОК ПРИ РУЧНОМУ ПЕРЕТЯГУВАННІ
+      if (typeof window.saveMemorySynonymFromRelocate === "function") {
+        const rawMsg = p ? (p.text || p.raw_text || p.address || "") : "";
+        window.saveMemorySynonymFromRelocate(rawMsg, streetName, lat, lng);
+      }
     }
 
     manualMovingMarker.setLatLng([lat, lng]);
