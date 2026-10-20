@@ -13,9 +13,16 @@ RAW_GEMINI_KEYS = os.environ.get("GEMINI_KEY", "").strip() or os.environ.get("GE
 GEMINI_KEYS = [k.strip() for k in re.split(r'[,;\s]+', RAW_GEMINI_KEYS) if len(k.strip()) > 15]
 
 current_key_index = 0
-SUPPORTED_MODELS = ["gemini-3.8-flash", "gemini-3.5-flash-lite", "gemini-3.5-flash"]
+SUPPORTED_MODELS = [
+    "gemini-3.8-flash",
+    "gemini-3.5-flash-lite",
+    "gemini-3.5-flash"
+]
 
 FIREBASE_URL = os.environ.get("FIREBASE_URL", "").strip()
+# Секретный ключ авторизации для правил Firebase Realtime Database
+FIREBASE_SECRET = os.environ.get("FIREBASE_SECRET", "570984").strip()
+
 if FIREBASE_URL and not FIREBASE_URL.endswith(".json"):
     BASE_FB_URL = FIREBASE_URL.rstrip("/")
 else:
@@ -41,6 +48,19 @@ LAST_STATS_AGGREGATION = 0
 
 def log(msg):
     print(msg, flush=True)
+
+def fb_url(url, is_write=False):
+    """Формирует корректный URL для Firebase с параметром auth при записи."""
+    if not url:
+        return ""
+    if is_write and FIREBASE_SECRET:
+        sep = "&" if "?" in url else "?"
+        return f"{url}{sep}auth={FIREBASE_SECRET}"
+    return url
+
+def sanitize_fb_key(raw_str):
+    """Очищает ключ от запрещенных в Firebase символов."""
+    return re.sub(r'[\.\$\#\[\]\/]', '_', str(raw_str))
 
 def get_active_gemini_key():
     global current_key_index
@@ -108,13 +128,13 @@ def is_ad_or_spam(text):
     return False
 
 TARGET_CHECKPOINTS_CONFIG = [
-    {"id": "pavlova", "name": "вул. Павлова", "regex": re.compile(r'(?:академ[іи]ка\s*павлова|\bпавлов[а-я]*)', re.IGNORECASE)},
-    {"id": "krasnozavodska", "name": "Краснозаводська", "regex": re.compile(r'(?:белелюб|білелюб|краснозавод|комбайн|дтрз|ударник|торус|сат\s*торус|\bсат\b)', re.IGNORECASE)},
+    {"id": "kaidak_rovd", "name": "РОВД / Кайдаки", "regex": re.compile(r'(?:кайдак|кайдацька|кайдац|з\'їзд.*кайдак|съезд.*кайдак|ровд|райотдел)', re.IGNORECASE)},
     {"id": "vodolechebnitsa", "name": "Водолікарня", "regex": re.compile(r'(?:водолечеб|водолікарн|водоликарн|водогряз|грязелечеб|просп[а-я.]*\s*свобод|пр[а-я.]*\s*свобод|\bсвобод[ыі]\b)', re.IGNORECASE)},
     {"id": "vodokachka", "name": "Водокачка", "regex": re.compile(r'(?:водокачк)', re.IGNORECASE)},
-    {"id": "rechport", "name": "Річпорт", "regex": re.compile(r'(?:р[еі]чпорт|р[еі]чпор\b|речной\s*вокзал|річковий\s*вокзал|десантник)', re.IGNORECASE)},
-    {"id": "kaidak_rovd", "name": "РОВД / Кайдаки", "regex": re.compile(r'(?:кайдак|кайдац|ровд|райотдел)', re.IGNORECASE)},
     {"id": "stan_550", "name": "Стан 550", "regex": re.compile(r'(?:стан\s*550|стан550|\b550\b)', re.IGNORECASE)},
+    {"id": "krasnozavodska", "name": "Краснозаводська", "regex": re.compile(r'(?:белелюб|білелюб|краснозавод|комбайн|дтрз|ударник|торус|сат\s*торус|\bсат\b)', re.IGNORECASE)},
+    {"id": "pavlova", "name": "вул. Павлова", "regex": re.compile(r'(?:академ[іи]ка\s*павлова|\bпавлов[а-я]*)', re.IGNORECASE)},
+    {"id": "rechport", "name": "Річпорт", "regex": re.compile(r'(?:р[еі]чпорт|р[еі]чпор\b|речной\s*вокзал|річковий\s*вокзал|десантник)', re.IGNORECASE)},
     {"id": "kanatna", "name": "вул. Канатна", "regex": re.compile(r'(?:канатн|інфекцій|инфекцион|21\s*лікарн|21\s*больниц)', re.IGNORECASE)},
     {"id": "schepkina", "name": "вул. Щепкіна", "regex": re.compile(r'(?:щепкін|щепкин)', re.IGNORECASE)}
 ]
@@ -172,38 +192,24 @@ LOCAL_STREETS_DB = [
     {"keys": ["низ науки", "низ гагарин", "низ гагарін"], "addr": "просп. Науки (Низ, Нагірка)", "lat": 48.4510, "lng": 35.0590},
     {"keys": ["середина науки", "середина гагарин", "середина гагарін"], "addr": "просп. Науки (Середина, ДІІТ / Казакова)", "lat": 48.4350, "lng": 35.0420},
     {"keys": ["верх науки", "верх гагарин", "верх гагарін"], "addr": "просп. Науки (Верх, Підстанція / Дафі)", "lat": 48.4230, "lng": 35.0320},
-    {"keys": ["гагарин", "гагарін", "науки"], "addr": "просp. Науки (Гагаріна)", "lat": 48.4350, "lng": 35.0420},
+    {"keys": ["гагарин", "гагарін", "науки"], "addr": "просп. Науки (Гагаріна)", "lat": 48.4350, "lng": 35.0420},
     {"keys": ["підстанці", "подстанци", "дафі", "дафи"], "addr": "Підстанція (ТРЦ Дафі)", "lat": 48.4250, "lng": 35.0220},
     {"keys": ["титов", "независимост", "незалежност"], "addr": "вул. Незалежності (Титова)", "lat": 48.4340, "lng": 35.0150},
     {"keys": ["карла маркс", "яворниц", "яворницьк"], "addr": "просп. Дмитра Яворницького (К. Маркса)", "lat": 48.4650, "lng": 35.0350},
     {"keys": ["артем", "січов", "сечевых"], "addr": "вул. Січових Стрільців (Артема)", "lat": 48.4550, "lng": 35.0420},
     {"keys": ["савченк", "черновол", "чорновол"], "addr": "вул. В'ячеслава Чорновола (Савченка)", "lat": 48.4550, "lng": 35.0180},
     
-    # Канатна та Інфекційна лікарня №21
     {"keys": ["канатн", "інфекцій", "инфекцион", "21 лікарн", "21 больниц"], "addr": "вул. Канатна (Інфекційна лікарня №21)", "lat": 48.46350, "lng": 35.00980},
-
-    # Щепкіна
     {"keys": ["щепкін", "щепкин"], "addr": "вул. Щепкіна", "lat": 48.47350, "lng": 34.99680},
-
-    # Павлова (Ауді Центр)
     {"keys": ["павлов"], "addr": "вул. Академіка Павлова", "lat": 48.48022, "lng": 35.00658},
-
-    # Краснозаводська / Белелюбського / САТ Торус
     {"keys": ["краснозавод", "белелюб", "білелюб", "комбайн", "дтрз", "торус", "сат торус", "ударник"], "addr": "вул. Краснозаводська (Белелюбського / САТ)", "lat": 48.4800, "lng": 34.9880},
-
-    # Водолікарня
     {"keys": ["водолечеб", "водолікарн", "водоликарн", "грязелечеб", "водогряз"], "addr": "Водолікарня (просп. Свободи)", "lat": 48.4848, "lng": 34.9735},
-
     {"keys": ["водокачк"], "addr": "Водокачка (Набережна Заводська)", "lat": 48.4910, "lng": 34.9480},
     {"keys": ["стан 550", "стан550"], "addr": "Стан 550 (Набережна Заводська)", "lat": 48.4865, "lng": 34.9850},
     {"keys": ["кайдак", "з'їзд.*кайдак", "кайдац", "ровд"], "addr": "Кайдацький міст / з'їзд", "lat": 48.4908, "lng": 34.9585},
     {"keys": ["качка"], "addr": "вул. Каруни (Качка / з'їзд)", "lat": 48.4960, "lng": 35.0480},
     {"keys": ["боровск", "молодогвард"], "addr": "вул. Молодогвардійська (під мостами)", "lat": 48.4680, "lng": 35.1220},
-
-    # Окрема точка "Вечні вогні"
     {"keys": ["огни", "вогні", "вечные огни", "вечні вогні"], "addr": "просп. Сергія Нігояна (Вечні вогні)", "lat": 48.4765, "lng": 34.9860},
-
-    # Мазепи / Петровського (Низ біля АТБ — 48.47192, 34.98864)
     {"keys": ["низ мазеп", "низ петровськ", "низ петровск"], "addr": "просп. Івана Мазепи (низ)", "lat": 48.47192, "lng": 34.98864},
     {"keys": ["мазеп", "петровськ", "петровск"], "addr": "просп. Івана Мазепи", "lat": 48.47192, "lng": 34.98864}
 ]
@@ -338,59 +344,46 @@ def geocode_local(text):
     clean_t = text.lower().replace('ё', 'е')
     t = " " + clean_t + " "
 
-    # =========================================================================
-    # 0. РУЧНІ ЗСУВИ З ПАПКИ street_overrides (НАЙВИЩИЙ ПРІОРИТЕТ!)
-    # =========================================================================
+    # 0. Ручні зсуви з папки street_overrides
     for raw_key, data in STREET_OVERRIDES_CACHE.items():
         if isinstance(data, dict):
             st_name = (data.get("street") or "").lower().replace('ё', 'е')
             if st_name and len(st_name) >= 3 and st_name in t:
                 return data.get("street"), float(data.get("lat")), float(data.get("lng"))
 
-    # =========================================================================
-    # ЗАЛІЗНИЙ ПРІОРИТЕТ ДЛЯ КАНАТНОЇ ТА ЩЕПКІНА (ПЕРЕД РОБОЧОЮ / НІГОЯНА)
-    # =========================================================================
     if re.search(r'(?:канатн|інфекцій|инфекцион|21\s*лікарн|21\s*больниц)', t):
         return "вул. Канатна (Інфекційна лікарня №21)", 48.46350, 35.00980
 
     if re.search(r'(?:щепкін|щепкин)', t):
         return "вул. Щепкіна", 48.47350, 34.99680
 
-    # 1. Жорсткий захист Річпорту (точні координати)
     if re.search(r'(?:р[еі]чпорт|р[еі]чпор\b|речной\s*вокзал|річковий\s*вокзал)', t):
         return "Річпорт (Набережна Заводська)", 48.48094, 35.02514
 
-    # 2. Жорсткий захист Павлова (біля Ауді Центру)
     if re.search(r'(?:академ[іи]ка\s*павлова|\bпавлов[а-я]*)', t):
         return "вул. Академіка Павлова", 48.48022, 35.00658
 
-    # 3. Жорсткий захист Краснозаводської / Торус / Белелюбського
     if re.search(r'(?:торус|краснозавод|белелюб|білелюб|комбайн|дтрз)', t):
         return "вул. Краснозаводська (Белелюбського / САТ)", 48.4800, 34.9880
 
-    # 4. Водолікарня
     if re.search(r'(?:водолечеб|водолікарн|водоликарн|грязелечеб|водогряз)', t):
         return "Водолікарня (просп. Свободи)", 48.4848, 34.9735
 
-    # 5. Вечні вогні
     if re.search(r'(?:вечн[ыеі]*\s*во?гн|во?гн[іиея]\b)', t):
         return "просп. Сергія Нігояна (Вечні вогні)", 48.4765, 34.9860
 
-    # 5.1. Низ Мазепи / просп. Івана Мазепи (біля АТБ — 48.47192, 34.98864)
     if re.search(r'(?:низ\s*мазеп|низ\s*петровськ|низ\s*петровск)', t):
         return "просп. Івана Мазепи (низ)", 48.47192, 34.98864
 
     if re.search(r'(?:мазеп|петровськ|петровск)', t):
         return "просп. Івана Мазепи", 48.47192, 34.98864
 
-    # 6. Хмарні правила
     for raw_alias, data in CUSTOM_STREETS_CACHE.items():
         if isinstance(data, dict):
             alias = unquote(raw_alias).lower().replace('ё', 'е')
             if alias in t:
                 return data.get("name", alias), data.get("lat"), data.get("lng")
 
-    # 7. Базовий реєстр
     sorted_items = sorted(
         LOCAL_STREETS_DB,
         key=lambda item: max(len(k) for k in item["keys"]),
@@ -416,6 +409,7 @@ def geocode_osm_fallback(text):
         if len(query) < 4:
             continue
         try:
+            time.sleep(1.1)
             url = f"https://nominatim.openstreetmap.org/search?format=json&q={requests.utils.quote(query + ', Дніпро')}&countrycodes=ua&limit=1"
             headers = {"User-Agent": "DniproRadarMap/5.0"}
             r = requests.get(url, headers=headers, timeout=5)
@@ -482,7 +476,7 @@ def cleanup_old_points():
                     if (now_ms - point_time) > LIFETIME_MS or is_ad_or_spam(full_txt):
                         to_delete[k] = None
             if to_delete:
-                requests.patch(POINTS_URL, json=to_delete, timeout=8)
+                requests.patch(fb_url(POINTS_URL, is_write=True), json=to_delete, timeout=8)
                 log(f"🧹 Видалено міток (застарілих або спам): {len(to_delete)}")
     except Exception as e:
         log(f"⚠️ Помилка очищення Firebase: {e}")
@@ -589,7 +583,7 @@ def update_traffic_stats_history():
                 cp_count = calculate_checkpoint_episodes(matched_reps)
                 updated_history[date_str][cp_id] = cp_count
 
-        r_save = requests.put(TRAFFIC_STATS_HISTORY_URL, json=updated_history, timeout=10)
+        r_save = requests.put(fb_url(TRAFFIC_STATS_HISTORY_URL, is_write=True), json=updated_history, timeout=10)
         if r_save.status_code == 200:
             log(f"📊 [ДОВГОТРИВАЛА СТАТИСТИКА]: Успішно оновлено {len(updated_history)} днів у traffic_stats_history.json")
         
@@ -612,14 +606,31 @@ def fetch_channel_messages():
         if r.status_code != 200:
             return []
 
-        pattern = re.compile(
-            r'data-post="[^/]+/(\d+)"[^>]*>.*?<div class="tgme_widget_message_text[^"]*"[^>]*>(.*?)</div>',
-            re.DOTALL
-        )
-        matches = pattern.findall(r.text)
-
+        blocks = r.text.split('data-post="')
         results = []
-        for post_id, raw_html in matches:
+        now_ms = int(time.time() * 1000)
+
+        for b in blocks[1:]:
+            post_id_m = re.match(r'[^/]+/(\d+)"', b)
+            if not post_id_m:
+                continue
+            post_id = post_id_m.group(1)
+
+            text_m = re.search(r'<div class="tgme_widget_message_text[^"]*"[^>]*>(.*?)</div>', b, re.DOTALL)
+            if not text_m:
+                continue
+            raw_html = text_m.group(1)
+
+            # Извлекаем реальное время публикации поста из Telegram
+            post_time_ms = now_ms
+            time_m = re.search(r'<time[^>]*datetime="([^"]+)"', b)
+            if time_m:
+                try:
+                    dt = datetime.fromisoformat(time_m.group(1))
+                    post_time_ms = int(dt.timestamp() * 1000)
+                except Exception:
+                    post_time_ms = now_ms
+
             clean = re.sub(r'<br\s*/?>', '\n', raw_html)
             clean = re.sub(r'<[^>]+>', '', clean)
             clean = clean.replace('&quot;', '"').replace('&amp;', '&').replace('&lt;', '<').replace('&gt;', '>').strip()
@@ -631,7 +642,7 @@ def fetch_channel_messages():
             for idx, report_line in enumerate(sub_reports):
                 if not is_ad_or_spam(report_line) and not is_ignored_question(report_line):
                     sub_post_id = f"{post_id}_{idx}" if len(sub_reports) > 1 else post_id
-                    results.append((sub_post_id, report_line))
+                    results.append((sub_post_id, report_line, post_time_ms))
 
         return results
     except Exception as e:
@@ -693,7 +704,8 @@ def parse_batch_with_gemini(items_to_parse):
 
     return {}
 
-def save_point_to_firebase(msg, parsed_result, is_clean, now_ms):
+def save_point_to_firebase(sub_post_id, msg, parsed_result, is_clean, post_time_ms):
+    now_ms = int(time.time() * 1000)
     status_clean = (parsed_result["status"] == "чисто" or is_clean is True)
     color = "green" if status_clean else "red"
     display_text = msg
@@ -701,27 +713,31 @@ def save_point_to_firebase(msg, parsed_result, is_clean, now_ms):
     if status_clean and not re.search(r'\b(?:чисто|норм|нормально|без ям|нет бп)\b', msg, re.I):
         display_text = f"{msg} (чисто)"
 
-    point_data = {
-        "text": display_text,
-        "raw_text": msg,
-        "address": parsed_result["address"],
-        "lat": parsed_result["lat"],
-        "lng": parsed_result["lng"],
-        "color": color,
-        "status": "чисто" if status_clean else "опасно",
-        "is_clean": status_clean,
-        "geo_refined": True,
-        "needs_training": parsed_result.get("needs_training", False),
-        "time": now_ms,
-        "timestamp": now_ms
-    }
+    safe_id = sanitize_fb_key(f"tg_{sub_post_id}")
 
-    if POINTS_URL:
+    # 1. На живую карту пишем ТОЛЬКО если сообщению реально меньше 40 минут
+    if POINTS_URL and (now_ms - post_time_ms) <= LIFETIME_MS:
+        point_data = {
+            "text": display_text,
+            "raw_text": msg,
+            "address": parsed_result["address"],
+            "lat": parsed_result["lat"],
+            "lng": parsed_result["lng"],
+            "color": color,
+            "status": "чисто" if status_clean else "опасно",
+            "is_clean": status_clean,
+            "geo_refined": True,
+            "needs_training": parsed_result.get("needs_training", False),
+            "time": post_time_ms,
+            "timestamp": post_time_ms
+        }
         try:
-            requests.post(POINTS_URL, json=point_data, timeout=8)
+            target_pt_url = POINTS_URL.replace(".json", f"/{safe_id}.json")
+            requests.put(fb_url(target_pt_url, is_write=True), json=point_data, timeout=8)
         except Exception as e:
-            log(f"⚠️ Помилка запису в Firebase: {e}")
+            log(f"⚠️ Помилка запису в Firebase points: {e}")
 
+    # 2. В архив пишем по уникальному ключу tg_{sub_post_id}, исключая дубли при перезапуске
     if STATS_ARCHIVE_URL:
         try:
             archive_entry = {
@@ -730,11 +746,34 @@ def save_point_to_firebase(msg, parsed_result, is_clean, now_ms):
                 "lat": parsed_result["lat"],
                 "lng": parsed_result["lng"],
                 "is_clean": status_clean,
-                "time": now_ms
+                "time": post_time_ms
             }
-            requests.post(STATS_ARCHIVE_URL, json=archive_entry, timeout=8)
+            target_arch_url = STATS_ARCHIVE_URL.replace(".json", f"/{safe_id}.json")
+            requests.put(fb_url(target_arch_url, is_write=True), json=archive_entry, timeout=8)
         except Exception:
             pass
+
+def preload_existing_ids():
+    """Загружает уже обработанные ID при старте скрипта, чтобы не гонять Gemini впустую."""
+    global PROCESSED_POST_IDS
+    if not BASE_FB_URL:
+        return
+    try:
+        if POINTS_URL:
+            r = requests.get(f"{POINTS_URL}?shallow=true", timeout=6)
+            if r.status_code == 200 and isinstance(r.json(), dict):
+                for k in r.json().keys():
+                    if k.startswith("tg_"):
+                        PROCESSED_POST_IDS.add(k[3:])
+        if STATS_ARCHIVE_URL:
+            r2 = requests.get(f"{STATS_ARCHIVE_URL}?shallow=true", timeout=8)
+            if r2.status_code == 200 and isinstance(r2.json(), dict):
+                for k in r2.json().keys():
+                    if k.startswith("tg_"):
+                        PROCESSED_POST_IDS.add(k[3:])
+        log(f"✅ Ініціалізовано кеш ID з бази: {len(PROCESSED_POST_IDS)} записів")
+    except Exception as e:
+        log(f"⚠️ Не вдалося завантажити shallow кеш ID: {e}")
 
 def sync_cycle():
     global PROCESSED_POST_IDS
@@ -749,21 +788,20 @@ def sync_cycle():
         return
 
     new_items = []
-    for post_id, text in items:
-        unique_key = f"{post_id}_{text.lower()}"
-        if unique_key not in PROCESSED_POST_IDS:
-            new_items.append((unique_key, text))
+    for sub_post_id, text, post_time_ms in items:
+        safe_check_id = sanitize_fb_key(sub_post_id)
+        if safe_check_id not in PROCESSED_POST_IDS:
+            new_items.append((safe_check_id, text, post_time_ms))
 
     log(f"📢 В каналі: {len(items)} | Нових: {len(new_items)} | В базі знань: {len(kb_list)} | Хмарних правил: {len(CUSTOM_STREETS_CACHE)} | Спам-фільтрів: {len(DYNAMIC_SPAM_WORDS)}")
 
     if not new_items:
         return
 
-    now_ms = int(time.time() * 1000)
     unresolved_queue = []
 
-    for unique_key, msg in new_items:
-        PROCESSED_POST_IDS.add(unique_key)
+    for sub_post_id, msg, post_time_ms in new_items:
+        PROCESSED_POST_IDS.add(sub_post_id)
 
         if is_ad_or_spam(msg) or is_ignored_question(msg):
             log(f"🚫 [СПАМ / ПИТАННЯ ПРОПУЩЕНО]: '{msg[:45]}'")
@@ -815,16 +853,16 @@ def sync_cycle():
                 log(f"🗺️ [OSM КАРТА]: '{msg[:45]}' ➔ {osm_addr}")
 
         if parsed_result:
-            save_point_to_firebase(msg, parsed_result, is_clean, now_ms)
+            save_point_to_firebase(sub_post_id, msg, parsed_result, is_clean, post_time_ms)
         else:
-            unresolved_queue.append((msg, is_clean))
+            unresolved_queue.append((sub_post_id, msg, is_clean, post_time_ms))
 
     if unresolved_queue:
-        gemini_items = [{"id": i, "text": item[0]} for i, item in enumerate(unresolved_queue)]
+        gemini_items = [{"id": i, "text": item[1]} for i, item in enumerate(unresolved_queue)]
         log(f"🚀 Відправка пакету з {len(gemini_items)} невідомих точок до Gemini...")
         batch_results = parse_batch_with_gemini(gemini_items)
 
-        for i, (msg, is_clean) in enumerate(unresolved_queue):
+        for i, (sub_post_id, msg, is_clean, post_time_ms) in enumerate(unresolved_queue):
             ai_data = batch_results.get(i)
             parsed_result = None
 
@@ -854,12 +892,14 @@ def sync_cycle():
                 }
                 log(f"🌊 [НАВЧАННЯ / НА ВОДУ]: '{msg[:45]}'")
 
-            save_point_to_firebase(msg, parsed_result, is_clean, now_ms)
+            save_point_to_firebase(sub_post_id, msg, parsed_result, is_clean, post_time_ms)
 
 if __name__ == "__main__":
     log(f"🚀 Запуск оновленого радара 24/7 v5.0 (Завантажено {len(GEMINI_KEYS)} API ключів)...")
     start_time = time.time()
     MAX_RUNTIME_SEC = 5 * 3600 + 40 * 60
+
+    preload_existing_ids()
 
     try:
         update_traffic_stats_history()
