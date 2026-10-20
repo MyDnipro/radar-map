@@ -1,5 +1,6 @@
 /**
- * Radar Dnipro — Модуль памяти топонимов ("А = Б") та Зсунутих вулиць v6.7
+ * Radar Dnipro — Модуль памяти топонимов ("А = Б") та Зсунутих вулиць v7.0
+ * Додано: живий автокомплит вулиць + збереження правил у Firebase + міст для relocate.js
  */
 (function() {
   const FB_CUSTOM_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/custom_streets.json";
@@ -9,9 +10,6 @@
   let streetOverrides = {};
   let currentActiveTab = "synonyms";
   let selectedTargetCoords = null;
-  let searchAbortController = null;
-  let activeOverrideBeacon = null;
-  const netSearchCache = new Map();
 
   const BUILTIN_LANDMARKS = [
     { name: "Центральний міст (Новий міст)", old: "Новый мост, Новий міст", lat: 48.47750, lng: 35.05680, type: "landmark", street: "Січеславська Набережна" },
@@ -43,37 +41,6 @@
       .replace(/#/g, "_")
       .replace(/\[/g, "_").replace(/\]/g, "_")
       .slice(0, 80);
-  }
-
-  function normalizeSearchText(str) {
-    if (!str) return "";
-    return str
-      .toLowerCase()
-      .replace(/['’`ʼ"]/g, "")
-      .replace(/\b(вул|вулиця|ул|улица|просп|проспект|пр-т|пров|провулок|пер|тупик|пл|площа|площадь|наб|набережна|набережная|шосе|шоссе|міст|мост)\b\.?/gi, " ")
-      .replace(/[іїы]/g, "и")
-      .replace(/[єэ]/g, "е")
-      .replace(/ґ/g, "г")
-      .replace(/щ/g, "шч")
-      .replace(/[^a-zа-я0-9\s]/g, " ")
-      .replace(/\s+/g, " ")
-      .trim();
-  }
-
-  function isSmartMatch(query, targetStr) {
-    if (!query || !targetStr) return false;
-    const rawQ = query.toLowerCase().trim();
-    const rawT = targetStr.toLowerCase();
-    if (rawT.includes(rawQ)) return true;
-
-    const normQ = normalizeSearchText(query);
-    const normT = normalizeSearchText(targetStr);
-    if (!normQ) return false;
-    if (normT.includes(normQ)) return true;
-
-    const qWords = normQ.split(" ").filter(w => w.length >= 2);
-    if (qWords.length > 0 && qWords.every(w => normT.includes(w))) return true;
-    return false;
   }
 
   const style = document.createElement("style");
@@ -191,8 +158,11 @@
       cursor: pointer;
       width: 100%;
       margin-top: 2px;
+      transition: background 0.2s;
     }
     .btn-mem-save:hover { background: #a855f7; }
+    .btn-mem-save:active { transform: scale(0.98); }
+
     .btn-mem-view-all {
       background: #1e293b;
       border: 1px solid #64748b;
@@ -274,16 +244,6 @@
       flex-wrap: wrap;
       justify-content: flex-end;
     }
-    .btn-mem-edit {
-      background: #0284c7;
-      border: 1px solid #38bdf8;
-      color: #fff;
-      padding: 6px 10px;
-      border-radius: 7px;
-      cursor: pointer;
-      font-size: 11px;
-      font-weight: 800;
-    }
     .btn-mem-del {
       background: #7f1d1d;
       border: 1px solid #ef4444;
@@ -298,26 +258,6 @@
       background: #1e293b;
       border: 1px solid #ef4444;
       color: #fca5a5;
-      padding: 6px 10px;
-      border-radius: 7px;
-      cursor: pointer;
-      font-size: 11px;
-      font-weight: 800;
-    }
-    .btn-mem-edit-override {
-      background: #1e293b;
-      border: 1px solid #64748b;
-      color: #cbd5e1;
-      padding: 6px 9px;
-      border-radius: 7px;
-      cursor: pointer;
-      font-size: 11px;
-      font-weight: 800;
-    }
-    .btn-mem-show-map {
-      background: #0284c7;
-      border: 1px solid #38bdf8;
-      color: #fff;
       padding: 6px 10px;
       border-radius: 7px;
       cursor: pointer;
@@ -373,12 +313,6 @@
       </button>
     </div>
 
-    <div id="memSynonymsTools" style="display:flex; justify-content:flex-end;">
-      <button id="btnCleanGarbageRules" style="background:#1e293b; border:1px solid #a855f7; color:#c084fc; font-size:10px; font-weight:800; padding:4px 8px; border-radius:6px; cursor:pointer;">
-        🧹 Очистити спам від бота
-      </button>
-    </div>
-
     <div id="memFullList" class="mem-full-list">
       <span style="font-size:12px; color:#64748b; text-align:center; margin-top:20px;">Загрузка...</span>
     </div>
@@ -400,7 +334,6 @@
   const fullCloseBtn = document.getElementById("memFullCloseBtn");
   const tabSynonymsBtn = document.getElementById("memTabSynonymsBtn");
   const tabOverridesBtn = document.getElementById("memTabOverridesBtn");
-  const btnCleanGarbage = document.getElementById("btnCleanGarbageRules");
   const aliasInput = document.getElementById("memAlias");
   const targetInput = document.getElementById("memTarget");
   const targetResults = document.getElementById("memTargetResults");
@@ -426,20 +359,17 @@
 
   function switchTab(tab) {
     currentActiveTab = tab;
-    const tools = document.getElementById("memSynonymsTools");
     if (tab === "synonyms") {
       tabSynonymsBtn.style.background = "#9333ea";
       tabSynonymsBtn.style.color = "#fff";
       tabOverridesBtn.style.background = "#1e293b";
       tabOverridesBtn.style.color = "#94a3b8";
-      if (tools) tools.style.display = "flex";
       renderFullList();
     } else {
       tabOverridesBtn.style.background = "#9333ea";
       tabOverridesBtn.style.color = "#fff";
       tabSynonymsBtn.style.background = "#1e293b";
       tabSynonymsBtn.style.color = "#94a3b8";
-      if (tools) tools.style.display = "none";
       renderOverridesList();
     }
   }
@@ -450,6 +380,125 @@
   closeBtn.addEventListener("click", toggleCard);
   viewAllBtn.addEventListener("click", openFullModal);
   fullCloseBtn.addEventListener("click", closeFullModal);
+
+  // 1. АВТОКОМПЛІТ ВУЛИЦЬ У ПОЛІ "КУДИ ВЕСТИ"
+  targetInput.addEventListener("input", () => {
+    const q = targetInput.value.trim().toLowerCase();
+    selectedTargetCoords = null;
+    if (q.length < 2) {
+      targetResults.style.display = "none";
+      return;
+    }
+
+    targetResults.innerHTML = "";
+    const matches = [];
+
+    if (window.DNIPRO_STREETS_MAP) {
+      for (const [key, item] of Object.entries(window.DNIPRO_STREETS_MAP)) {
+        if (!item || !item.name) continue;
+        const n = item.name.toLowerCase();
+        const o = (item.old || "").toLowerCase();
+        if (key.includes(q) || n.includes(q) || o.includes(q)) {
+          if (!matches.some(m => m.name.toLowerCase() === item.name.toLowerCase())) {
+            matches.push(item);
+          }
+        }
+        if (matches.length >= 7) break;
+      }
+    }
+
+    if (matches.length === 0) {
+      targetResults.innerHTML = `<div style="padding:8px 10px; font-size:10.5px; color:#94a3b8;">Вулицю не знайдено в локальній базі</div>`;
+    } else {
+      matches.forEach(item => {
+        const div = document.createElement("div");
+        div.className = "mem-search-item";
+        const oldNote = item.old ? ` <span style="color:#64748b; font-size:9.5px;">(раніше: ${item.old})</span>` : "";
+        div.innerHTML = `📍 <b>${item.name}</b>${oldNote}`;
+        div.onclick = () => {
+          targetInput.value = item.name;
+          selectedTargetCoords = { lat: Number(item.lat), lng: Number(item.lng) };
+          targetResults.style.display = "none";
+        };
+        targetResults.appendChild(div);
+      });
+    }
+    targetResults.style.display = "block";
+  });
+
+  // 2. ЗБЕРЕЖЕННЯ ПРАВИЛА В ПАМ'ЯТЬ (РУЧНЕ АБО АВТОМАТИЧНЕ З ПЕРЕНЕСЕННЯ)
+  async function saveMemoryRule(customAlias, targetStreet, customCoords) {
+    const alias = (customAlias || aliasInput.value).trim();
+    const street = (targetStreet || targetInput.value).trim();
+    if (!alias || !street) {
+      alert("⚠️ Заповніть обидва поля: «Що шукати» та «Куди вести»");
+      return;
+    }
+
+    let lat = null, lng = null;
+    if (customCoords && customCoords.lat && customCoords.lng) {
+      lat = Number(customCoords.lat);
+      lng = Number(customCoords.lng);
+    } else if (selectedTargetCoords) {
+      lat = selectedTargetCoords.lat;
+      lng = selectedTargetCoords.lng;
+    } else if (window.DNIPRO_STREETS_MAP) {
+      for (const item of Object.values(window.DNIPRO_STREETS_MAP)) {
+        if (item && item.name && item.name.toLowerCase().trim() === street.toLowerCase().trim()) {
+          lat = Number(item.lat);
+          lng = Number(item.lng);
+          break;
+        }
+      }
+    }
+
+    if (!lat || !lng) {
+      alert("⚠️ Оберіть вулицю зі спадного списку підказок, щоб зафіксувати точні координати");
+      return;
+    }
+
+    const safeKey = toFirebaseKey(alias);
+    const ruleObj = {
+      alias: alias,
+      name: street,
+      lat: Number(lat.toFixed(5)),
+      lng: Number(lng.toFixed(5)),
+      time: Date.now()
+    };
+
+    cloudRules[safeKey] = ruleObj;
+    if (window.DNIPRO_STREETS_MAP) {
+      window.DNIPRO_STREETS_MAP[alias.toLowerCase()] = ruleObj;
+    }
+
+    updateCountBadge();
+    aliasInput.value = "";
+    targetInput.value = "";
+    selectedTargetCoords = null;
+    targetResults.style.display = "none";
+    card.style.display = "none";
+
+    try {
+      await fetch(FB_CUSTOM_URL.replace(".json", `/${safeKey}.json`), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(ruleObj)
+      });
+    } catch(e) {}
+
+    if (typeof window.showToast === "function") {
+      window.showToast(`🧠 Збережено в мозок: «${alias}» ➔ ${street}`);
+    }
+  }
+
+  saveBtn.addEventListener("click", () => saveMemoryRule());
+
+  // Експорт функції для виклику з модуля перенесення (relocate.js)
+  window.saveMemorySynonymFromRelocate = function(rawText, streetName, lat, lng) {
+    if (!rawText || !streetName) return;
+    const cleanAlias = rawText.replace(/[\r\n]+/g, " ").trim().slice(0, 60);
+    saveMemoryRule(cleanAlias, streetName, { lat: lat, lng: lng });
+  };
 
   function updateCountBadge() {
     const badge = document.getElementById("memCountBadge");
@@ -540,7 +589,7 @@
       row.innerHTML = `
         <div class="mem-full-info">
           <div class="mem-full-rule">«${aliasName}» ➔ <span style="color:#38bdf8;">${item.name || item.address}</span></div>
-          <div class="mem-full-time"><span style="color:#64748b;">(${Number(item.lat).toFixed(4)},${Number(item.lng).toFixed(4)})</span></div>
+          <div class="mem-full-time"><span style="color:#64748b;">(${Number(item.lat).toFixed(4)}, ${Number(item.lng).toFixed(4)})</span></div>
         </div>
         <div class="mem-full-acts">
           <button class="btn-mem-del" title="Видалити">🗑️</button>
