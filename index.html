@@ -24,7 +24,7 @@
       --sonar-danger-base-speed: 2.4s;
       --sonar-danger-step: 0.3s;
 
-      /* Користувацькі налаштування яскравості карти та міток */
+      /* Налаштування яскравості карти та міток */
       --map-night-brightness: 95%;
       --map-night-contrast: 108%;
       --map-night-invert: 90%;
@@ -50,13 +50,14 @@
       cursor: grabbing !important;
     }
 
-    /* ПЛАШКА «МІЙ ШЛЯХ»: ТЕМНИЙ ФОН, БІЛИЙ ТЕКСТ (ЧИСТО), ЧЕРВОНИЙ ТЕКСТ (БП) */
+    /* ПЛАШКА «МІЙ ШЛЯХ»: ЧОРНИЙ ФОН, БІЛИЙ ТЕКСТ (ЧИСТО), ЧЕРВОНИЙ (БП) */
     #routeStatusBar {
       position: fixed;
       bottom: 15px;
       left: 14px;
       z-index: 2400;
       width: auto !important;
+      max-width: 155px !important;
       height: 38px !important;
       min-height: 38px !important;
       max-height: 38px !important;
@@ -64,7 +65,7 @@
       display: inline-flex !important;
       align-items: center !important;
       gap: 6px !important;
-      padding: 0 13px !important;
+      padding: 0 12px !important;
       border-radius: 12px !important;
       font-size: 11.5px !important;
       font-weight: 800 !important;
@@ -75,11 +76,15 @@
       cursor: pointer;
       user-select: none;
       white-space: nowrap !important;
+      overflow: hidden !important;
       transition: border-color 0.2s, background-color 0.2s, color 0.2s;
     }
     #routeStatusBar #routeStatusText {
       color: #ffffff !important;
       font-weight: 800 !important;
+      text-overflow: ellipsis;
+      overflow: hidden;
+      white-space: nowrap;
     }
     #routeStatusBar.danger {
       background: #0f172a !important;
@@ -90,7 +95,7 @@
       color: #ef4444 !important;
     }
 
-    /* СТИЛЬ ПЛАШКИ ПРИ РЕЖИМІ КАЛІБРУВАННЯ (ГАЛОЧКА ВСЕРЕДИНІ) */
+    /* РЕЖИМ КАЛІБРУВАННЯ: ГАЛОЧКА ВСЕРЕДИНІ ПЛАШКИ */
     #routeStatusBar.in-edit-mode {
       background: #064e3b !important;
       border-color: #10b981 !important;
@@ -105,7 +110,7 @@
       gap: 5px;
       color: #ffffff;
       font-weight: 900;
-      font-size: 12px;
+      font-size: 11.5px;
     }
     #routeStatusBar.in-edit-mode #routeEditBadge {
       display: inline-flex !important;
@@ -191,7 +196,6 @@
               saturate(85%) !important;
     }
 
-    /* Налаштування яскравості та прозорості міток */
     .custom-dot-marker,
     .radar-circle {
       filter: brightness(var(--marker-brightness)) !important;
@@ -657,7 +661,7 @@
         </div>
       </div>
 
-      <!-- НОВИЙ ПУНКТ: НАЛАШТУВАННЯ НІЧНОЇ КАРТИ ТА КОНТРАСТУ (МІЖ СВІТЛОФОРАМИ І СЕРВЕРОМ) -->
+      <!-- НАЛАШТУВАННЯ НІЧНОЇ КАРТИ ТА КОНТРАСТУ (МІЖ СВІТЛОФОРАМИ ТА СЕРВЕРОМ) -->
       <div class="tl-menu-container" style="margin-top: 6px;">
         <button class="btn-tl-main" onclick="openMapDisplayModal()" style="border-color: #38bdf8;">
           <span>🌙 Налаштування карти (Ніч / Контраст)</span>
@@ -784,25 +788,25 @@
     </div>
   </div>
 
-  <!-- МОДАЛКА НАЛАШТУВАННЯ НІЧНОЇ КАРТИ ТА КОНТРАСТУ -->
-  <div id="mapDisplayModal" class="action-sheet-backdrop" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:10005; align-items:center; justify-content:center; backdrop-filter:blur(3px);" onclick="closeMapDisplayModal(event)">
-    <div class="action-sheet-card" style="background:#0f172a; border:2px solid #0284c7; border-radius:18px; width:92%; max-width:390px; padding:16px; display:flex; flex-direction:column; gap:11px; box-shadow:0 10px 30px rgba(0,0,0,0.85);" onclick="event.stopPropagation()">
-      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #1e293b; padding-bottom:8px;">
-        <span style="font-size:13.5px; font-weight:900; color:#38bdf8;">🌙 Калібрування карти та міток</span>
+  <!-- НАПІВПРОЗОРЕ ВІКНО НАЛАШТУВАННЯ НІЧНОЇ КАРТИ БЕЗ БЛЮРУ (РЕГУЛЮВАННЯ НА ЖИВІЙ КАРТІ) -->
+  <div id="mapDisplayModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.18); z-index:10005; align-items:center; justify-content:center;" onclick="closeMapDisplayModal(event)">
+    <div style="background:rgba(15, 23, 42, 0.88); border:2px solid #0284c7; border-radius:18px; width:92%; max-width:375px; padding:15px; display:flex; flex-direction:column; gap:10px; box-shadow:0 10px 30px rgba(0,0,0,0.9);" onclick="event.stopPropagation()">
+      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(51,65,85,0.7); padding-bottom:7px;">
+        <span style="font-size:13.5px; font-weight:900; color:#38bdf8;">🌙 Калібрування карти наживо</span>
         <span style="cursor:pointer; font-size:18px; color:#94a3b8; font-weight:800; padding:0 6px;" onclick="closeMapDisplayModal()">✕</span>
       </div>
 
       <!-- Яскравість карти -->
-      <div style="background:#1e293b; padding:7px 10px; border-radius:9px;">
+      <div style="background:rgba(30, 41, 59, 0.85); padding:7px 10px; border-radius:9px;">
         <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:800; color:#cbd5e1; margin-bottom:3px;">
-          <span>Яскравість підложки карти:</span>
+          <span>Яскравість підложки:</span>
           <b id="lblMapBrightness" style="color:#38bdf8; font-family:monospace;">95%</b>
         </div>
         <input type="range" id="rngMapBrightness" min="30" max="130" step="5" value="95" style="width:100%; cursor:pointer;">
       </div>
 
       <!-- Контраст карти -->
-      <div style="background:#1e293b; padding:7px 10px; border-radius:9px;">
+      <div style="background:rgba(30, 41, 59, 0.85); padding:7px 10px; border-radius:9px;">
         <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:800; color:#cbd5e1; margin-bottom:3px;">
           <span>Контрастність ліній вулиць:</span>
           <b id="lblMapContrast" style="color:#38bdf8; font-family:monospace;">108%</b>
@@ -811,7 +815,7 @@
       </div>
 
       <!-- Яскравість міток подій -->
-      <div style="background:#1e293b; padding:7px 10px; border-radius:9px;">
+      <div style="background:rgba(30, 41, 59, 0.85); padding:7px 10px; border-radius:9px;">
         <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:800; color:#cbd5e1; margin-bottom:3px;">
           <span>Яскравість точок (подій):</span>
           <b id="lblMarkerBrightness" style="color:#10b981; font-family:monospace;">100%</b>
@@ -821,16 +825,16 @@
 
       <!-- Відтінок ночі -->
       <div>
-        <div style="font-size:11px; font-weight:800; color:#cbd5e1; margin-bottom:6px;">Відтінок нічної підложки:</div>
+        <div style="font-size:11px; font-weight:800; color:#cbd5e1; margin-bottom:5px;">Відтінок темної теми:</div>
         <div style="display:flex; gap:8px;">
-          <button id="btnHueBlue" onclick="setNightHue('180deg')" style="flex:1; background:#0b1120; border:1.5px solid #0284c7; color:#38bdf8; font-size:10.5px; font-weight:800; padding:6px 0; border-radius:6px; cursor:pointer;">🌌 Синій</button>
-          <button id="btnHueDark" onclick="setNightHue('0deg')" style="flex:1; background:#0b1120; border:1px solid #334155; color:#94a3b8; font-size:10.5px; font-weight:800; padding:6px 0; border-radius:6px; cursor:pointer;">🌑 Графіт</button>
-          <button id="btnHueSoft" onclick="setNightHue('140deg')" style="flex:1; background:#0b1120; border:1px solid #334155; color:#94a3b8; font-size:10.5px; font-weight:800; padding:6px 0; border-radius:6px; cursor:pointer;">🌫️ М'який</button>
+          <button id="btnHueBlue" onclick="setNightHue('180deg')" style="flex:1; background:rgba(11,17,32,0.9); border:1.5px solid #0284c7; color:#38bdf8; font-size:10.5px; font-weight:800; padding:6px 0; border-radius:6px; cursor:pointer;">🌌 Синій</button>
+          <button id="btnHueDark" onclick="setNightHue('0deg')" style="flex:1; background:rgba(11,17,32,0.9); border:1px solid #334155; color:#94a3b8; font-size:10.5px; font-weight:800; padding:6px 0; border-radius:6px; cursor:pointer;">🌑 Графіт</button>
+          <button id="btnHueSoft" onclick="setNightHue('140deg')" style="flex:1; background:rgba(11,17,32,0.9); border:1px solid #334155; color:#94a3b8; font-size:10.5px; font-weight:800; padding:6px 0; border-radius:6px; cursor:pointer;">🌫️ М'який</button>
         </div>
       </div>
 
-      <div style="display:flex; gap:6px; margin-top:4px;">
-        <button onclick="resetMapDisplaySettings()" style="flex:1; background:#1e293b; border:1px solid #475569; color:#cbd5e1; font-size:11px; font-weight:800; padding:8px; border-radius:8px; cursor:pointer;">
+      <div style="display:flex; gap:6px; margin-top:3px;">
+        <button onclick="resetMapDisplaySettings()" style="flex:1; background:rgba(30,41,59,0.9); border:1px solid #475569; color:#cbd5e1; font-size:11px; font-weight:800; padding:8px; border-radius:8px; cursor:pointer;">
           🔄 Скинути
         </button>
         <button onclick="closeMapDisplayModal()" style="flex:2; background:#0284c7; border:none; color:#fff; font-size:11.5px; font-weight:800; padding:8px; border-radius:8px; cursor:pointer;">
@@ -1214,7 +1218,7 @@
     }
 
     // =========================================================================
-    // 🌙 НАЛАШТУВАННЯ НІЧНОЇ КАРТИ ТА МІТОК
+    // 🌙 НАЛАШТУВАННЯ НІЧНОЇ КАРТИ ТА МІТОК (ЖИВЕ РЕГУЛЮВАННЯ БЕЗ БЛЮРУ)
     // =========================================================================
     const DEFAULT_MAP_DISPLAY = {
       brightness: 95,
@@ -1599,6 +1603,7 @@
       { id: "schepkina", name: "вул. Щепкіна", fullName: "вул. Щепкіна", lat: 48.47350, lng: 34.99680, keys: ["щепкін", "щепкин"] }
     ];
 
+    // ОНОВЛЕННЯ СТАТУСУ: КОРОТКИЙ ТЕКСТ («1 БП», «2 БП») ДЛЯ СТАБІЛЬНОГО РОЗМІРУ
     function updateRouteStatus() {
       if (currentUiMode === "simple") return;
       const bar = document.getElementById("routeStatusBar");
@@ -1612,7 +1617,7 @@
       }
       bar.style.display = "inline-flex";
 
-      const redCheckpoints = [];
+      let redCount = 0;
       checkpoints.forEach(cp => {
         const ignoredKeys = tlIgnoredPoints[cp.id] || [];
         const matched = allPoints.filter(p => {
@@ -1623,19 +1628,14 @@
         matched.sort((a,b) => (b.time||0) - (a.time||0));
         const latest = matched[0];
         if (latest && !isCleanPoint(latest)) {
-          let shortName = cp.name.split('(')[0].replace(/вул\.\s*/i, '').replace(/РОВД\s*\/\s*/i, '').trim();
-          redCheckpoints.push(shortName);
+          redCount++;
         }
       });
 
-      if (redCheckpoints.length > 0) {
+      if (redCount > 0) {
         bar.classList.add("danger");
         if (icon) icon.innerText = "🔴";
-        if (redCheckpoints.length === 1) {
-          if (text) text.innerText = `Мій шлях: Увага (${redCheckpoints[0]})!`;
-        } else {
-          if (text) text.innerText = `Мій шлях: ${redCheckpoints.length} БП (${redCheckpoints.slice(0, 2).join(', ')}${redCheckpoints.length > 2 ? '...' : ''})!`;
-        }
+        if (text) text.innerText = `Мій шлях: ${redCount} БП`;
       } else {
         bar.classList.remove("danger");
         if (icon) icon.innerText = "🟢";
@@ -1740,14 +1740,13 @@
 
     function handleRouteStatusClick(e) {
       if (isUiLayoutEditMode) {
-        // Якщо в режимі редагування — клік по кнопці з галочкою зберігає розміщення
         saveCustomUiLayout(e);
         return;
       }
       toggleRouteSubmenu(e);
     }
 
-    // Довге натискання (смартфон) та клік коліщатком (ПК)
+    // Слухачі довгого натискання та коліщатка
     const routeBarEl = document.getElementById("routeStatusBar");
     if (routeBarEl) {
       routeBarEl.addEventListener("touchstart", (e) => {
@@ -1767,7 +1766,7 @@
 
       routeBarEl.addEventListener("mousedown", (e) => {
         if (currentUiMode === "simple" || isUiLayoutEditMode) return;
-        if (e.button === 1) { // Клік коліщатком миші
+        if (e.button === 1) {
           e.preventDefault();
           enterUiLayoutEditMode();
           return;
@@ -1899,7 +1898,7 @@
       showToast("🤖 Мітку передано ШІ-штурману!");
     };
 
-    // ВИКЛИК ДІЙ З МІТКОЮ (ПОВНІСТЮ ВИМКНЕНО В ПРОСТОМУ РЕЖИМІ)
+    // БЕЗПЕЧНИЙ ВИКЛИК МЕНЮ ДІЙ (СТРОГИЙ ЗАМОК В ПРОСТОМУ РЕЖИМІ)
     function openMarkerActionSheet(point, marker) {
       if (currentUiMode === "simple") return;
       activeActionPoint = point;
@@ -2634,7 +2633,7 @@ ${allLiveReportsText || "Повідомлень немає"}
     }
 
     // =========================================================================
-    // 📍 РЕНДЕР МІТОК ІЗ ЗАХИСТОМ ВІД ПЕРЕНЕСЕННЯ В ПРОСТОМУ РЕЖИМІ
+    // 📍 РЕНДЕР МІТОК ІЗ СУВОРОЮ БЛОКИРОВКОЮ ПЕРЕНЕСЕННЯ В ПРОСТОМУ РЕЖИМІ
     // =========================================================================
     function renderMarkers() {
       try {
@@ -2771,13 +2770,21 @@ ${allLiveReportsText || "Повідомлень немає"}
           marker.pointData = cluster.points[0];
           marker.bindPopup(popupContent, { autoClose: true, closeOnClick: true });
 
-          // ДОДАТКОВИЙ ЗАХИСТ: В ПРОСТОМУ РЕЖИМІ ДОВГЕ НАТИСКАННЯ ПОВНІСТЮ ВИМКНЕНО
-          if (!isSimple) {
-            let pressTimer = null;
-            let startX = 0, startY = 0;
-            marker.on('add', () => {
-              const el = marker.getElement();
-              if (!el) return;
+          // БЛОКУВАННЯ ДОВГОГО ТАПА ТА СИСТЕМНОГО МЕНЮ В ПРОСТОМУ РЕЖИМІ
+          marker.on('add', () => {
+            const el = marker.getElement();
+            if (!el) return;
+
+            el.addEventListener('contextmenu', (e) => {
+              if (currentUiMode === "simple") {
+                e.preventDefault();
+                e.stopPropagation();
+              }
+            });
+
+            if (!isSimple) {
+              let pressTimer = null;
+              let startX = 0, startY = 0;
               el.addEventListener('touchstart', (e) => {
                 if (currentUiMode === "simple") return;
                 startX = e.touches[0].clientX; startY = e.touches[0].clientY;
@@ -2794,8 +2801,8 @@ ${allLiveReportsText || "Повідомлень немає"}
                 }
               }, { passive: true });
               el.addEventListener('touchend', () => { if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } });
-            });
-          }
+            }
+          });
 
           markersLayer.addLayer(marker);
           visibleCount += cluster.points.length;
