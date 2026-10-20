@@ -29,6 +29,7 @@
       --map-night-contrast: 108%;
       --map-night-invert: 90%;
       --map-night-hue: 180deg;
+      --map-night-sat: 85%;
       --marker-brightness: 100%;
       --marker-opacity: 1;
     }
@@ -193,13 +194,13 @@
               hue-rotate(var(--map-night-hue)) 
               contrast(var(--map-night-contrast)) 
               brightness(var(--map-night-brightness)) 
-              saturate(85%) !important;
+              saturate(var(--map-night-sat)) !important;
     }
 
-    .custom-dot-marker,
-    .radar-circle {
+    /* ЯСКРАВІСТЬ МІТОК ЗМІНЮЄТЬСЯ ТІЛЬКИ В НІЧНОМУ РЕЖИМІ! В ДЕННОМУ ЗАВЖДИ 100% */
+    #map.night-mode .custom-dot-marker,
+    #map.night-mode .radar-circle {
       filter: brightness(var(--marker-brightness)) !important;
-      opacity: var(--marker-opacity) !important;
     }
 
     body.night-mode [class*="ticker"],
@@ -661,10 +662,10 @@
         </div>
       </div>
 
-      <!-- НАЛАШТУВАННЯ НІЧНОЇ КАРТИ ТА КОНТРАСТУ (МІЖ СВІТЛОФОРАМИ ТА СЕРВЕРОМ) -->
+      <!-- КОМПАКТНА КНОПКА: НАЛАШТУВАННЯ КАРТИ (МІЖ СВІТЛОФОРАМИ ТА СЕРВЕРОМ) -->
       <div class="tl-menu-container" style="margin-top: 6px;">
         <button class="btn-tl-main" onclick="openMapDisplayModal()" style="border-color: #38bdf8;">
-          <span>🌙 Налаштування карти (Ніч / Контраст)</span>
+          <span>🌙 Налашт. карти</span>
           <span style="font-size:12px;">⚙️</span>
         </button>
       </div>
@@ -814,22 +815,25 @@
         <input type="range" id="rngMapContrast" min="70" max="160" step="5" value="108" style="width:100%; cursor:pointer;">
       </div>
 
-      <!-- Яскравість міток подій -->
+      <!-- Яскравість міток подій (діє тільки вночі) -->
       <div style="background:rgba(30, 41, 59, 0.85); padding:7px 10px; border-radius:9px;">
         <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:800; color:#cbd5e1; margin-bottom:3px;">
-          <span>Яскравість точок (подій):</span>
+          <span>Яскравість точок (вночі):</span>
           <b id="lblMarkerBrightness" style="color:#10b981; font-family:monospace;">100%</b>
         </div>
-        <input type="range" id="rngMarkerBrightness" min="50" max="160" step="5" value="100" style="width:100%; cursor:pointer;">
+        <input type="range" id="rngMarkerBrightness" min="40" max="160" step="5" value="100" style="width:100%; cursor:pointer;">
       </div>
 
-      <!-- Відтінок ночі -->
+      <!-- Відтінки нічної теми (6 фільтрів) -->
       <div>
-        <div style="font-size:11px; font-weight:800; color:#cbd5e1; margin-bottom:5px;">Відтінок темної теми:</div>
-        <div style="display:flex; gap:8px;">
-          <button id="btnHueBlue" onclick="setNightHue('180deg')" style="flex:1; background:rgba(11,17,32,0.9); border:1.5px solid #0284c7; color:#38bdf8; font-size:10.5px; font-weight:800; padding:6px 0; border-radius:6px; cursor:pointer;">🌌 Синій</button>
-          <button id="btnHueDark" onclick="setNightHue('0deg')" style="flex:1; background:rgba(11,17,32,0.9); border:1px solid #334155; color:#94a3b8; font-size:10.5px; font-weight:800; padding:6px 0; border-radius:6px; cursor:pointer;">🌑 Графіт</button>
-          <button id="btnHueSoft" onclick="setNightHue('140deg')" style="flex:1; background:rgba(11,17,32,0.9); border:1px solid #334155; color:#94a3b8; font-size:10.5px; font-weight:800; padding:6px 0; border-radius:6px; cursor:pointer;">🌫️ М'який</button>
+        <div style="font-size:11px; font-weight:800; color:#cbd5e1; margin-bottom:5px;">Фільтр темної теми:</div>
+        <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:6px;">
+          <button id="btnHueBlue" onclick="setNightFilter('180deg', '85%')" style="background:rgba(11,17,32,0.9); border:1.5px solid #0284c7; color:#38bdf8; font-size:10.5px; font-weight:800; padding:6px 2px; border-radius:6px; cursor:pointer;">🌌 Синій</button>
+          <button id="btnHueDark" onclick="setNightFilter('0deg', '85%')" style="background:rgba(11,17,32,0.9); border:1px solid #334155; color:#94a3b8; font-size:10.5px; font-weight:800; padding:6px 2px; border-radius:6px; cursor:pointer;">🌑 Графіт</button>
+          <button id="btnHueSoft" onclick="setNightFilter('140deg', '85%')" style="background:rgba(11,17,32,0.9); border:1px solid #334155; color:#94a3b8; font-size:10.5px; font-weight:800; padding:6px 2px; border-radius:6px; cursor:pointer;">🌫️ М'який</button>
+          <button id="btnHueWarm" onclick="setNightFilter('45deg', '90%')" style="background:rgba(11,17,32,0.9); border:1px solid #334155; color:#94a3b8; font-size:10.5px; font-weight:800; padding:6px 2px; border-radius:6px; cursor:pointer;">🟠 Бурштин</button>
+          <button id="btnHueEmerald" onclick="setNightFilter('90deg', '90%')" style="background:rgba(11,17,32,0.9); border:1px solid #334155; color:#94a3b8; font-size:10.5px; font-weight:800; padding:6px 2px; border-radius:6px; cursor:pointer;">📟 Смарагд</button>
+          <button id="btnHueOled" onclick="setNightFilter('0deg', '0%')" style="background:rgba(11,17,32,0.9); border:1px solid #334155; color:#94a3b8; font-size:10.5px; font-weight:800; padding:6px 2px; border-radius:6px; cursor:pointer;">⬛ OLED</button>
         </div>
       </div>
 
@@ -1218,13 +1222,14 @@
     }
 
     // =========================================================================
-    // 🌙 НАЛАШТУВАННЯ НІЧНОЇ КАРТИ ТА МІТОК (ЖИВЕ РЕГУЛЮВАННЯ БЕЗ БЛЮРУ)
+    // 🌙 НАЛАШТУВАННЯ НІЧНОЇ КАРТИ ТА МІТОК (ЖИВЕ РЕГУЛЮВАННЯ БЕЗ БЛЮРУ + 6 ФІЛЬТРІВ)
     // =========================================================================
     const DEFAULT_MAP_DISPLAY = {
       brightness: 95,
       contrast: 108,
       markerBrightness: 100,
-      hue: "180deg"
+      hue: "180deg",
+      sat: "85%"
     };
 
     let mapDisplaySettings = { ...DEFAULT_MAP_DISPLAY };
@@ -1238,6 +1243,7 @@
       root.style.setProperty("--map-night-brightness", mapDisplaySettings.brightness + "%");
       root.style.setProperty("--map-night-contrast", mapDisplaySettings.contrast + "%");
       root.style.setProperty("--map-night-hue", mapDisplaySettings.hue);
+      root.style.setProperty("--map-night-sat", mapDisplaySettings.sat || "85%");
       root.style.setProperty("--marker-brightness", mapDisplaySettings.markerBrightness + "%");
       localStorage.setItem("radar_map_display", JSON.stringify(mapDisplaySettings));
     }
@@ -1286,26 +1292,31 @@
       showToast("🌙 Налаштування відображення збережено!");
     }
 
-    function setNightHue(hueVal) {
+    function setNightFilter(hueVal, satVal = "85%") {
       mapDisplaySettings.hue = hueVal;
+      mapDisplaySettings.sat = satVal;
       applyMapDisplaySettings();
       updateHueButtonsUI();
     }
 
     function updateHueButtonsUI() {
-      const bBlue = document.getElementById("btnHueBlue");
-      const bDark = document.getElementById("btnHueDark");
-      const bSoft = document.getElementById("btnHueSoft");
-      if (!bBlue || !bDark || !bSoft) return;
+      const btnMap = [
+        { id: "btnHueBlue", hue: "180deg", sat: "85%" },
+        { id: "btnHueDark", hue: "0deg", sat: "85%" },
+        { id: "btnHueSoft", hue: "140deg", sat: "85%" },
+        { id: "btnHueWarm", hue: "45deg", sat: "90%" },
+        { id: "btnHueEmerald", hue: "90deg", sat: "90%" },
+        { id: "btnHueOled", hue: "0deg", sat: "0%" }
+      ];
 
-      bBlue.style.borderColor = mapDisplaySettings.hue === "180deg" ? "#00f3ff" : "#334155";
-      bBlue.style.color = mapDisplaySettings.hue === "180deg" ? "#00f3ff" : "#94a3b8";
-
-      bDark.style.borderColor = mapDisplaySettings.hue === "0deg" ? "#00f3ff" : "#334155";
-      bDark.style.color = mapDisplaySettings.hue === "0deg" ? "#00f3ff" : "#94a3b8";
-
-      bSoft.style.borderColor = mapDisplaySettings.hue === "140deg" ? "#00f3ff" : "#334155";
-      bSoft.style.color = mapDisplaySettings.hue === "140deg" ? "#00f3ff" : "#94a3b8";
+      btnMap.forEach(cfg => {
+        const btn = document.getElementById(cfg.id);
+        if (!btn) return;
+        const isActive = (mapDisplaySettings.hue === cfg.hue && (mapDisplaySettings.sat || "85%") === cfg.sat);
+        btn.style.borderColor = isActive ? "#00f3ff" : "#334155";
+        btn.style.color = isActive ? "#00f3ff" : "#94a3b8";
+        btn.style.boxShadow = isActive ? "0 0 10px rgba(0, 243, 255, 0.35)" : "none";
+      });
     }
 
     function resetMapDisplaySettings() {
