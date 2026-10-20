@@ -14,7 +14,7 @@
   <link rel="stylesheet" href="style.css" />
   <style>
     /* =========================================================================
-       0. ДИНАМІЧНІ ЗМІННІ СОНАРА ТА СТИЛІ НИЖНІХ КНОПОК
+       0. ДИНАМІЧНІ ЗМІННІ СОНАРА, КАРТИ ТА МІТОК
        ========================================================================= */
     :root {
       --sonar-clean-color: #10b981;
@@ -23,6 +23,14 @@
       --sonar-clean-speed: 1.8s;
       --sonar-danger-base-speed: 2.4s;
       --sonar-danger-step: 0.3s;
+
+      /* Користувацькі налаштування яскравості карти та міток */
+      --map-night-brightness: 95%;
+      --map-night-contrast: 108%;
+      --map-night-invert: 90%;
+      --map-night-hue: 180deg;
+      --marker-brightness: 100%;
+      --marker-opacity: 1;
     }
 
     /* АНІМАЦІЯ ПОГОЙДУВАННЯ ІКОНОК (РЕЖИМ ПЕРЕМІЩЕННЯ) */
@@ -42,7 +50,7 @@
       cursor: grabbing !important;
     }
 
-    /* ПЛАШКА «МІЙ ШЛЯХ»: ВІЛЬНА ДОВЖИНА, ЧОРНІ БУКВИ (ЧИСТО), ЧЕРВОНІ (БП) */
+    /* ПЛАШКА «МІЙ ШЛЯХ»: ТЕМНИЙ ФОН, БІЛИЙ ТЕКСТ (ЧИСТО), ЧЕРВОНИЙ ТЕКСТ (БП) */
     #routeStatusBar {
       position: fixed;
       bottom: 15px;
@@ -60,48 +68,47 @@
       border-radius: 12px !important;
       font-size: 11.5px !important;
       font-weight: 800 !important;
-      background: #f1f5f9 !important;
+      background: #0f172a !important;
       border: 1.5px solid #10b981 !important;
-      color: #000000 !important;
-      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4) !important;
+      color: #ffffff !important;
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45) !important;
       cursor: pointer;
       user-select: none;
       white-space: nowrap !important;
-      transition: border-color 0.2s, background-color 0.2s;
+      transition: border-color 0.2s, background-color 0.2s, color 0.2s;
     }
     #routeStatusBar #routeStatusText {
-      color: #000000 !important;
+      color: #ffffff !important;
       font-weight: 800 !important;
     }
     #routeStatusBar.danger {
-      background: #fef2f2 !important;
+      background: #0f172a !important;
       border-color: #ef4444 !important;
       box-shadow: 0 0 16px rgba(239, 68, 68, 0.45) !important;
     }
     #routeStatusBar.danger #routeStatusText {
-      color: #dc2626 !important;
+      color: #ef4444 !important;
     }
 
-    /* КНОПКА ЗАВЕРШЕННЯ КАЛІБРУВАННЯ ПОЗИЦІЙ (ГАЛОЧКА) */
-    #btnSaveUiLayout {
+    /* СТИЛЬ ПЛАШКИ ПРИ РЕЖИМІ КАЛІБРУВАННЯ (ГАЛОЧКА ВСЕРЕДИНІ) */
+    #routeStatusBar.in-edit-mode {
+      background: #064e3b !important;
+      border-color: #10b981 !important;
+      box-shadow: 0 0 18px rgba(16, 185, 129, 0.75) !important;
+    }
+    #routeStatusBar.in-edit-mode #routeStatusContent {
+      display: none !important;
+    }
+    #routeStatusBar #routeEditBadge {
       display: none;
-      position: fixed;
-      bottom: 15px;
-      left: 14px;
-      z-index: 2700;
-      width: 38px;
-      height: 38px;
-      border-radius: 12px;
-      background: #10b981;
-      border: 2px solid #ffffff;
-      color: #ffffff;
-      font-size: 18px;
-      font-weight: 900;
-      cursor: pointer;
-      box-shadow: 0 0 18px rgba(16, 185, 129, 0.7);
       align-items: center;
-      justify-content: center;
-      user-select: none;
+      gap: 5px;
+      color: #ffffff;
+      font-weight: 900;
+      font-size: 12px;
+    }
+    #routeStatusBar.in-edit-mode #routeEditBadge {
+      display: inline-flex !important;
     }
 
     /* ОКРЕМІ КНОПКИ «МОЗОК 🧠» ТА «СТАТИСТИКА 📊» */
@@ -114,6 +121,8 @@
       height: 38px !important;
       min-width: 38px !important;
       min-height: 38px !important;
+      max-width: 38px !important;
+      max-height: 38px !important;
       box-sizing: border-box !important;
       display: inline-flex !important;
       align-items: center !important;
@@ -148,6 +157,8 @@
       height: 38px !important;
       min-width: 38px !important;
       min-height: 38px !important;
+      max-width: 38px !important;
+      max-height: 38px !important;
       box-sizing: border-box !important;
       display: inline-flex !important;
       align-items: center !important;
@@ -170,10 +181,21 @@
     }
 
     /* =========================================================================
-       1. КОНТРАСТНА НІЧНА ТЕМА КАРТИ
+       1. ДИНАМІЧНА НІЧНА ТЕМА ТА ФІЛЬТРИ КАРТИ І МІТОК
        ========================================================================= */
     #map.night-mode .leaflet-tile-pane {
-      filter: invert(90%) hue-rotate(180deg) contrast(108%) brightness(96%) saturate(85%) !important;
+      filter: invert(var(--map-night-invert)) 
+              hue-rotate(var(--map-night-hue)) 
+              contrast(var(--map-night-contrast)) 
+              brightness(var(--map-night-brightness)) 
+              saturate(85%) !important;
+    }
+
+    /* Налаштування яскравості та прозорості міток */
+    .custom-dot-marker,
+    .radar-circle {
+      filter: brightness(var(--marker-brightness)) !important;
+      opacity: var(--marker-opacity) !important;
     }
 
     body.night-mode [class*="ticker"],
@@ -208,7 +230,6 @@
     html.mode-simple #routeSubmenu,
     html.mode-simple #btnMemHud,
     html.mode-simple #btnStatsHud,
-    html.mode-simple #btnSaveUiLayout,
     html.mode-simple #btnTimelineFloating {
       display: none !important;
     }
@@ -617,6 +638,7 @@
         <div id="searchResults" class="search-results"></div>
       </div>
 
+      <!-- СВІТЛОФОРИ -->
       <div class="tl-menu-container">
         <button class="btn-tl-main" onclick="toggleTlDropdown()">
           <span>🚦 Мої світлофори</span>
@@ -635,6 +657,15 @@
         </div>
       </div>
 
+      <!-- НОВИЙ ПУНКТ: НАЛАШТУВАННЯ НІЧНОЇ КАРТИ ТА КОНТРАСТУ (МІЖ СВІТЛОФОРАМИ І СЕРВЕРОМ) -->
+      <div class="tl-menu-container" style="margin-top: 6px;">
+        <button class="btn-tl-main" onclick="openMapDisplayModal()" style="border-color: #38bdf8;">
+          <span>🌙 Налаштування карти (Ніч / Контраст)</span>
+          <span style="font-size:12px;">⚙️</span>
+        </button>
+      </div>
+
+      <!-- СЕРВЕР -->
       <div class="server-menu-container">
         <button class="btn-server-main" onclick="toggleServerDropdown()">
           <span>⚙️ Керування сервером</span>
@@ -697,17 +728,19 @@
     </div>
   </div>
 
-  <!-- 3. ОКРЕМІ ЕЛЕМЕНТИ НИЖНЬОГО РЯДУ З ПІДТРИМКОЮ ВІЛЬНОГО ПЕРЕМІЩЕННЯ -->
+  <!-- 3. ОКРЕМІ ЕЛЕМЕНТИ НИЖНЬОГО РЯДУ З ГАЛОЧКОЮ ВСЕРЕДИНІ ПЛАШКИ -->
   <div id="routeStatusBar" class="route-status-bar" onclick="handleRouteStatusClick(event)">
-    <span id="routeStatusIcon">🟢</span>
-    <span id="routeStatusText">Мій шлях: Чисто</span>
-    <span id="routeSubmenuArrow" style="font-size:10px; color:#94a3b8; margin-left:2px;">▴</span>
+    <div id="routeStatusContent" style="display:inline-flex; align-items:center; gap:6px;">
+      <span id="routeStatusIcon">🟢</span>
+      <span id="routeStatusText">Мій шлях: Чисто</span>
+      <span id="routeSubmenuArrow" style="font-size:10px; color:#94a3b8; margin-left:2px;">▴</span>
+    </div>
+    <!-- БЕЙДЖ ГАЛОЧКИ ЗБЕРЕЖЕННЯ ВСЕРЕДИНІ КНОПКИ -->
+    <div id="routeEditBadge">
+      <span style="font-size:15px;">✅</span>
+      <span>Зафіксувати</span>
+    </div>
   </div>
-
-  <!-- Кнопка збереження положення іконок (зелена галочка) -->
-  <button id="btnSaveUiLayout" onclick="saveCustomUiLayout(event)" title="Зафіксувати положення кнопок">
-    ✅
-  </button>
 
   <button id="btnMemHud" onclick="if(window.openQuickSynonymModal) window.openQuickSynonymModal();" title="База знань ШІ (Мозок)">
     🧠
@@ -748,6 +781,62 @@
     </div>
     <div id="btnGpsHud" onclick="toggleGpsMode()" title="Навігація">
       <span>🧭</span>
+    </div>
+  </div>
+
+  <!-- МОДАЛКА НАЛАШТУВАННЯ НІЧНОЇ КАРТИ ТА КОНТРАСТУ -->
+  <div id="mapDisplayModal" class="action-sheet-backdrop" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:10005; align-items:center; justify-content:center; backdrop-filter:blur(3px);" onclick="closeMapDisplayModal(event)">
+    <div class="action-sheet-card" style="background:#0f172a; border:2px solid #0284c7; border-radius:18px; width:92%; max-width:390px; padding:16px; display:flex; flex-direction:column; gap:11px; box-shadow:0 10px 30px rgba(0,0,0,0.85);" onclick="event.stopPropagation()">
+      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #1e293b; padding-bottom:8px;">
+        <span style="font-size:13.5px; font-weight:900; color:#38bdf8;">🌙 Калібрування карти та міток</span>
+        <span style="cursor:pointer; font-size:18px; color:#94a3b8; font-weight:800; padding:0 6px;" onclick="closeMapDisplayModal()">✕</span>
+      </div>
+
+      <!-- Яскравість карти -->
+      <div style="background:#1e293b; padding:7px 10px; border-radius:9px;">
+        <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:800; color:#cbd5e1; margin-bottom:3px;">
+          <span>Яскравість підложки карти:</span>
+          <b id="lblMapBrightness" style="color:#38bdf8; font-family:monospace;">95%</b>
+        </div>
+        <input type="range" id="rngMapBrightness" min="30" max="130" step="5" value="95" style="width:100%; cursor:pointer;">
+      </div>
+
+      <!-- Контраст карти -->
+      <div style="background:#1e293b; padding:7px 10px; border-radius:9px;">
+        <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:800; color:#cbd5e1; margin-bottom:3px;">
+          <span>Контрастність ліній вулиць:</span>
+          <b id="lblMapContrast" style="color:#38bdf8; font-family:monospace;">108%</b>
+        </div>
+        <input type="range" id="rngMapContrast" min="70" max="160" step="5" value="108" style="width:100%; cursor:pointer;">
+      </div>
+
+      <!-- Яскравість міток подій -->
+      <div style="background:#1e293b; padding:7px 10px; border-radius:9px;">
+        <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:800; color:#cbd5e1; margin-bottom:3px;">
+          <span>Яскравість точок (подій):</span>
+          <b id="lblMarkerBrightness" style="color:#10b981; font-family:monospace;">100%</b>
+        </div>
+        <input type="range" id="rngMarkerBrightness" min="50" max="160" step="5" value="100" style="width:100%; cursor:pointer;">
+      </div>
+
+      <!-- Відтінок ночі -->
+      <div>
+        <div style="font-size:11px; font-weight:800; color:#cbd5e1; margin-bottom:6px;">Відтінок нічної підложки:</div>
+        <div style="display:flex; gap:8px;">
+          <button id="btnHueBlue" onclick="setNightHue('180deg')" style="flex:1; background:#0b1120; border:1.5px solid #0284c7; color:#38bdf8; font-size:10.5px; font-weight:800; padding:6px 0; border-radius:6px; cursor:pointer;">🌌 Синій</button>
+          <button id="btnHueDark" onclick="setNightHue('0deg')" style="flex:1; background:#0b1120; border:1px solid #334155; color:#94a3b8; font-size:10.5px; font-weight:800; padding:6px 0; border-radius:6px; cursor:pointer;">🌑 Графіт</button>
+          <button id="btnHueSoft" onclick="setNightHue('140deg')" style="flex:1; background:#0b1120; border:1px solid #334155; color:#94a3b8; font-size:10.5px; font-weight:800; padding:6px 0; border-radius:6px; cursor:pointer;">🌫️ М'який</button>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:6px; margin-top:4px;">
+        <button onclick="resetMapDisplaySettings()" style="flex:1; background:#1e293b; border:1px solid #475569; color:#cbd5e1; font-size:11px; font-weight:800; padding:8px; border-radius:8px; cursor:pointer;">
+          🔄 Скинути
+        </button>
+        <button onclick="closeMapDisplayModal()" style="flex:2; background:#0284c7; border:none; color:#fff; font-size:11.5px; font-weight:800; padding:8px; border-radius:8px; cursor:pointer;">
+          💾 Готово
+        </button>
+      </div>
     </div>
   </div>
 
@@ -1125,6 +1214,104 @@
     }
 
     // =========================================================================
+    // 🌙 НАЛАШТУВАННЯ НІЧНОЇ КАРТИ ТА МІТОК
+    // =========================================================================
+    const DEFAULT_MAP_DISPLAY = {
+      brightness: 95,
+      contrast: 108,
+      markerBrightness: 100,
+      hue: "180deg"
+    };
+
+    let mapDisplaySettings = { ...DEFAULT_MAP_DISPLAY };
+    try {
+      const savedDisp = localStorage.getItem("radar_map_display");
+      if (savedDisp) mapDisplaySettings = { ...DEFAULT_MAP_DISPLAY, ...JSON.parse(savedDisp) };
+    } catch(e) {}
+
+    function applyMapDisplaySettings() {
+      const root = document.documentElement;
+      root.style.setProperty("--map-night-brightness", mapDisplaySettings.brightness + "%");
+      root.style.setProperty("--map-night-contrast", mapDisplaySettings.contrast + "%");
+      root.style.setProperty("--map-night-hue", mapDisplaySettings.hue);
+      root.style.setProperty("--marker-brightness", mapDisplaySettings.markerBrightness + "%");
+      localStorage.setItem("radar_map_display", JSON.stringify(mapDisplaySettings));
+    }
+    applyMapDisplaySettings();
+
+    function openMapDisplayModal() {
+      const modal = document.getElementById("mapDisplayModal");
+      const rngB = document.getElementById("rngMapBrightness");
+      const lblB = document.getElementById("lblMapBrightness");
+      const rngC = document.getElementById("rngMapContrast");
+      const lblC = document.getElementById("lblMapContrast");
+      const rngM = document.getElementById("rngMarkerBrightness");
+      const lblM = document.getElementById("lblMarkerBrightness");
+
+      rngB.value = mapDisplaySettings.brightness;
+      lblB.innerText = mapDisplaySettings.brightness + "%";
+      rngB.oninput = (e) => {
+        mapDisplaySettings.brightness = Number(e.target.value);
+        lblB.innerText = mapDisplaySettings.brightness + "%";
+        applyMapDisplaySettings();
+      };
+
+      rngC.value = mapDisplaySettings.contrast;
+      lblC.innerText = mapDisplaySettings.contrast + "%";
+      rngC.oninput = (e) => {
+        mapDisplaySettings.contrast = Number(e.target.value);
+        lblC.innerText = mapDisplaySettings.contrast + "%";
+        applyMapDisplaySettings();
+      };
+
+      rngM.value = mapDisplaySettings.markerBrightness;
+      lblM.innerText = mapDisplaySettings.markerBrightness + "%";
+      rngM.oninput = (e) => {
+        mapDisplaySettings.markerBrightness = Number(e.target.value);
+        lblM.innerText = mapDisplaySettings.markerBrightness + "%";
+        applyMapDisplaySettings();
+      };
+
+      updateHueButtonsUI();
+      modal.style.display = "flex";
+    }
+
+    function closeMapDisplayModal(e) {
+      if (e && e.target && e.target.id !== "mapDisplayModal" && !e.target.closest("button") && e.target.innerText !== "✕") return;
+      document.getElementById("mapDisplayModal").style.display = "none";
+      showToast("🌙 Налаштування відображення збережено!");
+    }
+
+    function setNightHue(hueVal) {
+      mapDisplaySettings.hue = hueVal;
+      applyMapDisplaySettings();
+      updateHueButtonsUI();
+    }
+
+    function updateHueButtonsUI() {
+      const bBlue = document.getElementById("btnHueBlue");
+      const bDark = document.getElementById("btnHueDark");
+      const bSoft = document.getElementById("btnHueSoft");
+      if (!bBlue || !bDark || !bSoft) return;
+
+      bBlue.style.borderColor = mapDisplaySettings.hue === "180deg" ? "#00f3ff" : "#334155";
+      bBlue.style.color = mapDisplaySettings.hue === "180deg" ? "#00f3ff" : "#94a3b8";
+
+      bDark.style.borderColor = mapDisplaySettings.hue === "0deg" ? "#00f3ff" : "#334155";
+      bDark.style.color = mapDisplaySettings.hue === "0deg" ? "#00f3ff" : "#94a3b8";
+
+      bSoft.style.borderColor = mapDisplaySettings.hue === "140deg" ? "#00f3ff" : "#334155";
+      bSoft.style.color = mapDisplaySettings.hue === "140deg" ? "#00f3ff" : "#94a3b8";
+    }
+
+    function resetMapDisplaySettings() {
+      mapDisplaySettings = { ...DEFAULT_MAP_DISPLAY };
+      applyMapDisplaySettings();
+      openMapDisplayModal();
+      showToast("🔄 Параметри скинуто до заводських!");
+    }
+
+    // =========================================================================
     // 🌐 URL FIREBASE
     // =========================================================================
     const FIREBASE_POINTS_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/points.json";
@@ -1249,7 +1436,7 @@
     } catch(e) {}
 
     // =========================================================================
-    // 🗺️ СЕКТОРИ МІСТА (КАШТАНОВУ ЗАФІКСОВАНО В S6)
+    // 🗺️ СЕКТОРИ МІСТА
     // =========================================================================
     const SECTOR_DEFS = {
       s1: { 
@@ -1358,7 +1545,7 @@
     function isCleanPoint(p) {
       if (!p) return false;
 
-      const rawCombined = ((p.raw_text || "") + " " + (p.text || "") + " " + (p.address || ""))
+      const rawCombined = ((p.raw_text || "") + " " + (p.address || ""))
         .replace(/[\r\n]+/g, " ")
         .toLowerCase();
 
@@ -1457,7 +1644,7 @@
     }
 
     // =========================================================================
-    // 🎛️ СВОБОДНЕ ПЕРЕМІЩЕННЯ ТА КАЛІБРУВАННЯ ПОЗИЦІЙ КНОПОК
+    // 🎛️ СВОБОДНЕ ПЕРЕМІЩЕННЯ ТА КАЛІБРУВАННЯ ПОЗИЦІЙ (ГАЛОЧКА ВСЕРЕДИНІ)
     // =========================================================================
     let isUiLayoutEditMode = false;
     let routeLongPressTimer = null;
@@ -1492,15 +1679,11 @@
         }
       });
 
-      const btnSave = document.getElementById("btnSaveUiLayout");
       const routeBar = document.getElementById("routeStatusBar");
-      if (btnSave && routeBar) {
-        const rect = routeBar.getBoundingClientRect();
-        btnSave.style.left = (rect.right + 8) + "px";
-        btnSave.style.top = rect.top + "px";
-        btnSave.style.display = "inline-flex";
+      if (routeBar) {
+        routeBar.classList.add("in-edit-mode");
       }
-      showToast("🖐️ Перетягуйте кнопки пальцем або мишкою!");
+      showToast("🖐️ Перетягуйте кнопки! Для збереження натисніть галочку на плашці.");
     }
 
     function saveCustomUiLayout(e) {
@@ -1521,9 +1704,12 @@
       });
 
       localStorage.setItem("radar_hud_positions", JSON.stringify(positions));
-      const btnSave = document.getElementById("btnSaveUiLayout");
-      if (btnSave) btnSave.style.display = "none";
-      showToast("✅ Положення кнопок збережено!");
+
+      const routeBar = document.getElementById("routeStatusBar");
+      if (routeBar) {
+        routeBar.classList.remove("in-edit-mode");
+      }
+      showToast("✅ Положення кнопок зафіксовано!");
     }
 
     function makeElementFreelyDraggable(el) {
@@ -1540,14 +1726,6 @@
           el.style.left = (evt.clientX - shiftX) + "px";
           el.style.top = (evt.clientY - shiftY) + "px";
           el.style.bottom = "auto";
-
-          if (el.id === "routeStatusBar") {
-            const btnSave = document.getElementById("btnSaveUiLayout");
-            if (btnSave) {
-              btnSave.style.left = (evt.clientX - shiftX + el.offsetWidth + 8) + "px";
-              btnSave.style.top = (evt.clientY - shiftY) + "px";
-            }
-          }
         }
 
         function onUp() {
@@ -1561,15 +1739,19 @@
     }
 
     function handleRouteStatusClick(e) {
-      if (isUiLayoutEditMode) return;
+      if (isUiLayoutEditMode) {
+        // Якщо в режимі редагування — клік по кнопці з галочкою зберігає розміщення
+        saveCustomUiLayout(e);
+        return;
+      }
       toggleRouteSubmenu(e);
     }
 
-    // Слухачі довгого натискання (смартфон) та кліку коліщатком (ПК) на «Мій шлях»
+    // Довге натискання (смартфон) та клік коліщатком (ПК)
     const routeBarEl = document.getElementById("routeStatusBar");
     if (routeBarEl) {
       routeBarEl.addEventListener("touchstart", (e) => {
-        if (currentUiMode === "simple") return;
+        if (currentUiMode === "simple" || isUiLayoutEditMode) return;
         routeLongPressTimer = setTimeout(() => {
           enterUiLayoutEditMode();
         }, 650);
@@ -1584,7 +1766,7 @@
       });
 
       routeBarEl.addEventListener("mousedown", (e) => {
-        if (currentUiMode === "simple") return;
+        if (currentUiMode === "simple" || isUiLayoutEditMode) return;
         if (e.button === 1) { // Клік коліщатком миші
           e.preventDefault();
           enterUiLayoutEditMode();
@@ -1600,7 +1782,7 @@
       });
 
       routeBarEl.addEventListener("auxclick", (e) => {
-        if (e.button === 1) {
+        if (e.button === 1 && !isUiLayoutEditMode) {
           e.preventDefault();
           enterUiLayoutEditMode();
         }
@@ -1717,7 +1899,7 @@
       showToast("🤖 Мітку передано ШІ-штурману!");
     };
 
-    // ВИКЛИК МЕНЮ ДІЙ З МІТКОЮ (ПОВНІСТЮ ВИМКНЕНО В ПРОСТОМУ РЕЖИМІ)
+    // ВИКЛИК ДІЙ З МІТКОЮ (ПОВНІСТЮ ВИМКНЕНО В ПРОСТОМУ РЕЖИМІ)
     function openMarkerActionSheet(point, marker) {
       if (currentUiMode === "simple") return;
       activeActionPoint = point;
@@ -1844,6 +2026,7 @@
     const bshEl = document.getElementById("btnStatsHud");
     if (bshEl) L.DomEvent.disableClickPropagation(bshEl);
     L.DomEvent.disableClickPropagation(document.getElementById("tlSettingsModal"));
+    L.DomEvent.disableClickPropagation(document.getElementById("mapDisplayModal"));
 
     function toggleAiPillExpand(e) {
       if (e && (e.target.closest('textarea') || e.target.closest('.btn-ai-send') || e.target.closest('.ai-mini-chip') || e.target.closest('span[title]'))) return;
@@ -1895,7 +2078,7 @@
           try {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 8000);
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/{m}:generateContent?key=${k}`;
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${k}`;
             const res = await fetch(url, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
