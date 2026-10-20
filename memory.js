@@ -1,9 +1,8 @@
 /**
- * memory.js — Модуль бази знань, синонімів та калібрування вулиць v10.8
- * Дворівнева архітектура:
- * 1. Компактне вікно швидкого синоніма (клік на 🧠)
- * 2. Повноцінний повноекранний журнал керування «мозком»
- * Підтримка: редагування (✏️), видалення (🗑️), калібрування координат та автокомпліт
+ * memory.js — Модуль бази знань, синонімів та калібрування вулиць v10.9
+ * - Виправлено вирівнювання та прибрано відволікаючий блок останніх правил
+ * - Додано лічильник загальної кількості правил у швидкому вікні
+ * - Сортування: найсвіжіші записи завжди зверху (за часом, а не за алфавітом)
  */
 
 (function () {
@@ -86,6 +85,9 @@
     } catch (e) {
       console.warn("Помилка запису синоніма в Firebase:", e);
     }
+
+    updateQuickModalUI();
+    renderFullRulesList();
   };
 
   // 2. РЕЗОЛВЕР ЛОКАЦІЙ (Пам'ять -> Зміщення -> База міста)
@@ -170,12 +172,12 @@
       console.warn("Помилка синхронізації пам'яті:", e);
     }
 
-    renderQuickList();
+    updateQuickModalUI();
     renderFullRulesList();
   };
 
   // =========================================================================
-  // 4. РІВЕНЬ 1: КОМПАКТНЕ ВІКНО ШВИДКИХ СИНОНІМІВ (КЛІК НА 🧠)
+  // 4. РІВЕНЬ 1: КОМПАКТНЕ ВІКНО ШВИДКИХ СИНОНІМІВ З ЛІЧИЛЬНИКОМ
   // =========================================================================
   function ensureQuickModal() {
     let modal = document.getElementById("quickSynonymModal");
@@ -195,16 +197,17 @@
       `;
 
       modal.innerHTML = `
-        <div style="background:#0f172a; border:2px solid #0284c7; border-radius:18px; width:92%; max-width:400px; padding:15px; display:flex; flex-direction:column; gap:10px; box-shadow:0 10px 30px rgba(0,0,0,0.85);" onclick="event.stopPropagation()">
+        <div style="background:#0f172a; border:2px solid #0284c7; border-radius:18px; width:92%; max-width:390px; padding:15px; display:flex; flex-direction:column; gap:11px; box-shadow:0 10px 30px rgba(0,0,0,0.85);" onclick="event.stopPropagation()">
           <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #1e293b; padding-bottom:7px;">
-            <div style="font-size:13.5px; font-weight:900; color:#38bdf8; display:flex; align-items:center; gap:6px;">
-              <span>🧠 Швидкі синоніми («Мозок»)</span>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="font-size:13.5px; font-weight:900; color:#38bdf8;">🧠 Швидкі синоніми</span>
+              <span id="quickRulesCountBadge" style="font-size:10.5px; font-weight:800; color:#00f3ff; background:#0b1120; border:1px solid #0284c7; padding:1px 7px; border-radius:9px;">0 правил</span>
             </div>
             <span id="quickModalCloseBtn" style="cursor:pointer; font-size:19px; color:#94a3b8; font-weight:800; padding:0 6px;">✕</span>
           </div>
 
           <!-- Форма швидкого додавання -->
-          <div style="display:flex; flex-direction:column; gap:6px; background:#0b1120; padding:9px; border-radius:10px; border:1px solid #1e293b;">
+          <div style="display:flex; flex-direction:column; gap:6px; background:#0b1120; padding:10px; border-radius:10px; border:1px solid #1e293b;">
             <div style="font-size:11px; font-weight:800; color:#cbd5e1;">➕ Прив'язати орієнтир:</div>
             <input type="text" id="quickInputPhrase" placeholder="Фраза в пості (напр. каштанова)" style="background:#060913; border:1px solid #334155; color:#fff; padding:7px 9px; border-radius:6px; font-size:11.5px; outline:none;">
             <div style="position:relative;">
@@ -216,13 +219,9 @@
             </button>
           </div>
 
-          <!-- Останні додані синоніми -->
-          <div style="font-size:11px; font-weight:800; color:#94a3b8; margin-top:2px;">Останні правила в пам'яті:</div>
-          <div id="quickRecentList" style="max-height:160px; overflow-y:auto; display:flex; flex-direction:column; gap:5px;"></div>
-
           <!-- КНОПКА ПЕРЕХОДУ В ПОВНУ БАЗУ ЗНАНЬ НА ВЕСЬ ЕКРАН -->
-          <button id="quickBtnOpenFull" style="width:100%; background:linear-gradient(135deg, #0284c7 0%, #00f3ff 100%); border:none; color:#04101e; padding:10px; border-radius:9px; font-size:12px; font-weight:900; cursor:pointer; margin-top:4px; box-shadow:0 0 16px rgba(0,243,255,0.4); transition:transform 0.15s ease;">
-            📖 Відкрити всю базу знань (на весь екран) ➔
+          <button id="quickBtnOpenFull" style="width:100%; background:linear-gradient(135deg, #0284c7 0%, #00f3ff 100%); border:none; color:#04101e; padding:10px; border-radius:9px; font-size:12px; font-weight:900; cursor:pointer; margin-top:2px; box-shadow:0 0 16px rgba(0,243,255,0.4); transition:transform 0.15s ease;">
+            📖 Відкрити всю базу знань ➔
           </button>
         </div>
       `;
@@ -242,31 +241,16 @@
     return modal;
   }
 
-  function renderQuickList() {
-    const list = document.getElementById("quickRecentList");
-    if (!list) return;
-    list.innerHTML = "";
-
-    const entries = Object.entries(customStreetsCache);
-    if (entries.length === 0) {
-      list.innerHTML = `<div style="font-size:11px; color:#64748b; padding:6px 0; text-align:center;">Правил ще немає. Додайте перше вгорі!</div>`;
-      return;
+  function updateQuickModalUI() {
+    const totalCount = Object.keys(customStreetsCache).length;
+    const badge = document.getElementById("quickRulesCountBadge");
+    if (badge) {
+      badge.innerText = `${totalCount} правил`;
     }
-
-    entries.slice(-5).reverse().forEach(([key, item]) => {
-      const card = document.createElement("div");
-      card.style.cssText = "background:#060913; border:1px solid #1e293b; border-left:3px solid #00f3ff; border-radius:6px; padding:6px 8px; display:flex; justify-content:space-between; align-items:center; gap:6px;";
-      card.innerHTML = `
-        <div style="font-size:11px; line-height:1.3; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1;">
-          <b style="color:#f8fafc;">«${escapeHtml(item.phrase || key)}»</b> ➔ <span style="color:#38bdf8;">${escapeHtml(item.name || 'Вулиця')}</span>
-        </div>
-        <div style="display:flex; gap:4px; flex-shrink:0;">
-          <button style="background:#0f172a; border:1px solid #0284c7; color:#38bdf8; padding:3px 6px; border-radius:4px; font-size:10px; cursor:pointer;" onclick="window.editSynonymRule('${key}')">✏️</button>
-          <button style="background:#450a0a; border:1px solid #ef4444; color:#fca5a5; padding:3px 6px; border-radius:4px; font-size:10px; cursor:pointer;" onclick="window.deleteMemoryRule('${key}')">🗑️</button>
-        </div>
-      `;
-      list.appendChild(card);
-    });
+    const openBtn = document.getElementById("quickBtnOpenFull");
+    if (openBtn) {
+      openBtn.innerText = `📖 Відкрити всю базу знань (${totalCount} правил) ➔`;
+    }
   }
 
   async function handleQuickSave() {
@@ -301,7 +285,7 @@
     pInput.value = "";
     tInput.value = "";
     tInput._selectedCoords = null;
-    renderQuickList();
+    updateQuickModalUI();
     renderFullRulesList();
     if (typeof showToast === "function") showToast(`🧠 Синонім додано: «${escapeHtml(phrase)}» ➔ ${escapeHtml(target)}`);
   }
@@ -328,16 +312,14 @@
       `;
 
       modal.innerHTML = `
-        <!-- Шапка на весь екран -->
         <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1.5px solid #1e293b; padding-bottom:10px; margin-bottom:10px;">
           <div style="font-size:15px; font-weight:900; color:#00f3ff; display:flex; align-items:center; gap:8px;">
             <span>📚 Журнал керування «мозком»</span>
-            <span style="font-size:10px; color:#64748b; background:#0f172a; padding:2px 7px; border-radius:5px; border:1px solid #1e293b;">Повна база знань</span>
+            <span id="fullRulesCountSubBadge" style="font-size:10px; color:#38bdf8; background:#0f172a; padding:2px 7px; border-radius:5px; border:1px solid #1e293b;">0 правил</span>
           </div>
           <button id="fullModalCloseBtn" style="background:#1e293b; border:1px solid #475569; color:#f8fafc; font-size:16px; font-weight:800; border-radius:8px; width:34px; height:34px; cursor:pointer;">✕</button>
         </div>
 
-        <!-- Перемикач вкладок -->
         <div style="display:flex; gap:8px; margin-bottom:10px;">
           <button id="fullTabBtnSynonyms" style="flex:1; background:#0284c7; border:none; color:#fff; padding:9px; border-radius:8px; font-size:12px; font-weight:900; cursor:pointer;">
             🧠 Синоніми (А = Б)
@@ -347,7 +329,6 @@
           </button>
         </div>
 
-        <!-- Форма додавання / редагування у повноекранному вікні -->
         <div id="fullAddFormBox" style="background:#0b1120; border:1px solid #1e293b; border-radius:10px; padding:10px; display:flex; flex-direction:column; gap:7px; margin-bottom:10px;">
           <div style="display:flex; justify-content:space-between; align-items:center;">
             <span id="fullFormTitle" style="font-size:11.5px; font-weight:800; color:#38bdf8;">➕ Додати правило в пам'ять:</span>
@@ -365,12 +346,10 @@
           </button>
         </div>
 
-        <!-- Поле фільтрації правил -->
         <div style="margin-bottom:8px;">
           <input type="text" id="fullFilterSearch" placeholder="🔍 Фільтр по записах..." style="width:100%; box-sizing:border-box; background:#0b1120; border:1px solid #1e293b; color:#fff; padding:7px 10px; border-radius:7px; font-size:11.5px; outline:none;">
         </div>
 
-        <!-- Повний скрол-список правил -->
         <div id="fullRulesListBox" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:7px; padding-right:2px;"></div>
       `;
       document.body.appendChild(modal);
@@ -457,14 +436,13 @@
     });
   }
 
-  // 6. РЕДАГУВАННЯ СИНОНІМІВ (В ОБОХ ВІКНАХ)
+  // 6. РЕДАГУВАННЯ СИНОНІМІВ
   window.editSynonymRule = function (key) {
     const item = customStreetsCache[key];
     if (!item) return;
 
     editingSynonymKey = key;
 
-    // Якщо відкрито повноекранне вікно
     const fullPhrase = document.getElementById("fullInputPhrase");
     const fullTarget = document.getElementById("fullInputTarget");
     const fullTitle = document.getElementById("fullFormTitle");
@@ -483,7 +461,6 @@
       fullPhrase.focus();
     }
 
-    // Якщо відкрито швидке вікно
     const qPhrase = document.getElementById("quickInputPhrase");
     const qTarget = document.getElementById("quickInputTarget");
     const qSave = document.getElementById("quickBtnSave");
@@ -558,7 +535,7 @@
 
     await window.saveMemorySynonymFromRelocate(phrase, target, lat, lng);
     cancelSynonymEdit();
-    renderQuickList();
+    updateQuickModalUI();
     renderFullRulesList();
     if (typeof showToast === "function") showToast(`🧠 Синонім збережено: «${escapeHtml(phrase)}» ➔ ${escapeHtml(target)}`);
   }
@@ -599,7 +576,7 @@
     if (typeof showToast === "function") showToast(`📍 Координати «${escapeHtml(streetName)}» оновлено!`);
   };
 
-  // 8. РЕНДЕР ПОВНОГО СПИСКУ ПРАВИЛ У ПОВНОЕКРАННОМУ ВІКНІ
+  // 8. РЕНДЕР ПОВНОГО СПИСКУ ПРАВИЛ У ПОВНОЕКРАННОМУ ВІКНІ (СВІЖІ ЗВЕРХУ)
   function renderFullRulesList() {
     const box = document.getElementById("fullRulesListBox");
     if (!box) return;
@@ -607,6 +584,10 @@
 
     const searchInput = document.getElementById("fullFilterSearch");
     const filterQuery = searchInput ? searchInput.value.trim().toLowerCase() : "";
+
+    const totalSyn = Object.keys(customStreetsCache).length;
+    const subBadge = document.getElementById("fullRulesCountSubBadge");
+    if (subBadge) subBadge.innerText = `${totalSyn} правил`;
 
     if (fullModalActiveTab === "synonyms") {
       let items = Object.entries(customStreetsCache);
@@ -617,12 +598,19 @@
         );
       }
 
+      // ПРИМУСОВЕ СОРТУВАННЯ: НАЙСВІЖІШІ ЗВЕРХУ
+      items.sort((a, b) => {
+        const timeA = a[1].updated_at || 0;
+        const timeB = b[1].updated_at || 0;
+        return timeB - timeA;
+      });
+
       if (items.length === 0) {
         box.innerHTML = `<div style="padding:20px; text-align:center; font-size:12px; color:#64748b;">Синонімів не знайдено. Додайте нове правило вгорі!</div>`;
         return;
       }
 
-      items.reverse().forEach(([key, item]) => {
+      items.forEach(([key, item]) => {
         const card = document.createElement("div");
         card.style.cssText = "background:#0b1120; border:1px solid #1e293b; border-left:4px solid #00f3ff; border-radius:8px; padding:10px 12px; display:flex; justify-content:space-between; align-items:center; gap:8px;";
         card.innerHTML = `
@@ -648,6 +636,13 @@
           (v.street || v.name || k).toLowerCase().includes(filterQuery)
         );
       }
+
+      // ПРИМУСОВЕ СОРТУВАННЯ: НАЙСВІЖІШІ ЗВЕРХУ
+      items.sort((a, b) => {
+        const timeA = a[1].updated_at || 0;
+        const timeB = b[1].updated_at || 0;
+        return timeB - timeA;
+      });
 
       if (items.length === 0) {
         box.innerHTML = `<div style="padding:20px; text-align:center; font-size:12px; color:#64748b;">Немає зміщених вулиць. Усі координати стандартні.</div>`;
@@ -684,7 +679,7 @@
       const url = appendAuth(`${BASE_URL}/custom_streets/${key}.json`);
       await fetch(url, { method: "DELETE" });
     } catch (e) {}
-    renderQuickList();
+    updateQuickModalUI();
     renderFullRulesList();
     if (typeof showToast === "function") showToast("🗑️ Правило видалено");
   };
@@ -704,7 +699,7 @@
   // ФУНКЦІЇ ВІДКРИТТЯ ВІКОН
   window.openQuickSynonymModal = function () {
     const modal = ensureQuickModal();
-    renderQuickList();
+    updateQuickModalUI();
     modal.style.display = "flex";
   };
 
@@ -714,7 +709,6 @@
     modal.style.display = "flex";
   };
 
-  // Видаляємо старий плаваючий віджет, якщо він залишився
   const oldWidget = document.getElementById("memWidget");
   if (oldWidget) oldWidget.remove();
 
