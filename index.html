@@ -580,7 +580,7 @@
 
   <!-- 4. КНОПКА СТАТИСТИКИ -->
   <a href="javascript:void(0)" id="btnStatsHud" onclick="event.preventDefault(); window.location.href = (localStorage.getItem('radar_last_analytics_page') || 'stats.html');" title="Аналітика блокпостів">
-    <svg width="20" height="20" viewBox="0 24 24" fill="none">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
       <rect x="3" y="12" width="4.5" height="9" rx="2" fill="#00f3ff" />
       <rect x="9.75" y="7" width="4.5" height="14" rx="2" fill="#00f3ff" />
       <rect x="16.5" y="3" width="4.5" height="18" rx="2" fill="#00f3ff" />
@@ -666,9 +666,21 @@
   <script src="streets.js"></script>
 
   <script>
-    const SECRET_KEY_HASH = "570984";
-    const _VAULT_PREFIX = String.fromCharCode(65, 81, 46, 65, 98, 56, 82, 78, 54);
+    // =========================================================================
+    // 🔒 ЗАХИСТ БЕЗПЕКИ (АНТИ-XSS, АВТОРИЗАЦІЯ ШІ ТА FIREBASE)
+    // =========================================================================
+    function escapeHtml(str) {
+      if (!str) return "";
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+    window.escapeHtml = escapeHtml;
 
+    const _VAULT_PREFIX = String.fromCharCode(65, 81, 46, 65, 98, 56, 82, 78, 54);
     const _VAULT_SHARDS = [
       ["I7GflB4phTHSa5jvsW", "72AcfGr11sjs1_hoz2-cwWvPvg"],
       ["JwJ0Vv6CzHDVFUo7BE", "ScSuZXXQ8nFcYU8_oyv5iMm5tg"],
@@ -681,6 +693,26 @@
       ["LV84HLeL7c8CXmqSXl", "vyDa4M-1uqkQT-LlJpDgJ3sfqA"],
       ["I2d17d2VpDXpzxEPKh", "tzBWtRt4bN62lifvrufLg3dptg"]
     ];
+
+    function isAuthPassValid(inputPass) {
+      if (!inputPass || typeof inputPass !== "string") return false;
+      try {
+        return btoa(inputPass.trim()) === "NTcwOTg0";
+      } catch(e) {
+        return false;
+      }
+    }
+
+    function getFirebaseWriteAuth() {
+      return localStorage.getItem("radar_fb_auth") || "";
+    }
+
+    window.appendAuth = function(url) {
+      const authKey = getFirebaseWriteAuth();
+      if (!authKey) return url;
+      const sep = url.includes("?") ? "&" : "?";
+      return `${url}${sep}auth=${encodeURIComponent(authKey)}`;
+    };
 
     function getAdminToken() {
       return localStorage.getItem("radar_admin_token") || localStorage.getItem("github_radar_token") || "";
@@ -793,11 +825,12 @@
     }
 
     function verifyGeminiAuthorization(forcePrompt = false) {
-      const savedAuth = localStorage.getItem("radar_gemini_unlocked");
-      if (savedAuth === SECRET_KEY_HASH && !forcePrompt) return true;
+      const savedPass = localStorage.getItem("radar_gemini_unlocked") || "";
+      if (isAuthPassValid(savedPass) && !forcePrompt) return true;
       const entered = prompt("🔐 Введіть пароль для активації ШІ-штурмана:\n(Підказка: телефон батьків)");
-      if (entered === SECRET_KEY_HASH) {
-        localStorage.setItem("radar_gemini_unlocked", SECRET_KEY_HASH);
+      if (entered && isAuthPassValid(entered)) {
+        const cleanPass = entered.trim();
+        localStorage.setItem("radar_gemini_unlocked", cleanPass);
         showToast("🔓 ШІ-штурман активовано!");
         return true;
       } else if (entered !== null) {
@@ -807,7 +840,8 @@
     }
 
     function getDecryptedGeminiPool() {
-      if (localStorage.getItem("radar_gemini_unlocked") !== SECRET_KEY_HASH) return [];
+      const savedPass = localStorage.getItem("radar_gemini_unlocked") || "";
+      if (!isAuthPassValid(savedPass)) return [];
       const builtins = _VAULT_SHARDS.map(shard => _VAULT_PREFIX + shard.join(''));
       const rawStored = localStorage.getItem("gemini_api_key") || "";
       const customKeys = rawStored.split(/[,;\s]+/).map(k => k.trim()).filter(k => k.length > 20);
@@ -1146,6 +1180,7 @@
     map.on('click', () => { 
       closeRouteSubmenu();
       closeMarkerActionSheet();
+      if (typeof window.closeAllRelocateModals === "function") window.closeAllRelocateModals();
     });
 
     function isCleanPoint(p) {
@@ -1192,9 +1227,9 @@
       });
     }
 
-    // 🚦 9 КОНТРОЛЬНИХ СВІТЛОФОРІВ (ВКЛЮЧАЮЧИ КАНАТНУ ТА ЩЕПКІНА)
+    // 🚦 9 КОНТРОЛЬНИХ СВІТЛОФОРІВ
     let checkpoints = [
-      { id: "kaidak_rovd", name: "РОВД / Кайдацький з'їзд", lat: 48.4908, lng: 34.9585, keys: ["кайдак", "кайдац", "ровд", "райотдел", "з'їзд.*кайдак", "съезд.*кайдак", "спуск.*кайдак"] },
+      { id: "kaidak_rovd", name: "РОВД / Кайдацький з'їзд", lat: 48.4908, lng: 34.9585, keys: ["кайдак", "кайдацька", "кайдац", "ровд", "райотдел", "з'їзд.*кайдак", "съезд.*кайдак", "спуск.*кайдак"] },
       { id: "vodolechebnitsa", name: "Водолікарня (просп. Свободи)", lat: 48.4848, lng: 34.9735, keys: ["водолечеб", "водолікарн", "водоликарн", "водогряз", "грязелечеб", "просп.*свобод", "пр.*свобод", "свободи", "свободы"] },
       { id: "vodokachka", name: "Водокачка", fullName: "Водокачка (Набережна Заводська)", lat: 48.4910, lng: 34.9480, keys: ["водокачк", "стара.*водокачк", "старая.*водокачка"] },
       { id: "stan_550", name: "Стан 550", fullName: "Стан 550 (Набережна Заводська)", lat: 48.4865, lng: 34.9850, keys: ["стан 550", "стан550", "\\b550\\b"] },
@@ -1328,12 +1363,13 @@
         const row = btnEl.closest('.report-row-item');
         if (row) {
           const title = row.querySelector('.report-status-title');
-          if (title) title.innerHTML = `${isClean ? "🟢" : "🔴"} ${p.text || p.raw_text || ""}`;
+          if (title) title.innerHTML = `${isClean ? "🟢" : "🔴"} ${escapeHtml(p.text || p.raw_text || "")}`;
         }
       }
 
       if (fbKey) {
-        fetch(FIREBASE_POINTS_URL.replace(".json", `/${fbKey}.json`), {
+        const url = window.appendAuth(FIREBASE_POINTS_URL.replace(".json", `/${encodeURIComponent(fbKey)}.json`));
+        fetch(url, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ is_clean: isClean, color: p.color, status: p.status })
@@ -1395,6 +1431,13 @@
         if (payload.showRed !== undefined) filterShowRed = !!payload.showRed;
         renderMarkers();
         showToast(`🎯 Фільтр: Зелені ${filterShowGreen ? 'ВКЛ' : 'ВИМК'}`);
+      } else if (actionType === "STATUS") {
+        let p = null;
+        if (payload.key) p = allPoints.find(x => x._fbKey === payload.key);
+        if (!p && allPoints.length > 0) p = allPoints[allPoints.length - 1];
+        if (!p) return;
+        const isClean = payload.clean !== undefined ? !!payload.clean : true;
+        await window.setPointVerdictDirect(p._fbKey, isClean);
       } else if (actionType === "SECTORS") {
         if (Array.isArray(payload.sectors) && payload.sectors.length > 0) activeSectors = payload.sectors;
         else if (payload.preset === "route") activeSectors = ['s1'];
@@ -1438,14 +1481,15 @@
         map.flyTo([lat, lng], 15, { animate: true, duration: 0.85 });
 
         if (p._fbKey) {
-          fetch(FIREBASE_POINTS_URL.replace(".json", `/${p._fbKey}.json`), {
+          const url = window.appendAuth(FIREBASE_POINTS_URL.replace(".json", `/${encodeURIComponent(p._fbKey)}.json`));
+          fetch(url, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ lat: p.lat, lng: p.lng, address: street, needs_training: false, geo_refined: true })
           }).catch(() => {});
         }
         renderMarkers();
-        showToast(`🚀 ШІ переніс точку ➔ ${street}!`);
+        showToast(`🚀 ШІ переніс точку ➔ ${escapeHtml(street)}!`);
       }
     }
 
@@ -1454,7 +1498,8 @@
       showToast("⏳ Видаляю повідомлення з сервера...");
       if (fbKey) {
         try {
-          await fetch(FIREBASE_POINTS_URL.replace(".json", `/${fbKey}.json`), { method: "DELETE" });
+          const url = window.appendAuth(FIREBASE_POINTS_URL.replace(".json", `/${encodeURIComponent(fbKey)}.json`));
+          await fetch(url, { method: "DELETE" });
         } catch(e) {}
       }
       allPoints = allPoints.filter(p => p._fbKey !== fbKey);
@@ -1583,7 +1628,7 @@
 ${allLiveReportsText || "Повідомлень немає"}
 КОМАНДИ:
 1. ПЕРЕМІЩЕННЯ: <<<ACTION:MOVE:{"key":"KEY_ТОЧКИ","street":"Назва вулиці","lat":48.XXXXX,"lng":34.XXXXX}>>>
-​2. СТАТУС: <<<ACTION:STATUS:{"key":"KEY_ТОЧКИ","clean":true}>>>
+2. СТАТУС: <<<ACTION:STATUS:{"key":"KEY_ТОЧКИ","clean":true}>>>
 3. ФІЛЬТР: <<<ACTION:FILTER:{"showGreen":false,"showRed":true}>>>
 4. СЕКТОРИ: <<<ACTION:SECTORS:{"preset":"route"|"all"|"remove_left"}>>>
 5. АНАЛІТИКА: <<<ACTION:NAVIGATE:{"url":"stats.html"}>>>
@@ -1593,13 +1638,19 @@ ${allLiveReportsText || "Повідомлень немає"}
       if (geminiChatHistory.length > 8) geminiChatHistory = geminiChatHistory.slice(-8);
 
       try {
+        const payloadContents = [
+          { role: "user", parts: [{ text: systemInstructionText }] },
+          { role: "model", parts: [{ text: "Зрозумів. Виконую роль ШІ-штурмана та керую картою." }] },
+          ...geminiChatHistory
+        ];
+
         const resObj = await executeGeminiRequestPool({
-          contents: [{ role: "user", parts: [{ text: systemInstructionText + "\n\nКористувач: " + query }] }],
+          contents: payloadContents,
           generationConfig: { temperature: 0.2 }
         });
 
         let rawReply = resObj.data.candidates?.[0]?.content?.parts?.[0]?.text || "Готово.";
-        const actionMatches = rawReply.match(/<<<ACTION:(.*?)>>>/g);
+        const actionMatches = rawReply.match(/<<<ACTION:([\s\S]*?)>>>/g);
         if (actionMatches) {
           actionMatches.forEach(tag => {
             try {
@@ -1615,12 +1666,14 @@ ${allLiveReportsText || "Повідомлень немає"}
         }
 
         const cleanReply = rawReply.replace(/<<<ACTION:[\s\S]*?>>>/g, '').trim();
+        geminiChatHistory.push({ role: "model", parts: [{ text: cleanReply || "Виконано." }] });
+
         loadingBubble.className = "ai-msg bot";
-        loadingBubble.innerText = cleanReply;
+        loadingBubble.innerText = cleanReply || "Команду виконано.";
         aiChatBox.scrollTop = aiChatBox.scrollHeight;
       } catch (err) {
         loadingBubble.className = "ai-msg bot";
-        loadingBubble.innerHTML = `<span style="color:#ef4444;">⚠️ ${err.message}</span>`;
+        loadingBubble.innerHTML = `<span style="color:#ef4444;">⚠️ ${escapeHtml(err.message)}</span>`;
         aiChatBox.scrollTop = aiChatBox.scrollHeight;
       }
     }
@@ -1715,7 +1768,7 @@ ${allLiveReportsText || "Повідомлень немає"}
     async function syncCheckpointsToCloud() {
       localStorage.setItem("dnepr_radar_checkpoints_v2", JSON.stringify(checkpoints));
       try {
-        await fetch(FIREBASE_CONFIG_URL, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(checkpoints) });
+        await fetch(window.appendAuth(FIREBASE_CONFIG_URL), { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(checkpoints) });
       } catch (e) {}
     }
 
@@ -1745,7 +1798,7 @@ ${allLiveReportsText || "Повідомлень немає"}
                 defaultCp.lng = found.lng;
               }
             });
-            await syncCheckpointsToCloud();
+            localStorage.setItem("dnepr_radar_checkpoints_v2", JSON.stringify(checkpoints));
           }
         }
       } catch (e) {}
@@ -1825,8 +1878,8 @@ ${allLiveReportsText || "Повідомлень немає"}
             const ptTime = pt.time || pt.timestamp || 0;
             const timeStr = ptTime ? new Date(ptTime).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' }) : '';
             const remMin = Math.floor(Math.max(0, LIFETIME_MS - (now - ptTime)) / 60000);
-            const msgQuote = (pt.text || pt.raw_text || '').replace(/[\r\n]+/g, ' ').slice(0, 95);
-            const fbKeySafe = pt._fbKey || '';
+            const msgQuote = escapeHtml((pt.text || pt.raw_text || '').replace(/[\r\n]+/g, ' ').slice(0, 95));
+            const fbKeySafe = escapeHtml(pt._fbKey || '');
             const ptClean = isCleanPoint(pt);
 
             reportsListHtml += `
@@ -1878,7 +1931,7 @@ ${allLiveReportsText || "Повідомлень немає"}
         const popupHtml = `
           <div style="padding:4px; font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif; min-width:230px; max-height:260px; overflow-y:auto;">
             <div style="font-weight:900; font-size:13px; color:#0284c7; margin-bottom:4px; border-bottom:1px solid #cbd5e1; padding-bottom:3px; display:flex; justify-content:space-between; align-items:center;">
-              <span>🚦 ${cp.name}</span>
+              <span>🚦 ${escapeHtml(cp.name)}</span>
               <span style="font-size:10.5px; color:#64748b; font-weight:700;">звітів: ${matched.length}</span>
             </div>
             <div style="font-size:11.5px; font-weight:800; margin-bottom:8px; color:${matched.length > 0 ? (isClean ? '#16a34a' : '#dc2626') : '#64748b'};">
@@ -1921,18 +1974,26 @@ ${allLiveReportsText || "Повідомлень немає"}
     }
 
     // =========================================================================
-    // 🔍 ГІБРИДНИЙ ПОШУКОВИЙ МОДУЛЬ (ЛОКАЛЬНА БАЗА + OPENSTREETMAP)
+    // 🔍 ГІБРИДНИЙ ПОШУКОВИЙ МОДУЛЬ (ЛОКАЛЬНА БАЗА + OPENSTREETMAP З DEBOUNCE)
     // =========================================================================
     const streetSearchInput = document.getElementById("streetSearchInput");
     const searchResults = document.getElementById("searchResults");
     const searchClearBtn = document.getElementById("searchClearBtn");
     let osmSearchAbort = null;
+    let searchDebounceTimer = null;
 
     streetSearchInput.addEventListener("input", () => {
       const query = streetSearchInput.value.trim();
       searchClearBtn.style.display = query.length > 0 ? "block" : "none";
-      if (query.length < 2) { searchResults.style.display = "none"; return; }
-      executeSmartSearch(query);
+      if (query.length < 2) {
+        if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+        searchResults.style.display = "none";
+        return;
+      }
+      if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+      searchDebounceTimer = setTimeout(() => {
+        executeSmartSearch(query);
+      }, 450);
     });
 
     function clearStreetSearch() {
@@ -1950,16 +2011,16 @@ ${allLiveReportsText || "Повідомлень немає"}
       allPoints.forEach(p => {
         const full = ((p.text || '') + ' ' + (p.raw_text || '')).toLowerCase();
         if (full.includes(lower)) {
-          results.push({ name: `📢 ${p.text || p.raw_text}`, lat: p.lat, lng: p.lng });
+          results.push({ name: `📢 ${escapeHtml(p.text || p.raw_text)}`, lat: p.lat, lng: p.lng });
         }
       });
 
       if (typeof DNIPRO_STREETS_MAP !== 'undefined') {
         for (const [key, item] of Object.entries(DNIPRO_STREETS_MAP)) {
           if (key.includes(lower) || (item.old && item.old.toLowerCase().includes(lower)) || item.name.toLowerCase().includes(lower)) {
-            if (!results.some(m => m.name.toLowerCase() === item.name.toLowerCase())) {
-              const sub = item.old ? ` <span style="color:#94a3b8; font-size:10px;">(раніше: ${item.old})</span>` : "";
-              results.push({ name: `📍 ${item.name}${sub}`, cleanName: item.name, lat: item.lat, lng: item.lng });
+            if (!results.some(m => (m.cleanName || m.name).toLowerCase() === item.name.toLowerCase())) {
+              const sub = item.old ? ` <span style="color:#94a3b8; font-size:10px;">(раніше: ${escapeHtml(item.old)})</span>` : "";
+              results.push({ name: `📍 ${escapeHtml(item.name)}${sub}`, cleanName: item.name, lat: item.lat, lng: item.lng });
             }
           }
         }
@@ -1968,7 +2029,7 @@ ${allLiveReportsText || "Повідомлень немає"}
       checkpoints.forEach(cp => {
         if (cp.name.toLowerCase().includes(lower) || cp.keys.some(k => lower.includes(k))) {
           if (!results.some(m => m.name.includes(cp.name))) {
-            results.push({ name: `🚦 ${cp.name}`, cleanName: cp.name, lat: cp.lat, lng: cp.lng });
+            results.push({ name: `🚦 ${escapeHtml(cp.name)}`, cleanName: cp.name, lat: cp.lat, lng: cp.lng });
           }
         }
       });
@@ -1990,7 +2051,6 @@ ${allLiveReportsText || "Повідомлень немає"}
 
       renderSearchResultsList(results);
 
-      // Гібридний онлайн-пошук через OpenStreetMap для Дніпра
       if (query.length >= 3) {
         if (osmSearchAbort) osmSearchAbort.abort();
         osmSearchAbort = new AbortController();
@@ -2013,7 +2073,7 @@ ${allLiveReportsText || "Повідомлень немає"}
                   }
                   const exists = results.some(r => (r.cleanName || r.name).toLowerCase().replace(/^(вул\.|просп\.|пров\.)\s*/i, "").trim() === title.toLowerCase().replace(/^(вул\.|просп\.|пров\.)\s*/i, "").trim());
                   if (!exists) {
-                    results.push({ name: `🌐 ${title} <span style="color:#38bdf8; font-size:10px;">(інтернет)</span>`, cleanName: title, lat: Number(lat.toFixed(5)), lng: Number(lng.toFixed(5)) });
+                    results.push({ name: `🌐 ${escapeHtml(title)} <span style="color:#38bdf8; font-size:10px;">(інтернет)</span>`, cleanName: title, lat: Number(lat.toFixed(5)), lng: Number(lng.toFixed(5)) });
                     addedOsm = true;
                   }
                 }
@@ -2145,7 +2205,7 @@ ${allLiveReportsText || "Повідомлень немає"}
           if (nearCheckpoint && !isSimple) {
             tlBridgeHtml = `
               <div onclick="window.openTrafficLightPopup('${nearCheckpoint.id}')" style="cursor:pointer; background:#0f172a; border:1.5px solid #0284c7; border-radius:8px; padding:6px 9px; margin-bottom:8px; display:flex; align-items:center; justify-content:space-between; box-shadow:0 3px 10px rgba(2,132,199,0.35); transition:background 0.2s;">
-                <span style="font-size:11.5px; font-weight:800; color:#38bdf8;">🚦 Світлофор: ${nearCheckpoint.name}</span>
+                <span style="font-size:11.5px; font-weight:800; color:#38bdf8;">🚦 Світлофор: ${escapeHtml(nearCheckpoint.name)}</span>
                 <span style="font-size:11px; color:#38bdf8; font-weight:900;">Керування ➔</span>
               </div>
             `;
@@ -2156,18 +2216,19 @@ ${allLiveReportsText || "Повідомлень немає"}
             const ptTime = pt.time || pt.timestamp || 0;
             const timeStr = ptTime ? new Date(ptTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "";
             const remMin = Math.floor(Math.max(0, LIFETIME_MS - (now - ptTime)) / 60000);
-            const fbKeySafe = pt._fbKey || "";
+            const fbKeySafe = escapeHtml(pt._fbKey || "");
+            const ptTextSafe = escapeHtml(pt.text || pt.raw_text || "");
             let renameNote = "";
             try {
               if (typeof getStreetRenameNote === "function") {
-                renameNote = getStreetRenameNote(pt.text || pt.raw_text || pt.address || "");
+                renameNote = escapeHtml(getStreetRenameNote(pt.text || pt.raw_text || pt.address || ""));
               }
             } catch(e) {}
 
             if (isSimple) {
               listHtml += `
                 <div class="report-row-item" style="border-bottom: 1px solid #334155; padding-bottom: 5px; margin-bottom: 5px;">
-                  <div class="report-status-title" style="font-weight:800; font-size:12px; color:#0f172a; line-height:1.35;">${clean ? "🟢" : "🔴"} ${pt.text || pt.raw_text || ""}</div>
+                  <div class="report-status-title" style="font-weight:800; font-size:12px; color:#0f172a; line-height:1.35;">${clean ? "🟢" : "🔴"} ${ptTextSafe}</div>
                   <div style="font-size:10px; color:#64748b; margin-top:2px;">🕒 ${timeStr} | Зникне через: ${remMin} хв</div>
                   ${renameNote ? ('<div style="font-size:10px; color:#0284c7; margin-top:4px; background:#f0f9ff; padding:3px 6px; border-radius:4px; border:1px solid #bae6fd;">' + renameNote + '</div>') : ''}
                 </div>
@@ -2175,7 +2236,7 @@ ${allLiveReportsText || "Повідомлень немає"}
             } else {
               listHtml += `
                 <div class="report-row-item" style="border-bottom: 1px solid #334155; padding-bottom: 7px; margin-bottom: 7px;">
-                  <div class="report-status-title" style="font-weight:700; font-size:12px; color:#0f172a; line-height:1.35;">${clean ? "🟢" : "🔴"} ${pt.text || pt.raw_text || ""}</div>
+                  <div class="report-status-title" style="font-weight:700; font-size:12px; color:#0f172a; line-height:1.35;">${clean ? "🟢" : "🔴"} ${ptTextSafe}</div>
                   <div style="font-size:10px; color:#64748b; margin-top:2px;">🕒 ${timeStr} | Зникне через: ${remMin} хв</div>
                   ${renameNote ? ('<div style="font-size:10px; color:#0284c7; margin-top:4px; background:#f0f9ff; padding:3px 6px; border-radius:4px; border:1px solid #bae6fd;">' + renameNote + '</div>') : ''}
                   <div style="display:flex; gap:4px; margin-top:6px;">
@@ -2203,6 +2264,8 @@ ${allLiveReportsText || "Повідомлень немає"}
 
           const zOffset = clean ? 500 : 1200;
           const marker = L.marker([renderLat, renderLng], { icon: dotIcon, zIndexOffset: zOffset, draggable: false });
+          marker.clusterPoints = cluster.points;
+          marker.pointData = cluster.points[0];
           marker.bindPopup(popupContent, { autoClose: true, closeOnClick: true });
 
           if (!isSimple) {
@@ -2317,7 +2380,7 @@ ${allLiveReportsText || "Повідомлень немає"}
           document.body.appendChild(banner);
         }
         banner.innerHTML = `
-          <span>🛣️ <b>Об'їзд:</b> ${routeData.title || 'Маршрут'}</span>
+          <span>🛣️ <b>Об'їзд:</b> ${escapeHtml(routeData.title || 'Маршрут')}</span>
           <button onclick="clearNavRoute()">✕ Скинути</button>
         `;
         banner.style.display = "flex";
