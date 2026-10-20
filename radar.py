@@ -20,8 +20,8 @@ SUPPORTED_MODELS = [
 ]
 
 FIREBASE_URL = os.environ.get("FIREBASE_URL", "").strip()
-# Секретный ключ авторизации для правил Firebase Realtime Database
-FIREBASE_SECRET = os.environ.get("FIREBASE_SECRET", "570984").strip()
+# За замовчуванням порожній рядок, щоб не викликати помилку 401 на відкритій базі
+FIREBASE_SECRET = os.environ.get("FIREBASE_SECRET", "").strip()
 
 if FIREBASE_URL and not FIREBASE_URL.endswith(".json"):
     BASE_FB_URL = FIREBASE_URL.rstrip("/")
@@ -50,7 +50,7 @@ def log(msg):
     print(msg, flush=True)
 
 def fb_url(url, is_write=False):
-    """Формирует корректный URL для Firebase с параметром auth при записи."""
+    """Формує коректний URL для Firebase з параметром auth тільки за наявності секрету."""
     if not url:
         return ""
     if is_write and FIREBASE_SECRET:
@@ -59,7 +59,7 @@ def fb_url(url, is_write=False):
     return url
 
 def sanitize_fb_key(raw_str):
-    """Очищает ключ от запрещенных в Firebase символов."""
+    """Очищає ключ від заборонених у Firebase символів."""
     return re.sub(r'[\.\$\#\[\]\/]', '_', str(raw_str))
 
 def get_active_gemini_key():
@@ -140,6 +140,9 @@ TARGET_CHECKPOINTS_CONFIG = [
 ]
 
 LOCAL_STREETS_DB = [
+    # Каштанова — віадук Слобожанського проспекту (Лівий берег)
+    {"keys": ["каштанов", "каштановая", "віадук каштанов", "виадук каштанов"], "addr": "вул. Каштанова (віадук / Слобожанський)", "lat": 48.5035, "lng": 35.0838},
+
     {"keys": ["славянк", "словянк"], "addr": "ТЦ Слов'янський (Слов'янка)", "lat": 48.4715, "lng": 35.0135},
     {"keys": ["озерк"], "addr": "Ринок Озерка", "lat": 48.4715, "lng": 35.0215},
     {"keys": ["курчатовск.*рынок", "курчатовськ.*ринок", "курчатовск", "курчатовськ", "128.*бригад"], "addr": "вул. 128-ї Бригади (Курчатовський)", "lat": 48.4740, "lng": 35.0140},
@@ -350,6 +353,10 @@ def geocode_local(text):
             st_name = (data.get("street") or "").lower().replace('ё', 'е')
             if st_name and len(st_name) >= 3 and st_name in t:
                 return data.get("street"), float(data.get("lat")), float(data.get("lng"))
+
+    # Жорстка фіксація вул. Каштанової на Лівому березі (віадук Слобожанського)
+    if re.search(r'(?:каштанов)', t):
+        return "вул. Каштанова (віадук / Слобожанський)", 48.5035, 35.0838
 
     if re.search(r'(?:канатн|інфекцій|инфекцион|21\s*лікарн|21\s*больниц)', t):
         return "вул. Канатна (Інфекційна лікарня №21)", 48.46350, 35.00980
@@ -621,7 +628,6 @@ def fetch_channel_messages():
                 continue
             raw_html = text_m.group(1)
 
-            # Извлекаем реальное время публикации поста из Telegram
             post_time_ms = now_ms
             time_m = re.search(r'<time[^>]*datetime="([^"]+)"', b)
             if time_m:
@@ -715,7 +721,7 @@ def save_point_to_firebase(sub_post_id, msg, parsed_result, is_clean, post_time_
 
     safe_id = sanitize_fb_key(f"tg_{sub_post_id}")
 
-    # 1. На живую карту пишем ТОЛЬКО если сообщению реально меньше 40 минут
+    # 1. Запис на живу карту тільки повідомлень молодше 40 хвилин
     if POINTS_URL and (now_ms - post_time_ms) <= LIFETIME_MS:
         point_data = {
             "text": display_text,
@@ -737,7 +743,7 @@ def save_point_to_firebase(sub_post_id, msg, parsed_result, is_clean, post_time_
         except Exception as e:
             log(f"⚠️ Помилка запису в Firebase points: {e}")
 
-    # 2. В архив пишем по уникальному ключу tg_{sub_post_id}, исключая дубли при перезапуске
+    # 2. Запис в архів за унікальним ключем tg_{sub_post_id}
     if STATS_ARCHIVE_URL:
         try:
             archive_entry = {
@@ -754,7 +760,7 @@ def save_point_to_firebase(sub_post_id, msg, parsed_result, is_clean, post_time_
             pass
 
 def preload_existing_ids():
-    """Загружает уже обработанные ID при старте скрипта, чтобы не гонять Gemini впустую."""
+    """Завантажує вже оброблені ID при старті скрипта для економії запитів Gemini."""
     global PROCESSED_POST_IDS
     if not BASE_FB_URL:
         return
