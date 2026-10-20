@@ -1,8 +1,6 @@
 /**
- * relocate.js — Модуль перенесення міток та калібрування вулиць v10.5
- * Додано:
- * - Гібридний пошук вулиць (Локальна база + OpenStreetMap / Nominatim)
- * - Автоматичне збереження правил у «пам'ять мозку» (memory.js / custom_streets.json)
+ * relocate.js — Модуль перенесення міток та калібрування вулиць v10.6
+ * Захист: Анти-XSS, авторизація Firebase (auth=), відсутність блокованих заголовків OSM
  */
 
 (function () {
@@ -10,6 +8,25 @@
   const FIREBASE_OVERRIDES_URL = window.FIREBASE_OVERRIDES_URL || "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/street_overrides.json";
 
   let searchAbortController = null;
+
+  function escapeHtml(str) {
+    if (typeof window.escapeHtml === "function") return window.escapeHtml(str);
+    if (!str) return "";
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  function appendAuth(url) {
+    if (typeof window.appendAuth === "function") return window.appendAuth(url);
+    const authKey = localStorage.getItem("radar_fb_auth") || "";
+    if (!authKey) return url;
+    const sep = url.includes("?") ? "&" : "?";
+    return `${url}${sep}auth=${encodeURIComponent(authKey)}`;
+  }
 
   function isSimpleMode() {
     return document.documentElement.classList.contains("mode-simple") ||
@@ -40,12 +57,12 @@
 
       if (k.includes(q) || name.includes(q) || old.includes(q)) {
         if (!results.some(r => r.name.toLowerCase() === item.name.toLowerCase())) {
-          const sub = item.old ? ` <span style="color:#94a3b8; font-size:10px;">(раніше: ${item.old})</span>` : "";
+          const sub = item.old ? ` <span style="color:#94a3b8; font-size:10px;">(раніше: ${escapeHtml(item.old)})</span>` : "";
           results.push({
             name: item.name,
             lat: Number(item.lat),
             lng: Number(item.lng),
-            label: `📍 <b>${item.name}</b>${sub}`,
+            label: `📍 <b>${escapeHtml(item.name)}</b>${sub}`,
             source: "local"
           });
         }
@@ -65,7 +82,6 @@
       const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cleanQ + ", Дніпро")}&countrycodes=ua&limit=6&accept-language=uk,ru`;
       
       const res = await fetch(url, { signal: signal });
-
       if (!res.ok) return onlineResults;
       const data = await res.json();
 
@@ -74,7 +90,6 @@
           const lat = parseFloat(item.lat);
           const lng = parseFloat(item.lon);
 
-          // Обмежуємося межами Дніпра та найближчого передмістя
           if (lat >= 48.25 && lat <= 48.70 && lng >= 34.70 && lng <= 35.40) {
             let title = item.display_name.split(",")[0].trim();
             if (!/^(вул|просп|пров|шосе|тупик|пл|бульв)/i.test(title)) {
@@ -85,7 +100,7 @@
               name: title,
               lat: Number(lat.toFixed(5)),
               lng: Number(lng.toFixed(5)),
-              label: `🌐 <b>${title}</b> <span style="color:#38bdf8; font-size:10px;">(з інтернету)</span>`,
+              label: `🌐 <b>${escapeHtml(title)}</b> <span style="color:#38bdf8; font-size:10px;">(з інтернету)</span>`,
               source: "osm"
             });
           }
@@ -138,7 +153,8 @@
     } catch (e) {}
 
     try {
-      await fetch(FIREBASE_OVERRIDES_URL.replace(".json", `/${safeKey}.json`), {
+      const targetUrl = appendAuth(FIREBASE_OVERRIDES_URL.replace(".json", `/${safeKey}.json`));
+      await fetch(targetUrl, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
@@ -240,7 +256,7 @@
         clearTimeout(debounceTimer);
         debounceTimer = setTimeout(() => {
           executeSearchFlow(input.value.trim());
-        }, 220);
+        }, 300);
       });
 
       btnFind.onclick = () => {
@@ -285,7 +301,7 @@
     const loadingRow = document.createElement("div");
     loadingRow.id = "osmSearchLoadingRow";
     loadingRow.style.cssText = "padding:7px 12px; font-size:11px; color:#38bdf8; background:#0b1120; border-top:1px dashed #334155;";
-    loadingRow.innerHTML = "🌐 Пошук по всій карті Дніпра (OSM)...";
+    loadingRow.innerHTML = "🌐 Пошук по карті Дніпра (OSM)...";
     box.appendChild(loadingRow);
     box.style.display = "block";
 
@@ -306,7 +322,7 @@
     });
 
     if (localMatches.length === 0 && addedOnline === 0) {
-      box.innerHTML = `<div style="padding:11px; font-size:11.5px; color:#f87171; text-align:center;">Вулицю не знайдено ні в базі, ні в карті Дніпра.</div>`;
+      box.innerHTML = `<div style="padding:11px; font-size:11.5px; color:#f87171; text-align:center;">Вулицю не знайдено ні в базі, ні на карті Дніпра.</div>`;
     }
   }
 
@@ -397,7 +413,7 @@
     bar.innerHTML = `
       <div style="font-size:11.5px; color:#cbd5e1; line-height:1.4;">
         📍 Перенести мітку на адресу:<br>
-        <b style="color:#38bdf8; font-size:13px;">${targetName}</b>?
+        <b style="color:#38bdf8; font-size:13px;">${escapeHtml(targetName)}</b>?
       </div>
       <div style="display:flex; gap:6px;">
         <button id="btnConfirmMoveAccept" style="flex:1.2; background:#0284c7; border:none; color:#fff; padding:9px; border-radius:8px; font-size:12px; font-weight:800; cursor:pointer;">
@@ -453,7 +469,8 @@
     }
 
     if (p._fbKey) {
-      fetch(FIREBASE_POINTS_URL.replace(".json", `/${p._fbKey}.json`), {
+      const targetUrl = appendAuth(FIREBASE_POINTS_URL.replace(".json", `/${encodeURIComponent(p._fbKey)}.json`));
+      fetch(targetUrl, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -468,14 +485,14 @@
 
     await saveStreetCoordinateOverride(pr.streetName, p.lat, p.lng);
 
-    // АВТОМАТИЧНО ВНОСИМО ПРАВИЛО В МОЗОК (memory.js)
+    // Автоматичний запис правила в «пам'ять мозку» (memory.js)
     if (typeof window.saveMemorySynonymFromRelocate === "function") {
       const rawMsg = p.text || p.raw_text || p.address || "";
       window.saveMemorySynonymFromRelocate(rawMsg, pr.streetName, p.lat, p.lng);
     }
 
     window.pendingRelocation = null;
-    if (typeof showToast === "function") showToast(`✅ Перенесено на: «${pr.streetName}»`, 3500);
+    if (typeof showToast === "function") showToast(`✅ Перенесено на: «${escapeHtml(pr.streetName)}»`, 3500);
 
     if (typeof renderMarkers === "function") renderMarkers();
     if (typeof renderTrafficLights === "function") renderTrafficLights();
@@ -726,7 +743,8 @@
       }
 
       if (p._fbKey) {
-        fetch(FIREBASE_POINTS_URL.replace(".json", `/${p._fbKey}.json`), {
+        const targetUrl = appendAuth(FIREBASE_POINTS_URL.replace(".json", `/${encodeURIComponent(p._fbKey)}.json`));
+        fetch(targetUrl, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -743,7 +761,7 @@
     if (streetName) {
       await saveStreetCoordinateOverride(streetName, lat, lng);
 
-      // АВТОМАТИЧНО ВНОСИМО ПРАВИЛО В МОЗОК ПРИ РУЧНОМУ ПЕРЕТЯГУВАННІ
+      // Автоматичний запис правила в «пам'ять мозку» при ручному перетягуванні
       if (typeof window.saveMemorySynonymFromRelocate === "function") {
         const rawMsg = p ? (p.text || p.raw_text || p.address || "") : "";
         window.saveMemorySynonymFromRelocate(rawMsg, streetName, lat, lng);
@@ -754,7 +772,7 @@
     manualMovingMarker = null;
     manualPointObj = null;
 
-    if (typeof showToast === "function") showToast(`✅ Зсув збережено: «${streetName || 'Вулиця'}»`, 3500);
+    if (typeof showToast === "function") showToast(`✅ Зсув збережено: «${escapeHtml(streetName || 'Вулиця')}»`, 3500);
     if (typeof renderMarkers === "function") renderMarkers();
     if (typeof renderTrafficLights === "function") renderTrafficLights();
   }
