@@ -14,7 +14,7 @@
   <link rel="stylesheet" href="style.css" />
   <style>
     /* =========================================================================
-       0. ДИНАМІЧНІ ЗМІННІ СОНАРА ТА НИЖНІЙ КЛАСТЕР
+       0. ДИНАМІЧНІ ЗМІННІ СОНАРА ТА СТИЛІ НИЖНІХ КНОПОК
        ========================================================================= */
     :root {
       --sonar-clean-color: #10b981;
@@ -25,26 +25,30 @@
       --sonar-danger-step: 0.3s;
     }
 
-    /* ЄДИНИЙ РІВНИЙ КЛАСТЕР: «МІЙ ШЛЯХ» + «МОЗОК 🧠» + «СТАТИСТИКА 📊» */
-    .bottom-left-cluster {
+    /* АНІМАЦІЯ ПОГОЙДУВАННЯ ІКОНОК (РЕЖИМ ПЕРЕМІЩЕННЯ) */
+    @keyframes uiWiggle {
+      0% { transform: rotate(0deg); }
+      25% { transform: rotate(-2.5deg) scale(1.03); }
+      75% { transform: rotate(2.5deg) scale(1.03); }
+      100% { transform: rotate(0deg); }
+    }
+    .ui-wiggling {
+      animation: uiWiggle 0.22s infinite ease-in-out !important;
+      cursor: grab !important;
+      touch-action: none !important;
+      z-index: 2600 !important;
+    }
+    .ui-wiggling:active {
+      cursor: grabbing !important;
+    }
+
+    /* ПЛАШКА «МІЙ ШЛЯХ»: ВІЛЬНА ДОВЖИНА, ЧОРНІ БУКВИ (ЧИСТО), ЧЕРВОНІ (БП) */
+    #routeStatusBar {
       position: fixed;
       bottom: 15px;
       left: 14px;
       z-index: 2400;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      pointer-events: none;
-    }
-    .bottom-left-cluster > * {
-      pointer-events: auto;
-    }
-
-    .bottom-left-cluster #routeStatusBar {
-      position: static !important;
-      bottom: auto !important;
-      left: auto !important;
-      margin: 0 !important;
+      width: auto !important;
       height: 38px !important;
       min-height: 38px !important;
       max-height: 38px !important;
@@ -52,24 +56,64 @@
       display: inline-flex !important;
       align-items: center !important;
       gap: 6px !important;
-      padding: 0 12px !important;
+      padding: 0 13px !important;
       border-radius: 12px !important;
       font-size: 11.5px !important;
       font-weight: 800 !important;
-      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45) !important;
+      background: #f1f5f9 !important;
+      border: 1.5px solid #10b981 !important;
+      color: #000000 !important;
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4) !important;
+      cursor: pointer;
+      user-select: none;
+      white-space: nowrap !important;
+      transition: border-color 0.2s, background-color 0.2s;
+    }
+    #routeStatusBar #routeStatusText {
+      color: #000000 !important;
+      font-weight: 800 !important;
+    }
+    #routeStatusBar.danger {
+      background: #fef2f2 !important;
+      border-color: #ef4444 !important;
+      box-shadow: 0 0 16px rgba(239, 68, 68, 0.45) !important;
+    }
+    #routeStatusBar.danger #routeStatusText {
+      color: #dc2626 !important;
     }
 
-    .bottom-left-cluster #btnMemHud {
-      position: static !important;
-      bottom: auto !important;
-      left: auto !important;
-      margin: 0 !important;
+    /* КНОПКА ЗАВЕРШЕННЯ КАЛІБРУВАННЯ ПОЗИЦІЙ (ГАЛОЧКА) */
+    #btnSaveUiLayout {
+      display: none;
+      position: fixed;
+      bottom: 15px;
+      left: 14px;
+      z-index: 2700;
+      width: 38px;
+      height: 38px;
+      border-radius: 12px;
+      background: #10b981;
+      border: 2px solid #ffffff;
+      color: #ffffff;
+      font-size: 18px;
+      font-weight: 900;
+      cursor: pointer;
+      box-shadow: 0 0 18px rgba(16, 185, 129, 0.7);
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+    }
+
+    /* ОКРЕМІ КНОПКИ «МОЗОК 🧠» ТА «СТАТИСТИКА 📊» */
+    #btnMemHud {
+      position: fixed;
+      bottom: 15px;
+      left: 172px;
+      z-index: 2400;
       width: 38px !important;
       height: 38px !important;
       min-width: 38px !important;
       min-height: 38px !important;
-      max-width: 38px !important;
-      max-height: 38px !important;
       box-sizing: border-box !important;
       display: inline-flex !important;
       align-items: center !important;
@@ -83,30 +127,27 @@
       line-height: 1 !important;
       cursor: pointer !important;
       box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45) !important;
-      transition: all 0.2s !important;
-      flex-shrink: 0 !important;
+      transition: background 0.2s, border-color 0.2s;
       user-select: none !important;
     }
-    .bottom-left-cluster #btnMemHud:hover {
+    #btnMemHud:hover {
       background: #1e293b !important;
       border-color: #00f3ff !important;
       box-shadow: 0 0 12px rgba(0, 243, 255, 0.45) !important;
     }
-    .bottom-left-cluster #btnMemHud:active {
+    #btnMemHud:active {
       transform: scale(0.92) !important;
     }
 
-    .bottom-left-cluster #btnStatsHud {
-      position: static !important;
-      bottom: auto !important;
-      left: auto !important;
-      margin: 0 !important;
+    #btnStatsHud {
+      position: fixed;
+      bottom: 15px;
+      left: 218px;
+      z-index: 2400;
       width: 38px !important;
       height: 38px !important;
       min-width: 38px !important;
       min-height: 38px !important;
-      max-width: 38px !important;
-      max-height: 38px !important;
       box-sizing: border-box !important;
       display: inline-flex !important;
       align-items: center !important;
@@ -116,16 +157,15 @@
       background: #0f172a !important;
       border: 1.5px solid #0284c7 !important;
       box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45) !important;
-      flex-shrink: 0 !important;
-      transition: all 0.2s !important;
+      transition: background 0.2s, border-color 0.2s;
       user-select: none !important;
     }
-    .bottom-left-cluster #btnStatsHud:hover {
+    #btnStatsHud:hover {
       background: #1e293b !important;
       border-color: #00f3ff !important;
       box-shadow: 0 0 12px rgba(0, 243, 255, 0.45) !important;
     }
-    .bottom-left-cluster #btnStatsHud:active {
+    #btnStatsHud:active {
       transform: scale(0.92) !important;
     }
 
@@ -168,7 +208,7 @@
     html.mode-simple #routeSubmenu,
     html.mode-simple #btnMemHud,
     html.mode-simple #btnStatsHud,
-    html.mode-simple .bottom-left-cluster,
+    html.mode-simple #btnSaveUiLayout,
     html.mode-simple #btnTimelineFloating {
       display: none !important;
     }
@@ -657,26 +697,29 @@
     </div>
   </div>
 
-  <!-- 3. НИЖНІЙ КЛАСТЕР: МІЙ ШЛЯХ + МОЗОК (38x38) + СТАТИСТИКА (38x38) -->
-  <div class="bottom-left-cluster" id="bottomLeftCluster">
-    <div id="routeStatusBar" class="route-status-bar" onclick="toggleRouteSubmenu(event)">
-      <span id="routeStatusIcon">🟢</span>
-      <span id="routeStatusText">Мій шлях: Чисто</span>
-      <span id="routeSubmenuArrow" style="font-size:10px; color:#94a3b8; margin-left:2px;">▴</span>
-    </div>
-
-    <button id="btnMemHud" class="btn-mem-hud" onclick="if(window.openQuickSynonymModal) window.openQuickSynonymModal();" title="База знань ШІ (Мозок)">
-      🧠
-    </button>
-
-    <a href="javascript:void(0)" id="btnStatsHud" class="btn-stats-hud" onclick="event.preventDefault(); window.location.href = (localStorage.getItem('radar_last_analytics_page') || 'stats.html');" title="Аналітика блокпостів">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-        <rect x="3" y="12" width="4.5" height="9" rx="2" fill="#00f3ff" />
-        <rect x="9.75" y="7" width="4.5" height="14" rx="2" fill="#00f3ff" />
-        <rect x="16.5" y="3" width="4.5" height="18" rx="2" fill="#00f3ff" />
-      </svg>
-    </a>
+  <!-- 3. ОКРЕМІ ЕЛЕМЕНТИ НИЖНЬОГО РЯДУ З ПІДТРИМКОЮ ВІЛЬНОГО ПЕРЕМІЩЕННЯ -->
+  <div id="routeStatusBar" class="route-status-bar" onclick="handleRouteStatusClick(event)">
+    <span id="routeStatusIcon">🟢</span>
+    <span id="routeStatusText">Мій шлях: Чисто</span>
+    <span id="routeSubmenuArrow" style="font-size:10px; color:#94a3b8; margin-left:2px;">▴</span>
   </div>
+
+  <!-- Кнопка збереження положення іконок (зелена галочка) -->
+  <button id="btnSaveUiLayout" onclick="saveCustomUiLayout(event)" title="Зафіксувати положення кнопок">
+    ✅
+  </button>
+
+  <button id="btnMemHud" onclick="if(window.openQuickSynonymModal) window.openQuickSynonymModal();" title="База знань ШІ (Мозок)">
+    🧠
+  </button>
+
+  <a href="javascript:void(0)" id="btnStatsHud" onclick="event.preventDefault(); window.location.href = (localStorage.getItem('radar_last_analytics_page') || 'stats.html');" title="Аналітика блокпостів">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+      <rect x="3" y="12" width="4.5" height="9" rx="2" fill="#00f3ff" />
+      <rect x="9.75" y="7" width="4.5" height="14" rx="2" fill="#00f3ff" />
+      <rect x="16.5" y="3" width="4.5" height="18" rx="2" fill="#00f3ff" />
+    </svg>
+  </a>
 
   <div id="routeSubmenu" class="route-submenu" onclick="event.stopPropagation()">
     <div class="route-submenu-header">
@@ -771,7 +814,7 @@
 
   <script>
     // =========================================================================
-    // 🔒 ЗАХИСТ БЕЗПЕКИ (АНТИ-XSS, АВТОРИЗАЦІЯ ШІ ТА FIREBASE)
+    // 🔒 ЗАХИСТ БЕЗПЕКИ ТА АВТОРИЗАЦІЯ
     // =========================================================================
     function escapeHtml(str) {
       if (!str) return "";
@@ -1127,8 +1170,6 @@
     let activeActionMarker = null;
     let pendingRelocation = null;
 
-    let learnedRules = [];
-    let manualPointOverrides = {};
     let tlIgnoredPoints = {};
     try {
       const ig = localStorage.getItem("radar_tl_ignored_points");
@@ -1208,7 +1249,7 @@
     } catch(e) {}
 
     // =========================================================================
-    // 🗺️ СЕКТОРИ МІСТА (КАШТАНОВУ ПЕРЕНЕСЕНО З S1 ДО S6)
+    // 🗺️ СЕКТОРИ МІСТА (КАШТАНОВУ ЗАФІКСОВАНО В S6)
     // =========================================================================
     const SECTOR_DEFS = {
       s1: { 
@@ -1249,7 +1290,7 @@
       const arrow = document.getElementById("routeSubmenuArrow");
       const isOpen = menu.style.display === "flex";
       menu.style.display = isOpen ? "none" : "flex";
-      arrow.innerText = isOpen ? "▴" : "▾";
+      if (arrow) arrow.innerText = isOpen ? "▴" : "▾";
       if (!isOpen) syncSectorCheckboxesUI();
     }
 
@@ -1317,7 +1358,7 @@
     function isCleanPoint(p) {
       if (!p) return false;
 
-      const rawCombined = ((p.raw_text || "") + " " + (p.address || ""))
+      const rawCombined = ((p.raw_text || "") + " " + (p.text || "") + " " + (p.address || ""))
         .replace(/[\r\n]+/g, " ")
         .toLowerCase();
 
@@ -1414,6 +1455,159 @@
         if (text) text.innerText = "Мій шлях: Чисто";
       }
     }
+
+    // =========================================================================
+    // 🎛️ СВОБОДНЕ ПЕРЕМІЩЕННЯ ТА КАЛІБРУВАННЯ ПОЗИЦІЙ КНОПОК
+    // =========================================================================
+    let isUiLayoutEditMode = false;
+    let routeLongPressTimer = null;
+    const HUD_ELEMENT_IDS = ["routeStatusBar", "btnMemHud", "btnStatsHud"];
+
+    function loadCustomUiLayout() {
+      try {
+        const saved = localStorage.getItem("radar_hud_positions");
+        if (!saved) return;
+        const positions = JSON.parse(saved);
+        HUD_ELEMENT_IDS.forEach(id => {
+          const el = document.getElementById(id);
+          if (el && positions[id]) {
+            el.style.left = positions[id].left;
+            el.style.top = positions[id].top;
+            el.style.bottom = "auto";
+          }
+        });
+      } catch (e) {}
+    }
+
+    function enterUiLayoutEditMode() {
+      if (currentUiMode === "simple") return;
+      isUiLayoutEditMode = true;
+      if (navigator.vibrate) navigator.vibrate(70);
+
+      HUD_ELEMENT_IDS.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.classList.add("ui-wiggling");
+          makeElementFreelyDraggable(el);
+        }
+      });
+
+      const btnSave = document.getElementById("btnSaveUiLayout");
+      const routeBar = document.getElementById("routeStatusBar");
+      if (btnSave && routeBar) {
+        const rect = routeBar.getBoundingClientRect();
+        btnSave.style.left = (rect.right + 8) + "px";
+        btnSave.style.top = rect.top + "px";
+        btnSave.style.display = "inline-flex";
+      }
+      showToast("🖐️ Перетягуйте кнопки пальцем або мишкою!");
+    }
+
+    function saveCustomUiLayout(e) {
+      if (e) e.stopPropagation();
+      isUiLayoutEditMode = false;
+
+      const positions = {};
+      HUD_ELEMENT_IDS.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.classList.remove("ui-wiggling");
+          const rect = el.getBoundingClientRect();
+          positions[id] = {
+            left: rect.left + "px",
+            top: rect.top + "px"
+          };
+        }
+      });
+
+      localStorage.setItem("radar_hud_positions", JSON.stringify(positions));
+      const btnSave = document.getElementById("btnSaveUiLayout");
+      if (btnSave) btnSave.style.display = "none";
+      showToast("✅ Положення кнопок збережено!");
+    }
+
+    function makeElementFreelyDraggable(el) {
+      el.onpointerdown = function (e) {
+        if (!isUiLayoutEditMode) return;
+        e.preventDefault();
+        e.stopPropagation();
+
+        const rect = el.getBoundingClientRect();
+        const shiftX = e.clientX - rect.left;
+        const shiftY = e.clientY - rect.top;
+
+        function onMove(evt) {
+          el.style.left = (evt.clientX - shiftX) + "px";
+          el.style.top = (evt.clientY - shiftY) + "px";
+          el.style.bottom = "auto";
+
+          if (el.id === "routeStatusBar") {
+            const btnSave = document.getElementById("btnSaveUiLayout");
+            if (btnSave) {
+              btnSave.style.left = (evt.clientX - shiftX + el.offsetWidth + 8) + "px";
+              btnSave.style.top = (evt.clientY - shiftY) + "px";
+            }
+          }
+        }
+
+        function onUp() {
+          document.removeEventListener("pointermove", onMove);
+          document.removeEventListener("pointerup", onUp);
+        }
+
+        document.addEventListener("pointermove", onMove);
+        document.addEventListener("pointerup", onUp);
+      };
+    }
+
+    function handleRouteStatusClick(e) {
+      if (isUiLayoutEditMode) return;
+      toggleRouteSubmenu(e);
+    }
+
+    // Слухачі довгого натискання (смартфон) та кліку коліщатком (ПК) на «Мій шлях»
+    const routeBarEl = document.getElementById("routeStatusBar");
+    if (routeBarEl) {
+      routeBarEl.addEventListener("touchstart", (e) => {
+        if (currentUiMode === "simple") return;
+        routeLongPressTimer = setTimeout(() => {
+          enterUiLayoutEditMode();
+        }, 650);
+      }, { passive: true });
+
+      routeBarEl.addEventListener("touchmove", () => {
+        if (routeLongPressTimer) { clearTimeout(routeLongPressTimer); routeLongPressTimer = null; }
+      }, { passive: true });
+
+      routeBarEl.addEventListener("touchend", () => {
+        if (routeLongPressTimer) { clearTimeout(routeLongPressTimer); routeLongPressTimer = null; }
+      });
+
+      routeBarEl.addEventListener("mousedown", (e) => {
+        if (currentUiMode === "simple") return;
+        if (e.button === 1) { // Клік коліщатком миші
+          e.preventDefault();
+          enterUiLayoutEditMode();
+          return;
+        }
+        routeLongPressTimer = setTimeout(() => {
+          enterUiLayoutEditMode();
+        }, 650);
+      });
+
+      routeBarEl.addEventListener("mouseup", () => {
+        if (routeLongPressTimer) { clearTimeout(routeLongPressTimer); routeLongPressTimer = null; }
+      });
+
+      routeBarEl.addEventListener("auxclick", (e) => {
+        if (e.button === 1) {
+          e.preventDefault();
+          enterUiLayoutEditMode();
+        }
+      });
+    }
+
+    setTimeout(loadCustomUiLayout, 200);
 
     function findMarkerByPoint(p) {
       let found = null;
@@ -1523,7 +1717,7 @@
       showToast("🤖 Мітку передано ШІ-штурману!");
     };
 
-    // ВИКЛИК МЕНЮ ДІЙ З МІТКОЮ
+    // ВИКЛИК МЕНЮ ДІЙ З МІТКОЮ (ПОВНІСТЮ ВИМКНЕНО В ПРОСТОМУ РЕЖИМІ)
     function openMarkerActionSheet(point, marker) {
       if (currentUiMode === "simple") return;
       activeActionPoint = point;
@@ -1542,22 +1736,6 @@
       if (!sheet) return;
       if (e && e.target && e.target.id !== "markerActionSheet" && !e.target.closest(".action-sheet-card")) return;
       sheet.style.display = "none";
-    }
-
-    function sheetStartManualDrag() {
-      closeMarkerActionSheet();
-      if (!activeActionPoint) return;
-      if (typeof window.startDirectManualDrag === "function") {
-        window.startDirectManualDrag(activeActionPoint._fbKey);
-      }
-    }
-
-    function sheetStartTrainModal() {
-      closeMarkerActionSheet();
-      if (!activeActionPoint) return;
-      if (typeof window.openTrainingModal === "function") {
-        window.openTrainingModal(activeActionPoint, activeActionMarker);
-      }
     }
 
     async function executeAiActionDirective(actionType, payload) {
@@ -1657,8 +1835,6 @@
     L.DomEvent.disableClickPropagation(aiPillPanel);
     L.DomEvent.disableScrollPropagation(aiPillPanel);
     L.DomEvent.disableClickPropagation(document.getElementById("dashPanel"));
-    const clusterEl = document.getElementById("bottomLeftCluster");
-    if (clusterEl) L.DomEvent.disableClickPropagation(clusterEl);
     const rsbEl = document.getElementById("routeStatusBar");
     if (rsbEl) L.DomEvent.disableClickPropagation(rsbEl);
     const rsmEl = document.getElementById("routeSubmenu");
@@ -1719,7 +1895,7 @@
           try {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 8000);
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${k}`;
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/{m}:generateContent?key=${k}`;
             const res = await fetch(url, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -1827,7 +2003,7 @@ ${allLiveReportsText || "Повідомлень немає"}
       const arrow = document.getElementById("tlDropdownArrow");
       const isVis = drop.style.display === "flex";
       drop.style.display = isVis ? "none" : "flex";
-      arrow.innerText = isVis ? "▾" : "▴";
+      if (arrow) arrow.innerText = isVis ? "▾" : "▴";
     }
 
     function toggleServerDropdown() {
@@ -1949,7 +2125,7 @@ ${allLiveReportsText || "Повідомлень немає"}
     }
 
     // =========================================================================
-    // 🚦 РЕНДЕР СВІТЛОФОРІВ: МУЛЬТИ-ПОВІДОМЛЕННЯ + ДИНАМІЧНИЙ РОЗГІН БП
+    // 🚦 РЕНДЕР СВІТЛОФОРІВ
     // =========================================================================
     function renderTrafficLights() {
       if (!showTrafficLights || currentUiMode === "simple") {
@@ -2275,7 +2451,7 @@ ${allLiveReportsText || "Повідомлень немає"}
     }
 
     // =========================================================================
-    // 📍 РЕНДЕР МІТОК ІЗ МОСТИКОМ ДЛЯ СВІТЛОФОРІВ ТА LONG-PRESS
+    // 📍 РЕНДЕР МІТОК ІЗ ЗАХИСТОМ ВІД ПЕРЕНЕСЕННЯ В ПРОСТОМУ РЕЖИМІ
     // =========================================================================
     function renderMarkers() {
       try {
@@ -2412,6 +2588,7 @@ ${allLiveReportsText || "Повідомлень немає"}
           marker.pointData = cluster.points[0];
           marker.bindPopup(popupContent, { autoClose: true, closeOnClick: true });
 
+          // ДОДАТКОВИЙ ЗАХИСТ: В ПРОСТОМУ РЕЖИМІ ДОВГЕ НАТИСКАННЯ ПОВНІСТЮ ВИМКНЕНО
           if (!isSimple) {
             let pressTimer = null;
             let startX = 0, startY = 0;
@@ -2419,10 +2596,13 @@ ${allLiveReportsText || "Повідомлень немає"}
               const el = marker.getElement();
               if (!el) return;
               el.addEventListener('touchstart', (e) => {
+                if (currentUiMode === "simple") return;
                 startX = e.touches[0].clientX; startY = e.touches[0].clientY;
                 pressTimer = setTimeout(() => {
-                  if (navigator.vibrate) navigator.vibrate(50);
-                  openMarkerActionSheet(cluster.points[0], marker);
+                  if (currentUiMode !== "simple") {
+                    if (navigator.vibrate) navigator.vibrate(50);
+                    openMarkerActionSheet(cluster.points[0], marker);
+                  }
                 }, 450);
               }, { passive: true });
               el.addEventListener('touchmove', (e) => {
