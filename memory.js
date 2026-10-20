@@ -1,10 +1,9 @@
 /**
- * memory.js — Модуль бази знань, синонімів та калібрування вулиць v10.6
- * Реалізує:
- * - Збереження синонімів (custom_streets.json)
- * - Синхронізацію зміщених координат (street_overrides.json)
- * - Автоматичне навчання при перенесенні міток
- * - Повний захист від XSS та авторизацію Firebase (auth=)
+ * memory.js — Модуль бази знань, синонімів та калібрування вулиць v10.7
+ * Підтримка:
+ * - Редагування та додавання синонімів (custom_streets.json)
+ * - Ручне редагування та скидання зсувів координат (street_overrides.json)
+ * - Автокомпліт вулиць, захист від XSS та безпечна авторизація Firebase (auth=)
  */
 
 (function () {
@@ -18,6 +17,7 @@
   let customStreetsCache = {};
   let streetOverridesCache = {};
   let activeTab = "synonyms";
+  let editingSynonymKey = null; // Зберігає ключ синоніма при редагуванні
 
   function escapeHtml(str) {
     if (typeof window.escapeHtml === "function") return window.escapeHtml(str);
@@ -52,7 +52,6 @@
   window.saveMemorySynonymFromRelocate = async function (rawMsg, officialStreetName, lat, lng) {
     if (!rawMsg || !officialStreetName || !lat || !lng) return;
 
-    // Очищення тексту від службових слів для отримання чистого орієнтира
     let cleanPhrase = rawMsg
       .replace(/[\r\n]+/g, " ")
       .replace(/[,\.!\?\(\)\[\]«»"']/g, " ")
@@ -89,12 +88,11 @@
     }
   };
 
-  // 2. УМНИЙ РЕЗОЛВЕР ЛОКАЦІЙ (Зчитує пам'ять -> зміщення -> карту міста)
+  // 2. УМНИЙ РЕЗОЛВЕР ЛОКАЦІЙ (Перевірка пам'яті -> зміщення -> карти)
   window.resolveLocationFromText = function (text) {
     if (!text || typeof text !== "string") return null;
     const lower = (" " + text.toLowerCase().replace(/[\r\n]+/g, " ").replace(/ё/g, "е") + " ");
 
-    // А. Перевірка каліброваних зсувів координат
     for (const item of Object.values(streetOverridesCache)) {
       if (!item || !item.street || !item.lat || !item.lng) continue;
       const stName = item.street.toLowerCase().replace(/ё/g, "е");
@@ -103,7 +101,6 @@
       }
     }
 
-    // Б. Перевірка бази синонімів («Мозку»)
     for (const item of Object.values(customStreetsCache)) {
       if (!item || !item.phrase || !item.lat || !item.lng) continue;
       const phr = item.phrase.toLowerCase().replace(/ё/g, "е");
@@ -112,7 +109,6 @@
       }
     }
 
-    // В. Перевірка офіційної бази Дніпра (streets.js)
     if (typeof DNIPRO_STREETS_MAP !== "undefined") {
       for (const [key, item] of Object.entries(DNIPRO_STREETS_MAP)) {
         if (!item || !item.lat || !item.lng) continue;
@@ -129,7 +125,7 @@
     return null;
   };
 
-  // 3. ЗАВАНТАЖЕННЯ ДАНИХ З ХМАРИ ТА КЕШУ
+  // 3. СИНХРОНІЗАЦІЯ ДАНИХ З ХМАРОЮ
   window.loadCloudRules = async function () {
     try {
       const localCustom = localStorage.getItem("radar_custom_streets");
@@ -177,13 +173,13 @@
     renderRulesList();
   };
 
-  // 4. ГРАФІЧНИЙ ІНТЕРФЕЙС КЕРУВАННЯ БАЗОЮ ЗНАНЬ
+  // 4. ГРАФІЧНИЙ ІНТЕРФЕЙС ЖУРНАЛУ МОЗКУ
   function ensureMemoryWidget() {
     let widget = document.getElementById("memWidget");
     if (!widget) {
       widget = document.createElement("button");
       widget.id = "memWidget";
-      widget.title = "База знань ШІ / Синоніми вулиць";
+      widget.title = "Журнал керування «мозком»";
       widget.style.cssText = `
         position: fixed;
         bottom: 74px;
@@ -228,28 +224,31 @@
       `;
 
       modal.innerHTML = `
-        <div style="background:#0f172a; border:2px solid #00f3ff; border-radius:18px; width:94%; max-width:520px; max-height:86vh; padding:16px; display:flex; flex-direction:column; gap:10px; box-shadow:0 0 30px rgba(0,243,255,0.25);" onclick="event.stopPropagation()">
+        <div style="background:#0f172a; border:2px solid #00f3ff; border-radius:18px; width:94%; max-width:520px; max-height:88vh; padding:16px; display:flex; flex-direction:column; gap:10px; box-shadow:0 0 30px rgba(0,243,255,0.25);" onclick="event.stopPropagation()">
           <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #1e293b; padding-bottom:8px;">
             <div style="font-size:14px; font-weight:900; color:#00f3ff; display:flex; align-items:center; gap:6px;">
-              <span>🧠 База знань та пам'ять вулиць</span>
+              <span>📚 Журнал керування «мозком»</span>
             </div>
             <span id="memCloseBtn" style="cursor:pointer; font-size:20px; color:#94a3b8; font-weight:800; padding:0 6px;">✕</span>
           </div>
 
           <div style="display:flex; gap:6px; background:#0b1120; padding:4px; border-radius:10px; border:1px solid #1e293b;">
             <button id="memTabSynonyms" style="flex:1; background:#0284c7; border:none; color:#fff; padding:7px; border-radius:7px; font-size:11px; font-weight:800; cursor:pointer;">
-              📖 Синоніми («Мозок»)
+              🧠 Синоніми (А = Б)
             </button>
             <button id="memTabOverrides" style="flex:1; background:transparent; border:none; color:#94a3b8; padding:7px; border-radius:7px; font-size:11px; font-weight:800; cursor:pointer;">
-              📍 Калібровані зсуви
+              📍 Зсунуті вулиці
             </button>
           </div>
 
-          <!-- Форма швидкого додавання синоніма -->
+          <!-- Форма додавання та редагування синоніма -->
           <div id="memAddForm" style="display:flex; flex-direction:column; gap:6px; background:#0b1120; padding:10px; border-radius:10px; border:1px solid #1e293b;">
-            <div style="font-size:11px; font-weight:800; color:#38bdf8;">➕ Додати правило в пам'ять:</div>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <span id="memFormHeaderTitle" style="font-size:11px; font-weight:800; color:#38bdf8;">➕ Додати правило в пам'ять:</span>
+              <button id="memBtnCancelEdit" style="display:none; background:transparent; border:none; color:#f87171; font-size:10.5px; font-weight:800; cursor:pointer;" onclick="cancelSynonymEdit()">✕ Скасувати редагування</button>
+            </div>
             <div style="display:flex; gap:6px; flex-wrap:wrap;">
-              <input type="text" id="memInputPhrase" placeholder="Фраза в пості (напр. варус тополь)" style="flex:1; min-width:140px; background:#060913; border:1px solid #334155; color:#fff; padding:7px 9px; border-radius:6px; font-size:11px; outline:none;">
+              <input type="text" id="memInputPhrase" placeholder="Фраза в пості (напр. каштанова)" style="flex:1; min-width:140px; background:#060913; border:1px solid #334155; color:#fff; padding:7px 9px; border-radius:6px; font-size:11px; outline:none;">
               <div style="position:relative; flex:1; min-width:140px;">
                 <input type="text" id="memInputTarget" placeholder="Куди вести (офіційна вул.)" style="width:100%; box-sizing:border-box; background:#060913; border:1px solid #334155; color:#fff; padding:7px 9px; border-radius:6px; font-size:11px; outline:none;">
                 <div id="memTargetSuggest" style="position:absolute; top:100%; left:0; width:100%; background:#0f172a; border:1.5px solid #0284c7; border-radius:6px; max-height:160px; overflow-y:auto; z-index:10; display:none; margin-top:3px; box-shadow:0 8px 20px rgba(0,0,0,0.9);"></div>
@@ -260,14 +259,14 @@
             </button>
           </div>
 
-          <!-- Список правил зі скролом -->
-          <div id="memRulesList" style="flex:1; overflow-y:auto; max-height:42vh; display:flex; flex-direction:column; gap:6px; padding-right:3px;"></div>
+          <!-- Список записів -->
+          <div id="memRulesList" style="flex:1; overflow-y:auto; max-height:45vh; display:flex; flex-direction:column; gap:6px; padding-right:3px;"></div>
         </div>
       `;
       document.body.appendChild(modal);
 
-      document.getElementById("memCloseBtn").onclick = () => { modal.style.display = "none"; };
-      modal.onclick = (e) => { if (e.target === modal) modal.style.display = "none"; };
+      document.getElementById("memCloseBtn").onclick = () => { modal.style.display = "none"; cancelSynonymEdit(); };
+      modal.onclick = (e) => { if (e.target === modal) { modal.style.display = "none"; cancelSynonymEdit(); } };
 
       const tabSyn = document.getElementById("memTabSynonyms");
       const tabOvr = document.getElementById("memTabOverrides");
@@ -345,6 +344,47 @@
     });
   }
 
+  // 5. РЕДАГУВАННЯ СИНОНІМА
+  window.editSynonymRule = function (key) {
+    const item = customStreetsCache[key];
+    if (!item) return;
+
+    editingSynonymKey = key;
+
+    const pInput = document.getElementById("memInputPhrase");
+    const tInput = document.getElementById("memInputTarget");
+    const titleEl = document.getElementById("memFormHeaderTitle");
+    const saveBtn = document.getElementById("memBtnSaveRule");
+    const cancelBtn = document.getElementById("memBtnCancelEdit");
+
+    pInput.value = item.phrase || key;
+    tInput.value = item.name || "";
+    tInput._selectedCoords = { lat: item.lat, lng: item.lng };
+
+    titleEl.innerText = `✏️ Редагування: «${item.phrase || key}»`;
+    titleEl.style.color = "#f59e0b";
+    saveBtn.innerText = "💾 Зберегти зміни";
+    saveBtn.style.background = "#ca8a04";
+    cancelBtn.style.display = "inline";
+
+    pInput.focus();
+  };
+
+  window.cancelSynonymEdit = function () {
+    editingSynonymKey = null;
+    const pInput = document.getElementById("memInputPhrase");
+    const tInput = document.getElementById("memInputTarget");
+    const titleEl = document.getElementById("memFormHeaderTitle");
+    const saveBtn = document.getElementById("memBtnSaveRule");
+    const cancelBtn = document.getElementById("memBtnCancelEdit");
+
+    if (pInput) pInput.value = "";
+    if (tInput) { tInput.value = ""; tInput._selectedCoords = null; }
+    if (titleEl) { titleEl.innerText = "➕ Додати правило в пам'ять:"; titleEl.style.color = "#38bdf8"; }
+    if (saveBtn) { saveBtn.innerText = "💾 Запам'ятати правило"; saveBtn.style.background = "#0284c7"; }
+    if (cancelBtn) cancelBtn.style.display = "none";
+  };
+
   async function handleManualRuleSave() {
     const pInput = document.getElementById("memInputPhrase");
     const tInput = document.getElementById("memInputTarget");
@@ -369,17 +409,63 @@
     }
 
     if (!lat || !lng) {
-      alert("Не вдалося визначити координати цільової вулиці. Виберіть її зі списку підказок!");
+      alert("Не вдалося визначити координати цільової вулиці. Оберіть її зі списку підказок!");
       return;
     }
 
+    // Якщо це редагування і фраза змінилася — видаляємо старий ключ з бази
+    if (editingSynonymKey && editingSynonymKey !== toSafeFirebaseKey(phrase)) {
+      try {
+        delete customStreetsCache[editingSynonymKey];
+        const oldUrl = appendAuth(`${BASE_URL}/custom_streets/${editingSynonymKey}.json`);
+        fetch(oldUrl, { method: "DELETE" }).catch(() => {});
+      } catch (e) {}
+    }
+
     await window.saveMemorySynonymFromRelocate(phrase, target, lat, lng);
-    pInput.value = "";
-    tInput.value = "";
-    tInput._selectedCoords = null;
+    cancelSynonymEdit();
     renderRulesList();
-    if (typeof showToast === "function") showToast(`🧠 Правило додано: «${escapeHtml(phrase)}» ➔ ${escapeHtml(target)}`);
+    if (typeof showToast === "function") showToast(`🧠 Правило збережено: «${escapeHtml(phrase)}» ➔ ${escapeHtml(target)}`);
   }
+
+  // 6. РУЧНЕ РЕДАГУВАННЯ ЗСУВУ КООРДИНАТ
+  window.editStreetOverrideCoords = async function (key, streetName) {
+    const item = streetOverridesCache[key];
+    if (!item) return;
+
+    const newCoords = prompt(
+      `Введіть нові координати (lat, lng) для «${streetName}»:\n(Поточні: ${item.lat}, ${item.lng})`,
+      `${item.lat}, ${item.lng}`
+    );
+
+    if (!newCoords) return;
+    const parts = newCoords.split(/[,;\s]+/).map(p => parseFloat(p.trim())).filter(p => !isNaN(p));
+    if (parts.length < 2 || parts[0] < 48.20 || parts[0] > 48.75 || parts[1] < 34.60 || parts[1] > 35.45) {
+      alert("❌ Некоректні координати! Вкажіть дійсні координати Дніпра (напр. 48.5035, 35.0838).");
+      return;
+    }
+
+    const updatedLat = Number(parts[0].toFixed(5));
+    const updatedLng = Number(parts[1].toFixed(5));
+
+    item.lat = updatedLat;
+    item.lng = updatedLng;
+    item.updated_at = Date.now();
+
+    try {
+      localStorage.setItem("radar_street_overrides", JSON.stringify(streetOverridesCache));
+      const url = appendAuth(`${FIREBASE_OVERRIDES_URL.replace(".json", `/\${key}.json`)}`);
+      await fetch(url, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(item)
+      });
+    } catch (e) {}
+
+    renderRulesList();
+    if (typeof renderMarkers === "function") renderMarkers();
+    if (typeof showToast === "function") showToast(`📍 Координати «${escapeHtml(streetName)}» оновлено!`);
+  };
 
   function renderRulesList() {
     const box = document.getElementById("memRulesList");
@@ -389,25 +475,30 @@
     if (activeTab === "synonyms") {
       const items = Object.entries(customStreetsCache);
       if (items.length === 0) {
-        box.innerHTML = `<div style="padding:15px; text-align:center; font-size:11.5px; color:#64748b;">База синонімів поки порожня. Переміщуйте мітки на карті або додавайте правила вручну!</div>`;
+        box.innerHTML = `<div style="padding:15px; text-align:center; font-size:11.5px; color:#64748b;">База синонімів порожня. Переміщуйте мітки на карті або додавайте правила вгорі!</div>`;
         return;
       }
 
       items.reverse().forEach(([key, item]) => {
         const card = document.createElement("div");
-        card.style.cssText = "background:#060913; border:1px solid #1e293b; border-left:3.5px solid #00f3ff; border-radius:7px; padding:8px 10px; display:flex; justify-content:space-between; align-items:center;";
+        card.style.cssText = "background:#060913; border:1px solid #1e293b; border-left:3.5px solid #00f3ff; border-radius:8px; padding:8px 10px; display:flex; justify-content:space-between; align-items:center; gap:8px;";
         card.innerHTML = `
-          <div style="line-height:1.35;">
-            <div style="font-size:11.5px; font-weight:800; color:#f8fafc;">
+          <div style="line-height:1.35; flex:1; min-width:0;">
+            <div style="font-size:11.5px; font-weight:800; color:#f8fafc; word-break:break-word;">
               «${escapeHtml(item.phrase || key)}» ➔ <span style="color:#38bdf8;">${escapeHtml(item.name || 'Вулиця')}</span>
             </div>
             <div style="font-size:9.5px; color:#64748b; font-family:monospace; margin-top:2px;">
-              lat: ${item.lat}, lng: ${item.lng}
+              (${item.lat}, ${item.lng})
             </div>
           </div>
-          <button style="background:transparent; border:1px solid #7f1d1d; color:#f87171; padding:4px 7px; border-radius:5px; font-size:10px; font-weight:800; cursor:pointer;" onclick="window.deleteMemoryRule('${key}')">
-            🗑️
-          </button>
+          <div style="display:flex; gap:5px; flex-shrink:0;">
+            <button style="background:#0f172a; border:1px solid #0284c7; color:#38bdf8; padding:5px 8px; border-radius:6px; font-size:11px; cursor:pointer;" title="Редагувати правило" onclick="window.editSynonymRule('${key}')">
+              ✏️
+            </button>
+            <button style="background:#450a0a; border:1px solid #ef4444; color:#fca5a5; padding:5px 8px; border-radius:6px; font-size:11px; cursor:pointer;" title="Видалити правило" onclick="window.deleteMemoryRule('${key}')">
+              🗑️
+            </button>
+          </div>
         `;
         box.appendChild(card);
       });
@@ -420,19 +511,24 @@
 
       items.forEach(([key, item]) => {
         const card = document.createElement("div");
-        card.style.cssText = "background:#060913; border:1px solid #1e293b; border-left:3.5px solid #f59e0b; border-radius:7px; padding:8px 10px; display:flex; justify-content:space-between; align-items:center;";
+        card.style.cssText = "background:#060913; border:1px solid #1e293b; border-left:3.5px solid #f59e0b; border-radius:8px; padding:8px 10px; display:flex; justify-content:space-between; align-items:center; gap:8px;";
         card.innerHTML = `
-          <div style="line-height:1.35;">
-            <div style="font-size:11.5px; font-weight:800; color:#fbbf24;">
+          <div style="line-height:1.35; flex:1; min-width:0;">
+            <div style="font-size:11.5px; font-weight:800; color:#fbbf24; word-break:break-word;">
               📍 ${escapeHtml(item.street || item.name || key)}
             </div>
             <div style="font-size:9.5px; color:#64748b; font-family:monospace; margin-top:2px;">
-              Зсунуто на: ${item.lat}, ${item.lng}
+              lat: ${item.lat}, lng: ${item.lng}
             </div>
           </div>
-          <button style="background:transparent; border:1px solid #334155; color:#94a3b8; padding:4px 7px; border-radius:5px; font-size:10px; font-weight:800; cursor:pointer;" onclick="window.resetStreetOverride('${key}', '${escapeHtml(item.street || item.name)}')">
-            🔄 Скинути
-          </button>
+          <div style="display:flex; gap:5px; flex-shrink:0;">
+            <button style="background:#0f172a; border:1px solid #0284c7; color:#38bdf8; padding:5px 8px; border-radius:6px; font-size:11px; cursor:pointer;" title="Змінити координати" onclick="window.editStreetOverrideCoords('${key}', '${escapeHtml(item.street || item.name)}')">
+              ✏️
+            </button>
+            <button style="background:#1e293b; border:1px solid #334155; color:#94a3b8; padding:5px 8px; border-radius:6px; font-size:10px; font-weight:800; cursor:pointer;" title="Скинути до заводських" onclick="window.resetStreetOverride('${key}', '${escapeHtml(item.street || item.name)}')">
+              🔄 Скинути
+            </button>
+          </div>
         `;
         box.appendChild(card);
       });
@@ -469,7 +565,6 @@
     modal.style.display = "flex";
   }
 
-  // СТАРТ МОДУЛЯ
   ensureMemoryWidget();
   window.loadCloudRules();
 
