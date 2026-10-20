@@ -1,8 +1,10 @@
 /**
- * memory.js — Модуль бази знань, синонімів та калібрування вулиць v10.9
- * - Виправлено вирівнювання та прибрано відволікаючий блок останніх правил
- * - Додано лічильник загальної кількості правил у швидкому вікні
- * - Сортування: найсвіжіші записи завжди зверху (за часом, а не за алфавітом)
+ * memory.js — Модуль бази знань, синонімів та калібрування вулиць v11.0
+ * Реалізує:
+ * - Розумне обрізання хвостів часу та статусів при автообученні з фолбЕком на повний текст
+ * - Захист ручних правок від перезапису (флаг is_manual: true)
+ * - Сортування за часом: найсвіжіші правила завжди зверху
+ * - Дворівневий інтерфейс: швидке вікно з лічильником + повноекранний журнал
  */
 
 (function () {
@@ -47,36 +49,61 @@
     ).replace(/%/g, "_").slice(0, 80);
   }
 
-  // 1. АВТОМАТИЧНИЙ ЗАПИС СИНОНІМА ПРИ ПЕРЕНЕСЕННІ МІТКИ
-  window.saveMemorySynonymFromRelocate = async function (rawMsg, officialStreetName, lat, lng) {
+  // 1. РОЗУМНЕ АВТОНАВЧАННЯ ЗІ СРЕЗКОЮ ХВОСТІВ ТА ЗАХИСТОМ РУЧНИХ ПРАВОК
+  window.saveMemorySynonymFromRelocate = async function (rawMsg, officialStreetName, lat, lng, isManual = false) {
     if (!rawMsg || !officialStreetName || !lat || !lng) return;
 
+    const safeKey = toSafeFirebaseKey(rawMsg);
+
+    // Перевірка захисту від перезапису: якщо запис вже існує і відредагований людиною (is_manual)
+    if (!isManual && customStreetsCache[safeKey] && customStreetsCache[safeKey].is_manual) {
+      // Оновлюємо лише координати, але не чіпаємо назву/фразу
+      customStreetsCache[safeKey].lat = Number(Number(lat).toFixed(5));
+      customStreetsCache[safeKey].lng = Number(Number(lng).toFixed(5));
+      customStreetsCache[safeKey].updated_at = Date.now();
+      
+      try {
+        localStorage.setItem("radar_custom_streets", JSON.stringify(customStreetsCache));
+        const url = appendAuth(`${BASE_URL}/custom_streets/${safeKey}.json`);
+        await fetch(url, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(customStreetsCache[safeKey])
+        });
+      } catch (e) {}
+      return;
+    }
+
+    // Розумна обрізка хвостів (час, статуси, приписки)
     let cleanPhrase = rawMsg
       .replace(/[\r\n]+/g, " ")
       .replace(/[,\.!\?\(\)\[\]«»"']/g, " ")
-      .replace(/\b(чисто|чистенько|пусто|вільно|спокійно|спокойно|проїзд|проїхав|проехали|норм|нормально|бп|блокпост|патруль|полиция|поліція|мусора|стоят|шмонают|зупиняють|роздають|пишуть|хмари|дощ|гроза|сонце|сонечко|без\s*ям|без\s*бп|нет\s*бп)\b/gi, "")
+      .replace(/\b(?:на\s+\d{1,2}[:.]\d{2}|на\s+сейчас|только\s+что|актуально|на\s+авто|пешие|в\s+обе\s+стороны|проехали\s+спокойно|чисто|пусто|вільно|спокійно|спокойно|проїзд|проїхав|проехали|норм|нормально|бп|блокпост|патруль|полиция|поліція|мусора|стоят|шмонают|зупиняють|роздають|пишуть|хмари|дощ|гроза|сонце|сонечко|без\s*ям|без\s*бп|нет\s*бп)\b/gi, "")
       .replace(/\s+/g, " ")
       .trim();
 
-    if (cleanPhrase.length < 3) cleanPhrase = rawMsg.trim();
-    if (cleanPhrase.length < 3) return;
+    // Фолбэк: якщо після обрізки залишилося менше 3 символів — беремо повний оригінальний текст
+    if (cleanPhrase.length < 3) {
+      cleanPhrase = rawMsg.trim();
+    }
 
-    const safeKey = toSafeFirebaseKey(cleanPhrase);
+    const finalKey = toSafeFirebaseKey(cleanPhrase);
     const payload = {
       phrase: cleanPhrase,
       name: officialStreetName,
       lat: Number(Number(lat).toFixed(5)),
       lng: Number(Number(lng).toFixed(5)),
+      is_manual: !!isManual,
       updated_at: Date.now()
     };
 
-    customStreetsCache[safeKey] = payload;
+    customStreetsCache[finalKey] = payload;
     try {
       localStorage.setItem("radar_custom_streets", JSON.stringify(customStreetsCache));
     } catch (e) {}
 
     try {
-      const url = appendAuth(`${BASE_URL}/custom_streets/${safeKey}.json`);
+      const url = appendAuth(`${BASE_URL}/custom_streets/${finalKey}.json`);
       await fetch(url, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -90,7 +117,7 @@
     renderFullRulesList();
   };
 
-  // 2. РЕЗОЛВЕР ЛОКАЦІЙ (Пам'ять -> Зміщення -> База міста)
+  // 2. РЕЗОЛВЕР ЛОКАЦІЙ
   window.resolveLocationFromText = function (text) {
     if (!text || typeof text !== "string") return null;
     const lower = (" " + text.toLowerCase().replace(/[\r\n]+/g, " ").replace(/ё/g, "е") + " ");
@@ -177,7 +204,7 @@
   };
 
   // =========================================================================
-  // 4. РІВЕНЬ 1: КОМПАКТНЕ ВІКНО ШВИДКИХ СИНОНІМІВ З ЛІЧИЛЬНИКОМ
+  // 4. РІВЕНЬ 1: КОМПАКТНЕ ВІКНО (БЕЗ СПИСКУ ОСТАННІХ ПРАВИЛ)
   // =========================================================================
   function ensureQuickModal() {
     let modal = document.getElementById("quickSynonymModal");
@@ -206,7 +233,6 @@
             <span id="quickModalCloseBtn" style="cursor:pointer; font-size:19px; color:#94a3b8; font-weight:800; padding:0 6px;">✕</span>
           </div>
 
-          <!-- Форма швидкого додавання -->
           <div style="display:flex; flex-direction:column; gap:6px; background:#0b1120; padding:10px; border-radius:10px; border:1px solid #1e293b;">
             <div style="font-size:11px; font-weight:800; color:#cbd5e1;">➕ Прив'язати орієнтир:</div>
             <input type="text" id="quickInputPhrase" placeholder="Фраза в пості (напр. каштанова)" style="background:#060913; border:1px solid #334155; color:#fff; padding:7px 9px; border-radius:6px; font-size:11.5px; outline:none;">
@@ -219,9 +245,8 @@
             </button>
           </div>
 
-          <!-- КНОПКА ПЕРЕХОДУ В ПОВНУ БАЗУ ЗНАНЬ НА ВЕСЬ ЕКРАН -->
           <button id="quickBtnOpenFull" style="width:100%; background:linear-gradient(135deg, #0284c7 0%, #00f3ff 100%); border:none; color:#04101e; padding:10px; border-radius:9px; font-size:12px; font-weight:900; cursor:pointer; margin-top:2px; box-shadow:0 0 16px rgba(0,243,255,0.4); transition:transform 0.15s ease;">
-            📖 Відкрити всю базу знань ➔
+            📖 Відкрити всю базу знань (0 правил) ➔
           </button>
         </div>
       `;
@@ -281,7 +306,7 @@
       return;
     }
 
-    await window.saveMemorySynonymFromRelocate(phrase, target, lat, lng);
+    await window.saveMemorySynonymFromRelocate(phrase, target, lat, lng, true); // true = ручна правка (is_manual)
     pInput.value = "";
     tInput.value = "";
     tInput._selectedCoords = null;
@@ -291,7 +316,7 @@
   }
 
   // =========================================================================
-  // 5. РІВЕНЬ 2: ПОВНОЕКРАННИЙ ЖУРНАЛ КЕРУВАННЯ «МОЗКОМ» (НА ВЕСЬ ЕКРАН)
+  // 5. РІВЕНЬ 2: ПОВНОЕКРАННИЙ ЖУРНАЛ КЕРУВАННЯ «МОЗКОМ»
   // =========================================================================
   function ensureFullModal() {
     let modal = document.getElementById("fullKnowledgeBaseModal");
@@ -436,7 +461,6 @@
     });
   }
 
-  // 6. РЕДАГУВАННЯ СИНОНІМІВ
   window.editSynonymRule = function (key) {
     const item = customStreetsCache[key];
     if (!item) return;
@@ -460,18 +484,6 @@
       fullCancel.style.display = "inline";
       fullPhrase.focus();
     }
-
-    const qPhrase = document.getElementById("quickInputPhrase");
-    const qTarget = document.getElementById("quickInputTarget");
-    const qSave = document.getElementById("quickBtnSave");
-    if (qPhrase && qTarget) {
-      qPhrase.value = item.phrase || key;
-      qTarget.value = item.name || "";
-      qTarget._selectedCoords = { lat: item.lat, lng: item.lng };
-      qSave.innerText = "💾 Зберегти зміни";
-      qSave.style.background = "#ca8a04";
-      qPhrase.focus();
-    }
   };
 
   window.cancelSynonymEdit = function () {
@@ -488,13 +500,6 @@
     if (fullTitle) { fullTitle.innerText = "➕ Додати правило в пам'ять:"; fullTitle.style.color = "#38bdf8"; }
     if (fullSave) { fullSave.innerText = "💾 Запам'ятати правило"; fullSave.style.background = "#0284c7"; }
     if (fullCancel) fullCancel.style.display = "none";
-
-    const qPhrase = document.getElementById("quickInputPhrase");
-    const qTarget = document.getElementById("quickInputTarget");
-    const qSave = document.getElementById("quickBtnSave");
-    if (qPhrase) qPhrase.value = "";
-    if (qTarget) { qTarget.value = ""; qTarget._selectedCoords = null; }
-    if (qSave) { qSave.innerText = "💾 Запам'ятати синонім"; qSave.style.background = "#0284c7"; }
   };
 
   async function handleFullSave() {
@@ -533,14 +538,13 @@
       } catch (e) {}
     }
 
-    await window.saveMemorySynonymFromRelocate(phrase, target, lat, lng);
+    await window.saveMemorySynonymFromRelocate(phrase, target, lat, lng, true);
     cancelSynonymEdit();
     updateQuickModalUI();
     renderFullRulesList();
     if (typeof showToast === "function") showToast(`🧠 Синонім збережено: «${escapeHtml(phrase)}» ➔ ${escapeHtml(target)}`);
   }
 
-  // 7. РУЧНЕ РЕДАГУВАННЯ ЗСУВУ КООРДИНАТ
   window.editStreetOverrideCoords = async function (key, streetName) {
     const item = streetOverridesCache[key];
     if (!item) return;
@@ -563,7 +567,7 @@
 
     try {
       localStorage.setItem("radar_street_overrides", JSON.stringify(streetOverridesCache));
-      const url = appendAuth(`${FIREBASE_OVERRIDES_URL.replace(".json", `/${key}.json`)}`);
+      const url = appendAuth(`${FIREBASE_OVERRIDES_URL.replace(".json", `/\${key}.json`)}`);
       await fetch(url, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -576,7 +580,7 @@
     if (typeof showToast === "function") showToast(`📍 Координати «${escapeHtml(streetName)}» оновлено!`);
   };
 
-  // 8. РЕНДЕР ПОВНОГО СПИСКУ ПРАВИЛ У ПОВНОЕКРАННОМУ ВІКНІ (СВІЖІ ЗВЕРХУ)
+  // РЕНДЕР СПИСКУ ПРАВИЛ (НОВІ ЗАВЖДИ ЗВЕРХУ ЗА ЧАСОМ)
   function renderFullRulesList() {
     const box = document.getElementById("fullRulesListBox");
     if (!box) return;
@@ -598,12 +602,8 @@
         );
       }
 
-      // ПРИМУСОВЕ СОРТУВАННЯ: НАЙСВІЖІШІ ЗВЕРХУ
-      items.sort((a, b) => {
-        const timeA = a[1].updated_at || 0;
-        const timeB = b[1].updated_at || 0;
-        return timeB - timeA;
-      });
+      // Сортування: найсвіжіші зверху
+      items.sort((a, b) => (b[1].updated_at || 0) - (a[1].updated_at || 0));
 
       if (items.length === 0) {
         box.innerHTML = `<div style="padding:20px; text-align:center; font-size:12px; color:#64748b;">Синонімів не знайдено. Додайте нове правило вгорі!</div>`;
@@ -619,7 +619,7 @@
               «${escapeHtml(item.phrase || key)}» ➔ <span style="color:#38bdf8;">${escapeHtml(item.name || 'Вулиця')}</span>
             </div>
             <div style="font-size:10px; color:#64748b; font-family:monospace; margin-top:2px;">
-              (${item.lat}, ${item.lng})
+              (${item.lat}, ${item.lng}) ${item.is_manual ? '• ✍️ вручну' : ''}
             </div>
           </div>
           <div style="display:flex; gap:6px; flex-shrink:0;">
@@ -637,12 +637,8 @@
         );
       }
 
-      // ПРИМУСОВЕ СОРТУВАННЯ: НАЙСВІЖІШІ ЗВЕРХУ
-      items.sort((a, b) => {
-        const timeA = a[1].updated_at || 0;
-        const timeB = b[1].updated_at || 0;
-        return timeB - timeA;
-      });
+      // Сортування: найсвіжіші зверху
+      items.sort((a, b) => (b[1].updated_at || 0) - (a[1].updated_at || 0));
 
       if (items.length === 0) {
         box.innerHTML = `<div style="padding:20px; text-align:center; font-size:12px; color:#64748b;">Немає зміщених вулиць. Усі координати стандартні.</div>`;
@@ -689,14 +685,13 @@
     delete streetOverridesCache[key];
     try {
       localStorage.setItem("radar_street_overrides", JSON.stringify(streetOverridesCache));
-      const url = appendAuth(`${FIREBASE_OVERRIDES_URL.replace(".json", `/${key}.json`)}`);
+      const url = appendAuth(`${FIREBASE_OVERRIDES_URL.replace(".json", `/\${key}.json`)}`);
       await fetch(url, { method: "DELETE" });
     } catch (e) {}
     renderFullRulesList();
     if (typeof showToast === "function") showToast("🔄 Координати скинуто до заводських");
   };
 
-  // ФУНКЦІЇ ВІДКРИТТЯ ВІКОН
   window.openQuickSynonymModal = function () {
     const modal = ensureQuickModal();
     updateQuickModalUI();
