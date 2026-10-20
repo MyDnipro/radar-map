@@ -569,12 +569,14 @@
       <button id="btnQuickSubAll" class="btn-submenu-quick" onclick="setSectorPreset('all')">🌐 Весь Дніпро</button>
     </div>
     <div class="route-submenu-list">
+      <!-- У секторі s1 вилучено 'каштанов' -->
       <label class="sector-sub-item"><input type="checkbox" id="sub_sec_s1" onchange="onSubmenuSectorChange()"> 📍 Парус — Вокзал — Робоча — Канатна</label>
       <label class="sector-sub-item"><input type="checkbox" id="sub_sec_s2" onchange="onSubmenuSectorChange()"> 🏙️ Центр, Нагірка, Перемога</label>
       <label class="sector-sub-item"><input type="checkbox" id="sub_sec_s3" onchange="onSubmenuSectorChange()"> 🚗 Тополя, 12 Квартал, Поля</label>
       <label class="sector-sub-item"><input type="checkbox" id="sub_sec_s4" onchange="onSubmenuSectorChange()"> 🏭 Мазепи, Нігояна, Щепкіна, Західний</label>
       <label class="sector-sub-item"><input type="checkbox" id="sub_sec_s5" onchange="onSubmenuSectorChange()"> 🌉 Лівий берег (Шосе, Калинова)</label>
-      <label class="sector-sub-item"><input type="checkbox" id="sub_sec_s6" onchange="onSubmenuSectorChange()"> 🏢 Лівий берег (Слобожанський)</label>
+      <!-- У секторі s6 додано 'каштанов' -->
+      <label class="sector-sub-item"><input type="checkbox" id="sub_sec_s6" onchange="onSubmenuSectorChange()"> 🏢 Лівий берег (Слобожанський, Каштанова)</label>
     </div>
   </div>
 
@@ -1103,13 +1105,42 @@
       if (stored) activeSectors = JSON.parse(stored);
     } catch(e) {}
 
+    // =========================================================================
+    // 🗺️ СЕКТОРИ МІСТА (КАШТАНОВУ ПЕРЕНЕСЕНО З S1 ДО S6)
+    // =========================================================================
     const SECTOR_DEFS = {
-      s1: { name: "Парус — Вокзал — Робоча — Канатна", keys: ["парус", "покровськ", "комунар", "трофимов", "червон.*кам", "набережн.*завод", "речпорт", "річпорт", "ричпор", "речпор", "водокачк", "стан.*550", "водолікарн", "водолечеб", "свобод", "кайдак", "павлов", "белелюб", "краснозавод", "комбайн", "торус", "вокзал", "старомостов", "озерк", "робоч", "криворізьк", "каштанов", "савченк", "чорновол", "канатн", "інфекцій", "инфекцион"], bounds: { minLat: 48.435, maxLat: 48.510, minLng: 34.800, maxLng: 35.038 } },
-      s2: { name: "Центр — Нагірка — Перемога", keys: ["центр", "міст.*сіті", "яворницьк", "нагірк", "гагарін", "науки", "перемог", "артем", "січов.*стрільц", "карл.*маркс", "чкалов"], bounds: { minLat: 48.410, maxLat: 48.480, minLng: 35.038, maxLng: 35.120 } },
-      s3: { name: "Тополя — 12 Квартал — Поля", keys: ["12.*квартал", "топол", "сокіл", "шинн", "хмельницьк", "поля", "кіров", "титов", "аеропорт", "барвінківськ", "тещин.*язик"], bounds: { minLat: 48.320, maxLat: 48.445, minLng: 34.920, maxLng: 35.130 } },
-      s4: { name: "Мазепи — Нігояна — Щепкіна — Західний", keys: ["мазеп", "петровськ", "нігоян", "калінін", "огни", "вогні", "західн", "щепкін", "щепкин"], bounds: { minLat: 48.450, maxLat: 48.485, minLng: 34.910, maxLng: 35.002 } },
-      s5: { name: "Лівий: Шосе — Калинова", keys: ["донецьк.*шосе", "караван", "лівобереж", "калинов", "янтарн", "клочко"], bounds: { minLat: 48.480, maxLat: 48.560, minLng: 34.930, maxLng: 35.070 } },
-      s6: { name: "Лівий: Слобожанський — Сонячний", keys: ["слобожанськ", "правд", "сонячн", "малиновськ", "придніпров", "бик"], bounds: { minLat: 48.440, maxLat: 48.540, minLng: 35.040, maxLng: 35.160 } }
+      // s1: Каштанову вилучено з правого берега
+      s1: { 
+        name: "Парус — Вокзал — Робоча — Канатна", 
+        keys: ["парус", "покровськ", "комунар", "трофимов", "червон.*кам", "набережн.*завод", "речпорт", "річпорт", "ричпор", "речпор", "водокачк", "стан.*550", "водолікарн", "водолечеб", "свобод", "кайдак", "павлов", "белелюб", "краснозавод", "комбайн", "торус", "вокзал", "старомостов", "озерк", "робоч", "криворізьк", "савченк", "чорновол", "канатн", "інфекцій", "инфекцион"], 
+        bounds: { minLat: 48.435, maxLat: 48.510, minLng: 34.800, maxLng: 35.038 } 
+      },
+      s2: { 
+        name: "Центр — Нагірка — Перемога", 
+        keys: ["центр", "міст.*сіті", "яворницьк", "нагірк", "гагарін", "науки", "перемог", "артем", "січов.*стрільц", "карл.*маркс", "чкалов"], 
+        bounds: { minLat: 48.410, maxLat: 48.480, minLng: 35.038, maxLng: 35.120 } 
+      },
+      s3: { 
+        name: "Тополя — 12 Квартал — Поля", 
+        keys: ["12.*квартал", "топол", "сокіл", "шинн", "хмельницьк", "поля", "кіров", "титов", "аеропорт", "барвінківськ", "тещин.*язик"], 
+        bounds: { minLat: 48.320, maxLat: 48.445, minLng: 34.920, maxLng: 35.130 } 
+      },
+      s4: { 
+        name: "Мазепи — Нігояна — Щепкіна — Західний", 
+        keys: ["мазеп", "петровськ", "нігоян", "калінін", "огни", "вогні", "західн", "щепкін", "щепкин"], 
+        bounds: { minLat: 48.450, maxLat: 48.485, minLng: 34.910, maxLng: 35.002 } 
+      },
+      s5: { 
+        name: "Лівий: Шосе — Калинова", 
+        keys: ["донецьк.*шосе", "караван", "лівобереж", "калинов", "янтарн", "клочко"], 
+        bounds: { minLat: 48.480, maxLat: 48.560, minLng: 34.930, maxLng: 35.070 } 
+      },
+      // s6: Каштанову (віадук / Слобожанський) зафіксовано на лівому березі
+      s6: { 
+        name: "Лівий: Слобожанський — Сонячний — Каштанова", 
+        keys: ["слобожанськ", "правд", "сонячн", "малиновськ", "придніпров", "бик", "каштанов"], 
+        bounds: { minLat: 48.440, maxLat: 48.540, minLng: 35.040, maxLng: 35.160 } 
+      }
     };
 
     function toggleRouteSubmenu(e) {
@@ -1392,10 +1423,16 @@
       showToast("🤖 Мітку передано ШІ-штурману!");
     };
 
+    // ВИКЛИК МЕНЮ ДІЙ З МІТКОЮ (РЕДАГУВАННЯ / ПЕРЕНЕСЕННЯ)
     function openMarkerActionSheet(point, marker) {
       if (currentUiMode === "simple") return;
       activeActionPoint = point;
       activeActionMarker = marker || findMarkerByPoint(point);
+
+      if (typeof window.openRelocateActionSheet === "function") {
+        window.openRelocateActionSheet(point, marker);
+        return;
+      }
       const sheet = document.getElementById("markerActionSheet");
       if (sheet) sheet.style.display = "flex";
     }
@@ -2131,7 +2168,7 @@ ${allLiveReportsText || "Повідомлень немає"}
     }
 
     // =========================================================================
-    // 📍 РЕНДЕР МІТОК ІЗ МОСТИКОМ ДЛЯ СВІТЛОФОРІВ
+    // 📍 РЕНДЕР МІТОК ІЗ МОСТИКОМ ДЛЯ СВІТЛОФОРІВ ТА LONG-PRESS
     // =========================================================================
     function renderMarkers() {
       try {
@@ -2268,6 +2305,7 @@ ${allLiveReportsText || "Повідомлень немає"}
           marker.pointData = cluster.points[0];
           marker.bindPopup(popupContent, { autoClose: true, closeOnClick: true });
 
+          // ОБРОБКА LONG-PRESS ДЛЯ РЕДАГУВАННЯ МІТОК НА СМАРТФОНІ
           if (!isSimple) {
             let pressTimer = null;
             let startX = 0, startY = 0;
