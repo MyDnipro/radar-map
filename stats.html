@@ -695,9 +695,20 @@
   <script>
     localStorage.setItem("radar_last_analytics_page", "stats.html");
 
-    const SECRET_KEY_HASH = "570984";
-    const _VAULT_PREFIX = String.fromCharCode(65, 81, 46, 65, 98, 56, 82, 78, 54);
+    // =========================================================================
+    // 🔒 ЗАХИСТ БЕЗПЕКИ (АНТИ-XSS, АВТОРИЗАЦІЯ ШІ ТА FIREBASE)
+    // =========================================================================
+    function escapeHtml(str) {
+      if (!str) return "";
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
 
+    const _VAULT_PREFIX = String.fromCharCode(65, 81, 46, 65, 98, 56, 82, 78, 54);
     const _VAULT_SHARDS = [
       ["I7GflB4phTHSa5jvsW", "72AcfGr11sjs1_hoz2-cwWvPvg"],
       ["JwJ0Vv6CzHDVFUo7BE", "ScSuZXXQ8nFcYU8_oyv5iMm5tg"],
@@ -711,12 +722,33 @@
       ["I2d17d2VpDXpzxEPKh", "tzBWtRt4bN62lifvrufLg3dptg"]
     ];
 
+    function isAuthPassValid(inputPass) {
+      if (!inputPass || typeof inputPass !== "string") return false;
+      try {
+        return btoa(inputPass.trim()) === "NTcwOTg0";
+      } catch(e) {
+        return false;
+      }
+    }
+
+    function getFirebaseWriteAuth() {
+      return localStorage.getItem("radar_fb_auth") || "";
+    }
+
+    function appendAuth(url) {
+      const authKey = getFirebaseWriteAuth();
+      if (!authKey) return url;
+      const sep = url.includes("?") ? "&" : "?";
+      return `${url}${sep}auth=${encodeURIComponent(authKey)}`;
+    }
+
     function verifyGeminiAuthorization(forcePrompt = false) {
-      const savedAuth = localStorage.getItem("radar_gemini_unlocked");
-      if (savedAuth === SECRET_KEY_HASH && !forcePrompt) return true;
+      const savedPass = localStorage.getItem("radar_gemini_unlocked") || "";
+      if (isAuthPassValid(savedPass) && !forcePrompt) return true;
       const entered = prompt("🔐 Введіть пароль для активації ШІ-штурмана:\n(Підказка: телефон батьків)");
-      if (entered === SECRET_KEY_HASH) {
-        localStorage.setItem("radar_gemini_unlocked", SECRET_KEY_HASH);
+      if (entered && isAuthPassValid(entered)) {
+        const cleanPass = entered.trim();
+        localStorage.setItem("radar_gemini_unlocked", cleanPass);
         return true;
       } else if (entered !== null) {
         alert("❌ Невірний пароль! Доступ до ШІ заблоковано.");
@@ -725,7 +757,8 @@
     }
 
     function getDecryptedGeminiPool() {
-      if (localStorage.getItem("radar_gemini_unlocked") !== SECRET_KEY_HASH) return [];
+      const savedPass = localStorage.getItem("radar_gemini_unlocked") || "";
+      if (!isAuthPassValid(savedPass)) return [];
       const builtins = _VAULT_SHARDS.map(shard => _VAULT_PREFIX + shard.join(''));
       const rawStored = localStorage.getItem("gemini_api_key") || "";
       const customKeys = rawStored.split(/[,;\s]+/).map(k => k.trim()).filter(k => k.length > 20);
@@ -756,16 +789,17 @@
     let infiniteChartInstance = null;
     let targetSessionsGlobal = {};
 
-    // 8 ТОЧОК МАРШРУТУ: ДОДАНО РОВД
+    // 9 ТОЧОК МАРШРУТУ (ПОВНА СИНХРОНІЗАЦІЯ З ІНШИМИ ФАЙЛАМИ)
     const TARGET_CHECKPOINTS = [
-      { id: "kaidak_rovd", name: "РОВД", fullName: "РОВД / Кайдацький з'їзд", regex: /(?:кайдак|кайдац|ровд|райотдел)/i, color: "#ef4444" },
-      { id: "pavlova", name: "Павлова", fullName: "вул. Академіка Павлова", regex: /(?:академика\s*павлова|академіка\s*павлова|\bпавлова\b)/i, color: "#00f3ff" },
-      { id: "krasnozavodska", name: "Краснозав.", fullName: "Краснозаводська / Белелюбського / Комбайновий", regex: /(?:белелюб|краснозавод|комбайн|дтрз|ударник)/i, color: "#f59e0b" },
-      { id: "vodolechebnitsa", name: "Водолікар.", fullName: "Водолікарня (пр. Свободи)", regex: /(?:водолечеб|водолікарн|водогрязелечеб)/i, color: "#ec4899" },
+      { id: "kaidak_rovd", name: "РОВД", fullName: "РОВД / Кайдацький з'їзд", regex: /(?:кайдак|кайдацька|кайдац|ровд|райотдел)/i, color: "#a855f7" },
+      { id: "vodolechebnitsa", name: "Водолікар.", fullName: "Водолікарня (пр. Свободи)", regex: /(?:водолечеб|водолікарн|водоликарн|водогряз|грязелечеб|просп.*свобод|пр.*свобод|\bсвобод[ыі]\b)/i, color: "#ec4899" },
       { id: "vodokachka", name: "Водокачка", fullName: "Водокачка (Набережна Заводська)", regex: /(?:водокачк)/i, color: "#3b82f6" },
-      { id: "rechport", name: "Річпорт", fullName: "Річпорт (Речной вокзал / Десантники)", regex: /(?:речпорт|річпорт|речной\s*вокзал|річковий\s*вокзал|десантник)/i, color: "#10b981" },
-      { id: "naberezhna", name: "Наб. Завод.", fullName: "Набережна Заводська (Стан 550)", regex: /(?:стан\s*550|стан550|набережн.*завод|наб.*завод)/i, color: "#a855f7" },
-      { id: "svobody", name: "Свободи", fullName: "проспект Свободи (пр. Свободы)", regex: /(?:проспект\s*свобод|пр\s*свобод|пр\.\s*свобод|свободи\b)/i, color: "#eab308" }
+      { id: "stan_550", name: "Стан 550", fullName: "Стан 550 (Набережна Заводська)", regex: /(?:стан\s*550|стан550|\b550\b)/i, color: "#6366f1" },
+      { id: "krasnozavodska", name: "Краснозав.", fullName: "Краснозаводська / Белелюбського / Комбайновий", regex: /(?:белелюб|білелюб|краснозавод|комбайн|дтрз|ударник|торус|\bсат\b)/i, color: "#eab308" },
+      { id: "pavlova", name: "Павлова", fullName: "вул. Академіка Павлова", regex: /(?:академика\s*павлова|академіка\s*павлова|\bпавлов[а-я]*)/i, color: "#00f3ff" },
+      { id: "rechport", name: "Річпорт", fullName: "Річпорт (Речной вокзал / Десантники)", regex: /(?:речпорт|річпорт|ричпор|речпор|речной\s*вокзал|річковий\s*вокзал|десантник)/i, color: "#10b981" },
+      { id: "kanatna", name: "Канатна", fullName: "вул. Канатна (Інфекційна лікарня №21)", regex: /(?:канатн|інфекцій|инфекцион|21\s*лікарн|21\s*больниц)/i, color: "#f43f5e" },
+      { id: "schepkina", name: "Щепкіна", fullName: "вул. Щепкіна (Чечелівка)", regex: /(?:щепкін|щепкин)/i, color: "#f59e0b" }
     ];
 
     let infiniteSelectedPoints = new Set();
@@ -905,7 +939,7 @@
 
       const fullPrompt = `
 Ти — висококваліфікований тактичний аналітик дорожньої ситуації у Дніпрі.
-СТАТИСТИКА 8 ТОЧОК МАРШРУТУ (Сьогодні / Вчора / 7 днів):
+СТАТИСТИКА 9 ТОЧОК МАРШРУТУ (Сьогодні / Вчора / 7 днів):
 ${streetSummary}
 
 ОСТАННІ ПОВІДОМЛЕННЯ:
@@ -919,9 +953,9 @@ ${recentReports}
 
       try {
         const result = await executeStatsGemini(fullPrompt);
-        output.innerHTML = `<span onclick="document.getElementById('aiStatsOutput').style.display='none'" style="position:absolute;top:6px;right:10px;cursor:pointer;color:#94a3b8;font-weight:900;">✕</span><b>🤖 Gemini:</b>\n${result.reply}`;
+        output.innerHTML = `<span onclick="document.getElementById('aiStatsOutput').style.display='none'" style="position:absolute;top:6px;right:10px;cursor:pointer;color:#94a3b8;font-weight:900;">✕</span><b>🤖 Gemini:</b>\n${escapeHtml(result.reply)}`;
       } catch(err) {
-        output.innerHTML = `<span style="color:#ef4444;">⚠️ ${err.message}</span>`;
+        output.innerHTML = `<span style="color:#ef4444;">⚠️ ${escapeHtml(err.message)}</span>`;
       }
     }
 
@@ -986,9 +1020,11 @@ ${recentReports}
       if (event) event.stopPropagation();
       if (!confirm("Видалити цей звіт зі статистики назавжди?")) return;
       try {
-        await fetch(`https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/stats_archive/${fbKey}.json`, { method: "DELETE" });
+        const url = appendAuth(`https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/stats_archive/${encodeURIComponent(fbKey)}.json`);
+        await fetch(url, { method: "DELETE" });
         rawArchive = rawArchive.filter(x => x._fbKey !== fbKey);
         renderAll();
+        closeDetailModal();
       } catch(e) {
         alert("Помилка видалення: " + e.message);
       }
@@ -1164,7 +1200,7 @@ ${recentReports}
         const isActive = infiniteSelectedPoints.has(t.id);
         btn.className = `infinite-btn-point ${isActive ? 'active' : ''}`;
         btn.style.color = t.color;
-        btn.innerHTML = `<span class="infinite-point-dot" style="background:${t.color}; box-shadow:0 0 6px ${t.color};"></span><span>${t.name}</span>`;
+        btn.innerHTML = `<span class="infinite-point-dot" style="background:${t.color}; box-shadow:0 0 6px ${t.color};"></span><span>${escapeHtml(t.name)}</span>`;
         btn.onclick = () => {
           if (infiniteSelectedPoints.has(t.id)) {
             infiniteSelectedPoints.delete(t.id);
@@ -1833,7 +1869,8 @@ ${recentReports}
             const isClean = checkIsReportClean(m);
             const badgeClass = isClean ? "feed-badge-green" : "feed-badge-red";
             const badgeText = isClean ? "🟢 ЧИСТО" : "🔴 УВАГА";
-            const msgText = m.text || m.raw_text || "";
+            const msgText = escapeHtml(m.text || m.raw_text || "");
+            const fbKeySafe = escapeHtml(m._fbKey || "");
 
             itemsHtml += `
               <div class="feed-msg-item">
@@ -1841,7 +1878,7 @@ ${recentReports}
                   <span class="feed-msg-time">🕒 ${feedPeriod === 'week' ? dateStr + ' ' : ''}${timeStr}</span>
                   <div style="display:flex; gap:6px; align-items:center;">
                     <span class="feed-msg-badge ${badgeClass}">${badgeText}</span>
-                    <span onclick="deleteArchiveItem('${m._fbKey}', event)" style="color:#ef4444; font-size:10px; cursor:pointer;" title="Видалити зі статистики">🗑️</span>
+                    <span onclick="deleteArchiveItem('${fbKeySafe}', event)" style="color:#ef4444; font-size:10px; cursor:pointer;" title="Видалити зі статистики">🗑️</span>
                   </div>
                 </div>
                 <div style="color:#e2e8f0;">«${msgText}»</div>
@@ -1853,7 +1890,7 @@ ${recentReports}
         container.innerHTML += `
           <div class="street-feed-card" style="border-left-color:${t.color};">
             <div class="feed-card-header">
-              <span class="feed-card-title" style="color:${t.color};">🚦 ${t.fullName}</span>
+              <span class="feed-card-title" style="color:${t.color};">🚦 ${escapeHtml(t.fullName)}</span>
               <span class="feed-card-count">Повідомлень: ${matches.length}</span>
             </div>
             <div class="feed-items-list">${itemsHtml}</div>
@@ -1921,7 +1958,7 @@ ${recentReports}
         timelineListEl.innerHTML += `
           <div class="timeline-node ${isActiveNow ? 'status-active' : ''}" style="border-left-color:${target.color};">
             <div class="timeline-head">
-              <span class="node-title" style="color:${target.color};">${target.fullName}</span>
+              <span class="node-title" style="color:${target.color};">${escapeHtml(target.fullName)}</span>
               <span class="node-badge ${isActiveNow ? 'badge-active' : 'badge-closed'}">
                 ${isActiveNow ? '🔴 АКТИВНИЙ ЗАРАЗ' : '⚪ ЗНЯТИЙ'}
               </span>
@@ -1994,7 +2031,7 @@ ${recentReports}
           const isSelectedDay = (selectedDayTimestamp === dObj.startTime);
           tableHtml += `<tr>
             <td class="heatmap-day-label" style="${isSelectedDay ? 'color:#00f3ff;text-decoration:underline;' : ''}" onclick="selectHeatmapDay(${dObj.startTime})">
-              ${dObj.name} <span style="color:#64748b;font-size:9px;">${dObj.date}</span>
+              ${escapeHtml(dObj.name)} <span style="color:#64748b;font-size:9px;">${escapeHtml(dObj.date)}</span>
             </td>`;
 
           for (let h = 0; h < 24; h++) {
@@ -2005,7 +2042,7 @@ ${recentReports}
             else if (cnt === 3) cls = "hm-3";
             else if (cnt >= 4) cls = "hm-4";
 
-            tableHtml += `<td class="hm-cell ${cls}" onclick="openDayHourModal(${dObj.startTime}, ${h}, '${dObj.name} ${dObj.date}')">${cnt > 0 ? cnt : '·'}</td>`;
+            tableHtml += `<td class="hm-cell ${cls}" onclick="openDayHourModal(${dObj.startTime}, ${h}, '${escapeHtml(dObj.name + ' ' + dObj.date)}')">${cnt > 0 ? cnt : '·'}</td>`;
           }
 
           tableHtml += `<td style="text-align:center;font-size:10px;font-weight:900;color:#38bdf8;padding-left:4px;">${dObj.total}</td></tr>`;
@@ -2104,7 +2141,7 @@ ${recentReports}
           barsListEl.innerHTML += `
             <div class="day-bar-item ${isSel ? 'active' : ''}" onclick="selectHeatmapDay(${d.startTime})">
               <div class="day-bar-top">
-                <span style="color:#f1f5f9;">${d.name} (${d.date}) <span style="color:#94a3b8;font-weight:600;margin-left:6px;">• ${peakTxt}</span></span>
+                <span style="color:#f1f5f9;">${escapeHtml(d.name)} (${escapeHtml(d.date)}) <span style="color:#94a3b8;font-weight:600;margin-left:6px;">• ${peakTxt}</span></span>
                 <span style="color:#00f3ff;">${d.total} блокп.</span>
               </div>
               <div class="day-bar-track">
@@ -2147,11 +2184,11 @@ ${recentReports}
           matched.forEach(s => {
             const st = new Date(s.startTime).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
             const et = new Date(s.endTime).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
-            const reportsHtml = s.reports.map(r => `• «${r.text || r.raw_text || ""}» <span onclick="deleteArchiveItem('${r._fbKey}', event)" class="btn-del-report">Видалити</span>`).join("<br>");
+            const reportsHtml = s.reports.map(r => `• «${escapeHtml(r.text || r.raw_text || "")}» <span onclick="deleteArchiveItem('${escapeHtml(r._fbKey)}', event)" class="btn-del-report">Видалити</span>`).join("<br>");
 
             reportsBox.innerHTML += `
               <div class="modal-report-item" style="border-left: 3px solid ${t.color};">
-                <div class="modal-report-time" style="color:${t.color};">${t.fullName} (${st}–${et} | Свідків: ${s.count})</div>
+                <div class="modal-report-time" style="color:${t.color};">${escapeHtml(t.fullName)} (${st}–${et} | Свідків: ${s.count})</div>
                 <div>${reportsHtml}</div>
               </div>
             `;
@@ -2261,7 +2298,7 @@ ${recentReports}
                 <span class="month-tile-badge">${mTotal} БП</span>
               </div>
               <div class="month-mini-bar">${segmentsHtml}</div>
-              <div class="month-tile-sub">${topMStreet}</div>
+              <div class="month-tile-sub">${escapeHtml(topMStreet)}</div>
             </div>
           `;
         }
@@ -2345,7 +2382,7 @@ ${recentReports}
 
           const dateLabel = `${String(dayNum).padStart(2,'0')} ${monthShort[selectedStatsMonth]} ${selectedStatsYear}`;
           calHtml += `
-            <div class="cal-day-cell ${cls}" onclick="openCalendarDateModal(${selectedStatsYear}, ${selectedStatsMonth}, ${dayNum}, '${dateLabel}')">
+            <div class="cal-day-cell ${cls}" onclick="openCalendarDateModal(${selectedStatsYear}, ${selectedStatsMonth}, ${dayNum}, '${escapeHtml(dateLabel)}')">
               <span class="cal-day-num">${dayNum}</span>
               <span class="cal-day-cnt">${cnt > 0 ? cnt + ' БП' : '·'}</span>
             </div>
@@ -2374,9 +2411,9 @@ ${recentReports}
           const mSharePct = totalByMonth[selectedStatsMonth] > 0 ? Math.round((mCnt / selectedMonthTotal) * 100) : 0;
 
           breakdownBox.innerHTML += `
-            <div class="day-bar-item" style="border-left: 4px solid ${t.color};" onclick="openStreetMonthModal('${t.id}', ${selectedStatsYear}, ${selectedStatsMonth}, '${monthFull[selectedStatsMonth]}')">
+            <div class="day-bar-item" style="border-left: 4px solid ${t.color};" onclick="openStreetMonthModal('${t.id}', ${selectedStatsYear}, ${selectedStatsMonth}, '${escapeHtml(monthFull[selectedStatsMonth])}')">
               <div class="day-bar-top">
-                <span style="color:${t.color};">${t.fullName}</span>
+                <span style="color:${t.color};">${escapeHtml(t.fullName)}</span>
                 <span style="color:#f1f5f9;">
                   <b style="color:#00f3ff;">${mCnt} БП</b> у ${monthShort[selectedStatsMonth]} (${mSharePct}%)
                   <span style="color:#64748b;margin-left:6px;">| За ${selectedStatsYear} р.: ${yCnt}</span>
@@ -2414,11 +2451,11 @@ ${recentReports}
           inDay.forEach(s => {
             const st = new Date(s.startTime).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
             const et = new Date(s.endTime).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
-            const reportsHtml = s.reports.map(r => `• «${r.text || r.raw_text || ""}» <span onclick="deleteArchiveItem('${r._fbKey}', event)" class="btn-del-report">Видалити</span>`).join("<br>");
+            const reportsHtml = s.reports.map(r => `• «${escapeHtml(r.text || r.raw_text || "")}» <span onclick="deleteArchiveItem('${escapeHtml(r._fbKey)}', event)" class="btn-del-report">Видалити</span>`).join("<br>");
 
             reportsBox.innerHTML += `
               <div class="modal-report-item" style="border-left: 3px solid ${t.color};">
-                <div class="modal-report-time" style="color:${t.color};">${t.fullName} (${st}–${et} | Свідків: ${s.count})</div>
+                <div class="modal-report-time" style="color:${t.color};">${escapeHtml(t.fullName)} (${st}–${et} | Свідків: ${s.count})</div>
                 <div>${reportsHtml}</div>
               </div>
             `;
@@ -2434,7 +2471,7 @@ ${recentReports}
       const target = TARGET_CHECKPOINTS.find(t => t.id === streetId);
       if (!target) return;
 
-      document.getElementById("modalTitle").innerText = `${target.fullName}`;
+      document.getElementById("modalTitle").innerText = `${escapeHtml(target.fullName)}`;
       document.getElementById("modalSub").innerText = `Звіти за ${monthName} ${year} року`;
 
       const reportsBox = document.getElementById("modalReports");
@@ -2446,13 +2483,13 @@ ${recentReports}
       });
 
       if (sessions.length === 0) {
-        reportsBox.innerHTML = `<div style="color:#94a3b8; font-size:12px;">За ${monthName} ${year} р. на цій точці блокпостів не зафіксовано.</div>`;
+        reportsBox.innerHTML = `<div style="color:#94a3b8; font-size:12px;">За ${escapeHtml(monthName)} ${year} р. на цій точці блокпостів не зафіксовано.</div>`;
       } else {
         sessions.forEach(s => {
           const dt = new Date(s.startTime).toLocaleDateString([], { day:'2-digit', month:'2-digit' });
           const st = new Date(s.startTime).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
           const et = new Date(s.endTime).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
-          const reportsHtml = s.reports.map(r => `• «${r.text || r.raw_text || ""}» <span onclick="deleteArchiveItem('${r._fbKey}', event)" class="btn-del-report">Видалити</span>`).join("<br>");
+          const reportsHtml = s.reports.map(r => `• «${escapeHtml(r.text || r.raw_text || "")}» <span onclick="deleteArchiveItem('${escapeHtml(r._fbKey)}', event)" class="btn-del-report">Видалити</span>`).join("<br>");
 
           reportsBox.innerHTML += `
             <div class="modal-report-item" style="border-left: 3px solid ${target.color};">
@@ -2477,7 +2514,7 @@ ${recentReports}
         otherListEl.innerHTML += `
           <div style="margin-bottom:12px;">
             <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:700; margin-bottom:4px;">
-              <span>${sec.name}</span>
+              <span>${escapeHtml(sec.name)}</span>
               <span style="color:#a855f7;">${cnt} (${pct}%)</span>
             </div>
             <div style="width:100%; height:7px; background:#060913; border-radius:4px; overflow:hidden;">
@@ -2507,7 +2544,7 @@ ${recentReports}
         reportsBox.innerHTML += `
           <div class="modal-report-item">
             <div class="modal-report-time">🕒 ${new Date(r.time).toLocaleTimeString()}</div>
-            <div>«${r.text || r.raw_text || ""}» <span onclick="deleteArchiveItem('${r._fbKey}', event)" class="btn-del-report">Видалити</span></div>
+            <div>«${escapeHtml(r.text || r.raw_text || "")}» <span onclick="deleteArchiveItem('${escapeHtml(r._fbKey)}', event)" class="btn-del-report">Видалити</span></div>
           </div>
         `;
       });
@@ -2550,11 +2587,11 @@ ${recentReports}
           foundAny = true;
           inHour.forEach(s => {
             const dt = new Date(s.startTime).toLocaleDateString([], { day:'2-digit', month:'2-digit' });
-            const reportsHtml = s.reports.map(r => `• «${r.text || r.raw_text || ""}» <span onclick="deleteArchiveItem('${r._fbKey}', event)" class="btn-del-report">Видалити</span>`).join("<br>");
+            const reportsHtml = s.reports.map(r => `• «${escapeHtml(r.text || r.raw_text || "")}» <span onclick="deleteArchiveItem('${escapeHtml(r._fbKey)}', event)" class="btn-del-report">Видалити</span>`).join("<br>");
 
             reportsBox.innerHTML += `
               <div class="modal-report-item" style="border-left: 3px solid ${t.color};">
-                <div class="modal-report-time" style="color:${t.color};">${t.fullName} (${dt})</div>
+                <div class="modal-report-time" style="color:${t.color};">${escapeHtml(t.fullName)} (${dt})</div>
                 <div>${reportsHtml}</div>
               </div>
             `;
