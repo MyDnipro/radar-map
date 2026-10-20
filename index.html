@@ -1073,7 +1073,7 @@
       s1: { name: "Парус — Вокзал — Робоча — Канатна", keys: ["парус", "покровськ", "комунар", "трофимов", "червон.*кам", "набережн.*завод", "речпорт", "річпорт", "ричпор", "речпор", "водокачк", "стан.*550", "водолікарн", "водолечеб", "свобод", "кайдак", "павлов", "белелюб", "краснозавод", "комбайн", "торус", "вокзал", "старомостов", "озерк", "робоч", "криворізьк", "каштанов", "савченк", "чорновол", "канатн", "інфекцій", "инфекцион"], bounds: { minLat: 48.435, maxLat: 48.510, minLng: 34.800, maxLng: 35.038 } },
       s2: { name: "Центр — Нагірка — Перемога", keys: ["центр", "міст.*сіті", "яворницьк", "нагірк", "гагарін", "науки", "перемог", "артем", "січов.*стрільц", "карл.*маркс", "чкалов"], bounds: { minLat: 48.410, maxLat: 48.480, minLng: 35.038, maxLng: 35.120 } },
       s3: { name: "Тополя — 12 Квартал — Поля", keys: ["12.*квартал", "топол", "сокіл", "шинн", "хмельницьк", "поля", "кіров", "титов", "аеропорт", "барвінківськ", "тещин.*язик"], bounds: { minLat: 48.320, maxLat: 48.445, minLng: 34.920, maxLng: 35.130 } },
-      s4: { name: "Мазепи — Нігояна — Щепкіна — Західний", keys: ["мазеп", "петровськ", "нігоян", "калінін", "огни", "вогні", "західн", "щепкін", "щепкин"], bounds: { minLat: 48.450, maxLat: 48.485, minLng: 34.910, maxLng: 34.995 } },
+      s4: { name: "Мазепи — Нігояна — Щепкіна — Західний", keys: ["мазеп", "петровськ", "нігоян", "калінін", "огни", "вогні", "західн", "щепкін", "щепкин"], bounds: { minLat: 48.450, maxLat: 48.485, minLng: 34.910, maxLng: 35.002 } },
       s5: { name: "Лівий: Шосе — Калинова", keys: ["донецьк.*шосе", "караван", "лівобереж", "калинов", "янтарн", "клочко"], bounds: { minLat: 48.480, maxLat: 48.560, minLng: 34.930, maxLng: 35.070 } },
       s6: { name: "Лівий: Слобожанський — Сонячний", keys: ["слобожанськ", "правд", "сонячн", "малиновськ", "придніпров", "бик"], bounds: { minLat: 48.440, maxLat: 48.540, minLng: 35.040, maxLng: 35.160 } }
     };
@@ -1360,12 +1360,15 @@
       if (currentUiMode === "simple") return;
       activeActionPoint = point;
       activeActionMarker = marker || findMarkerByPoint(point);
-      document.getElementById("markerActionSheet").style.display = "flex";
+      const sheet = document.getElementById("markerActionSheet");
+      if (sheet) sheet.style.display = "flex";
     }
 
     function closeMarkerActionSheet(e) {
+      const sheet = document.getElementById("markerActionSheet");
+      if (!sheet) return;
       if (e && e.target && e.target.id !== "markerActionSheet" && !e.target.closest(".action-sheet-card")) return;
-      document.getElementById("markerActionSheet").style.display = "none";
+      sheet.style.display = "none";
     }
 
     function sheetStartManualDrag() {
@@ -1580,7 +1583,7 @@
 ${allLiveReportsText || "Повідомлень немає"}
 КОМАНДИ:
 1. ПЕРЕМІЩЕННЯ: <<<ACTION:MOVE:{"key":"KEY_ТОЧКИ","street":"Назва вулиці","lat":48.XXXXX,"lng":34.XXXXX}>>>
-2. СТАТУС: <<<ACTION:STATUS:{"key":"KEY_ТОЧКИ","clean":true}>>>
+​2. СТАТУС: <<<ACTION:STATUS:{"key":"KEY_ТОЧКИ","clean":true}>>>
 3. ФІЛЬТР: <<<ACTION:FILTER:{"showGreen":false,"showRed":true}>>>
 4. СЕКТОРИ: <<<ACTION:SECTORS:{"preset":"route"|"all"|"remove_left"}>>>
 5. АНАЛІТИКА: <<<ACTION:NAVIGATE:{"url":"stats.html"}>>>
@@ -1918,11 +1921,12 @@ ${allLiveReportsText || "Повідомлень немає"}
     }
 
     // =========================================================================
-    // 🔍 ПОШУКОВИЙ МОДУЛЬ
+    // 🔍 ГІБРИДНИЙ ПОШУКОВИЙ МОДУЛЬ (ЛОКАЛЬНА БАЗА + OPENSTREETMAP)
     // =========================================================================
     const streetSearchInput = document.getElementById("streetSearchInput");
     const searchResults = document.getElementById("searchResults");
     const searchClearBtn = document.getElementById("searchClearBtn");
+    let osmSearchAbort = null;
 
     streetSearchInput.addEventListener("input", () => {
       const query = streetSearchInput.value.trim();
@@ -1937,7 +1941,7 @@ ${allLiveReportsText || "Повідомлень немає"}
       searchResults.style.display = "none";
     }
 
-    function executeSmartSearch(query) {
+    async function executeSmartSearch(query) {
       if (!query) return;
       const lower = query.toLowerCase();
       searchResults.innerHTML = "";
@@ -1953,8 +1957,9 @@ ${allLiveReportsText || "Повідомлень немає"}
       if (typeof DNIPRO_STREETS_MAP !== 'undefined') {
         for (const [key, item] of Object.entries(DNIPRO_STREETS_MAP)) {
           if (key.includes(lower) || (item.old && item.old.toLowerCase().includes(lower)) || item.name.toLowerCase().includes(lower)) {
-            if (!results.some(m => m.name === item.name)) {
-              results.push({ name: `📍 ${item.name}`, lat: item.lat, lng: item.lng });
+            if (!results.some(m => m.name.toLowerCase() === item.name.toLowerCase())) {
+              const sub = item.old ? ` <span style="color:#94a3b8; font-size:10px;">(раніше: ${item.old})</span>` : "";
+              results.push({ name: `📍 ${item.name}${sub}`, cleanName: item.name, lat: item.lat, lng: item.lng });
             }
           }
         }
@@ -1962,23 +1967,66 @@ ${allLiveReportsText || "Повідомлень немає"}
 
       checkpoints.forEach(cp => {
         if (cp.name.toLowerCase().includes(lower) || cp.keys.some(k => lower.includes(k))) {
-          if (!results.some(m => m.name === cp.name)) {
-            results.push({ name: `🚦 ${cp.name}`, lat: cp.lat, lng: cp.lng });
+          if (!results.some(m => m.name.includes(cp.name))) {
+            results.push({ name: `🚦 ${cp.name}`, cleanName: cp.name, lat: cp.lat, lng: cp.lng });
           }
         }
       });
 
-      results.slice(0, 8).forEach(item => {
-        const div = document.createElement("div");
-        div.className = "search-item";
-        div.innerHTML = `<b>${item.name}</b>`;
-        div.onclick = () => {
-          map.flyTo([item.lat, item.lng], 16.5, { animate: true, duration: 0.85 });
-          searchResults.style.display = "none";
-        };
-        searchResults.appendChild(div);
-      });
-      searchResults.style.display = results.length > 0 ? "block" : "none";
+      function renderSearchResultsList(items) {
+        searchResults.innerHTML = "";
+        items.slice(0, 10).forEach(item => {
+          const div = document.createElement("div");
+          div.className = "search-item";
+          div.innerHTML = `<b>${item.name}</b>`;
+          div.onclick = () => {
+            map.flyTo([item.lat, item.lng], 16.5, { animate: true, duration: 0.85 });
+            searchResults.style.display = "none";
+          };
+          searchResults.appendChild(div);
+        });
+        searchResults.style.display = items.length > 0 ? "block" : "none";
+      }
+
+      renderSearchResultsList(results);
+
+      // Гібридний онлайн-пошук через OpenStreetMap для Дніпра
+      if (query.length >= 3) {
+        if (osmSearchAbort) osmSearchAbort.abort();
+        osmSearchAbort = new AbortController();
+
+        try {
+          const cleanQ = query.replace(/[,\.!\?\(\)]/g, " ").trim();
+          const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cleanQ + ", Дніпро")}&countrycodes=ua&limit=6&accept-language=uk,ru`;
+          const res = await fetch(url, { signal: osmSearchAbort.signal });
+          if (res.ok) {
+            const data = await res.json();
+            if (Array.isArray(data)) {
+              let addedOsm = false;
+              data.forEach(item => {
+                const lat = parseFloat(item.lat);
+                const lng = parseFloat(item.lon);
+                if (lat >= 48.25 && lat <= 48.70 && lng >= 34.70 && lng <= 35.40) {
+                  let title = item.display_name.split(",")[0].trim();
+                  if (!/^(вул|просп|пров|шосе|тупик|пл|бульв)/i.test(title)) {
+                    title = `вул. ${title}`;
+                  }
+                  const exists = results.some(r => (r.cleanName || r.name).toLowerCase().replace(/^(вул\.|просп\.|пров\.)\s*/i, "").trim() === title.toLowerCase().replace(/^(вул\.|просп\.|пров\.)\s*/i, "").trim());
+                  if (!exists) {
+                    results.push({ name: `🌐 ${title} <span style="color:#38bdf8; font-size:10px;">(інтернет)</span>`, cleanName: title, lat: Number(lat.toFixed(5)), lng: Number(lng.toFixed(5)) });
+                    addedOsm = true;
+                  }
+                }
+              });
+              if (addedOsm) {
+                renderSearchResultsList(results);
+              }
+            }
+          }
+        } catch(e) {
+          if (e.name !== 'AbortError') console.warn("OSM Search Error:", e);
+        }
+      }
     }
 
     async function loadPoints() {
