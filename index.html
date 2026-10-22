@@ -361,7 +361,7 @@
     .radar-circle.fresh.color-green { animation: pulseGroupClean 1.4s infinite !important; }
 
     /* =========================================================================
-       2. СОНАР СВІТЛОФОРІВ
+       2. СОНАР СВІТЛОФОРІВ ТА ПАЛІТРА КОЛЬОРІВ
        ========================================================================= */
     .tl-sonar-icon-container {
       background: transparent !important;
@@ -429,8 +429,12 @@
       100% { width: var(--sonar-diameter); height: var(--sonar-diameter); opacity: 0; border: 1px solid var(--sonar-danger-color); }
     }
 
-    .tl-sonar-wrapper.green .tl-sonar-wave:nth-child(1) { animation: sonarPulseClean var(--sonar-clean-speed) infinite ease-out; }
-    .tl-sonar-wrapper.red .tl-sonar-wave:nth-child(1) { animation: sonarPulseDanger var(--dyn-danger-speed, var(--sonar-danger-base-speed)) infinite ease-out; }
+    .tl-sonar-wrapper.green .tl-sonar-wave { 
+      animation: sonarPulseClean var(--sonar-clean-speed) infinite ease-out; 
+    }
+    .tl-sonar-wrapper.red .tl-sonar-wave { 
+      animation: sonarPulseDanger var(--dyn-danger-speed, var(--sonar-danger-base-speed)) infinite ease-out; 
+    }
 
     .tl-sonar-wrapper.draggable-active { cursor: grab !important; pointer-events: auto !important; }
     .tl-sonar-wrapper.draggable-active:active { cursor: grabbing !important; }
@@ -456,18 +460,19 @@
     }
 
     .sonar-color-pill {
-      width: 28px;
-      height: 28px;
+      width: 27px;
+      height: 27px;
       border-radius: 50%;
       cursor: pointer;
-      border: 2px solid #334155;
-      transition: all 0.2s;
+      border: 2px solid rgba(255, 255, 255, 0.25);
+      transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
     }
-    .sonar-color-pill:hover { transform: scale(1.1); }
+    .sonar-color-pill:hover { transform: scale(1.15); }
     .sonar-color-pill.active {
       border: 2.5px solid #ffffff !important;
-      box-shadow: 0 0 12px #38bdf8;
-      transform: scale(1.15);
+      box-shadow: 0 0 12px #00f3ff;
+      transform: scale(1.22);
     }
   </style>
   <script>
@@ -769,40 +774,46 @@
     </div>
   </div>
 
-  <!-- МОДАЛКА НАЛАШТУВАННЯ СОНАРА СВІТЛОФОРІВ -->
-  <div id="tlSettingsModal" class="action-sheet-backdrop" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:10000; align-items:center; justify-content:center; backdrop-filter:blur(3px);" onclick="closeTlSettingsModal(event)">
-    <div class="action-sheet-card" style="background:#0f172a; border:2px solid #0284c7; border-radius:18px; width:92%; max-width:390px; padding:16px; display:flex; flex-direction:column; gap:11px; box-shadow:0 10px 30px rgba(0,0,0,0.85);" onclick="event.stopPropagation()">
-      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #1e293b; padding-bottom:8px;">
+  <!-- МОДАЛКА НАЛАШТУВАННЯ СОНАРА СВІТЛОФОРІВ (НАПІВПРОЗОРИЙ СКЛЯНИЙ HUD) -->
+  <div id="tlSettingsModal" class="action-sheet-backdrop" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.12); z-index:10000; align-items:center; justify-content:center; backdrop-filter:none;" onclick="closeTlSettingsModal(event)">
+    <div class="action-sheet-card" style="background:rgba(15, 23, 42, 0.74); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); border:2px solid #0284c7; border-radius:18px; width:92%; max-width:390px; padding:15px; display:flex; flex-direction:column; gap:10px; box-shadow:0 12px 35px rgba(0,0,0,0.8);" onclick="event.stopPropagation()">
+      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(51,65,85,0.7); padding-bottom:7px;">
         <span style="font-size:13.5px; font-weight:900; color:#38bdf8;">⚙️ Калібрування сонара світлофорів</span>
         <span style="cursor:pointer; font-size:18px; color:#94a3b8; font-weight:800; padding:0 6px;" onclick="closeTlSettingsModal()">✕</span>
       </div>
       <div>
-        <div style="font-size:11px; font-weight:800; color:#cbd5e1; margin-bottom:5px;">Колір хвилі «Чисто»:</div>
+        <div style="font-size:11px; font-weight:800; color:#cbd5e1; margin-bottom:5px;">Колір хвилі «Чисто» (5 кольорів):</div>
         <div id="sonarCleanColors" style="display:flex; gap:10px; align-items:center;"></div>
       </div>
       <div>
-        <div style="font-size:11px; font-weight:800; color:#cbd5e1; margin-bottom:5px;">Колір хвилі «Блокпост / Небезпека»:</div>
+        <div style="font-size:11px; font-weight:800; color:#cbd5e1; margin-bottom:5px;">Колір хвилі «Блокпост» (5 кольорів):</div>
         <div id="sonarDangerColors" style="display:flex; gap:10px; align-items:center;"></div>
       </div>
-      <div style="background:#1e293b; padding:7px 10px; border-radius:9px;">
+      <div style="background:rgba(30, 41, 59, 0.65); padding:7px 10px; border-radius:9px;">
+        <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:800; color:#cbd5e1; margin-bottom:3px;">
+          <span>Кількість кілець (інтенсивність):</span><b id="lblSonarWaveCount" style="color:#00f3ff; font-family:monospace;">3 кільця</b>
+        </div>
+        <input type="range" id="rngSonarWaveCount" min="1" max="4" step="1" value="3" style="width:100%; cursor:pointer;">
+      </div>
+      <div style="background:rgba(30, 41, 59, 0.65); padding:7px 10px; border-radius:9px;">
         <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:800; color:#cbd5e1; margin-bottom:3px;">
           <span>Діаметр розмаху хвилі:</span><b id="lblSonarDiameter" style="color:#38bdf8; font-family:monospace;">95 px</b>
         </div>
         <input type="range" id="rngSonarDiameter" min="10" max="160" step="2" value="95" style="width:100%; cursor:pointer;">
       </div>
-      <div style="background:#1e293b; padding:7px 10px; border-radius:9px;">
+      <div style="background:rgba(30, 41, 59, 0.65); padding:7px 10px; border-radius:9px;">
         <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:800; color:#cbd5e1; margin-bottom:3px;">
           <span>Інтервал хвилі «Чисто»:</span><b id="lblSonarCleanSpeed" style="color:#10b981; font-family:monospace;">1.8 с</b>
         </div>
         <input type="range" id="rngSonarCleanSpeed" min="0.8" max="3.5" step="0.1" value="1.8" style="width:100%; cursor:pointer;">
       </div>
-      <div style="background:#1e293b; padding:7px 10px; border-radius:9px;">
+      <div style="background:rgba(30, 41, 59, 0.65); padding:7px 10px; border-radius:9px;">
         <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:800; color:#cbd5e1; margin-bottom:3px;">
           <span>Базовий інтервал БП (1 звіт):</span><b id="lblSonarDangerBaseSpeed" style="color:#ef4444; font-family:monospace;">2.4 с</b>
         </div>
         <input type="range" id="rngSonarDangerBaseSpeed" min="1.2" max="3.5" step="0.1" value="2.4" style="width:100%; cursor:pointer;">
       </div>
-      <div style="background:#1e293b; padding:7px 10px; border-radius:9px;">
+      <div style="background:rgba(30, 41, 59, 0.65); padding:7px 10px; border-radius:9px;">
         <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:800; color:#cbd5e1; margin-bottom:3px;">
           <span>Крок прискорення на кожен звіт:</span><b id="lblSonarDangerStep" style="color:#f59e0b; font-family:monospace;">-0.3 с</b>
         </div>
@@ -842,11 +853,15 @@
     window.isSpamMessage = isSpamMessage;
 
     // =========================================================================
-    // ⚙️ ОБ'ЄКТ НАЛАШТУВАНЬ СОНАРА СВІТЛОФОРІВ (ЗАПОБІГАЄ CRASH RENDER_TRAFFIC)
+    // ⚙️ ОБ'ЄКТ НАЛАШТУВАНЬ СОНАРА СВІТЛОФОРІВ + ПАЛІТРИ
     // =========================================================================
+    const CLEAN_PALETTE = ['#10b981', '#22c55e', '#0284c7', '#00f3ff', '#2563eb'];
+    const DANGER_PALETTE = ['#ef4444', '#b91c1c', '#f97316', '#f59e0b', '#ec4899'];
+
     let sonarSettings = {
       cleanColor: localStorage.getItem("radar_sonar_clean_color") || "#10b981",
       dangerColor: localStorage.getItem("radar_sonar_danger_color") || "#ef4444",
+      waveCount: parseInt(localStorage.getItem("radar_sonar_wave_count") || "3", 10),
       diameter: parseInt(localStorage.getItem("radar_sonar_diameter") || "95", 10),
       cleanSpeed: parseFloat(localStorage.getItem("radar_sonar_clean_speed") || "1.8"),
       dangerBaseSpeed: parseFloat(localStorage.getItem("radar_sonar_danger_base_speed") || "2.4"),
@@ -864,10 +879,45 @@
     }
     applySonarCssVars();
 
+    function renderSonarColorPills() {
+      const cleanBox = document.getElementById("sonarCleanColors");
+      const dangerBox = document.getElementById("sonarDangerColors");
+      if (!cleanBox || !dangerBox) return;
+
+      cleanBox.innerHTML = CLEAN_PALETTE.map(col => `
+        <div class="sonar-color-pill ${sonarSettings.cleanColor === col ? 'active' : ''}" 
+             style="background:${col};" 
+             onclick="setSonarColor('clean', '${col}')"></div>
+      `).join('');
+
+      dangerBox.innerHTML = DANGER_PALETTE.map(col => `
+        <div class="sonar-color-pill ${sonarSettings.dangerColor === col ? 'active' : ''}" 
+             style="background:${col};" 
+             onclick="setSonarColor('danger', '${col}')"></div>
+      `).join('');
+    }
+
+    window.setSonarColor = function(type, color) {
+      if (type === 'clean') {
+        sonarSettings.cleanColor = color;
+        localStorage.setItem("radar_sonar_clean_color", color);
+      } else {
+        sonarSettings.dangerColor = color;
+        localStorage.setItem("radar_sonar_danger_color", color);
+      }
+      applySonarCssVars();
+      renderSonarColorPills();
+      if (typeof renderTrafficLights === "function") renderTrafficLights();
+    };
+
     window.openTlSettingsModal = function() {
       const m = document.getElementById("tlSettingsModal");
       if (!m) return;
       m.style.display = "flex";
+      renderSonarColorPills();
+
+      const rngWave = document.getElementById("rngSonarWaveCount");
+      if (rngWave) { rngWave.value = sonarSettings.waveCount; document.getElementById("lblSonarWaveCount").innerText = sonarSettings.waveCount + " кільця"; }
       const rngDia = document.getElementById("rngSonarDiameter");
       if (rngDia) { rngDia.value = sonarSettings.diameter; document.getElementById("lblSonarDiameter").innerText = sonarSettings.diameter + " px"; }
       const rngClean = document.getElementById("rngSonarCleanSpeed");
@@ -882,6 +932,7 @@
       if (e && e.target && e.target.id !== "tlSettingsModal" && !e.target.closest(".action-sheet-card")) return;
       const m = document.getElementById("tlSettingsModal");
       if (m) m.style.display = "none";
+      localStorage.setItem("radar_sonar_wave_count", sonarSettings.waveCount);
       localStorage.setItem("radar_sonar_diameter", sonarSettings.diameter);
       localStorage.setItem("radar_sonar_clean_speed", sonarSettings.cleanSpeed);
       localStorage.setItem("radar_sonar_danger_base_speed", sonarSettings.dangerBaseSpeed);
@@ -889,6 +940,14 @@
       applySonarCssVars();
       if (typeof renderTrafficLights === "function") renderTrafficLights();
     };
+
+    const rngWaveEl = document.getElementById("rngSonarWaveCount");
+    if (rngWaveEl) rngWaveEl.addEventListener("input", (e) => {
+      sonarSettings.waveCount = parseInt(e.target.value, 10);
+      const suffix = (sonarSettings.waveCount === 1) ? " кільце" : ((sonarSettings.waveCount >= 2 && sonarSettings.waveCount <= 4) ? " кільця" : " кілець");
+      document.getElementById("lblSonarWaveCount").innerText = sonarSettings.waveCount + suffix;
+      if (typeof renderTrafficLights === "function") renderTrafficLights();
+    });
 
     const rngDiaEl = document.getElementById("rngSonarDiameter");
     if (rngDiaEl) rngDiaEl.addEventListener("input", (e) => {
@@ -2739,7 +2798,7 @@ ${allLiveReportsText || "Повідомлень немає"}
     }
 
     // =========================================================================
-    // 🚦 РЕНДЕР СВІТЛОФОРІВ (ПОВНІСТЮ ВІДНОВЛЕНО В ПОЧАТКОВІЙ ЛОГІЦІ)
+    // 🚦 РЕНДЕР СВІТЛОФОРІВ (З ДИНАМІЧНОЮ КІЛЬКІСТЮ КІЛЕЦЬ ТА ДЕЛЕЄМ)
     // =========================================================================
     function renderTrafficLights() {
       if (!showTrafficLights || currentUiMode === "simple") {
@@ -2788,11 +2847,21 @@ ${allLiveReportsText || "Повідомлень немає"}
 
         const dragClass = isEditMode ? "draggable-active" : "";
 
+        // ГЕНЕРАЦІЯ ХВИЛЬ ЗАЛЕЖНО ВІД ПАРАМЕТРА ІНТЕНСИВНОСТІ (waveCount)
+        const waveCount = (sonarSettings && sonarSettings.waveCount) ? sonarSettings.waveCount : 3;
+        const currentSpeed = (colorClass === "green") 
+          ? ((sonarSettings && sonarSettings.cleanSpeed) ? sonarSettings.cleanSpeed : 1.8) 
+          : dynDangerSpeed;
+
+        let wavesHtml = "";
+        for (let i = 0; i < waveCount; i++) {
+          const delay = (currentSpeed / waveCount) * i;
+          wavesHtml += `<div class="tl-sonar-wave" style="animation-delay: ${delay.toFixed(2)}s;"></div>`;
+        }
+
         const iconHtml = `
           <div class="tl-sonar-wrapper ${colorClass} ${dragClass}" style="--dyn-danger-speed: ${dynDangerSpeed.toFixed(2)}s;">
-            <div class="tl-sonar-wave"></div>
-            <div class="tl-sonar-wave"></div>
-            <div class="tl-sonar-wave"></div>
+            ${wavesHtml}
             <div class="tl-sonar-core ${colorClass}"></div>
             <div class="tl-sonar-target-pin" title="Тягніть пальцем">🎯</div>
           </div>
@@ -3044,7 +3113,6 @@ ${allLiveReportsText || "Повідомлень немає"}
           p.lng = Number(p.lng);
           if (isNaN(p.lat) || isNaN(p.lng)) return null;
 
-          // НОРМАЛІЗАЦІЯ ЧАСУ (СЕКУНДИ ЧИ МІЛІСЕКУНДИ)
           const rawTime = p.time || p.timestamp || 0;
           p.time = (rawTime > 0 && rawTime < 1e11) ? (rawTime * 1000) : rawTime;
 
@@ -3277,10 +3345,8 @@ ${allLiveReportsText || "Повідомлень немає"}
       }
     }
 
-    // Первинна перевірка авторизації
     verifyInitialAccess();
 
-    // БЕЗУМОВНИЙ ЗАПУСК СИНХРОНІЗАЦІЇ ПРИ СТАРТІ КАРТИ
     loadCheckpointsFromCloud().then(() => {
       loadPoints();
     });
