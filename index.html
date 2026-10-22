@@ -51,7 +51,7 @@
       cursor: grabbing !important;
     }
 
-    /* ЖОРСТКЕ ПРИХОВУВАННЯ ЕЛЕМЕНТІВ РОЗРОБНИКА У ПРОСТОМУ РЕЖИМІ (МОЗОК, ПЕРЕНЕСЕННЯ) */
+    /* ЖОРСТКЕ ПРИХОВУВАННЯ ЕЛЕМЕНТІВ РОЗРОБНИКА У ПРОСТОМУ РЕЖИМІ */
     html.mode-simple #btnMemHud,
     html.mode-simple #aiPillPanel,
     html.mode-simple #routeStatusBar,
@@ -190,6 +190,8 @@
       box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45) !important;
       transition: background 0.2s, border-color 0.2s;
       user-select: none !important;
+      cursor: pointer;
+      outline: none;
     }
     #btnStatsHud:hover {
       background: #1e293b !important;
@@ -199,7 +201,7 @@
     #btnStatsHud:active { transform: scale(0.92) !important; }
 
     /* =========================================================================
-       1. КОМПАКТНІСТЬ ТА ГАРАНТОВАНИЙ ЗАЗОР ВІД РАДІО (ПРАВА ПАНЕЛЬ)
+       1. КОМПАКТНІСТЬ ТА МОНОЛІТНІСТЬ ПЛАШКИ «КЛІЄНТИ» (БЕЗ СТРІЛОЧКИ)
        ========================================================================= */
     #aiPillPanel.compact {
       top: 15px !important;
@@ -207,14 +209,14 @@
       left: auto !important;
       bottom: auto !important;
       width: auto !important;
-      max-width: 130px !important;
+      max-width: 125px !important;
       height: 38px !important;
       min-height: 38px !important;
       max-height: 38px !important;
-      padding: 0 9px !important;
+      padding: 0 10px !important;
       display: inline-flex !important;
       align-items: center !important;
-      justify-content: space-between !important;
+      justify-content: center !important;
       gap: 6px !important;
       cursor: pointer !important;
       user-select: none !important;
@@ -226,6 +228,7 @@
       padding-bottom: 0 !important;
       cursor: pointer !important;
       width: 100% !important;
+      justify-content: center !important;
     }
     #aiPillPanel.compact .ai-pill-tools,
     #aiPillPanel.compact .hub-tab-bar,
@@ -466,13 +469,30 @@
     }
 
     const _initToken = localStorage.getItem("radar_admin_token") || localStorage.getItem("github_radar_token") || "";
-    const _initIsAdmin = typeof _initToken === "string" && _initToken.startsWith("ghp_") && _initToken.length >= 35;
+    const _initIsAdmin = typeof _initToken === "string" && _initToken.toLowerCase().startsWith("ghp_") && _initToken.length >= 35;
     let _initMode = localStorage.getItem("radar_ui_mode") || "simple";
     if (!_initIsAdmin) _initMode = "simple";
     document.documentElement.classList.add(_initMode === "full" ? "mode-full" : "mode-simple");
   </script>
 </head>
 <body>
+  <!-- 🔐 ШТОРКА ЗАХИСТУ ТА АВТОРИЗАЦІЇ -->
+  <div id="authCurtain" style="display:none; position:fixed; inset:0; z-index:99999; background:rgba(11,17,32,0.98); backdrop-filter:blur(10px); align-items:center; justify-content:center; padding:16px;">
+    <div style="background:#0f172a; border:1.5px solid #0284c7; border-radius:18px; padding:24px 20px; max-width:330px; width:100%; box-shadow:0 10px 40px rgba(0,243,255,0.25); text-align:center;">
+      <div style="font-size:36px; margin-bottom:8px; cursor:pointer;" onclick="requestAdminLogin()" title="Вхід адміністратора">🔐</div>
+      <h3 style="color:#f8fafc; font-size:16px; font-weight:900; margin-bottom:4px;">Радар Дніпро v5.1</h3>
+      <p style="color:#94a3b8; font-size:11.5px; margin-bottom:16px; line-height:1.4;">Введіть ключ доступу або токен адміністратора</p>
+      
+      <input type="text" id="authGateInput" placeholder="RADAR-XXXX або токен..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="width:100%; background:#060913; border:1.5px solid #334155; border-radius:10px; color:#fff; padding:10px 12px; font-size:13px; text-align:center; outline:none; font-family:monospace; margin-bottom:12px;">
+      
+      <button id="btnAuthSubmit" onclick="submitAuthGateKey()" style="width:100%; background:linear-gradient(135deg, #0284c7 0%, #00f3ff 100%); border:none; color:#04101e; padding:11px; border-radius:10px; font-size:13px; font-weight:900; cursor:pointer;">
+        🔓 Увійти в систему
+      </button>
+
+      <div id="authGateError" style="display:none; color:#ef4444; font-size:11px; font-weight:700; margin-top:10px; line-height:1.3;"></div>
+    </div>
+  </div>
+
   <div id="map"></div>
 
   <div id="transferBanner" class="transfer-banner">⏳ Виконується перенесення мітки...</div>
@@ -560,17 +580,16 @@
 
   <!-- 2. ПАНЕЛЬ «КЛІЄНТИ» (ШТАБ ДОСТУПІВ, СЕСІЇ ТА ШІ-ШТУРМАН) -->
   <div id="aiPillPanel" class="ai-pill-panel compact">
-    <!-- КЛІКАБЕЛЬНА ТІЛЬКИ ШАПКА ДЛЯ ВІДКРИТТЯ / ЗАКРИТТЯ -->
+    <!-- КЛІКАБЕЛЬНА ШАПКА ДЛЯ ВІДКРИТТЯ / ЗАКРИТТЯ (БЕЗ СТРІЛОЧКИ) -->
     <div id="aiPillHeader" class="ai-pill-compact-content" onclick="toggleAiPillExpand(event)">
       <div class="ai-titleBadge">
         <span style="font-size:13px;">👑</span>
-        <span id="aiPillLabel" style="font-size:11px; font-weight:800; color:#38bdf8;">Клієнти</span>
+        <span id="aiPillLabel" style="font-size:11.5px; font-weight:800; color:#38bdf8;">Клієнти</span>
         <span class="hub-online-pill" id="hubOnlinePill">🟢 <span id="hubOnlineCount">1</span></span>
       </div>
       <div style="display:flex; align-items:center; gap:5px;">
         <span class="ai-pill-tools" style="font-size:10.5px; color:#64748b; cursor:pointer; padding:2px;" title="Очистити історію діалогу ШІ" onclick="clearAiChatHistory(event)">🗑️</span>
         <span class="ai-pill-tools" style="font-size:10.5px; color:#64748b; cursor:pointer; padding:2px;" title="Налаштування API Key Gemini" onclick="configureGeminiKey(event)">🔑</span>
-        <span id="btnAiPillToggle" style="font-size:10.5px; color:#94a3b8; font-weight:900; padding:0 2px; user-select:none; cursor:pointer;">▼</span>
       </div>
     </div>
 
@@ -580,7 +599,7 @@
       <button class="hub-tab-btn" id="tabBtnAi" onclick="switchHubTab('ai', event)">🤖 ШІ-Штурман</button>
     </div>
 
-    <!-- ТІЛО ПАНЕЛІ (КЛІКИ ВСЕРЕДИНІ НЕ ЗАКРИВАЮТЬ ВІКНО) -->
+    <!-- ТІЛО ПАНЕЛІ (КЛІКИ НЕ ЗАКРИВАЮТЬ ВІКНО) -->
     <div class="ai-pill-body" id="aiPillBody" onclick="event.stopPropagation()">
       <!-- СЕКЦІЯ 1: КЕРУВАННЯ ДОСТУПАМИ -->
       <div class="hub-view-section" id="hubSectionClients">
@@ -673,13 +692,13 @@
     🧠
   </button>
 
-  <a href="javascript:void(0)" id="btnStatsHud" onclick="event.preventDefault(); window.location.href = (localStorage.getItem('radar_last_analytics_page') || 'stats.html');" title="Аналітика блокпостів">
+  <button type="button" id="btnStatsHud" onclick="event.preventDefault(); window.location.href = (localStorage.getItem('radar_last_analytics_page') || 'stats.html');" oncontextmenu="return false;" title="Аналітика блокпостів">
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
       <rect x="3" y="12" width="4.5" height="9" rx="2" fill="#00f3ff" />
       <rect x="9.75" y="7" width="4.5" height="14" rx="2" fill="#00f3ff" />
       <rect x="16.5" y="3" width="4.5" height="18" rx="2" fill="#00f3ff" />
     </svg>
-  </a>
+  </button>
 
   <div id="routeSubmenu" class="route-submenu" onclick="event.stopPropagation()">
     <div class="route-submenu-header">
@@ -882,7 +901,7 @@
 
     function isUserAdmin() {
       const t = getAdminToken();
-      return typeof t === "string" && t.startsWith("ghp_") && t.length >= 35;
+      return typeof t === "string" && t.toLowerCase().startsWith("ghp_") && t.length >= 35;
     }
 
     let currentUiMode = localStorage.getItem("radar_ui_mode") || "simple";
@@ -948,15 +967,146 @@
     function requestAdminLogin() {
       const token = prompt("🔐 Введіть персональний GitHub токен (ghp_...):\n(Вхід виконується 1 раз, пристрій запам'ятовується)");
       if (!token) return;
-      const clean = token.trim();
-      if (clean.startsWith("ghp_") && clean.length >= 35) {
+      let clean = token.trim();
+      if (clean.startsWith("Ghp_")) clean = "ghp_" + clean.slice(4);
+      if (clean.toLowerCase().startsWith("ghp_") && clean.length >= 35) {
         localStorage.setItem("radar_admin_token", clean);
         localStorage.setItem("github_radar_token", clean);
         applyUiMode("full");
+        hideAuthCurtain();
         showToast("🔓 Авторизовано! Доступ розробника активний.");
       } else {
         alert("❌ Недійсний токен! Токен повинен починатися з 'ghp_' (довжина від 35 символів).");
       }
+    }
+
+    // =========================================================================
+    // 🚪 ЛОГІКА ШТОРКИ ВХОДУ ТА ВАЛІДАЦІЇ КЛЮЧІВ
+    // =========================================================================
+    function showAuthCurtain() {
+      const c = document.getElementById("authCurtain");
+      if (c) c.style.display = "flex";
+    }
+
+    function hideAuthCurtain() {
+      const c = document.getElementById("authCurtain");
+      if (c) c.style.display = "none";
+    }
+
+    function showAuthError(msg) {
+      const err = document.getElementById("authGateError");
+      if (err) {
+        err.innerText = msg;
+        err.style.display = "block";
+      }
+    }
+
+    async function submitAuthGateKey() {
+      const input = document.getElementById("authGateInput");
+      const val = (input.value || "").trim();
+      const err = document.getElementById("authGateError");
+      if (err) err.style.display = "none";
+      if (!val) return;
+
+      // 1. Перевірка адмінського токена або майстер-коду
+      let cleanVal = val.startsWith("Ghp_") ? ("ghp_" + val.slice(4)) : val;
+      if (cleanVal.toLowerCase().startsWith("ghp_") && cleanVal.length >= 35) {
+        localStorage.setItem("radar_admin_token", cleanVal);
+        localStorage.setItem("github_radar_token", cleanVal);
+        applyUiMode("full");
+        hideAuthCurtain();
+        showToast("👑 Доступ адміністратора підтверджено!");
+        return;
+      }
+      if (cleanVal === "570984") {
+        applyUiMode("full");
+        hideAuthCurtain();
+        showToast("👑 Доступ адміністратора (код 570984)!");
+        return;
+      }
+
+      // 2. Перевірка клієнтського ключа у Firebase
+      const btnSubmit = document.getElementById("btnAuthSubmit");
+      btnSubmit.disabled = true;
+      btnSubmit.innerText = "⏳ Перевірка ключа...";
+
+      try {
+        const uppercaseKey = val.toUpperCase();
+        const res = await fetch(`${FIREBASE_TOKENS_URL.replace(".json", `/${encodeURIComponent(uppercaseKey)}.json`)}?t=${Date.now()}`);
+        if (!res.ok) throw new Error("Помилка з'єднання");
+        const tokenData = await res.json();
+
+        if (!tokenData) {
+          showAuthError("❌ Ключ не знайдено в базі");
+          return;
+        }
+        if (tokenData.status === "blocked") {
+          showAuthError("🚫 Цей ключ доступу заблоковано адміністратором");
+          return;
+        }
+        if (tokenData.expires_at && tokenData.expires_at > 0 && Date.now() > tokenData.expires_at) {
+          showAuthError("⏳ Термін дії ключа вичерпано");
+          return;
+        }
+
+        let devUuid = localStorage.getItem("radar_device_uuid");
+        if (!devUuid) {
+          devUuid = "dev_" + Math.random().toString(36).substring(2, 9) + Date.now().toString(36);
+          localStorage.setItem("radar_device_uuid", devUuid);
+        }
+
+        if (tokenData.device_id && tokenData.device_id !== devUuid) {
+          showAuthError("📱 Ключ уже прив'язано до іншого телефону!");
+          return;
+        }
+
+        if (!tokenData.device_id) {
+          const patchUrl = window.appendAuth(FIREBASE_TOKENS_URL.replace(".json", `/${encodeURIComponent(uppercaseKey)}.json`));
+          await fetch(patchUrl, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ device_id: devUuid })
+          }).catch(() => {});
+        }
+
+        localStorage.setItem("radar_client_token", uppercaseKey);
+        localStorage.setItem("radar_client_label", tokenData.label || "Водій");
+        applyUiMode("simple");
+        hideAuthCurtain();
+        showToast(`🚗 Ласкаво просимо, ${escapeHtml(tokenData.label || 'Водій')}!`);
+      } catch(e) {
+        showAuthError("⚠️ Помилка з'єднання з базою перевірки");
+      } finally {
+        btnSubmit.disabled = false;
+        btnSubmit.innerText = "🔓 Увійти в систему";
+      }
+    }
+
+    async function verifyInitialAccess() {
+      if (isUserAdmin()) {
+        hideAuthCurtain();
+        return;
+      }
+      const clientKey = localStorage.getItem("radar_client_token");
+      if (!clientKey) {
+        showAuthCurtain();
+        return;
+      }
+      try {
+        const res = await fetch(`${FIREBASE_TOKENS_URL.replace(".json", `/${encodeURIComponent(clientKey)}.json`)}?t=${Date.now()}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (!data || data.status === "blocked" || (data.expires_at && data.expires_at > 0 && Date.now() > data.expires_at)) {
+            localStorage.removeItem("radar_client_token");
+            showAuthCurtain();
+            showAuthError("Сесію завершено або ключ заблоковано");
+            return;
+          }
+          hideAuthCurtain();
+          return;
+        }
+      } catch(e) {}
+      hideAuthCurtain();
     }
 
     const countTextEl = document.getElementById("countText");
@@ -1845,7 +1995,6 @@
       if (sheet) sheet.style.display = "flex";
     }
 
-    // Перехоплювач для relocate.js
     const _origRelocateActionSheet = window.openRelocateActionSheet;
     window.openRelocateActionSheet = function(point, marker) {
       if (currentUiMode === "simple") return;
@@ -1973,13 +2122,11 @@
     L.DomEvent.disableClickPropagation(document.getElementById("tlSettingsModal"));
     L.DomEvent.disableClickPropagation(document.getElementById("mapDisplayModal"));
 
-    // Відкриття / згортання плашки тільки по кліку на саму шапку
+    // Відкриття / згортання плашки по кліку на монолітний бейдж
     function toggleAiPillExpand(e) {
       if (e) e.stopPropagation();
       const isExpanded = aiPillPanel.classList.toggle("expanded");
       aiPillPanel.classList.toggle("compact", !isExpanded);
-      const toggleIcon = document.getElementById("btnAiPillToggle");
-      if (toggleIcon) toggleIcon.innerText = isExpanded ? "▲" : "▼";
       if (isExpanded) {
         if (currentHubTab === "clients") {
           loadAccessTokens();
@@ -3145,6 +3292,9 @@ ${allLiveReportsText || "Повідомлень немає"}
         if (btn) btn.innerText = "▼";
       }
     }
+
+    // Первинна перевірка авторизації
+    verifyInitialAccess();
 
     loadCheckpointsFromCloud().then(() => {
       loadPoints();
