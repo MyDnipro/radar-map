@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <meta name="color-scheme" content="light only">
-  <title>Радар Дніпро v5.2</title>
+  <title>Радар Дніпро v5.1</title>
   <link rel="icon" type="image/png" href="icon.png">
   <link rel="apple-touch-icon" href="icon.png">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -201,7 +201,7 @@
     #btnStatsHud:active { transform: scale(0.92) !important; }
 
     /* =========================================================================
-       1. ПАНЕЛЬ «КЛІЄНТИ» (ЖОРСТКА ПРИВ'ЯЗКА СПРАВА ТА СПУСК ДОНИЗУ)
+       1. КОМПАКТНІСТЬ ТА ЗБІЛЬШЕНА ВИСОТА РОЗГОРНУТОЇ ПАНЕЛІ «КЛІЄНТИ»
        ========================================================================= */
     #aiPillPanel.compact {
       top: 15px !important;
@@ -236,39 +236,26 @@
       display: none !important;
     }
 
-    /* Розгортання: ЖОРСТКО СПРАВА, ніколи не зсувається вліво */
+    /* Розгортання вікна майже до самого низу екрана зі зручним скролом */
     #aiPillPanel.expanded {
       top: 15px !important;
-      right: 15px !important;
-      left: auto !important;
-      bottom: 75px !important;
-      width: 385px !important;
-      max-width: calc(100vw - 30px) !important;
+      right: 12px !important;
+      left: 12px !important;
+      max-width: 385px !important;
+      max-height: calc(100vh - 80px) !important;
       height: auto !important;
-      max-height: none !important;
       display: flex !important;
       flex-direction: column !important;
       z-index: 2500 !important;
-      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.85) !important;
     }
     #aiPillPanel.expanded .ai-pill-body {
       flex: 1 1 auto !important;
-      display: flex !important;
-      flex-direction: column !important;
-      overflow-y: hidden !important;
-    }
-    #hubSectionClients {
-      display: flex;
-      flex-direction: column;
-      height: 100%;
-      gap: 7px;
+      max-height: calc(100vh - 170px) !important;
+      overflow-y: auto !important;
     }
     #hubClientsList {
-      flex: 1 1 auto !important;
-      min-height: 140px !important;
-      max-height: none !important;
+      max-height: 250px !important;
       overflow-y: auto !important;
-      padding-right: 2px;
     }
 
     #map.night-mode .leaflet-tile-pane {
@@ -315,8 +302,12 @@
       70% { box-shadow: 0 0 0 12px rgba(16, 185, 129, 0); }
       100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
     }
-    .radar-circle.fresh.color-red { animation: pulseGroupDanger 1.4s infinite !important; }
-    .radar-circle.fresh.color-green { animation: pulseGroupClean 1.4s infinite !important; }
+    .radar-circle.fresh.color-red {
+      animation: pulseGroupDanger 1.4s infinite !important;
+    }
+    .radar-circle.fresh.color-green {
+      animation: pulseGroupClean 1.4s infinite !important;
+    }
 
     /* =========================================================================
        2. СОНАР СВІТЛОФОРІВ
@@ -379,16 +370,75 @@
     }
 
     @keyframes sonarPulseClean {
-      0% { width: 10px; height: 10px; opacity: 0.95; border: 2px solid var(--sonar-clean-color); }
-      100% { width: var(--sonar-diameter); height: var(--sonar-diameter); opacity: 0; border: 1px solid var(--sonar-clean-color); }
-    }
-    @keyframes sonarPulseDanger {
-      0% { width: 10px; height: 10px; opacity: 1; border: 2.5px solid var(--sonar-danger-color); }
-      100% { width: var(--sonar-diameter); height: var(--sonar-diameter); opacity: 0; border: 1px solid var(--sonar-danger-color); }
+      0% {
+        width: 10px;
+        height: 10px;
+        opacity: 0.95;
+        border: 2px solid var(--sonar-clean-color);
+        box-shadow: 0 0 8px var(--sonar-clean-color);
+      }
+      50% { opacity: 0.55; }
+      100% {
+        width: var(--sonar-diameter);
+        height: var(--sonar-diameter);
+        opacity: 0;
+        border: 1px solid var(--sonar-clean-color);
+        box-shadow: 0 0 20px rgba(0,0,0,0);
+      }
     }
 
-    .tl-sonar-wrapper.green .tl-sonar-wave:nth-child(1) { animation: sonarPulseClean var(--sonar-clean-speed) infinite ease-out; }
-    .tl-sonar-wrapper.red .tl-sonar-wave:nth-child(1) { animation: sonarPulseDanger var(--dyn-danger-speed, var(--sonar-danger-base-speed)) infinite ease-out; }
+    @keyframes sonarPulseDanger {
+      0% {
+        width: 10px;
+        height: 10px;
+        opacity: 1;
+        border: 2.5px solid var(--sonar-danger-color);
+        box-shadow: 0 0 10px var(--sonar-danger-color);
+      }
+      50% { opacity: 0.6; }
+      100% {
+        width: var(--sonar-diameter);
+        height: var(--sonar-diameter);
+        opacity: 0;
+        border: 1px solid var(--sonar-danger-color);
+        box-shadow: 0 0 22px rgba(0,0,0,0);
+      }
+    }
+
+    @keyframes sonarPulseCyan {
+      0% { width: 10px; height: 10px; opacity: 0.9; border: 2px solid #38bdf8; }
+      100% { width: var(--sonar-diameter); height: var(--sonar-diameter); opacity: 0; border: 1px solid #38bdf8; }
+    }
+
+    .tl-sonar-wrapper.green .tl-sonar-wave:nth-child(1) {
+      animation: sonarPulseClean var(--sonar-clean-speed) infinite cubic-bezier(0.15, 0.6, 0.35, 1);
+      animation-delay: 0s;
+    }
+    .tl-sonar-wrapper.green .tl-sonar-wave:nth-child(2) {
+      animation: sonarPulseClean var(--sonar-clean-speed) infinite cubic-bezier(0.15, 0.6, 0.35, 1);
+      animation-delay: calc(var(--sonar-clean-speed) / 3);
+    }
+    .tl-sonar-wrapper.green .tl-sonar-wave:nth-child(3) {
+      animation: sonarPulseClean var(--sonar-clean-speed) infinite cubic-bezier(0.15, 0.6, 0.35, 1);
+      animation-delay: calc(var(--sonar-clean-speed) * 2 / 3);
+    }
+
+    .tl-sonar-wrapper.red .tl-sonar-wave:nth-child(1) {
+      animation: sonarPulseDanger var(--dyn-danger-speed, var(--sonar-danger-base-speed)) infinite cubic-bezier(0.15, 0.6, 0.35, 1);
+      animation-delay: 0s;
+    }
+    .tl-sonar-wrapper.red .tl-sonar-wave:nth-child(2) {
+      animation: sonarPulseDanger var(--dyn-danger-speed, var(--sonar-danger-base-speed)) infinite cubic-bezier(0.15, 0.6, 0.35, 1);
+      animation-delay: calc(var(--dyn-danger-speed, var(--sonar-danger-base-speed)) / 3);
+    }
+    .tl-sonar-wrapper.red .tl-sonar-wave:nth-child(3) {
+      animation: sonarPulseDanger var(--dyn-danger-speed, var(--sonar-danger-base-speed)) infinite cubic-bezier(0.15, 0.6, 0.35, 1);
+      animation-delay: calc(var(--dyn-danger-speed, var(--sonar-danger-base-speed)) * 2 / 3);
+    }
+
+    .tl-sonar-wrapper.cyan .tl-sonar-wave:nth-child(1) { animation: sonarPulseCyan 1.1s infinite ease-out; animation-delay: 0s; }
+    .tl-sonar-wrapper.cyan .tl-sonar-wave:nth-child(2) { animation: sonarPulseCyan 1.1s infinite ease-out; animation-delay: 0.36s; }
+    .tl-sonar-wrapper.cyan .tl-sonar-wave:nth-child(3) { animation: sonarPulseCyan 1.1s infinite ease-out; animation-delay: 0.73s; }
 
     .tl-sonar-wrapper.draggable-active { cursor: grab !important; pointer-events: auto !important; }
     .tl-sonar-wrapper.draggable-active:active { cursor: grabbing !important; }
@@ -430,10 +480,14 @@
   </style>
   <script>
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then(r => r.forEach(reg => reg.unregister()));
+      navigator.serviceWorker.getRegistrations().then(registrations => {
+        for (let registration of registrations) registration.unregister();
+      });
     }
     if ('caches' in window) {
-      caches.keys().then(names => names.forEach(n => caches.delete(n)));
+      caches.keys().then(names => {
+        for (let name of names) caches.delete(name);
+      });
     }
 
     const _initToken = localStorage.getItem("radar_admin_token") || localStorage.getItem("github_radar_token") || "";
@@ -448,7 +502,7 @@
   <div id="authCurtain" style="display:none; position:fixed; inset:0; z-index:99999; background:rgba(11,17,32,0.98); backdrop-filter:blur(10px); align-items:center; justify-content:center; padding:16px;">
     <div style="background:#0f172a; border:1.5px solid #0284c7; border-radius:18px; padding:24px 20px; max-width:330px; width:100%; box-shadow:0 10px 40px rgba(0,243,255,0.25); text-align:center;">
       <div style="font-size:36px; margin-bottom:8px; cursor:pointer;" onclick="requestAdminLogin()" title="Вхід">🔐</div>
-      <h3 style="color:#f8fafc; font-size:16px; font-weight:900; margin-bottom:4px;">Радар Дніпро v5.2</h3>
+      <h3 style="color:#f8fafc; font-size:16px; font-weight:900; margin-bottom:4px;">Радар Дніпро v5.1</h3>
       <p style="color:#94a3b8; font-size:11.5px; margin-bottom:16px; line-height:1.4;">Введіть персональний ключ доступу</p>
       
       <input type="text" id="authGateInput" placeholder="RADAR-XXXX..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="width:100%; background:#060913; border:1.5px solid #334155; border-radius:10px; color:#fff; padding:10px 12px; font-size:13px; text-align:center; outline:none; font-family:monospace; margin-bottom:12px;">
@@ -462,29 +516,39 @@
   </div>
 
   <div id="map"></div>
+
   <div id="transferBanner" class="transfer-banner">⏳ Виконується перенесення мітки...</div>
 
   <!-- 1. ДАШБОРД (ВІКНО ТОЧОК) -->
   <div id="dashPanel" class="dashboard collapsed">
     <div id="dashHeader" class="dash-header">
-      <div class="points-count" id="countText" title="Точки на карті (затисніть або натисніть коліщатком для входу шефа)">
+      <div class="points-count" id="countText" title="Точки на карті">
         <span>Точок: 0</span>
       </div>
-      <button id="btnThemeHeader" class="btn-theme-inline" onclick="toggleMapTheme()" title="Зміна теми"><span id="themeHeaderIcon">☀️</span></button>
-      <button id="btnEnterFullMode" class="btn-dev-mode-icon" onclick="switchToFullMode()" title="Режим розробника" style="display:none;">⚙️</button>
-      <button class="btn-toggle" id="btnToggle" onclick="togglePanelCollapse(event)" title="Згорнути / Розгорнути">▼</button>
+      
+      <button id="btnThemeHeader" class="btn-theme-inline" onclick="toggleMapTheme()" title="Зміна теми (День / Ніч)">
+        <span id="themeHeaderIcon">☀️</span>
+      </button>
+
+      <button id="btnEnterFullMode" class="btn-dev-mode-icon" onclick="switchToFullMode()" title="Режим розробника" style="display:none;">
+        ⚙️
+      </button>
+
+      <button class="btn-toggle" id="btnToggle" onclick="togglePanelCollapse(event)" title="Згорнути / Розгорнути вікно">▼</button>
     </div>
 
     <div id="collapsibleBody" class="collapsible-body">
       <div class="subtitle" id="sectorSubtitle">📍 Режим: Мій маршрут</div>
+      
       <div class="search-box">
         <div class="search-input-wrap">
-          <input type="text" id="streetSearchInput" class="search-input" placeholder="🔍 Вулиця, ділянка, світлофор..." autocomplete="off">
+          <input type="text" id="streetSearchInput" class="search-input" placeholder="🔍 Вулиця, ділянка, світлофор або повідомлення..." autocomplete="off">
           <button id="searchClearBtn" class="search-clear-btn" onclick="clearStreetSearch()">✕</button>
         </div>
         <div id="searchResults" class="search-results"></div>
       </div>
 
+      <!-- СВІТЛОФОРИ -->
       <div class="tl-menu-container">
         <button class="btn-tl-main" onclick="toggleTlDropdown()">
           <span>🚦 Мої світлофори</span>
@@ -503,6 +567,7 @@
         </div>
       </div>
 
+      <!-- КОМПАКТНА КНОПКА: НАЛАШТУВАННЯ КАРТИ -->
       <div class="tl-menu-container" style="margin-top: 6px;">
         <button class="btn-tl-main" onclick="openMapDisplayModal()" style="border-color: #38bdf8;">
           <span>🌙 Налашт. карти</span>
@@ -510,6 +575,7 @@
         </button>
       </div>
 
+      <!-- СЕРВЕР -->
       <div class="server-menu-container">
         <button class="btn-server-main" onclick="toggleServerDropdown()">
           <span>⚙️ Керування сервером</span>
@@ -536,6 +602,7 @@
 
   <!-- 2. ПАНЕЛЬ «КЛІЄНТИ» (ШТАБ ДОСТУПІВ, СЕСІЇ ТА ШІ-ШТУРМАН) -->
   <div id="aiPillPanel" class="ai-pill-panel compact">
+    <!-- КЛІКАБЕЛЬНА ШАПКА ДЛЯ ВІДКРИТТЯ / ЗАКРИТТЯ (БЕЗ СТРІЛОЧКИ) -->
     <div id="aiPillHeader" class="ai-pill-compact-content" onclick="toggleAiPillExpand(event)">
       <div class="ai-titleBadge">
         <span style="font-size:13px;">👑</span>
@@ -543,31 +610,34 @@
         <span class="hub-online-pill" id="hubOnlinePill">🟢 <span id="hubOnlineCount">1</span></span>
       </div>
       <div style="display:flex; align-items:center; gap:5px;">
-        <span class="ai-pill-tools" style="font-size:10.5px; color:#64748b; cursor:pointer; padding:2px;" title="Очистити історію ШІ" onclick="clearAiChatHistory(event)">🗑️</span>
+        <span class="ai-pill-tools" style="font-size:10.5px; color:#64748b; cursor:pointer; padding:2px;" title="Очистити історію діалогу ШІ" onclick="clearAiChatHistory(event)">🗑️</span>
         <span class="ai-pill-tools" style="font-size:10.5px; color:#64748b; cursor:pointer; padding:2px;" title="Налаштування API Key Gemini" onclick="configureGeminiKey(event)">🔑</span>
       </div>
     </div>
 
+    <!-- ПЕРЕМИКАЧ ВКЛАДОК -->
     <div class="hub-tab-bar" id="hubTabBar">
       <button class="hub-tab-btn active" id="tabBtnClients" onclick="switchHubTab('clients', event)">🔑 Доступи</button>
       <button class="hub-tab-btn" id="tabBtnAi" onclick="switchHubTab('ai', event)">🤖 ШІ-Штурман</button>
     </div>
 
+    <!-- ТІЛО ПАНЕЛІ (КЛІКИ НЕ ЗАКРИВАЮТЬ ВІКНО) -->
     <div class="ai-pill-body" id="aiPillBody" onclick="event.stopPropagation()">
+      <!-- СЕКЦІЯ 1: КЕРУВАННЯ ДОСТУПАМИ -->
       <div class="hub-view-section" id="hubSectionClients">
         
-        <!-- ЖИВІ СЕСІЇ ПРИСТРОЇВ ОНЛАЙН -->
+        <!-- ЖИВІ СЕСІЇ ПРИСТРОЇВ (ОНЛАЙН ПРЯМО ЗАРАЗ) -->
         <div style="background:#0b1120; border:1px solid #1e293b; border-radius:9px; padding:8px 10px; display:flex; flex-direction:column; gap:5px;">
           <div style="display:flex; justify-content:space-between; align-items:center;">
             <span style="font-size:11px; font-weight:800; color:#38bdf8;">📡 Пристрої онлайн:</span>
             <span id="hubActiveSessionsCount" style="font-size:10px; color:#10b981; font-weight:800;">1 в мережі</span>
           </div>
-          <div id="hubActiveSessionsList" style="max-height:105px; overflow-y:auto; display:flex; flex-direction:column; gap:4px;">
-            <div style="font-size:10.5px; color:#64748b; padding:4px;">Пошук сесій...</div>
+          <div id="hubActiveSessionsList" style="max-height:130px; overflow-y:auto; display:flex; flex-direction:column; gap:4px; padding-right:1px;">
+            <div style="font-size:10.5px; color:#64748b; padding:4px;">Пошук активних пристроїв...</div>
           </div>
         </div>
 
-        <!-- ГЕНЕРАТОР КЛЮЧІВ -->
+        <!-- ГЕНЕРАТОР ПЕРСОНАЛЬНИХ КЛЮЧІВ -->
         <div class="hub-key-form">
           <div style="font-size:11px; font-weight:800; color:#cbd5e1;">➕ Згенерувати новий ключ:</div>
           <div class="hub-input-row">
@@ -582,15 +652,17 @@
           </div>
           <button class="hub-btn-generate" onclick="generateNewAccessToken(event)">⚡ Згенерувати персональний ключ</button>
           
+          <!-- ПЛАШКА ЗГЕНЕРОВАНОГО КЛЮЧА З ОЧИСТКОЮ Х -->
           <div class="hub-generated-box" id="hubGeneratedBox" style="display:none; align-items:center; justify-content:space-between;">
             <span class="hub-generated-code" id="hubGeneratedCode">RADAR-0000-X</span>
             <div style="display:flex; gap:4px; align-items:center;">
               <button class="hub-btn-copy" onclick="copyGeneratedKey(event)">📋 Скопіювати</button>
-              <button class="hub-btn-copy" style="background:#334155; color:#cbd5e1; padding:3px 8px;" onclick="clearGeneratedKeyBox(event)">✕</button>
+              <button class="hub-btn-copy" style="background:#334155; color:#cbd5e1; padding:3px 8px;" onclick="clearGeneratedKeyBox(event)" title="Очистити">✕</button>
             </div>
           </div>
         </div>
 
+        <!-- СПИСОК СТВОРЕНИХ КЛЮЧІВ -->
         <div style="display:flex; justify-content:space-between; align-items:center; margin-top:2px;">
           <span style="font-size:11px; font-weight:800; color:#cbd5e1;">📋 База ключів доступу:</span>
           <span id="hubClientsCount" style="font-size:10px; color:#38bdf8; font-family:monospace; font-weight:800;">0 активних</span>
@@ -601,10 +673,14 @@
         </div>
       </div>
 
+      <!-- СЕКЦІЯ 2: ШІ-ШТУРМАН -->
       <div class="hub-view-section" id="hubSectionAi" style="display:none;">
         <div id="aiChatBox" class="ai-chat-box">
-          <div class="ai-msg bot">👋 Вітаю! Я ваш ШІ-штурман (Карта v5.2). Керування активне!</div>
+          <div class="ai-msg bot">
+            👋 Вітаю! Я ваш ШІ-штурман (Карта v5.1). Керування точками та навігація активні!
+          </div>
         </div>
+
         <div class="ai-chips-compact">
           <span class="ai-mini-chip" onclick="sendAiQuick('Скрий зелені точки')">🟢 Без зелених</span>
           <span class="ai-mini-chip" onclick="sendAiQuick('Покажи всі точки')">🌐 Всі точки</span>
@@ -612,8 +688,9 @@
           <span class="ai-mini-chip" onclick="sendAiQuick('Світлофор Канатна стан')">🚦 Канатна стан</span>
           <span class="ai-mini-chip" onclick="sendAiQuick('Відкрий аналітику')">📊 Аналітика</span>
         </div>
+
         <div class="ai-chat-input-row">
-          <textarea id="aiInlineInput" class="ai-inline-textarea" placeholder="Команда або запитання..."></textarea>
+          <textarea id="aiInlineInput" class="ai-inline-textarea" placeholder="Команда або запитання... (Enter)"></textarea>
           <button class="btn-ai-send" onclick="submitAiChatMessage()" id="btnAiSend">➤</button>
         </div>
       </div>
@@ -627,12 +704,17 @@
       <span id="routeStatusText">Мій шлях: Чисто</span>
       <span id="routeSubmenuArrow" style="font-size:10px; color:#94a3b8; margin-left:2px;">▴</span>
     </div>
-    <div id="routeEditBadge"><span style="font-size:15px;">✅</span><span>Зафіксувати</span></div>
+    <div id="routeEditBadge">
+      <span style="font-size:15px;">✅</span>
+      <span>Зафіксувати</span>
+    </div>
   </div>
 
-  <button id="btnMemHud" onclick="if(window.openQuickSynonymModal) window.openQuickSynonymModal();" title="База знань ШІ">🧠</button>
+  <button id="btnMemHud" onclick="if(window.openQuickSynonymModal) window.openQuickSynonymModal();" title="База знань ШІ (Мозок)">
+    🧠
+  </button>
 
-  <button type="button" id="btnStatsHud" onclick="event.preventDefault(); window.location.href = 'stats.html';" oncontextmenu="return false;" title="Аналітика">
+  <button type="button" id="btnStatsHud" onclick="event.preventDefault(); window.location.href = (localStorage.getItem('radar_last_analytics_page') || 'stats.html');" oncontextmenu="return false;" title="Аналітика блокпостів">
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
       <rect x="3" y="12" width="4.5" height="9" rx="2" fill="#00f3ff" />
       <rect x="9.75" y="7" width="4.5" height="14" rx="2" fill="#00f3ff" />
@@ -642,53 +724,66 @@
 
   <div id="routeSubmenu" class="route-submenu" onclick="event.stopPropagation()">
     <div class="route-submenu-header">
-      <span>🛣️ Маршрут та райони</span>
+      <span>🛣️ Маршрут та райони міста</span>
       <span style="cursor:pointer; font-size:14px; padding:0 4px; color:#94a3b8;" onclick="closeRouteSubmenu()">✕</span>
     </div>
     <div class="route-submenu-quick">
-      <button id="btnQuickSubRoute" class="btn-submenu-quick active" onclick="setSectorPreset('route')">🎯 Мій шлях</button>
+      <button id="btnQuickSubRoute" class="btn-submenu-quick active" onclick="setSectorPreset('route')">🎯 Тільки мій шлях</button>
       <button id="btnQuickSubAll" class="btn-submenu-quick" onclick="setSectorPreset('all')">🌐 Весь Дніпро</button>
     </div>
     <div class="route-submenu-list">
-      <label class="sector-sub-item"><input type="checkbox" id="sub_sec_s1" onchange="onSubmenuSectorChange()"> 📍 Парус — Вокзал — Робоча</label>
+      <label class="sector-sub-item"><input type="checkbox" id="sub_sec_s1" onchange="onSubmenuSectorChange()"> 📍 Парус — Вокзал — Робоча — Канатна</label>
       <label class="sector-sub-item"><input type="checkbox" id="sub_sec_s2" onchange="onSubmenuSectorChange()"> 🏙️ Центр, Нагірка, Перемога</label>
       <label class="sector-sub-item"><input type="checkbox" id="sub_sec_s3" onchange="onSubmenuSectorChange()"> 🚗 Тополя, 12 Квартал, Поля</label>
-      <label class="sector-sub-item"><input type="checkbox" id="sub_sec_s4" onchange="onSubmenuSectorChange()"> 🏭 Мазепи, Нігояна, Західний</label>
-      <label class="sector-sub-item"><input type="checkbox" id="sub_sec_s5" onchange="onSubmenuSectorChange()"> 🌉 Лівий (Шосе, Калинова)</label>
-      <label class="sector-sub-item"><input type="checkbox" id="sub_sec_s6" onchange="onSubmenuSectorChange()"> 🏢 Лівий (Слобожанський)</label>
+      <label class="sector-sub-item"><input type="checkbox" id="sub_sec_s4" onchange="onSubmenuSectorChange()"> 🏭 Мазепи, Нігояна, Щепкіна, Західний</label>
+      <label class="sector-sub-item"><input type="checkbox" id="sub_sec_s5" onchange="onSubmenuSectorChange()"> 🌉 Лівий берег (Шосе, Калинова)</label>
+      <label class="sector-sub-item"><input type="checkbox" id="sub_sec_s6" onchange="onSubmenuSectorChange()"> 🏢 Лівий берег (Слобожанський, Каштанова)</label>
     </div>
   </div>
 
+  <!-- КНОПКИ ВНИЗУ СПРАВА -->
   <div class="bottom-right-cluster">
-    <div id="btnRefresh" onclick="refreshRadarClick()"><span>🔄</span><span>Оновити</span></div>
-    <div id="btnGpsHud" onclick="toggleGpsMode()" title="Навігація"><span>🧭</span></div>
+    <div id="btnRefresh" onclick="refreshRadarClick()">
+      <span>🔄</span>
+      <span>Оновити</span>
+    </div>
+    <div id="btnGpsHud" onclick="toggleGpsMode()" title="Навігація">
+      <span>🧭</span>
+    </div>
   </div>
 
-  <!-- МОДАЛКА НАЛАШТУВАННЯ КАРТИ -->
+  <!-- НАПІВПРОЗОРЕ ВІКНО НАЛАШТУВАННЯ НІЧНОЇ КАРТИ БЕЗ БЛЮРУ -->
   <div id="mapDisplayModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.18); z-index:10005; align-items:center; justify-content:center;" onclick="closeMapDisplayModal(event)">
     <div style="background:rgba(15, 23, 42, 0.88); border:2px solid #0284c7; border-radius:18px; width:92%; max-width:375px; padding:15px; display:flex; flex-direction:column; gap:10px; box-shadow:0 10px 30px rgba(0,0,0,0.9);" onclick="event.stopPropagation()">
       <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(51,65,85,0.7); padding-bottom:7px;">
         <span style="font-size:13.5px; font-weight:900; color:#38bdf8;">🌙 Калібрування карти наживо</span>
         <span style="cursor:pointer; font-size:18px; color:#94a3b8; font-weight:800; padding:0 6px;" onclick="closeMapDisplayModal()">✕</span>
       </div>
+
       <div style="background:rgba(30, 41, 59, 0.85); padding:7px 10px; border-radius:9px;">
         <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:800; color:#cbd5e1; margin-bottom:3px;">
-          <span>Яскравість підложки:</span><b id="lblMapBrightness" style="color:#38bdf8; font-family:monospace;">95%</b>
+          <span>Яскравість підложки:</span>
+          <b id="lblMapBrightness" style="color:#38bdf8; font-family:monospace;">95%</b>
         </div>
         <input type="range" id="rngMapBrightness" min="30" max="130" step="5" value="95" style="width:100%; cursor:pointer;">
       </div>
+
       <div style="background:rgba(30, 41, 59, 0.85); padding:7px 10px; border-radius:9px;">
         <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:800; color:#cbd5e1; margin-bottom:3px;">
-          <span>Контрастність ліній вулиць:</span><b id="lblMapContrast" style="color:#38bdf8; font-family:monospace;">108%</b>
+          <span>Контрастність ліній вулиць:</span>
+          <b id="lblMapContrast" style="color:#38bdf8; font-family:monospace;">108%</b>
         </div>
         <input type="range" id="rngMapContrast" min="70" max="160" step="5" value="108" style="width:100%; cursor:pointer;">
       </div>
+
       <div style="background:rgba(30, 41, 59, 0.85); padding:7px 10px; border-radius:9px;">
         <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:800; color:#cbd5e1; margin-bottom:3px;">
-          <span>Яскравість точок (вночі):</span><b id="lblMarkerBrightness" style="color:#10b981; font-family:monospace;">100%</b>
+          <span>Яскравість точок (вночі):</span>
+          <b id="lblMarkerBrightness" style="color:#10b981; font-family:monospace;">100%</b>
         </div>
         <input type="range" id="rngMarkerBrightness" min="40" max="160" step="5" value="100" style="width:100%; cursor:pointer;">
       </div>
+
       <div>
         <div style="font-size:11px; font-weight:800; color:#cbd5e1; margin-bottom:5px;">Фільтр темної теми:</div>
         <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:6px;">
@@ -700,9 +795,14 @@
           <button id="btnHueOled" onclick="setNightFilter('0deg', '0%')" style="background:rgba(11,17,32,0.9); border:1px solid #334155; color:#94a3b8; font-size:10.5px; font-weight:800; padding:6px 2px; border-radius:6px; cursor:pointer;">⬛ OLED</button>
         </div>
       </div>
+
       <div style="display:flex; gap:6px; margin-top:3px;">
-        <button onclick="resetMapDisplaySettings()" style="flex:1; background:rgba(30,41,59,0.9); border:1px solid #475569; color:#cbd5e1; font-size:11px; font-weight:800; padding:8px; border-radius:8px; cursor:pointer;">🔄 Скинути</button>
-        <button onclick="closeMapDisplayModal()" style="flex:2; background:#0284c7; border:none; color:#fff; font-size:11.5px; font-weight:800; padding:8px; border-radius:8px; cursor:pointer;">💾 Готово</button>
+        <button onclick="resetMapDisplaySettings()" style="flex:1; background:rgba(30,41,59,0.9); border:1px solid #475569; color:#cbd5e1; font-size:11px; font-weight:800; padding:8px; border-radius:8px; cursor:pointer;">
+          🔄 Скинути
+        </button>
+        <button onclick="closeMapDisplayModal()" style="flex:2; background:#0284c7; border:none; color:#fff; font-size:11.5px; font-weight:800; padding:8px; border-radius:8px; cursor:pointer;">
+          💾 Готово
+        </button>
       </div>
     </div>
   </div>
@@ -714,38 +814,49 @@
         <span style="font-size:13.5px; font-weight:900; color:#38bdf8;">⚙️ Калібрування сонара світлофорів</span>
         <span style="cursor:pointer; font-size:18px; color:#94a3b8; font-weight:800; padding:0 6px;" onclick="closeTlSettingsModal()">✕</span>
       </div>
+
       <div>
         <div style="font-size:11px; font-weight:800; color:#cbd5e1; margin-bottom:5px;">Колір хвилі «Чисто»:</div>
         <div id="sonarCleanColors" style="display:flex; gap:10px; align-items:center;"></div>
       </div>
+
       <div>
         <div style="font-size:11px; font-weight:800; color:#cbd5e1; margin-bottom:5px;">Колір хвилі «Блокпост / Небезпека»:</div>
         <div id="sonarDangerColors" style="display:flex; gap:10px; align-items:center;"></div>
       </div>
+
       <div style="background:#1e293b; padding:7px 10px; border-radius:9px;">
         <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:800; color:#cbd5e1; margin-bottom:3px;">
-          <span>Діаметр розмаху хвилі:</span><b id="lblSonarDiameter" style="color:#38bdf8; font-family:monospace;">95 px</b>
+          <span>Діаметр розмаху хвилі:</span>
+          <b id="lblSonarDiameter" style="color:#38bdf8; font-family:monospace;">95 px</b>
         </div>
         <input type="range" id="rngSonarDiameter" min="10" max="160" step="2" value="95" style="width:100%; cursor:pointer;">
       </div>
+
       <div style="background:#1e293b; padding:7px 10px; border-radius:9px;">
         <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:800; color:#cbd5e1; margin-bottom:3px;">
-          <span>Інтервал хвилі «Чисто»:</span><b id="lblSonarCleanSpeed" style="color:#10b981; font-family:monospace;">1.8 с</b>
+          <span>Інтервал хвилі «Чисто»:</span>
+          <b id="lblSonarCleanSpeed" style="color:#10b981; font-family:monospace;">1.8 с</b>
         </div>
         <input type="range" id="rngSonarCleanSpeed" min="0.8" max="3.5" step="0.1" value="1.8" style="width:100%; cursor:pointer;">
       </div>
+
       <div style="background:#1e293b; padding:7px 10px; border-radius:9px;">
         <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:800; color:#cbd5e1; margin-bottom:3px;">
-          <span>Базовий інтервал БП (1 звіт):</span><b id="lblSonarDangerBaseSpeed" style="color:#ef4444; font-family:monospace;">2.4 с</b>
+          <span>Базовий інтервал БП (1 звіт):</span>
+          <b id="lblSonarDangerBaseSpeed" style="color:#ef4444; font-family:monospace;">2.4 с</b>
         </div>
         <input type="range" id="rngSonarDangerBaseSpeed" min="1.2" max="3.5" step="0.1" value="2.4" style="width:100%; cursor:pointer;">
       </div>
+
       <div style="background:#1e293b; padding:7px 10px; border-radius:9px;">
         <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:800; color:#cbd5e1; margin-bottom:3px;">
-          <span>Крок прискорення на кожен звіт:</span><b id="lblSonarDangerStep" style="color:#f59e0b; font-family:monospace;">-0.3 с</b>
+          <span>Крок прискорення на кожен звіт:</span>
+          <b id="lblSonarDangerStep" style="color:#f59e0b; font-family:monospace;">-0.3 с</b>
         </div>
         <input type="range" id="rngSonarDangerStep" min="0.1" max="0.5" step="0.05" value="0.3" style="width:100%; cursor:pointer;">
       </div>
+
       <button onclick="closeTlSettingsModal()" style="background:#0284c7; border:none; color:#fff; font-size:12px; font-weight:800; padding:9px; border-radius:8px; cursor:pointer; margin-top:3px;">
         💾 Зберегти налаштування
       </button>
@@ -772,7 +883,6 @@
     }
     window.escapeHtml = escapeHtml;
 
-    // Ключі Google Gemini API для Штурмана залишено в цілості
     const _VAULT_PREFIX = String.fromCharCode(65, 81, 46, 65, 98, 56, 82, 78, 54);
     const _VAULT_SHARDS = [
       ["I7GflB4phTHSa5jvsW", "72AcfGr11sjs1_hoz2-cwWvPvg"],
@@ -786,6 +896,26 @@
       ["LV84HLeL7c8CXmqSXl", "vyDa4M-1uqkQT-LlJpDgJ3sfqA"],
       ["I2d17d2VpDXpzxEPKh", "tzBWtRt4bN62lifvrufLg3dptg"]
     ];
+
+    function isAuthPassValid(inputPass) {
+      if (!inputPass || typeof inputPass !== "string") return false;
+      try {
+        return btoa(inputPass.trim()) === "NTcwOTg0";
+      } catch(e) {
+        return false;
+      }
+    }
+
+    function getFirebaseWriteAuth() {
+      return localStorage.getItem("radar_fb_auth") || "";
+    }
+
+    window.appendAuth = function(url) {
+      const authKey = getFirebaseWriteAuth();
+      if (!authKey) return url;
+      const sep = url.includes("?") ? "&" : "?";
+      return `${url}${sep}auth=${encodeURIComponent(authKey)}`;
+    };
 
     function getAdminToken() {
       return localStorage.getItem("radar_admin_token") || localStorage.getItem("github_radar_token") || "";
@@ -856,87 +986,24 @@
       showToast("🚗 Простий режим водія активовано!");
     }
 
-    // ВАЛІДАЦІЯ ШЕФА ЧЕРЕЗ СЕРВЕР GITHUB API (МАЙСТЕР-КОД 570984 ПОВНІСТЮ ВИДАЛЕНО)
-    async function requestAdminLogin() {
-      const token = prompt("🔐 Введіть персональний GitHub токен адміністратора (ghp_...):\n(Вхід виконується 1 раз, пристрій запам'ятовується)");
+    function requestAdminLogin() {
+      const token = prompt("🔐 Введіть персональний GitHub токен (ghp_...):\n(Вхід виконується 1 раз, пристрій запам'ятовується)");
       if (!token) return;
       let clean = token.trim();
       if (clean.startsWith("Ghp_")) clean = "ghp_" + clean.slice(4);
-
-      if (!clean.toLowerCase().startsWith("ghp_") || clean.length < 35) {
-        alert("❌ Недійсний формат токена! Токен має починатися з 'ghp_'");
-        return;
+      if (clean.toLowerCase().startsWith("ghp_") && clean.length >= 35) {
+        localStorage.setItem("radar_admin_token", clean);
+        localStorage.setItem("github_radar_token", clean);
+        applyUiMode("full");
+        hideAuthCurtain();
+        showToast("🔓 Авторизовано! Доступ розробника активний.");
+      } else {
+        alert("❌ Недійсний токен! Токен повинен починатися з 'ghp_' (довжина від 35 символів).");
       }
-
-      showToast("⏳ Перевірка автентичності токена на GitHub...");
-      try {
-        const res = await fetch("https://api.github.com/user", {
-          headers: { "Authorization": `Bearer ${clean}` }
-        });
-        if (res.ok) {
-          localStorage.setItem("radar_admin_token", clean);
-          localStorage.setItem("github_radar_token", clean);
-          applyUiMode("full");
-          hideAuthCurtain();
-          startDataEngine();
-          showToast("👑 Автентифікація успішна! Ласкаво просимо, Шеф!");
-        } else {
-          alert(`❌ GitHub відхилив токен (код ${res.status})! Перевірте правильність ключа.`);
-        }
-      } catch(e) {
-        alert("⚠️ Помилка з'єднання з сервером GitHub");
-      }
-    }
-
-    // СЕКРЕТНИЙ ВХІД АДМІНА: ЗАВЖДИ АКТИВНИЙ (ДОВГИЙ ТАП АБО КЛІК КОЛІЩАТКОМ МИШКИ)
-    const countTextEl = document.getElementById("countText");
-    let countPressTimer = null;
-    function startCountPress() {
-      countPressTimer = setTimeout(() => {
-        if (navigator.vibrate) navigator.vibrate(60);
-        requestAdminLogin();
-      }, 700);
-    }
-    function cancelCountPress() {
-      if (countPressTimer) { clearTimeout(countPressTimer); countPressTimer = null; }
-    }
-    if (countTextEl) {
-      countTextEl.addEventListener("mousedown", startCountPress);
-      countTextEl.addEventListener("mouseup", cancelCountPress);
-      countTextEl.addEventListener("mouseleave", cancelCountPress);
-      countTextEl.addEventListener("touchstart", startCountPress, { passive: true });
-      countTextEl.addEventListener("touchend", cancelCountPress);
-      countTextEl.addEventListener("touchcancel", cancelCountPress);
-      countTextEl.addEventListener("auxclick", (e) => {
-        if (e.button === 1) {
-          e.preventDefault();
-          requestAdminLogin();
-        }
-      });
-    }
-
-    function togglePanelCollapse(e) {
-      if (e) e.stopPropagation();
-      const panel = document.getElementById("dashPanel");
-      const isNowCollapsed = panel.classList.toggle("collapsed");
-      const btn = document.getElementById("btnToggle");
-      if (btn) btn.innerText = isNowCollapsed ? "▼" : "▲";
-      setTimeout(() => { if (map) map.invalidateSize(); }, 120);
-    }
-
-    function verifyGeminiAuthorization() {
-      return isUserAdmin();
-    }
-
-    function getDecryptedGeminiPool() {
-      const builtins = _VAULT_SHARDS.map(shard => _VAULT_PREFIX + shard.join(''));
-      const rawStored = localStorage.getItem("gemini_api_key") || "";
-      const customKeys = rawStored.split(/[,;\s]+/).map(k => k.trim()).filter(k => k.length > 20);
-      return [...new Set([...builtins, ...customKeys])];
     }
 
     // =========================================================================
-    // 🚪 ЛОГІКА ШТОРКИ ТА ПЕРЕВІРКИ КЛЮЧІВ
+    // 🚪 ЛОГІКА ШТОРКИ ВХОДУ ТА ВАЛІДАЦІЇ КЛЮЧІВ
     // =========================================================================
     function showAuthCurtain() {
       const c = document.getElementById("authCurtain");
@@ -963,31 +1030,21 @@
       if (err) err.style.display = "none";
       if (!val) return;
 
+      // 1. Перевірка адмінського токена або майстер-коду
       let cleanVal = val.startsWith("Ghp_") ? ("ghp_" + val.slice(4)) : val;
-
-      // 1. Якщо введено GitHub токен шефа
       if (cleanVal.toLowerCase().startsWith("ghp_") && cleanVal.length >= 35) {
-        showToast("⏳ Перевірка автентичності токена на GitHub...");
-        try {
-          const res = await fetch("https://api.github.com/user", {
-            headers: { "Authorization": `Bearer ${cleanVal}` }
-          });
-          if (res.ok) {
-            localStorage.setItem("radar_admin_token", cleanVal);
-            localStorage.setItem("github_radar_token", cleanVal);
-            applyUiMode("full");
-            hideAuthCurtain();
-            startDataEngine();
-            showToast("👑 Доступ адміністратора підтверджено!");
-            return;
-          } else {
-            showAuthError("❌ GitHub відхилив токен. Перевірте ключ.");
-            return;
-          }
-        } catch(e) {
-          showAuthError("⚠️ Помилка з'єднання з GitHub");
-          return;
-        }
+        localStorage.setItem("radar_admin_token", cleanVal);
+        localStorage.setItem("github_radar_token", cleanVal);
+        applyUiMode("full");
+        hideAuthCurtain();
+        showToast("👑 Доступ адміністратора підтверджено!");
+        return;
+      }
+      if (cleanVal === "570984") {
+        applyUiMode("full");
+        hideAuthCurtain();
+        showToast("👑 Доступ адміністратора (код 570984)!");
+        return;
       }
 
       // 2. Перевірка клієнтського ключа у Firebase
@@ -1026,7 +1083,7 @@
         }
 
         if (!tokenData.device_id) {
-          const patchUrl = FIREBASE_TOKENS_URL.replace(".json", `/${encodeURIComponent(uppercaseKey)}.json`);
+          const patchUrl = window.appendAuth(FIREBASE_TOKENS_URL.replace(".json", `/${encodeURIComponent(uppercaseKey)}.json`));
           await fetch(patchUrl, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
@@ -1038,7 +1095,6 @@
         localStorage.setItem("radar_client_label", tokenData.label || "Водій");
         applyUiMode("simple");
         hideAuthCurtain();
-        startDataEngine();
         showToast(`🚗 Ласкаво просимо, ${escapeHtml(tokenData.label || 'Водій')}!`);
       } catch(e) {
         showAuthError("⚠️ Помилка з'єднання з базою перевірки");
@@ -1051,7 +1107,6 @@
     async function verifyInitialAccess() {
       if (isUserAdmin()) {
         hideAuthCurtain();
-        startDataEngine();
         return;
       }
       const clientKey = localStorage.getItem("radar_client_token");
@@ -1070,6 +1125,7 @@
             return;
           }
           if (data.status === "blocked") {
+            // Ключ залишається в пам'яті, щоб при розблокуванні екран відновився сам
             showAuthCurtain();
             showAuthError("🚫 Доступ тимчасово призупинено адміністратором");
             return;
@@ -1080,25 +1136,65 @@
             return;
           }
           hideAuthCurtain();
-          startDataEngine();
           return;
         }
       } catch(e) {}
-      showAuthCurtain();
+      hideAuthCurtain();
     }
 
-    let isEngineStarted = false;
-    function startDataEngine() {
-      if (isEngineStarted) return;
-      isEngineStarted = true;
-      loadCheckpointsFromCloud().then(() => {
-        loadPoints();
-      });
-      setInterval(loadPoints, 15000);
-      sendPresenceHeartbeat();
-      setInterval(sendPresenceHeartbeat, 18000);
-      setInterval(fetchOnlineCount, 12000);
-      setTimeout(fetchOnlineCount, 1800);
+    // Довге натискання дозволено ТІЛЬКИ авторизованому адміністратору
+    const countTextEl = document.getElementById("countText");
+    let countPressTimer = null;
+    function startCountPress() {
+      if (!isUserAdmin()) return;
+      countPressTimer = setTimeout(() => {
+        if (navigator.vibrate) navigator.vibrate(60);
+        requestAdminLogin();
+      }, 700);
+    }
+    function cancelCountPress() {
+      if (countPressTimer) { clearTimeout(countPressTimer); countPressTimer = null; }
+    }
+    if (countTextEl) {
+      countTextEl.addEventListener("mousedown", startCountPress);
+      countTextEl.addEventListener("mouseup", cancelCountPress);
+      countTextEl.addEventListener("mouseleave", cancelCountPress);
+      countTextEl.addEventListener("touchstart", startCountPress, { passive: true });
+      countTextEl.addEventListener("touchend", cancelCountPress);
+      countTextEl.addEventListener("touchcancel", cancelCountPress);
+    }
+
+    function togglePanelCollapse(e) {
+      if (e) e.stopPropagation();
+      const panel = document.getElementById("dashPanel");
+      const isNowCollapsed = panel.classList.toggle("collapsed");
+      const btn = document.getElementById("btnToggle");
+      if (btn) btn.innerText = isNowCollapsed ? "▼" : "▲";
+      setTimeout(() => { if (map) map.invalidateSize(); }, 120);
+    }
+
+    function verifyGeminiAuthorization(forcePrompt = false) {
+      const savedPass = localStorage.getItem("radar_gemini_unlocked") || "";
+      if (isAuthPassValid(savedPass) && !forcePrompt) return true;
+      const entered = prompt("🔐 Введіть пароль для активації ШІ-штурмана:\n(Підказка: телефон батьків)");
+      if (entered && isAuthPassValid(entered)) {
+        const cleanPass = entered.trim();
+        localStorage.setItem("radar_gemini_unlocked", cleanPass);
+        showToast("🔓 ШІ-штурман активовано!");
+        return true;
+      } else if (entered !== null) {
+        alert("❌ Невірний пароль! Доступ до ШІ заблоковано.");
+      }
+      return false;
+    }
+
+    function getDecryptedGeminiPool() {
+      const savedPass = localStorage.getItem("radar_gemini_unlocked") || "";
+      if (!isAuthPassValid(savedPass)) return [];
+      const builtins = _VAULT_SHARDS.map(shard => _VAULT_PREFIX + shard.join(''));
+      const rawStored = localStorage.getItem("gemini_api_key") || "";
+      const customKeys = rawStored.split(/[,;\s]+/).map(k => k.trim()).filter(k => k.length > 20);
+      return [...new Set([...builtins, ...customKeys])];
     }
 
     // =========================================================================
@@ -1446,8 +1542,7 @@
 
     function showToast(text) {
       const toast = document.getElementById("toast");
-      toast.textContent = text;
-      toast.style.display = "block";
+      toast.innerHTML = text; toast.style.display = "block";
       setTimeout(() => { toast.style.display = "none"; }, 2800);
     }
 
@@ -1574,7 +1669,6 @@
       if (!p) return false;
 
       const rawCombined = ((p.raw_text || "") + " " + (p.address || ""))
-        .replace(/&nbsp;/gi, " ")
         .replace(/[\r\n]+/g, " ")
         .toLowerCase();
 
@@ -1897,7 +1991,7 @@
       }
 
       if (fbKey) {
-        const url = FIREBASE_POINTS_URL.replace(".json", `/${encodeURIComponent(fbKey)}.json`);
+        const url = window.appendAuth(FIREBASE_POINTS_URL.replace(".json", `/${encodeURIComponent(fbKey)}.json`));
         fetch(url, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -1951,13 +2045,9 @@
       sheet.style.display = "none";
     }
 
-    // БЕЗПЕЧНА ДИРЕКТИВА ШІ: СТРОГИЙ БІЛИЙ СПИСОК ПЕРЕХОДІВ
     async function executeAiActionDirective(actionType, payload) {
       if (actionType === "NAVIGATE") {
-        const allowedPages = ["stats.html", "index.html"];
-        if (payload.url && allowedPages.includes(payload.url)) {
-          window.location.href = payload.url;
-        }
+        if (payload.url) window.location.href = payload.url;
       } else if (actionType === "FILTER") {
         if (payload.showGreen !== undefined) filterShowGreen = !!payload.showGreen;
         if (payload.showRed !== undefined) filterShowRed = !!payload.showRed;
@@ -2013,7 +2103,7 @@
         map.flyTo([lat, lng], 15, { animate: true, duration: 0.85 });
 
         if (p._fbKey) {
-          const url = FIREBASE_POINTS_URL.replace(".json", `/${encodeURIComponent(p._fbKey)}.json`);
+          const url = window.appendAuth(FIREBASE_POINTS_URL.replace(".json", `/${encodeURIComponent(p._fbKey)}.json`));
           fetch(url, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
@@ -2030,7 +2120,7 @@
       showToast("⏳ Видаляю повідомлення з сервера...");
       if (fbKey) {
         try {
-          const url = FIREBASE_POINTS_URL.replace(".json", `/${encodeURIComponent(fbKey)}.json`);
+          const url = window.appendAuth(FIREBASE_POINTS_URL.replace(".json", `/${encodeURIComponent(fbKey)}.json`));
           await fetch(url, { method: "DELETE" });
         } catch(e) {}
       }
@@ -2067,6 +2157,7 @@
     L.DomEvent.disableClickPropagation(document.getElementById("tlSettingsModal"));
     L.DomEvent.disableClickPropagation(document.getElementById("mapDisplayModal"));
 
+    // Відкриття / згортання плашки по кліку на монолітний бейдж
     function toggleAiPillExpand(e) {
       if (e) e.stopPropagation();
       const isExpanded = aiPillPanel.classList.toggle("expanded");
@@ -2075,9 +2166,12 @@
         if (currentHubTab === "clients") {
           loadAccessTokens();
           fetchOnlineCount();
+        } else {
+          verifyGeminiAuthorization();
         }
         setTimeout(() => { if (map) map.invalidateSize(); }, 150);
       } else {
+        aiPillPanel.style.top = "15px"; aiPillPanel.style.right = "15px"; aiPillPanel.style.left = "auto";
         setTimeout(() => { if (map) map.invalidateSize(); }, 150);
       }
     }
@@ -2102,6 +2196,7 @@
         btnClients.classList.remove("active");
         secClients.style.display = "none";
         secAi.style.display = "flex";
+        verifyGeminiAuthorization();
         setTimeout(() => { aiChatBox.scrollTop = aiChatBox.scrollHeight; }, 50);
       }
     }
@@ -2138,7 +2233,7 @@
       };
 
       try {
-        const url = FIREBASE_TOKENS_URL.replace(".json", `/${encodeURIComponent(newKey)}.json`);
+        const url = window.appendAuth(FIREBASE_TOKENS_URL.replace(".json", `/${encodeURIComponent(newKey)}.json`));
         await fetch(url, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -2170,13 +2265,13 @@
       });
     }
 
-    function clearGeneratedKeyBox(e) {
+    window.clearGeneratedKeyBox = function(e) {
       if (e) e.stopPropagation();
       const codeBox = document.getElementById("hubGeneratedBox");
       const input = document.getElementById("hubInputClientLabel");
       if (codeBox) codeBox.style.display = "none";
       if (input) input.value = "";
-    }
+    };
 
     async function loadAccessTokens() {
       try {
@@ -2189,7 +2284,6 @@
       renderAccessTokensList();
     }
 
-    // РЕНДЕР КЛЮЧІВ ІЗ ЗАМОЧКАМИ (🔓 / 🔒 В РАМЦІ)
     function renderAccessTokensList() {
       const listBox = document.getElementById("hubClientsList");
       const countBadge = document.getElementById("hubClientsCount");
@@ -2229,12 +2323,12 @@
         }
 
         const deviceState = item.device_id ? "📱 Прив'язано" : "⏳ Очікує";
-
+        
         let statusPill = "";
         if (isBlocked) {
           statusPill = `<span style="display:inline-flex; align-items:center; justify-content:center; border:1.5px solid #ef4444; background:rgba(239,68,68,0.18); border-radius:6px; padding:1px 4px; font-size:11px;" title="Заблоковано">🔒</span>`;
         } else if (isExpired) {
-          statusPill = `<span style="display:inline-flex; align-items:center; justify-content:center; border:1.5px solid #f59e0b; background:rgba(245,158,11,0.18); border-radius:6px; padding:1px 4px; font-size:11px;" title="Термін вичерпано">⏳</span>`;
+          statusPill = `<span style="display:inline-flex; align-items:center; justify-content:center; border:1.5px solid #f59e0b; background:rgba(245,158,11,0.18); border-radius:6px; padding:1px 4px; font-size:11px;" title="Термін дії вичерпано">⏳</span>`;
         } else {
           statusPill = `<span style="font-size:12.5px; margin-right:2px;" title="Діючий ключ">🔓</span>`;
         }
@@ -2264,7 +2358,7 @@
       item.status = newStatus;
 
       try {
-        const url = FIREBASE_TOKENS_URL.replace(".json", `/${encodeURIComponent(key)}.json`);
+        const url = window.appendAuth(FIREBASE_TOKENS_URL.replace(".json", `/${encodeURIComponent(key)}.json`));
         await fetch(url, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -2279,7 +2373,7 @@
       if (!confirm(`Видалити ключ ${key} назавжди?`)) return;
       delete accessTokensCache[key];
       try {
-        const url = FIREBASE_TOKENS_URL.replace(".json", `/${encodeURIComponent(key)}.json`);
+        const url = window.appendAuth(FIREBASE_TOKENS_URL.replace(".json", `/${encodeURIComponent(key)}.json`));
         await fetch(url, { method: "DELETE" });
         showToast("🗑️ Ключ видалено");
       } catch(e) {}
@@ -2287,11 +2381,11 @@
     };
 
     // =========================================================================
-    // 🟢 СЕСІЇ ТА ОНЛАЙН (PRESENCE): ІМ'Я ВОДІЯ + (СИНЄ ЖЕЛЕЗО)
+    // 🟢 ВІДСЛІДКОВУВАННЯ СЕСІЙ, РОЗПІЗНАВАННЯ ЖЕЛЕЗА ТА ОНЛАЙН (PRESENCE)
     // =========================================================================
     function getDeviceDescription() {
       const ua = navigator.userAgent || "";
-      let os = "Android";
+      let os = "Пристрій";
       if (/windows/i.test(ua)) os = "Windows";
       else if (/android/i.test(ua)) {
         if (/xiaomi|redmi|poco/i.test(ua) || /hyperos/i.test(ua)) os = "Xiaomi";
@@ -2301,7 +2395,7 @@
       else if (/macintosh|mac os x/i.test(ua)) os = "Mac";
       else if (/linux/i.test(ua)) os = "Linux";
 
-      let browser = "Chrome";
+      let browser = "Браузер";
       if (/chrome|crios/i.test(ua) && !/edg|opr/i.test(ua)) browser = "Chrome";
       else if (/safari/i.test(ua) && !/chrome/i.test(ua)) browser = "Safari";
       else if (/firefox|fxios/i.test(ua)) browser = "Firefox";
@@ -2341,7 +2435,7 @@
           }
         }
 
-        // Фонова перевірка статусу ключа водія (розблокування на льоту без стирання пам'яті)
+        // Періодична фонова перевірка статусу ключа клієнта (розблокування на льоту)
         if (!isUserAdmin()) {
           const clientKey = localStorage.getItem("radar_client_token");
           if (clientKey) {
@@ -2413,6 +2507,7 @@
         const diffSec = Math.max(0, Math.round((now - (item.t || 0)) / 1000));
         const deviceName = item.device || "Пристрій";
         
+        // Спочатку виводимо ім'я користувача, а в дужках синім — назву пристрою
         let displayName = item.token_label || (item.admin ? "Адмін" : "Гість");
         if (item.admin && !displayName.includes("👑")) {
           displayName = `👑 ${displayName}`;
@@ -2456,7 +2551,7 @@
     window.kickPresenceSession = async function(sessionId, deviceName) {
       if (!confirm(`Відключити сесію «${deviceName || sessionId}»?`)) return;
       try {
-        const sessionUrl = FIREBASE_PRESENCE_URL.replace(".json", `/${encodeURIComponent(sessionId)}.json`);
+        const sessionUrl = window.appendAuth(FIREBASE_PRESENCE_URL.replace(".json", `/${encodeURIComponent(sessionId)}.json`));
         await fetch(sessionUrl, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -2469,6 +2564,11 @@
       }
     };
 
+    sendPresenceHeartbeat();
+    setInterval(sendPresenceHeartbeat, 18000);
+    setInterval(fetchOnlineCount, 12000);
+    setTimeout(fetchOnlineCount, 1800);
+
     window.addEventListener("beforeunload", () => {
       try {
         const sessionUrl = FIREBASE_PRESENCE_URL.replace(".json", `/${clientSessionId}.json`);
@@ -2478,7 +2578,7 @@
       } catch(e) {}
     });
 
-    // ШІ-ШТУРМАН
+    // ШІ-ШТУРМАН: ДІАЛОГ ТА ОЧИЩЕННЯ
     function clearAiChatHistory(e) {
       if (e) e.stopPropagation();
       geminiChatHistory = [];
@@ -2500,11 +2600,11 @@
 
     function configureGeminiKey(e) {
       if (e) e.stopPropagation();
-      const k = prompt("Введіть персональний ключ Gemini API:");
-      if (k) localStorage.setItem("gemini_api_key", k.trim());
+      verifyGeminiAuthorization(true);
     }
 
     async function executeGeminiRequestPool(promptPayload) {
+      if (!verifyGeminiAuthorization()) throw new Error("ШІ заблоковано.");
       const apiKeys = getDecryptedGeminiPool();
       if (apiKeys.length === 0) throw new Error("Немає доступних ключів Gemini.");
       const models = ['gemini-3.8-flash', 'gemini-3.5-flash-lite', 'gemini-3.5-flash'];
@@ -2541,6 +2641,7 @@
     async function submitAiChatMessage() {
       const query = aiInlineInput.value.trim();
       if (!query) return;
+      if (!verifyGeminiAuthorization()) return;
 
       aiInlineInput.value = "";
       const userBubble = document.createElement("div");
@@ -2562,7 +2663,7 @@
       }).join('\n');
 
       const systemInstructionText = `
-Ти — високоінтелектуальний військово-дорожній ШІ-штурман у місті Дніпро для водія (v5.2).
+Ти — високоінтелектуальний військово-дорожній ШІ-штурман у місті Дніпро для водія (v5.1).
 ТОЧКИ НА КАРТІ:
 ${allLiveReportsText || "Повідомлень немає"}
 КОМАНДИ:
@@ -2707,7 +2808,7 @@ ${allLiveReportsText || "Повідомлень немає"}
     async function syncCheckpointsToCloud() {
       localStorage.setItem("dnepr_radar_checkpoints_v2", JSON.stringify(checkpoints));
       try {
-        await fetch(FIREBASE_CONFIG_URL, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(checkpoints) });
+        await fetch(window.appendAuth(FIREBASE_CONFIG_URL), { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(checkpoints) });
       } catch (e) {}
     }
 
@@ -2817,7 +2918,7 @@ ${allLiveReportsText || "Повідомлень немає"}
             const ptTime = pt.time || pt.timestamp || 0;
             const timeStr = ptTime ? new Date(ptTime).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' }) : '';
             const remMin = Math.floor(Math.max(0, LIFETIME_MS - (now - ptTime)) / 60000);
-            const msgQuote = escapeHtml((pt.text || pt.raw_text || '').replace(/&nbsp;/gi, ' ').replace(/[\r\n]+/g, ' ').slice(0, 95));
+            const msgQuote = escapeHtml((pt.text || pt.raw_text || '').replace(/[\r\n]+/g, ' ').slice(0, 95));
             const fbKeySafe = escapeHtml(pt._fbKey || '');
             const ptClean = isCleanPoint(pt);
 
@@ -3040,8 +3141,8 @@ ${allLiveReportsText || "Повідомлень немає"}
         allPoints = Object.entries(data).map(([key, p]) => {
           if (!p || typeof p !== 'object' || !p.lat || !p.lng) return null;
           p._fbKey = key;
-          if (p.raw_text) p.raw_text = p.raw_text.replace(/&nbsp;/gi, " ").replace(/[\r\n]+/g, " ").trim();
-          if (p.text) p.text = p.text.replace(/&nbsp;/gi, " ").replace(/[\r\n]+/g, " ").trim();
+          if (p.raw_text) p.raw_text = p.raw_text.replace(/[\r\n]+/g, " ").trim();
+          if (p.text) p.text = p.text.replace(/[\r\n]+/g, " ").trim();
 
           const fullText = (p.text || "") + " " + (p.raw_text || "");
           if (isSpamMessage(fullText)) return null;
@@ -3070,7 +3171,7 @@ ${allLiveReportsText || "Повідомлень немає"}
     }
 
     // =========================================================================
-    // 📍 РЕНДЕР МІТОК ІЗ ПОВНИМИ ДІЯМИ ТА СЕРЕДНЬОЮ КНОПКОЮ МИШІ
+    // 📍 РЕНДЕР МІТОК
     // =========================================================================
     function renderMarkers() {
       try {
@@ -3156,7 +3257,7 @@ ${allLiveReportsText || "Повідомлень немає"}
             const timeStr = ptTime ? new Date(ptTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "";
             const remMin = Math.floor(Math.max(0, LIFETIME_MS - (now - ptTime)) / 60000);
             const fbKeySafe = escapeHtml(pt._fbKey || "");
-            const ptTextSafe = escapeHtml((pt.text || pt.raw_text || "").replace(/&nbsp;/gi, " "));
+            const ptTextSafe = escapeHtml(pt.text || pt.raw_text || "");
             let renameNote = "";
             try {
               if (typeof getStreetRenameNote === "function") {
@@ -3218,15 +3319,6 @@ ${allLiveReportsText || "Повідомлень немає"}
               }
             });
 
-            // Натискання коліщатком миші (Middle-click) викликає вікно перенесення мітки
-            el.addEventListener('auxclick', (e) => {
-              if (e.button === 1 && currentUiMode !== "simple") {
-                e.preventDefault();
-                e.stopPropagation();
-                openMarkerActionSheet(cluster.points[0], marker);
-              }
-            });
-
             if (!isSimple) {
               let pressTimer = null;
               let startX = 0, startY = 0;
@@ -3272,6 +3364,11 @@ ${allLiveReportsText || "Повідомлень немає"}
 
     // Первинна перевірка авторизації
     verifyInitialAccess();
+
+    loadCheckpointsFromCloud().then(() => {
+      loadPoints();
+    });
+    setInterval(loadPoints, 15000);
 
     const navRouteLayer = L.layerGroup().addTo(map);
 
@@ -3355,7 +3452,6 @@ ${allLiveReportsText || "Повідомлень немає"}
     setTimeout(checkAndDrawNavRoute, 400);
   </script>
 
-  <!-- ПІДКЛЮЧЕННЯ ВСІХ ЗОВНІШНІХ СКРИПТІВ КЕРУВАННЯ ТА ПЕРЕНЕСЕННЯ -->
   <script src="relocate.js"></script>
   <script src="memory.js"></script>
   <script src="timeline.js"></script>
