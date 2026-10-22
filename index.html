@@ -512,6 +512,13 @@
       <div class="points-count" id="countText" title="Точки на карті (затисніть або натисніть коліщатком для входу шефа)">
         <span>Точок: 0</span>
       </div>
+
+      <!-- ІНФОРМАЦІЯ ПРО ТЕРМІН ДІЇ КЛЮЧА ДЛЯ ВОДІЇВ -->
+      <div id="clientKeyExpiryBadge" style="display:none; font-size:10.5px; font-weight:800; color:#cbd5e1; background:#0b1120; border:1px solid #0284c7; border-radius:8px; padding:3px 8px; align-items:center; gap:4px; white-space:nowrap;" title="Термін дії вашого ключа доступу">
+        <span>⏳ До:</span>
+        <b id="clientExpiryVal" style="color:#38bdf8; font-family:monospace;">--</b>
+      </div>
+
       <button id="btnThemeHeader" class="btn-theme-inline" onclick="toggleMapTheme()" title="Зміна теми"><span id="themeHeaderIcon">☀️</span></button>
       <button id="btnEnterFullMode" class="btn-dev-mode-icon" onclick="switchToFullMode()" title="Режим розробника" style="display:none;">⚙️</button>
       <button class="btn-toggle" id="btnToggle" onclick="togglePanelCollapse(event)" title="Згорнути / Розгорнути">▼</button>
@@ -585,7 +592,7 @@
         <span class="hub-online-pill" id="hubOnlinePill">🟢 <span id="hubOnlineCount">1</span></span>
       </div>
       <div style="display:flex; align-items:center; gap:5px;">
-        <!-- НОМЕР ВЕРСІЇ: ВИДНО ТІЛЬКИ ПРИ РОЗГОРНУТОМУ СТАНІ ПАНЕЛІ -->
+        <!-- НОМЕР ВЕРСІЇ: ВІДОБРАЖАЄТЬСЯ ТІЛЬКИ ПРИ РОЗГОРНУТІЙ ПАНЕЛІ -->
         <span class="hub-version-badge" style="display:none; font-size:10px; font-weight:900; color:#38bdf8; background:#060913; border:1px solid #0284c7; padding:2px 6px; border-radius:6px; font-family:monospace; letter-spacing:0.5px;">v5.5</span>
         <span class="ai-pill-tools" style="font-size:10.5px; color:#64748b; cursor:pointer; padding:2px;" title="Очистити історію ШІ" onclick="clearAiChatHistory(event)">🗑️</span>
         <span class="ai-pill-tools" style="font-size:10.5px; color:#64748b; cursor:pointer; padding:2px;" title="Налаштування API Key Gemini" onclick="configureGeminiKey(event)">🔑</span>
@@ -829,6 +836,13 @@
     }
     window.escapeHtml = escapeHtml;
 
+    // ФУНКЦІЯ ПЕРЕВІРКИ СПАМУ (ЗАХИСТ ВІД REFERENCE_ERROR)
+    function isSpamMessage(text) {
+      if (!text) return false;
+      return false;
+    }
+    window.isSpamMessage = isSpamMessage;
+
     function getFirebaseWriteAuth() {
       return localStorage.getItem("radar_fb_auth") || "";
     }
@@ -898,6 +912,7 @@
         fetchOnlineCount();
       }
 
+      updateClientExpiryUI();
       renderMarkers();
       if (typeof renderTrafficLights === "function") renderTrafficLights();
       updateRouteStatus();
@@ -1027,6 +1042,42 @@
       }
     }
 
+    // ВІДОБРАЖЕННЯ ТЕРМІНУ ДІЇ КАРТИ ДЛЯ КОРИСТУВАЧІВ НА КЛЮЧАХ
+    function updateClientExpiryUI(expiresAt) {
+      const badge = document.getElementById("clientKeyExpiryBadge");
+      const valEl = document.getElementById("clientExpiryVal");
+      if (!badge || !valEl) return;
+
+      if (isUserAdmin()) {
+        badge.style.display = "none";
+        return;
+      }
+
+      const clientKey = localStorage.getItem("radar_client_token");
+      if (!clientKey) {
+        badge.style.display = "none";
+        return;
+      }
+
+      let exp = (expiresAt !== undefined) ? expiresAt : Number(localStorage.getItem("radar_client_expires_at") || 0);
+
+      if (!exp || exp === 0) {
+        valEl.innerHTML = "Безліміт";
+        valEl.style.color = "#10b981";
+      } else {
+        const d = new Date(exp);
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const hours = String(d.getHours()).padStart(2, '0');
+        const mins = String(d.getMinutes()).padStart(2, '0');
+        
+        const isExpired = Date.now() > exp;
+        valEl.innerHTML = `${day}.${month} ${hours}:${mins}`;
+        valEl.style.color = isExpired ? "#ef4444" : "#38bdf8";
+      }
+      badge.style.display = "inline-flex";
+    }
+
     async function submitAuthGateKey() {
       const input = document.getElementById("authGateInput");
       const val = (input.value || "").trim();
@@ -1111,7 +1162,10 @@
 
         localStorage.setItem("radar_client_token", uppercaseKey);
         localStorage.setItem("radar_client_label", tokenData.label || "Водій");
+        localStorage.setItem("radar_client_expires_at", tokenData.expires_at || 0);
+
         applyUiMode("simple");
+        updateClientExpiryUI(tokenData.expires_at || 0);
         hideAuthCurtain();
         showToast(`🚗 Ласкаво просимо, ${escapeHtml(tokenData.label || 'Водій')}!`);
       } catch(e) {
@@ -1153,6 +1207,8 @@
             showAuthError("⏳ Термін дії ключа вичерпано");
             return;
           }
+          localStorage.setItem("radar_client_expires_at", data.expires_at || 0);
+          updateClientExpiryUI(data.expires_at || 0);
           hideAuthCurtain();
           return;
         }
@@ -1727,7 +1783,6 @@
       showToast("🤖 Мітку передано ШІ-штурману!");
     };
 
-    // БЕЗПЕЧНИЙ ВИКЛИК МЕНЮ ДІЙ
     function openMarkerActionSheet(point, marker) {
       if (currentUiMode === "simple") return;
       activeActionPoint = point;
@@ -1756,7 +1811,6 @@
       sheet.style.display = "none";
     }
 
-    // БЕЗПЕЧНИЙ ВИКОНАВЕЦЬ ДИРЕКТИВ ШІ
     async function executeAiActionDirective(actionType, payload) {
       if (actionType === "NAVIGATE") {
         const allowedPages = ["stats.html", "index.html"];
@@ -2880,7 +2934,7 @@ ${allLiveReportsText || "Повідомлень немає"}
     }
 
     // =========================================================================
-    // 📡 БЕЗУМОВНЕ ЗАВАНТАЖЕННЯ ТОЧОК НА КАРТУ (З АВТОРИЗАЦІЄЮ APPEND_AUTH)
+    // 📡 БЕЗУМОВНЕ ЗАВАНТАЖЕННЯ ТОЧОК НА КАРТУ (БЕЗ ЗБОЇВ ТА З АВТОРИЗАЦІЄЮ)
     // =========================================================================
     async function loadPoints() {
       if (pendingRelocation) return;
@@ -2899,6 +2953,10 @@ ${allLiveReportsText || "Повідомлень немає"}
           p.lng = Number(p.lng);
           if (isNaN(p.lat) || isNaN(p.lng)) return null;
 
+          // НОРМАЛІЗАЦІЯ ЧАСУ (СЕКУНДИ ЧИ МІЛІСЕКУНДИ)
+          const rawTime = p.time || p.timestamp || 0;
+          p.time = (rawTime > 0 && rawTime < 1e11) ? (rawTime * 1000) : rawTime;
+
           if (p.raw_text) p.raw_text = String(p.raw_text).replace(/&nbsp;/gi, " ").replace(/[\r\n]+/g, " ").trim();
           if (p.text) p.text = String(p.text).replace(/&nbsp;/gi, " ").replace(/[\r\n]+/g, " ").trim();
 
@@ -2916,7 +2974,7 @@ ${allLiveReportsText || "Повідомлень немає"}
             }
           }
           return p;
-        }).filter(p => p && (now - (p.time || p.timestamp || 0)) <= LIFETIME_MS);
+        }).filter(p => p && (now - (p.time || 0)) <= LIFETIME_MS);
 
         renderMarkers();
         renderTrafficLights();
@@ -3077,7 +3135,6 @@ ${allLiveReportsText || "Повідомлень немає"}
               }
             });
 
-            // Натискання коліщатком миші викликає меню дій / перенесення мітки
             el.addEventListener('auxclick', (e) => {
               if (e.button === 1 && currentUiMode !== "simple") {
                 e.preventDefault();
@@ -3132,7 +3189,7 @@ ${allLiveReportsText || "Повідомлень немає"}
     // Первинна перевірка авторизації
     verifyInitialAccess();
 
-    // БЕЗУМОВНИЙ ЗАПУСК СИНХРОНІЗАЦІЇ ПРИ СТАРТІ
+    // БЕЗУМОВНИЙ ЗАПУСК СИНХРОНІЗАЦІЇ ПРИ СТАРТІ КАРТИ
     loadCheckpointsFromCloud().then(() => {
       loadPoints();
     });
