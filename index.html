@@ -96,7 +96,7 @@
       color: #ef4444 !important;
     }
 
-    /* РЕЖИМ КАЛІБРУВАННЯ: ГАЛОЧКА ВСЕРЕДИНІ ПЛАШКИ */
+    /* РЕЖИМ КАЛІБРУВАННЯ */
     #routeStatusBar.in-edit-mode {
       background: #064e3b !important;
       border-color: #10b981 !important;
@@ -117,7 +117,7 @@
       display: inline-flex !important;
     }
 
-    /* ОКРЕМІ КНОПКИ «МОЗОК 🧠» ТА «СТАТИСТИКА 📊» */
+    /* КНОПКИ «МОЗОК 🧠» ТА «СТАТИСТИКА 📊» */
     #btnMemHud {
       position: fixed;
       bottom: 15px;
@@ -183,8 +183,40 @@
     #btnStatsHud:active { transform: scale(0.92) !important; }
 
     /* =========================================================================
-       1. ДИНАМІЧНА НІЧНА ТЕМА ТА ФІЛЬТРИ КАРТИ І МІТОК
+       1. КОМПАКТНІСТЬ ТА ЗАЗОР ПРАВОЇ ПАНЕЛІ «КЛІЄНТИ» ВІД РАДІО
        ========================================================================= */
+    #aiPillPanel.compact {
+      top: 15px !important;
+      right: 15px !important;
+      left: auto !important;
+      bottom: auto !important;
+      width: auto !important;
+      max-width: 135px !important;
+      height: 38px !important;
+      min-height: 38px !important;
+      max-height: 38px !important;
+      padding: 0 10px !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: space-between !important;
+      gap: 6px !important;
+      cursor: pointer !important;
+      user-select: none !important;
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45) !important;
+    }
+    #aiPillPanel.compact .ai-pill-compact-content {
+      border-bottom: none !important;
+      margin-bottom: 0 !important;
+      padding-bottom: 0 !important;
+      cursor: pointer !important;
+      width: 100% !important;
+    }
+    #aiPillPanel.compact .ai-pill-tools,
+    #aiPillPanel.compact .hub-tab-bar,
+    #aiPillPanel.compact .ai-pill-body {
+      display: none !important;
+    }
+
     #map.night-mode .leaflet-tile-pane {
       filter: invert(var(--map-night-invert)) 
               hue-rotate(var(--map-night-hue)) 
@@ -192,12 +224,10 @@
               brightness(var(--map-night-brightness)) 
               saturate(var(--map-night-sat)) !important;
     }
-
     #map.night-mode .custom-dot-marker,
     #map.night-mode .radar-circle {
       filter: brightness(var(--marker-brightness)) !important;
     }
-
     body.night-mode [class*="ticker"],
     body.night-mode [class*="ticker"] *,
     body.night-mode [id*="ticker"],
@@ -211,7 +241,6 @@
       color: #ffffff !important;
       text-shadow: 0 1px 4px rgba(0, 0, 0, 0.95), 0 0 8px rgba(0, 0, 0, 0.9) !important;
     }
-
     .leaflet-popup-content,
     .leaflet-popup-content *,
     .leaflet-popup-content .report-status-title,
@@ -222,7 +251,6 @@
       color: #0f172a !important;
     }
 
-    /* АНІМАЦІЇ ПУЛЬСАЦІЇ */
     @keyframes pulseGroupDanger {
       0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.85); }
       70% { box-shadow: 0 0 0 12px rgba(220, 38, 38, 0); }
@@ -514,33 +542,45 @@
     </div>
   </div>
 
-  <!-- 2. ПАНЕЛЬ «КЛІЄНТИ» (ШТАБ + ШІ-ШТУРМАН) -->
-  <div id="aiPillPanel" class="ai-pill-panel compact">
+  <!-- 2. ПАНЕЛЬ «КЛІЄНТИ» (ШТАБ ДОСТУПІВ, СЕСІЇ ТА ШІ-ШТУРМАН) -->
+  <div id="aiPillPanel" class="ai-pill-panel compact" onclick="toggleAiPillExpand(event)">
     <div id="aiPillHeader" class="ai-pill-compact-content">
-      <div class="ai-titleBadge" onclick="toggleAiPillExpand()">
-        <span style="font-size:14px;">👑</span>
-        <span id="aiPillLabel">Клієнти</span>
+      <div class="ai-titleBadge">
+        <span style="font-size:13px;">👑</span>
+        <span id="aiPillLabel" style="font-size:11px; font-weight:800; color:#38bdf8;">Клієнти</span>
         <span class="hub-online-pill" id="hubOnlinePill">🟢 <span id="hubOnlineCount">1</span></span>
-        <span style="font-size:9px; color:#64748b; margin-left:3px;">✥</span>
       </div>
-      <div style="display:flex; align-items:center; gap:4px;">
-        <span class="ai-pill-tools" style="font-size:10px; color:#64748b; cursor:pointer; padding:2px;" title="Очистити історію діалогу ШІ" onclick="clearAiChatHistory(event)">🗑️</span>
-        <span class="ai-pill-tools" style="font-size:10px; color:#64748b; cursor:pointer; padding:2px;" title="Налаштування API Key Gemini" onclick="configureGeminiKey(event)">🔑</span>
-        <button class="btn-toggle" id="btnAiPillToggle" onclick="toggleAiPillExpand(event)">▼</button>
+      <div style="display:flex; align-items:center; gap:5px;">
+        <span class="ai-pill-tools" style="font-size:10.5px; color:#64748b; cursor:pointer; padding:2px;" title="Очистити історію діалогу ШІ" onclick="clearAiChatHistory(event)">🗑️</span>
+        <span class="ai-pill-tools" style="font-size:10.5px; color:#64748b; cursor:pointer; padding:2px;" title="Налаштування API Key Gemini" onclick="configureGeminiKey(event)">🔑</span>
+        <span id="btnAiPillToggle" style="font-size:10.5px; color:#94a3b8; font-weight:900; padding:0 2px; user-select:none; cursor:pointer;">▼</span>
       </div>
     </div>
 
     <!-- ПЕРЕМИКАЧ ВКЛАДОК: КЛІЄНТИ / ШІ-ШТУРМАН -->
     <div class="hub-tab-bar" id="hubTabBar">
-      <button class="hub-tab-btn active" id="tabBtnClients" onclick="switchHubTab('clients')">🔑 Доступи</button>
-      <button class="hub-tab-btn" id="tabBtnAi" onclick="switchHubTab('ai')">🤖 ШІ-Штурман</button>
+      <button class="hub-tab-btn active" id="tabBtnClients" onclick="switchHubTab('clients', event)">🔑 Доступи</button>
+      <button class="hub-tab-btn" id="tabBtnAi" onclick="switchHubTab('ai', event)">🤖 ШІ-Штурман</button>
     </div>
 
     <div class="ai-pill-body" id="aiPillBody">
-      <!-- СЕКЦІЯ 1: КЕРУВАННЯ ДОСТУПАМИ (ГЕНЕРАТОР ТА СПИСОК КЛЮЧІВ) -->
+      <!-- СЕКЦІЯ 1: КЕРУВАННЯ ДОСТУПАМИ (СЕСІЇ ОНЛАЙН, ГЕНЕРАТОР ТА БАЗА КЛЮЧІВ) -->
       <div class="hub-view-section" id="hubSectionClients">
+        
+        <!-- ЖИВІ СЕСІЇ ПРИСТРОЇВ (ОНЛАЙН ПРЯМО ЗАРАЗ) -->
+        <div style="background:#0b1120; border:1px solid #1e293b; border-radius:9px; padding:8px 10px; display:flex; flex-direction:column; gap:5px;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size:11px; font-weight:800; color:#38bdf8;">📡 Пристрої онлайн:</span>
+            <span id="hubActiveSessionsCount" style="font-size:10px; color:#10b981; font-weight:800;">1 в мережі</span>
+          </div>
+          <div id="hubActiveSessionsList" style="max-height:120px; overflow-y:auto; display:flex; flex-direction:column; gap:4px; padding-right:1px;">
+            <div style="font-size:10.5px; color:#64748b; padding:4px;">Пошук активних пристроїв...</div>
+          </div>
+        </div>
+
+        <!-- ГЕНЕРАТОР ПЕРСОНАЛЬНИХ КЛЮЧІВ -->
         <div class="hub-key-form">
-          <div style="font-size:11px; font-weight:800; color:#38bdf8;">➕ Створити ключ доступу:</div>
+          <div style="font-size:11px; font-weight:800; color:#cbd5e1;">➕ Згенерувати новий ключ:</div>
           <div class="hub-input-row">
             <input type="text" id="hubInputClientLabel" class="hub-text-input" placeholder="Ім'я водія (напр. Олег Спринтер)" autocomplete="off">
           </div>
@@ -552,19 +592,24 @@
           </div>
           <button class="hub-btn-generate" onclick="generateNewAccessToken()">⚡ Згенерувати персональний ключ</button>
           
-          <div class="hub-generated-box" id="hubGeneratedBox">
+          <!-- ПЛАШКА ЗГЕНЕРОВАНОГО КЛЮЧА З ОЧИСТКОЮ Х -->
+          <div class="hub-generated-box" id="hubGeneratedBox" style="display:none; align-items:center; justify-content:space-between;">
             <span class="hub-generated-code" id="hubGeneratedCode">RADAR-0000-X</span>
-            <button class="hub-btn-copy" onclick="copyGeneratedKey()">📋 Скопіювати</button>
+            <div style="display:flex; gap:4px; align-items:center;">
+              <button class="hub-btn-copy" onclick="copyGeneratedKey()">📋 Скопіювати</button>
+              <button class="hub-btn-copy" style="background:#334155; color:#cbd5e1; padding:3px 8px;" onclick="clearGeneratedKeyBox()" title="Очистити">✕</button>
+            </div>
           </div>
         </div>
 
+        <!-- СПИСОК СТВОРЕНИХ КЛЮЧІВ -->
         <div style="display:flex; justify-content:space-between; align-items:center; margin-top:2px;">
-          <span style="font-size:11px; font-weight:800; color:#cbd5e1;">📋 Видані ключі:</span>
+          <span style="font-size:11px; font-weight:800; color:#cbd5e1;">📋 База ключів доступу:</span>
           <span id="hubClientsCount" style="font-size:10px; color:#38bdf8; font-family:monospace; font-weight:800;">0 активних</span>
         </div>
 
         <div class="hub-clients-list" id="hubClientsList">
-          <div style="padding:15px; text-align:center; font-size:11px; color:#64748b;">Завантаження ключів...</div>
+          <div style="padding:10px; text-align:center; font-size:10.5px; color:#64748b;">Завантаження ключів...</div>
         </div>
       </div>
 
@@ -765,7 +810,7 @@
 
   <script>
     // =========================================================================
-    // 🔒 ЗАХИСТ БЕЗПЕКИ ТА АВТОРИЗАЦІЯ
+    // 🔒 БЕЗПЕКА ТА АВТОРИЗАЦІЯ
     // =========================================================================
     function escapeHtml(str) {
       if (!str) return "";
@@ -853,6 +898,7 @@
         showTrafficLights = localStorage.getItem("radar_tl_visible") !== "false";
         if (typeof updateTrafficLightsBtnUI === "function") updateTrafficLightsBtnUI();
         loadAccessTokens();
+        fetchOnlineCount();
       }
 
       renderMarkers();
@@ -948,7 +994,7 @@
     }
 
     // =========================================================================
-    // 🌐 ПАРАМЕТРИ СОНАРА ТА РОЗГОНУ
+    // 🌐 СОНАР СВІТЛОФОРІВ
     // =========================================================================
     const DEFAULT_SONAR_SETTINGS = {
       cleanColor: "#10b981",
@@ -1077,7 +1123,7 @@
     }
 
     // =========================================================================
-    // 🌙 НАЛАШТУВАННЯ НІЧНОЇ КАРТИ ТА МІТОК
+    // 🌙 НАЛАШТУВАННЯ КАРТИ
     // =========================================================================
     const DEFAULT_MAP_DISPLAY = {
       brightness: 95,
@@ -1182,7 +1228,7 @@
     }
 
     // =========================================================================
-    // 🌐 URL FIREBASE ТА МЕРЕЖА
+    // 🌐 URL FIREBASE
     // =========================================================================
     const FIREBASE_POINTS_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/points.json";
     const FIREBASE_CONFIG_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/config/traffic_lights.json";
@@ -1873,13 +1919,12 @@
     };
 
     // =========================================================================
-    // 👑 ПАНЕЛЬ «КЛІЄНТИ» (ШТАБ ДОСТУПІВ ТА ШІ-ШТУРМАН)
+    // 👑 ПАНЕЛЬ «КЛІЄНТИ» (ШТАБ ДОСТУПІВ, СЕСІЇ ТА ШІ-ШТУРМАН)
     // =========================================================================
     const aiPillPanel = document.getElementById("aiPillPanel");
     const aiPillHeader = document.getElementById("aiPillHeader");
     const aiInlineInput = document.getElementById("aiInlineInput");
     const aiChatBox = document.getElementById("aiChatBox");
-    const btnAiPillToggle = document.getElementById("btnAiPillToggle");
 
     let geminiChatHistory = [];
     let currentHubTab = "clients";
@@ -1901,13 +1946,19 @@
     L.DomEvent.disableClickPropagation(document.getElementById("mapDisplayModal"));
 
     function toggleAiPillExpand(e) {
-      if (e && (e.target.closest('textarea') || e.target.closest('input') || e.target.closest('button') || e.target.closest('.ai-mini-chip') || e.target.closest('span[title]'))) return;
+      if (e) {
+        if (e.target.closest('textarea') || e.target.closest('input') || e.target.closest('.hub-btn-copy') || e.target.closest('.hub-btn-act') || e.target.closest('.ai-mini-chip') || e.target.closest('span[title]') || e.target.closest('.hub-tab-btn')) {
+          return;
+        }
+      }
       const isExpanded = aiPillPanel.classList.toggle("expanded");
       aiPillPanel.classList.toggle("compact", !isExpanded);
-      btnAiPillToggle.innerText = isExpanded ? "▲" : "▼";
+      const toggleIcon = document.getElementById("btnAiPillToggle");
+      if (toggleIcon) toggleIcon.innerText = isExpanded ? "▲" : "▼";
       if (isExpanded) {
         if (currentHubTab === "clients") {
           loadAccessTokens();
+          fetchOnlineCount();
         } else {
           verifyGeminiAuthorization();
         }
@@ -1918,7 +1969,8 @@
       }
     }
 
-    function switchHubTab(tabName) {
+    function switchHubTab(tabName, e) {
+      if (e) e.stopPropagation();
       currentHubTab = tabName;
       const btnClients = document.getElementById("tabBtnClients");
       const btnAi = document.getElementById("tabBtnAi");
@@ -1931,6 +1983,7 @@
         secClients.style.display = "flex";
         secAi.style.display = "none";
         loadAccessTokens();
+        fetchOnlineCount();
       } else {
         btnAi.classList.add("active");
         btnClients.classList.remove("active");
@@ -2002,6 +2055,13 @@
       });
     }
 
+    window.clearGeneratedKeyBox = function() {
+      const codeBox = document.getElementById("hubGeneratedBox");
+      const input = document.getElementById("hubInputClientLabel");
+      if (codeBox) codeBox.style.display = "none";
+      if (input) input.value = "";
+    };
+
     async function loadAccessTokens() {
       try {
         const res = await fetch(`${FIREBASE_TOKENS_URL}?t=${Date.now()}`);
@@ -2025,7 +2085,7 @@
       if (countBadge) countBadge.innerText = `${activeCount} активних`;
 
       if (entries.length === 0) {
-        listBox.innerHTML = `<div style="padding:15px; text-align:center; font-size:11px; color:#64748b;">Немає створених ключів. Згенеруйте перший вгорі!</div>`;
+        listBox.innerHTML = `<div style="padding:10px; text-align:center; font-size:10.5px; color:#64748b;">Немає створених ключів.</div>`;
         return;
       }
 
@@ -2100,24 +2160,70 @@
     };
 
     // =========================================================================
-    // 🟢 ВІДСЛІДКОВУВАННЯ СЕСІЙ ТА ОНЛАЙН (FIREBASE PRESENCE)
+    // 🟢 ВІДСЛІДКОВУВАННЯ СЕСІЙ, РОЗПІЗНАВАННЯ ЖЕЛЕЗА ТА ОНЛАЙН (PRESENCE)
     // =========================================================================
+    function getDeviceDescription() {
+      const ua = navigator.userAgent || "";
+      let os = "Пристрій";
+      if (/windows/i.test(ua)) os = "💻 Windows";
+      else if (/android/i.test(ua)) {
+        if (/xiaomi|redmi|poco/i.test(ua) || /hyperos/i.test(ua)) os = "📱 Xiaomi";
+        else os = "📱 Android";
+      }
+      else if (/iphone|ipad|ipod/i.test(ua)) os = "🍏 iPhone";
+      else if (/macintosh|mac os x/i.test(ua)) os = "💻 Mac";
+      else if (/linux/i.test(ua)) os = "💻 Linux";
+
+      let browser = "Браузер";
+      if (/chrome|crios/i.test(ua) && !/edg|opr/i.test(ua)) browser = "Chrome";
+      else if (/safari/i.test(ua) && !/chrome/i.test(ua)) browser = "Safari";
+      else if (/firefox|fxios/i.test(ua)) browser = "Firefox";
+      else if (/edg/i.test(ua)) browser = "Edge";
+      else if (/opera|opr/i.test(ua)) browser = "Opera";
+
+      return `${os} (${browser})`;
+    }
+
     let clientSessionId = sessionStorage.getItem("radar_presence_session_id");
     if (!clientSessionId) {
-      clientSessionId = "sess_" + Math.random().toString(36).substring(2, 9) + Date.now().toString(36);
+      clientSessionId = "sess_" + Math.random().toString(36).substring(2, 8) + "_" + Date.now().toString(36);
       sessionStorage.setItem("radar_presence_session_id", clientSessionId);
+    }
+
+    function handleKickedSession() {
+      document.body.innerHTML = `
+        <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; background:#0b1120; color:#fff; font-family:-apple-system,sans-serif; text-align:center; padding:20px;">
+          <div style="font-size:52px; margin-bottom:12px;">🚫</div>
+          <h2 style="color:#ef4444; margin-bottom:8px; font-weight:900;">Сесію відключено</h2>
+          <p style="color:#94a3b8; font-size:13px; max-width:300px; line-height:1.4;">Доступ до карти було відкликано адміністратором.</p>
+          <button onclick="location.reload()" style="margin-top:22px; background:#0284c7; border:none; color:#fff; padding:10px 20px; border-radius:8px; font-weight:800; cursor:pointer;">Спробувати знову</button>
+        </div>
+      `;
     }
 
     async function sendPresenceHeartbeat() {
       try {
         const sessionUrl = FIREBASE_PRESENCE_URL.replace(".json", `/${clientSessionId}.json`);
+        
+        // Перевіряємо чи сесію не кікнули
+        const checkRes = await fetch(`${sessionUrl}?t=${Date.now()}`);
+        if (checkRes.ok) {
+          const checkData = await checkRes.json();
+          if (checkData && checkData.kicked) {
+            handleKickedSession();
+            return;
+          }
+        }
+
         await fetch(sessionUrl, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             t: Date.now(),
             admin: isUserAdmin(),
-            mode: currentUiMode
+            mode: currentUiMode,
+            device: getDeviceDescription(),
+            token_label: isUserAdmin() ? "👑 Адмін" : (localStorage.getItem("radar_client_label") || "Гість")
           })
         });
       } catch(e) {}
@@ -2132,18 +2238,92 @@
         if (!data || typeof data !== "object") return;
 
         const now = Date.now();
-        const activeUsers = Object.values(data).filter(item => item && (now - (item.t || 0)) < 45000);
-        const count = Math.max(1, activeUsers.length);
+        const activeEntries = Object.entries(data).filter(([k, item]) => item && !item.kicked && (now - (item.t || 0)) < 45000);
+        const count = Math.max(1, activeEntries.length);
 
         const badge = document.getElementById("hubOnlineCount");
         if (badge) badge.innerText = String(count);
+
+        const sessCountBadge = document.getElementById("hubActiveSessionsCount");
+        if (sessCountBadge) sessCountBadge.innerText = `${activeEntries.length} в мережі`;
+
+        renderActiveSessionsList(activeEntries);
       } catch (e) {}
     }
 
+    function renderActiveSessionsList(activeEntries) {
+      const box = document.getElementById("hubActiveSessionsList");
+      if (!box) return;
+
+      if (!activeEntries || activeEntries.length === 0) {
+        box.innerHTML = `<div style="font-size:10px; color:#64748b; padding:4px;">Немає активних сесій</div>`;
+        return;
+      }
+
+      box.innerHTML = "";
+      const now = Date.now();
+
+      activeEntries.forEach(([sessId, item]) => {
+        const isCurrent = (sessId === clientSessionId);
+        const diffSec = Math.max(0, Math.round((now - (item.t || 0)) / 1000));
+        const deviceName = item.device || "Пристрій";
+        const roleLabel = item.token_label || (item.admin ? "👑 Адмін" : "Гість");
+
+        const row = document.createElement("div");
+        row.style.cssText = "display:flex; justify-content:space-between; align-items:center; background:#060913; border:1px solid #1e293b; padding:5px 8px; border-radius:6px; margin-bottom:4px; font-size:11px;";
+
+        const left = document.createElement("div");
+        left.style.cssText = "line-height:1.3; min-width:0; flex:1;";
+        left.innerHTML = `
+          <div style="font-weight:800; color:#f8fafc; display:flex; align-items:center; gap:4px;">
+            <span>${escapeHtml(deviceName)}</span>
+            <span style="font-size:9.5px; color:#38bdf8;">(${escapeHtml(roleLabel)})</span>
+          </div>
+          <div style="font-size:9.5px; color:#64748b;">
+            ${isCurrent ? '<b style="color:#10b981;">🟢 Цей екран</b>' : `🟢 в мережі (${diffSec}с тому)`}
+          </div>
+        `;
+
+        const right = document.createElement("div");
+        right.style.cssText = "flex-shrink:0; margin-left:6px;";
+        if (!isCurrent) {
+          const btnKick = document.createElement("button");
+          btnKick.className = "hub-btn-act danger";
+          btnKick.style.cssText = "padding:3px 7px; font-size:9.5px;";
+          btnKick.innerText = "🚫 Відключити";
+          btnKick.onclick = (e) => {
+            e.stopPropagation();
+            window.kickPresenceSession(sessId, deviceName);
+          };
+          right.appendChild(btnKick);
+        }
+
+        row.appendChild(left);
+        row.appendChild(right);
+        box.appendChild(row);
+      });
+    }
+
+    window.kickPresenceSession = async function(sessionId, deviceName) {
+      if (!confirm(`Відключити сесію «${deviceName || sessionId}»?`)) return;
+      try {
+        const sessionUrl = window.appendAuth(FIREBASE_PRESENCE_URL.replace(".json", `/${encodeURIComponent(sessionId)}.json`));
+        await fetch(sessionUrl, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ kicked: true, t: 0 })
+        });
+        showToast("🚫 Пристрій відключено!");
+        fetchOnlineCount();
+      } catch(e) {
+        showToast("❌ Помилка відключення");
+      }
+    };
+
     sendPresenceHeartbeat();
-    setInterval(sendPresenceHeartbeat, 20000);
+    setInterval(sendPresenceHeartbeat, 18000);
     setInterval(fetchOnlineCount, 12000);
-    setTimeout(fetchOnlineCount, 2000);
+    setTimeout(fetchOnlineCount, 1800);
 
     window.addEventListener("beforeunload", () => {
       try {
