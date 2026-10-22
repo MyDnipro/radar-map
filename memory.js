@@ -1,7 +1,9 @@
 /**
- * memory.js — Модуль бази знань, синонімів та калібрування вулиць v11.0
+ * memory.js — Модуль бази знань, синонімів та калібрування вулиць v12.0
  * Реалізує:
- * - Розумне обрізання хвостів часу та статусів при автообученні з фолбЕком на повний текст
+ * - Повноцінне редагування у вкладці «Зсунуті вулиці»: зміна назви та координат
+ * - Автоматичне очищення старого ключа (DELETE) у Firebase при виправленні назви вулиці
+ * - Розумне обрізання хвостів часу та статусів при автонавчанні з фолбеком на повний текст
  * - Захист ручних правок від перезапису (флаг is_manual: true)
  * - Сортування за часом: найсвіжіші правила завжди зверху
  * - Дворівневий інтерфейс: швидке вікно з лічильником + повноекранний журнал
@@ -49,15 +51,13 @@
     ).replace(/%/g, "_").slice(0, 80);
   }
 
-  // 1. РОЗУМНЕ АВТОНАВЧАННЯ ЗІ СРЕЗКОЮ ХВОСТІВ ТА ЗАХИСТОМ РУЧНИХ ПРАВОК
+  // 1. РОЗУМНЕ АВТОНАВЧАННЯ ЗІ СРІЗКОЮ ХВОСТІВ ТА ЗАХИСТОМ РУЧНИХ ПРАВОК
   window.saveMemorySynonymFromRelocate = async function (rawMsg, officialStreetName, lat, lng, isManual = false) {
     if (!rawMsg || !officialStreetName || !lat || !lng) return;
 
     const safeKey = toSafeFirebaseKey(rawMsg);
 
-    // Перевірка захисту від перезапису: якщо запис вже існує і відредагований людиною (is_manual)
     if (!isManual && customStreetsCache[safeKey] && customStreetsCache[safeKey].is_manual) {
-      // Оновлюємо лише координати, але не чіпаємо назву/фразу
       customStreetsCache[safeKey].lat = Number(Number(lat).toFixed(5));
       customStreetsCache[safeKey].lng = Number(Number(lng).toFixed(5));
       customStreetsCache[safeKey].updated_at = Date.now();
@@ -74,7 +74,6 @@
       return;
     }
 
-    // Розумна обрізка хвостів (час, статуси, приписки)
     let cleanPhrase = rawMsg
       .replace(/[\r\n]+/g, " ")
       .replace(/[,\.!\?\(\)\[\]«»"']/g, " ")
@@ -82,7 +81,6 @@
       .replace(/\s+/g, " ")
       .trim();
 
-    // Фолбэк: якщо після обрізки залишилося менше 3 символів — беремо повний оригінальний текст
     if (cleanPhrase.length < 3) {
       cleanPhrase = rawMsg.trim();
     }
@@ -204,7 +202,7 @@
   };
 
   // =========================================================================
-  // 4. РІВЕНЬ 1: КОМПАКТНЕ ВІКНО (БЕЗ СПИСКУ ОСТАННІХ ПРАВИЛ)
+  // 4. РІВЕНЬ 1: КОМПАКТНЕ ВІКНО ШВИДКИХ СИНОНІМІВ
   // =========================================================================
   function ensureQuickModal() {
     let modal = document.getElementById("quickSynonymModal");
@@ -306,7 +304,7 @@
       return;
     }
 
-    await window.saveMemorySynonymFromRelocate(phrase, target, lat, lng, true); // true = ручна правка (is_manual)
+    await window.saveMemorySynonymFromRelocate(phrase, target, lat, lng, true);
     pInput.value = "";
     tInput.value = "";
     tInput._selectedCoords = null;
@@ -545,40 +543,92 @@
     if (typeof showToast === "function") showToast(`🧠 Синонім збережено: «${escapeHtml(phrase)}» ➔ ${escapeHtml(target)}`);
   }
 
-  window.editStreetOverrideCoords = async function (key, streetName) {
+  // =========================================================================
+  // 6. ПОВНЕ РЕДАГУВАННЯ ЗСУНУТОЇ ВУЛИЦІ (НАЗВА + КООРДИНАТИ З ОЧИЩЕННЯМ СТАРОГО КЛЮЧА)
+  // =========================================================================
+  window.editStreetOverrideRecord = async function (key, currentStreetName) {
     const item = streetOverridesCache[key];
     if (!item) return;
 
-    const newCoords = prompt(
-      `Введіть нові координати (lat, lng) для «${streetName}»:\n(Поточні: ${item.lat}, ${item.lng})`,
-      `${item.lat}, ${item.lng}`
+    const oldName = item.street || item.name || currentStreetName || key;
+    
+    // Крок 1: Введення чистої назви вулиці (прибирання слів «чисто», дублів тощо)
+    const newName = prompt(
+      `Введіть назву вулиці (без слів «чисто», «норм» тощо):\n(Поточна: ${oldName})`,
+      oldName
     );
+    if (newName === null) return;
+    const cleanStreetName = newName.trim();
+    if (cleanStreetName.length < 2) {
+      alert("❌ Назва вулиці не може бути порожньою!");
+      return;
+    }
 
+    // Крок 2: Введення координат
+    const currentCoords = `${item.lat}, ${item.lng}`;
+    const newCoords = prompt(
+      `Введіть нові координати (lat, lng) для «${cleanStreetName}»:\n(Поточні: ${currentCoords})`,
+      currentCoords
+    );
     if (!newCoords) return;
+
     const parts = newCoords.split(/[,;\s]+/).map(p => parseFloat(p.trim())).filter(p => !isNaN(p));
     if (parts.length < 2 || parts[0] < 48.20 || parts[0] > 48.75 || parts[1] < 34.60 || parts[1] > 35.45) {
       alert("❌ Некоректні координати! Вкажіть дійсні координати Дніпра (напр. 48.5035, 35.0838).");
       return;
     }
 
-    item.lat = Number(parts[0].toFixed(5));
-    item.lng = Number(parts[1].toFixed(5));
+    const newLat = Number(parts[0].toFixed(5));
+    const newLng = Number(parts[1].toFixed(5));
+    const newKey = toSafeFirebaseKey(cleanStreetName);
+
+    // Якщо назва змінилася — видаляємо старий кривий ключ з бази та локального кешу
+    if (key !== newKey) {
+      delete streetOverridesCache[key];
+      try {
+        const oldUrl = appendAuth(`${FIREBASE_OVERRIDES_URL.replace(".json", `/\${encodeURIComponent(key)}.json`)}`);
+        fetch(oldUrl, { method: "DELETE" }).catch(() => {});
+      } catch (e) {}
+    }
+
+    item.street = cleanStreetName;
+    item.name = cleanStreetName;
+    item.lat = newLat;
+    item.lng = newLng;
     item.updated_at = Date.now();
+
+    streetOverridesCache[newKey] = item;
 
     try {
       localStorage.setItem("radar_street_overrides", JSON.stringify(streetOverridesCache));
-      const url = appendAuth(`${FIREBASE_OVERRIDES_URL.replace(".json", `/\${key}.json`)}`);
-      await fetch(url, {
+      const newUrl = appendAuth(`${FIREBASE_OVERRIDES_URL.replace(".json", `/\${encodeURIComponent(newKey)}.json`)}`);
+      await fetch(newUrl, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(item)
       });
-    } catch (e) {}
+    } catch (e) {
+      console.warn("Помилка збереження зміщення вулиці:", e);
+    }
+
+    // Оновлюємо внутрішній довідник вулиць Дніпра
+    if (typeof DNIPRO_STREETS_MAP !== "undefined") {
+      for (const mItem of Object.values(DNIPRO_STREETS_MAP)) {
+        if (mItem && mItem.name && mItem.name.toLowerCase() === cleanStreetName.toLowerCase()) {
+          mItem.lat = newLat;
+          mItem.lng = newLng;
+          mItem._isOverridden = true;
+        }
+      }
+    }
 
     renderFullRulesList();
     if (typeof renderMarkers === "function") renderMarkers();
-    if (typeof showToast === "function") showToast(`📍 Координати «${escapeHtml(streetName)}» оновлено!`);
+    if (typeof showToast === "function") showToast(`📍 «${escapeHtml(cleanStreetName)}» успішно оновлено!`);
   };
+
+  // Псевдонім для зворотної сумісності
+  window.editStreetOverrideCoords = window.editStreetOverrideRecord;
 
   // РЕНДЕР СПИСКУ ПРАВИЛ (НОВІ ЗАВЖДИ ЗВЕРХУ ЗА ЧАСОМ)
   function renderFullRulesList() {
@@ -602,7 +652,6 @@
         );
       }
 
-      // Сортування: найсвіжіші зверху
       items.sort((a, b) => (b[1].updated_at || 0) - (a[1].updated_at || 0));
 
       if (items.length === 0) {
@@ -637,7 +686,6 @@
         );
       }
 
-      // Сортування: найсвіжіші зверху
       items.sort((a, b) => (b[1].updated_at || 0) - (a[1].updated_at || 0));
 
       if (items.length === 0) {
@@ -658,7 +706,7 @@
             </div>
           </div>
           <div style="display:flex; gap:6px; flex-shrink:0;">
-            <button style="background:#0f172a; border:1px solid #0284c7; color:#38bdf8; padding:6px 9px; border-radius:6px; font-size:11px; cursor:pointer;" title="Змінити координати" onclick="window.editStreetOverrideCoords('${key}', '${escapeHtml(item.street || item.name)}')">✏️</button>
+            <button style="background:#0f172a; border:1px solid #0284c7; color:#38bdf8; padding:6px 9px; border-radius:6px; font-size:11px; cursor:pointer;" title="Редагувати назву та координати" onclick="window.editStreetOverrideRecord('${key}', '${escapeHtml(item.street || item.name || key)}')">✏️</button>
             <button style="background:#1e293b; border:1px solid #334155; color:#94a3b8; padding:6px 9px; border-radius:6px; font-size:10.5px; font-weight:800; cursor:pointer;" title="Скинути до заводських" onclick="window.resetStreetOverride('${key}', '${escapeHtml(item.street || item.name)}')">🔄 Скинути</button>
           </div>
         `;
