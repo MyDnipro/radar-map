@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <meta name="color-scheme" content="light only">
-  <title>Радар Дніпро v5.1</title>
+  <title>Радар Дніпро v5.0</title>
   <link rel="icon" type="image/png" href="icon.png">
   <link rel="apple-touch-icon" href="icon.png">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -51,7 +51,7 @@
       cursor: grabbing !important;
     }
 
-    /* ПЛАШКА «МІЙ ШЛЯХ» */
+    /* ПЛАШКА «МІЙ ШЛЯХ»: ЧОРНИЙ ФОН, БІЛИЙ ТЕКСТ (ЧИСТО), ЧЕРВОНИЙ (БП) */
     #routeStatusBar {
       position: fixed;
       bottom: 15px;
@@ -150,7 +150,9 @@
       border-color: #00f3ff !important;
       box-shadow: 0 0 12px rgba(0, 243, 255, 0.45) !important;
     }
-    #btnMemHud:active { transform: scale(0.92) !important; }
+    #btnMemHud:active {
+      transform: scale(0.92) !important;
+    }
 
     #btnStatsHud {
       position: fixed;
@@ -180,7 +182,9 @@
       border-color: #00f3ff !important;
       box-shadow: 0 0 12px rgba(0, 243, 255, 0.45) !important;
     }
-    #btnStatsHud:active { transform: scale(0.92) !important; }
+    #btnStatsHud:active {
+      transform: scale(0.92) !important;
+    }
 
     /* =========================================================================
        1. ДИНАМІЧНА НІЧНА ТЕМА ТА ФІЛЬТРИ КАРТИ І МІТОК
@@ -193,6 +197,7 @@
               saturate(var(--map-night-sat)) !important;
     }
 
+    /* ЯСКРАВІСТЬ МІТОК ЗМІНЮЄТЬСЯ ТІЛЬКИ В НІЧНОМУ РЕЖИМІ! В ДЕННОМУ ЗАВЖДИ 100% */
     #map.night-mode .custom-dot-marker,
     #map.night-mode .radar-circle {
       filter: brightness(var(--marker-brightness)) !important;
@@ -222,7 +227,183 @@
       color: #0f172a !important;
     }
 
-    /* АНІМАЦІЇ ПУЛЬСАЦІЇ */
+    /* =========================================================================
+       2. ПЕРЕМИКАННЯ РЕЖИМІВ (ПРОСТИЙ / РОЗРОБНИК)
+       ========================================================================= */
+    html.mode-simple #aiPillPanel,
+    html.mode-simple #routeStatusBar,
+    html.mode-simple #routeSubmenu,
+    html.mode-simple #btnMemHud,
+    html.mode-simple #btnStatsHud,
+    html.mode-simple #btnTimelineFloating {
+      display: none !important;
+    }
+
+    html.mode-simple #dashPanel {
+      width: auto !important;
+      height: 38px !important;
+      min-height: 38px !important;
+      max-height: 38px !important;
+      padding: 0 8px !important;
+      display: inline-flex !important;
+      flex-direction: row !important;
+      align-items: center !important;
+      gap: 6px !important;
+      border-radius: 12px !important;
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45) !important;
+      overflow: hidden !important;
+    }
+    html.mode-simple #dashHeader {
+      margin-bottom: 0 !important;
+      padding-bottom: 0 !important;
+      border-bottom: none !important;
+      gap: 6px !important;
+    }
+    html.mode-simple #collapsibleBody {
+      display: none !important;
+    }
+
+    #dashPanel.collapsed {
+      width: auto !important;
+      height: 38px !important;
+      min-height: 38px !important;
+      max-height: 38px !important;
+      padding: 0 8px !important;
+      display: inline-flex !important;
+      flex-direction: row !important;
+      align-items: center !important;
+      gap: 6px !important;
+      border-radius: 12px !important;
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45) !important;
+      overflow: hidden !important;
+    }
+    #dashPanel.collapsed #dashHeader {
+      margin-bottom: 0 !important;
+      padding-bottom: 0 !important;
+      border-bottom: none !important;
+      gap: 6px !important;
+    }
+    #dashPanel.collapsed #collapsibleBody {
+      display: none !important;
+    }
+
+    .btn-theme-inline {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #f8fafc;
+      border-radius: 8px;
+      width: 26px;
+      height: 26px;
+      padding: 0;
+      font-size: 13px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+      flex-shrink: 0;
+      transition: background 0.2s, border-color 0.2s;
+    }
+    .btn-theme-inline:active { transform: scale(0.92); }
+
+    .btn-admin-switch-mini {
+      width: 100%;
+      background: #1e293b;
+      border: 1px solid #475569;
+      color: #94a3b8;
+      padding: 5px 8px;
+      border-radius: 6px;
+      font-size: 10px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 8px;
+      text-align: center;
+      display: block;
+      user-select: none;
+      transition: all 0.2s;
+    }
+    .btn-admin-switch-mini:hover {
+      background: #334155;
+      color: #fff;
+    }
+
+    .btn-dev-mode-icon {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #38bdf8;
+      border-radius: 8px;
+      width: 26px;
+      height: 26px;
+      padding: 0;
+      font-size: 12px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+      flex-shrink: 0;
+    }
+
+    html.mode-simple #btnRefresh {
+      width: auto !important;
+      height: 38px !important;
+      min-height: 38px !important;
+      max-height: 38px !important;
+      padding: 0 14px !important;
+      flex-direction: row !important;
+      align-items: center !important;
+      gap: 6px !important;
+      border-radius: 12px !important;
+      margin: 0 !important;
+    }
+    html.mode-simple #btnRefresh span:first-child { font-size: 16px !important; line-height: 1 !important; }
+    html.mode-simple #btnRefresh span:last-child { font-size: 11.5px !important; font-weight: 800 !important; line-height: 1 !important; text-align: left !important; }
+
+    .toast-msg {
+      position: absolute !important;
+      top: auto !important;
+      bottom: 75px !important;
+      left: 50% !important;
+      transform: translateX(-50%) !important;
+      z-index: 3500;
+      display: none;
+    }
+
+    .nav-route-banner {
+      position: absolute;
+      top: 65px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 2500;
+      background: rgba(15, 23, 42, 0.96);
+      border: 1.5px solid #00f3ff;
+      border-radius: 20px;
+      padding: 6px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      box-shadow: 0 4px 20px rgba(0, 243, 255, 0.45);
+      font-size: 11.5px;
+      font-weight: 800;
+      color: #f8fafc;
+      white-space: nowrap;
+    }
+    .nav-route-banner button {
+      background: #1e293b;
+      border: 1px solid #475569;
+      color: #94a3b8;
+      border-radius: 6px;
+      padding: 2px 8px;
+      font-size: 10.5px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .nav-route-banner button:hover {
+      color: #fff;
+      border-color: #ef4444;
+    }
+
     @keyframes pulseGroupDanger {
       0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.85); }
       70% { box-shadow: 0 0 0 12px rgba(220, 38, 38, 0); }
@@ -241,7 +422,7 @@
     }
 
     /* =========================================================================
-       2. СОНАР СВІТЛОФОРІВ
+       3. СОНАР СВІТЛОФОРІВ (ЖОВТИЙ ОБОДОК + ДИНАМІЧНИЙ РОЗГІН)
        ========================================================================= */
     .tl-sonar-icon-container {
       background: transparent !important;
@@ -481,7 +662,7 @@
         </div>
       </div>
 
-      <!-- КОМПАКТНА КНОПКА: НАЛАШТУВАННЯ КАРТИ -->
+      <!-- КОМПАКТНА КНОПКА: НАЛАШТУВАННЯ КАРТИ (МІЖ СВІТЛОФОРАМИ ТА СЕРВЕРОМ) -->
       <div class="tl-menu-container" style="margin-top: 6px;">
         <button class="btn-tl-main" onclick="openMapDisplayModal()" style="border-color: #38bdf8;">
           <span>🌙 Налашт. карти</span>
@@ -514,80 +695,40 @@
     </div>
   </div>
 
-  <!-- 2. ПАНЕЛЬ «КЛІЄНТИ» (ШТАБ + ШІ-ШТУРМАН) -->
+  <!-- 2. ШІ (ВЕРСІЯ v5.0) -->
   <div id="aiPillPanel" class="ai-pill-panel compact">
     <div id="aiPillHeader" class="ai-pill-compact-content">
       <div class="ai-titleBadge" onclick="toggleAiPillExpand()">
-        <span style="font-size:14px;">👑</span>
-        <span id="aiPillLabel">Клієнти</span>
-        <span class="hub-online-pill" id="hubOnlinePill">🟢 <span id="hubOnlineCount">1</span></span>
+        <span style="font-size:14px;">🤖</span>
+        <span id="aiPillLabel">ШІ</span>
+        <span class="ai-version-badge">v5.0</span>
         <span style="font-size:9px; color:#64748b; margin-left:3px;">✥</span>
       </div>
       <div style="display:flex; align-items:center; gap:4px;">
-        <span class="ai-pill-tools" style="font-size:10px; color:#64748b; cursor:pointer; padding:2px;" title="Очистити історію діалогу ШІ" onclick="clearAiChatHistory(event)">🗑️</span>
-        <span class="ai-pill-tools" style="font-size:10px; color:#64748b; cursor:pointer; padding:2px;" title="Налаштування API Key Gemini" onclick="configureGeminiKey(event)">🔑</span>
+        <span class="ai-pill-tools" style="font-size:10px; color:#64748b; cursor:pointer; padding:2px;" title="Очистити історію діалогу" onclick="clearAiChatHistory(event)">🗑️</span>
+        <span class="ai-pill-tools" style="font-size:10px; color:#64748b; cursor:pointer; padding:2px;" title="Налаштування API Key" onclick="configureGeminiKey(event)">🔑</span>
         <button class="btn-toggle" id="btnAiPillToggle" onclick="toggleAiPillExpand(event)">▼</button>
       </div>
     </div>
 
-    <!-- ПЕРЕМИКАЧ ВКЛАДОК: КЛІЄНТИ / ШІ-ШТУРМАН -->
-    <div class="hub-tab-bar" id="hubTabBar">
-      <button class="hub-tab-btn active" id="tabBtnClients" onclick="switchHubTab('clients')">🔑 Доступи</button>
-      <button class="hub-tab-btn" id="tabBtnAi" onclick="switchHubTab('ai')">🤖 ШІ-Штурман</button>
-    </div>
-
     <div class="ai-pill-body" id="aiPillBody">
-      <!-- СЕКЦІЯ 1: КЕРУВАННЯ ДОСТУПАМИ (ГЕНЕРАТОР ТА СПИСОК КЛЮЧІВ) -->
-      <div class="hub-view-section" id="hubSectionClients">
-        <div class="hub-key-form">
-          <div style="font-size:11px; font-weight:800; color:#38bdf8;">➕ Створити ключ доступу:</div>
-          <div class="hub-input-row">
-            <input type="text" id="hubInputClientLabel" class="hub-text-input" placeholder="Ім'я водія (напр. Олег Спринтер)" autocomplete="off">
-          </div>
-          <div class="hub-duration-group">
-            <span class="hub-duration-chip" data-days="7" onclick="selectDurationChip(this)">7 днів</span>
-            <span class="hub-duration-chip active" data-days="30" onclick="selectDurationChip(this)">30 днів</span>
-            <span class="hub-duration-chip" data-days="90" onclick="selectDurationChip(this)">90 днів</span>
-            <span class="hub-duration-chip" data-days="0" onclick="selectDurationChip(this)">Безліміт</span>
-          </div>
-          <button class="hub-btn-generate" onclick="generateNewAccessToken()">⚡ Згенерувати персональний ключ</button>
-          
-          <div class="hub-generated-box" id="hubGeneratedBox">
-            <span class="hub-generated-code" id="hubGeneratedCode">RADAR-0000-X</span>
-            <button class="hub-btn-copy" onclick="copyGeneratedKey()">📋 Скопіювати</button>
-          </div>
-        </div>
-
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:2px;">
-          <span style="font-size:11px; font-weight:800; color:#cbd5e1;">📋 Видані ключі:</span>
-          <span id="hubClientsCount" style="font-size:10px; color:#38bdf8; font-family:monospace; font-weight:800;">0 активних</span>
-        </div>
-
-        <div class="hub-clients-list" id="hubClientsList">
-          <div style="padding:15px; text-align:center; font-size:11px; color:#64748b;">Завантаження ключів...</div>
+      <div id="aiChatBox" class="ai-chat-box">
+        <div class="ai-msg bot">
+          👋 Вітаю! Я ваш ШІ-штурман (Карта v5.0). Всі 9 світлофорів та оновлений маршрут активовані!
         </div>
       </div>
 
-      <!-- СЕКЦІЯ 2: ШІ-ШТУРМАН -->
-      <div class="hub-view-section" id="hubSectionAi" style="display:none;">
-        <div id="aiChatBox" class="ai-chat-box">
-          <div class="ai-msg bot">
-            👋 Вітаю! Я ваш ШІ-штурман (Карта v5.1). Керування точками та навігація активні!
-          </div>
-        </div>
+      <div class="ai-chips-compact">
+        <span class="ai-mini-chip" onclick="sendAiQuick('Скрий зелені точки')">🟢 Без зелених</span>
+        <span class="ai-mini-chip" onclick="sendAiQuick('Покажи всі точки')">🌐 Всі точки</span>
+        <span class="ai-mini-chip" onclick="sendAiQuick('Відключи Лівий берег від моніторингу')">🌉 Без Лівого</span>
+        <span class="ai-mini-chip" onclick="sendAiQuick('Світлофор Канатна стан')">🚦 Канатна стан</span>
+        <span class="ai-mini-chip" onclick="sendAiQuick('Відкрий аналітику')">📊 Аналітика</span>
+      </div>
 
-        <div class="ai-chips-compact">
-          <span class="ai-mini-chip" onclick="sendAiQuick('Скрий зелені точки')">🟢 Без зелених</span>
-          <span class="ai-mini-chip" onclick="sendAiQuick('Покажи всі точки')">🌐 Всі точки</span>
-          <span class="ai-mini-chip" onclick="sendAiQuick('Відключи Лівий берег від моніторингу')">🌉 Без Лівого</span>
-          <span class="ai-mini-chip" onclick="sendAiQuick('Світлофор Канатна стан')">🚦 Канатна стан</span>
-          <span class="ai-mini-chip" onclick="sendAiQuick('Відкрий аналітику')">📊 Аналітика</span>
-        </div>
-
-        <div class="ai-chat-input-row">
-          <textarea id="aiInlineInput" class="ai-inline-textarea" placeholder="Команда або запитання... (Enter)"></textarea>
-          <button class="btn-ai-send" onclick="submitAiChatMessage()" id="btnAiSend">➤</button>
-        </div>
+      <div class="ai-chat-input-row">
+        <textarea id="aiInlineInput" class="ai-inline-textarea" placeholder="Команда або запитання... (Enter)"></textarea>
+        <button class="btn-ai-send" onclick="submitAiChatMessage()" id="btnAiSend">➤</button>
       </div>
     </div>
   </div>
@@ -599,6 +740,7 @@
       <span id="routeStatusText">Мій шлях: Чисто</span>
       <span id="routeSubmenuArrow" style="font-size:10px; color:#94a3b8; margin-left:2px;">▴</span>
     </div>
+    <!-- БЕЙДЖ ГАЛОЧКИ ЗБЕРЕЖЕННЯ ВСЕРЕДИНІ КНОПКИ -->
     <div id="routeEditBadge">
       <span style="font-size:15px;">✅</span>
       <span>Зафіксувати</span>
@@ -647,7 +789,7 @@
     </div>
   </div>
 
-  <!-- НАПІВПРОЗОРЕ ВІКНО НАЛАШТУВАННЯ НІЧНОЇ КАРТИ БЕЗ БЛЮРУ -->
+  <!-- НАПІВПРОЗОРЕ ВІКНО НАЛАШТУВАННЯ НІЧНОЇ КАРТИ БЕЗ БЛЮРУ (РЕГУЛЮВАННЯ НА ЖИВІЙ КАРТІ) -->
   <div id="mapDisplayModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.18); z-index:10005; align-items:center; justify-content:center;" onclick="closeMapDisplayModal(event)">
     <div style="background:rgba(15, 23, 42, 0.88); border:2px solid #0284c7; border-radius:18px; width:92%; max-width:375px; padding:15px; display:flex; flex-direction:column; gap:10px; box-shadow:0 10px 30px rgba(0,0,0,0.9);" onclick="event.stopPropagation()">
       <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(51,65,85,0.7); padding-bottom:7px;">
@@ -655,6 +797,7 @@
         <span style="cursor:pointer; font-size:18px; color:#94a3b8; font-weight:800; padding:0 6px;" onclick="closeMapDisplayModal()">✕</span>
       </div>
 
+      <!-- Яскравість карти -->
       <div style="background:rgba(30, 41, 59, 0.85); padding:7px 10px; border-radius:9px;">
         <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:800; color:#cbd5e1; margin-bottom:3px;">
           <span>Яскравість підложки:</span>
@@ -663,6 +806,7 @@
         <input type="range" id="rngMapBrightness" min="30" max="130" step="5" value="95" style="width:100%; cursor:pointer;">
       </div>
 
+      <!-- Контраст карти -->
       <div style="background:rgba(30, 41, 59, 0.85); padding:7px 10px; border-radius:9px;">
         <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:800; color:#cbd5e1; margin-bottom:3px;">
           <span>Контрастність ліній вулиць:</span>
@@ -671,6 +815,7 @@
         <input type="range" id="rngMapContrast" min="70" max="160" step="5" value="108" style="width:100%; cursor:pointer;">
       </div>
 
+      <!-- Яскравість міток подій (діє тільки вночі) -->
       <div style="background:rgba(30, 41, 59, 0.85); padding:7px 10px; border-radius:9px;">
         <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:800; color:#cbd5e1; margin-bottom:3px;">
           <span>Яскравість точок (вночі):</span>
@@ -679,6 +824,7 @@
         <input type="range" id="rngMarkerBrightness" min="40" max="160" step="5" value="100" style="width:100%; cursor:pointer;">
       </div>
 
+      <!-- Відтінки нічної теми (6 фільтрів) -->
       <div>
         <div style="font-size:11px; font-weight:800; color:#cbd5e1; margin-bottom:5px;">Фільтр темної теми:</div>
         <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:6px;">
@@ -852,7 +998,6 @@
         if (btnDevIcon) btnDevIcon.style.display = "none";
         showTrafficLights = localStorage.getItem("radar_tl_visible") !== "false";
         if (typeof updateTrafficLightsBtnUI === "function") updateTrafficLightsBtnUI();
-        loadAccessTokens();
       }
 
       renderMarkers();
@@ -1077,7 +1222,7 @@
     }
 
     // =========================================================================
-    // 🌙 НАЛАШТУВАННЯ НІЧНОЇ КАРТИ ТА МІТОК
+    // 🌙 НАЛАШТУВАННЯ НІЧНОЇ КАРТИ ТА МІТОК (ЖИВЕ РЕГУЛЮВАННЯ БЕЗ БЛЮРУ + 6 ФІЛЬТРІВ)
     // =========================================================================
     const DEFAULT_MAP_DISPLAY = {
       brightness: 95,
@@ -1182,20 +1327,17 @@
     }
 
     // =========================================================================
-    // 🌐 URL FIREBASE ТА МЕРЕЖА
+    // 🌐 URL FIREBASE
     // =========================================================================
     const FIREBASE_POINTS_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/points.json";
     const FIREBASE_CONFIG_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/config/traffic_lights.json";
     const FIREBASE_KB_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/knowledge_base.json";
     const FIREBASE_OVERRIDES_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/street_overrides.json";
-    const FIREBASE_TOKENS_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/access_tokens.json";
-    const FIREBASE_PRESENCE_URL = "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/presence.json";
 
     window.FIREBASE_POINTS_URL = FIREBASE_POINTS_URL;
     window.FIREBASE_CONFIG_URL = FIREBASE_CONFIG_URL;
     window.FIREBASE_KB_URL = FIREBASE_KB_URL;
     window.FIREBASE_OVERRIDES_URL = FIREBASE_OVERRIDES_URL;
-    window.FIREBASE_TOKENS_URL = FIREBASE_TOKENS_URL;
 
     function isSpamMessage(text) {
       if (!text) return false;
@@ -1241,8 +1383,8 @@
     const INITIAL_ZOOM = isMobile ? 11.6 : 12.0;
 
     const map = L.map('map', { 
-      zoomControl: false, 
-      zoomSnap: 0.1 
+      zoomControl: false,
+      zoomSnap: 0.1
     }).setView(INITIAL_CENTER, INITIAL_ZOOM);
 
     const googleMapLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
@@ -1472,6 +1614,7 @@
       { id: "schepkina", name: "вул. Щепкіна", fullName: "вул. Щепкіна", lat: 48.47350, lng: 34.99680, keys: ["щепкін", "щепкин"] }
     ];
 
+    // ОНОВЛЕННЯ СТАТУСУ: КОРОТКИЙ ТЕКСТ («1 БП», «2 БП») ДЛЯ СТАБІЛЬНОГО РОЗМІРУ
     function updateRouteStatus() {
       if (currentUiMode === "simple") return;
       const bar = document.getElementById("routeStatusBar");
@@ -1512,7 +1655,7 @@
     }
 
     // =========================================================================
-    // 🎛️ ПЕРЕМІЩЕННЯ ТА КАЛІБРУВАННЯ ПОЗИЦІЙ
+    // 🎛️ СВОБОДНЕ ПЕРЕМІЩЕННЯ ТА КАЛІБРУВАННЯ ПОЗИЦІЙ (ГАЛОЧКА ВСЕРЕДИНІ)
     // =========================================================================
     let isUiLayoutEditMode = false;
     let routeLongPressTimer = null;
@@ -1614,6 +1757,7 @@
       toggleRouteSubmenu(e);
     }
 
+    // Слухачі довгого натискання та коліщатка
     const routeBarEl = document.getElementById("routeStatusBar");
     if (routeBarEl) {
       routeBarEl.addEventListener("touchstart", (e) => {
@@ -1759,13 +1903,13 @@
       const p = allPoints.find(x => x._fbKey === fbKey);
       if (!p) return;
       if (!aiPillPanel.classList.contains("expanded")) toggleAiPillExpand();
-      switchHubTab("ai");
       const rawText = p.text || p.raw_text || "";
       aiInlineInput.value = `Перенеси мітку [KEY:${fbKey}]: "${rawText}" на...`;
       aiInlineInput.focus();
       showToast("🤖 Мітку передано ШІ-штурману!");
     };
 
+    // БЕЗПЕЧНИЙ ВИКЛИК МЕНЮ ДІЙ (СТРОГИЙ ЗАМОК В ПРОСТОМУ РЕЖИМІ)
     function openMarkerActionSheet(point, marker) {
       if (currentUiMode === "simple") return;
       activeActionPoint = point;
@@ -1872,9 +2016,6 @@
       showToast("🗑️ Повідомлення успішно видалено!");
     };
 
-    // =========================================================================
-    // 👑 ПАНЕЛЬ «КЛІЄНТИ» (ШТАБ ДОСТУПІВ ТА ШІ-ШТУРМАН)
-    // =========================================================================
     const aiPillPanel = document.getElementById("aiPillPanel");
     const aiPillHeader = document.getElementById("aiPillHeader");
     const aiInlineInput = document.getElementById("aiInlineInput");
@@ -1882,9 +2023,6 @@
     const btnAiPillToggle = document.getElementById("btnAiPillToggle");
 
     let geminiChatHistory = [];
-    let currentHubTab = "clients";
-    let selectedDurationDays = 30;
-    let accessTokensCache = {};
 
     L.DomEvent.disableClickPropagation(aiPillPanel);
     L.DomEvent.disableScrollPropagation(aiPillPanel);
@@ -1901,260 +2039,19 @@
     L.DomEvent.disableClickPropagation(document.getElementById("mapDisplayModal"));
 
     function toggleAiPillExpand(e) {
-      if (e && (e.target.closest('textarea') || e.target.closest('input') || e.target.closest('button') || e.target.closest('.ai-mini-chip') || e.target.closest('span[title]'))) return;
+      if (e && (e.target.closest('textarea') || e.target.closest('.btn-ai-send') || e.target.closest('.ai-mini-chip') || e.target.closest('span[title]'))) return;
       const isExpanded = aiPillPanel.classList.toggle("expanded");
       aiPillPanel.classList.toggle("compact", !isExpanded);
       btnAiPillToggle.innerText = isExpanded ? "▲" : "▼";
       if (isExpanded) {
-        if (currentHubTab === "clients") {
-          loadAccessTokens();
-        } else {
-          verifyGeminiAuthorization();
-        }
-        setTimeout(() => { if (map) map.invalidateSize(); }, 150);
+        verifyGeminiAuthorization();
+        setTimeout(() => { aiChatBox.scrollTop = aiChatBox.scrollHeight; if (map) map.invalidateSize(); }, 150);
       } else {
         aiPillPanel.style.top = "15px"; aiPillPanel.style.right = "15px"; aiPillPanel.style.left = "auto";
         setTimeout(() => { if (map) map.invalidateSize(); }, 150);
       }
     }
 
-    function switchHubTab(tabName) {
-      currentHubTab = tabName;
-      const btnClients = document.getElementById("tabBtnClients");
-      const btnAi = document.getElementById("tabBtnAi");
-      const secClients = document.getElementById("hubSectionClients");
-      const secAi = document.getElementById("hubSectionAi");
-
-      if (tabName === "clients") {
-        btnClients.classList.add("active");
-        btnAi.classList.remove("active");
-        secClients.style.display = "flex";
-        secAi.style.display = "none";
-        loadAccessTokens();
-      } else {
-        btnAi.classList.add("active");
-        btnClients.classList.remove("active");
-        secClients.style.display = "none";
-        secAi.style.display = "flex";
-        verifyGeminiAuthorization();
-        setTimeout(() => { aiChatBox.scrollTop = aiChatBox.scrollHeight; }, 50);
-      }
-    }
-
-    function selectDurationChip(el) {
-      document.querySelectorAll(".hub-duration-chip").forEach(c => c.classList.remove("active"));
-      el.classList.add("active");
-      selectedDurationDays = parseInt(el.getAttribute("data-days"), 10) || 0;
-    }
-
-    function generateKeyString() {
-      const num = Math.floor(1000 + Math.random() * 9000);
-      const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ";
-      const char = alphabet.charAt(Math.floor(Math.random() * alphabet.length));
-      return `RADAR-${num}-${char}`;
-    }
-
-    async function generateNewAccessToken() {
-      const input = document.getElementById("hubInputClientLabel");
-      const label = input.value.trim() || "Без імені";
-      const newKey = generateKeyString();
-      const now = Date.now();
-      const expiresAt = selectedDurationDays > 0 ? (now + selectedDurationDays * 24 * 60 * 60 * 1000) : 0;
-
-      const payload = {
-        label: label,
-        created_at: now,
-        expires_at: expiresAt,
-        status: "active",
-        device_id: null
-      };
-
-      try {
-        const url = window.appendAuth(FIREBASE_TOKENS_URL.replace(".json", `/${encodeURIComponent(newKey)}.json`));
-        await fetch(url, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        });
-
-        accessTokensCache[newKey] = payload;
-        input.value = "";
-
-        const codeBox = document.getElementById("hubGeneratedBox");
-        const codeText = document.getElementById("hubGeneratedCode");
-        codeText.innerText = newKey;
-        codeBox.style.display = "flex";
-
-        showToast(`🔑 Створено ключ: ${newKey}`);
-        renderAccessTokensList();
-      } catch (e) {
-        showToast("❌ Помилка створення ключа");
-      }
-    }
-
-    function copyGeneratedKey() {
-      const code = document.getElementById("hubGeneratedCode").innerText;
-      if (!code) return;
-      navigator.clipboard.writeText(code).then(() => {
-        showToast("📋 Ключ скопійовано в буфер!");
-      }).catch(() => {
-        prompt("Скопіюйте ключ:", code);
-      });
-    }
-
-    async function loadAccessTokens() {
-      try {
-        const res = await fetch(`${FIREBASE_TOKENS_URL}?t=${Date.now()}`);
-        if (res.ok) {
-          const data = await res.json();
-          accessTokensCache = (data && typeof data === "object") ? data : {};
-        }
-      } catch (e) {}
-      renderAccessTokensList();
-    }
-
-    function renderAccessTokensList() {
-      const listBox = document.getElementById("hubClientsList");
-      const countBadge = document.getElementById("hubClientsCount");
-      if (!listBox) return;
-
-      const entries = Object.entries(accessTokensCache);
-      entries.sort((a, b) => (b[1].created_at || 0) - (a[1].created_at || 0));
-
-      const activeCount = entries.filter(([k, v]) => v.status === "active").length;
-      if (countBadge) countBadge.innerText = `${activeCount} активних`;
-
-      if (entries.length === 0) {
-        listBox.innerHTML = `<div style="padding:15px; text-align:center; font-size:11px; color:#64748b;">Немає створених ключів. Згенеруйте перший вгорі!</div>`;
-        return;
-      }
-
-      listBox.innerHTML = "";
-      const now = Date.now();
-
-      entries.forEach(([key, item]) => {
-        const card = document.createElement("div");
-        card.className = "hub-client-card";
-
-        const isBlocked = item.status === "blocked";
-        let expText = "Безліміт";
-        let isExpired = false;
-
-        if (item.expires_at && item.expires_at > 0) {
-          const diffDays = Math.ceil((item.expires_at - now) / (1000 * 60 * 60 * 24));
-          const dateStr = new Date(item.expires_at).toLocaleDateString([], { day: '2-digit', month: '2-digit' });
-          if (diffDays <= 0) {
-            expText = `<span style="color:#ef4444;">Прострочено (${dateStr})</span>`;
-            isExpired = true;
-          } else {
-            expText = `до ${dateStr} (${diffDays} дн.)`;
-          }
-        }
-
-        const deviceState = item.device_id ? "📱 Прив'язано" : "⏳ Очікує";
-        const statusPill = isBlocked 
-          ? `<span style="color:#ef4444; font-weight:800;">[БЛОК]</span>` 
-          : (isExpired ? `<span style="color:#ef4444; font-weight:800;">[ЧАС]</span>` : `<span style="color:#10b981; font-weight:800;">[OK]</span>`);
-
-        card.innerHTML = `
-          <div class="hub-client-info">
-            <div class="hub-client-name">${statusPill} ${escapeHtml(item.label || 'Водій')} <span style="color:#38bdf8; font-family:monospace;">${escapeHtml(key)}</span></div>
-            <div class="hub-client-sub">${deviceState} • ${expText}</div>
-          </div>
-          <div class="hub-client-actions">
-            <button class="hub-btn-act" onclick="toggleTokenBlock('${escapeHtml(key)}')">${isBlocked ? '🔓' : '🚫'}</button>
-            <button class="hub-btn-act danger" onclick="deleteAccessToken('${escapeHtml(key)}')">🗑️</button>
-          </div>
-        `;
-        listBox.appendChild(card);
-      });
-    }
-
-    window.toggleTokenBlock = async function(key) {
-      const item = accessTokensCache[key];
-      if (!item) return;
-      const newStatus = item.status === "blocked" ? "active" : "blocked";
-      item.status = newStatus;
-
-      try {
-        const url = window.appendAuth(FIREBASE_TOKENS_URL.replace(".json", `/${encodeURIComponent(key)}.json`));
-        await fetch(url, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status: newStatus })
-        });
-        showToast(newStatus === "blocked" ? `🚫 Ключ ${key} заблоковано!` : `🔓 Ключ ${key} розблоковано!`);
-      } catch(e) {}
-      renderAccessTokensList();
-    };
-
-    window.deleteAccessToken = async function(key) {
-      if (!confirm(`Видалити ключ ${key} назавжди?`)) return;
-      delete accessTokensCache[key];
-      try {
-        const url = window.appendAuth(FIREBASE_TOKENS_URL.replace(".json", `/${encodeURIComponent(key)}.json`));
-        await fetch(url, { method: "DELETE" });
-        showToast("🗑️ Ключ видалено");
-      } catch(e) {}
-      renderAccessTokensList();
-    };
-
-    // =========================================================================
-    // 🟢 ВІДСЛІДКОВУВАННЯ СЕСІЙ ТА ОНЛАЙН (FIREBASE PRESENCE)
-    // =========================================================================
-    let clientSessionId = sessionStorage.getItem("radar_presence_session_id");
-    if (!clientSessionId) {
-      clientSessionId = "sess_" + Math.random().toString(36).substring(2, 9) + Date.now().toString(36);
-      sessionStorage.setItem("radar_presence_session_id", clientSessionId);
-    }
-
-    async function sendPresenceHeartbeat() {
-      try {
-        const sessionUrl = FIREBASE_PRESENCE_URL.replace(".json", `/${clientSessionId}.json`);
-        await fetch(sessionUrl, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            t: Date.now(),
-            admin: isUserAdmin(),
-            mode: currentUiMode
-          })
-        });
-      } catch(e) {}
-    }
-
-    async function fetchOnlineCount() {
-      if (!isUserAdmin() || currentUiMode === "simple") return;
-      try {
-        const res = await fetch(`${FIREBASE_PRESENCE_URL}?t=${Date.now()}`);
-        if (!res.ok) return;
-        const data = await res.json();
-        if (!data || typeof data !== "object") return;
-
-        const now = Date.now();
-        const activeUsers = Object.values(data).filter(item => item && (now - (item.t || 0)) < 45000);
-        const count = Math.max(1, activeUsers.length);
-
-        const badge = document.getElementById("hubOnlineCount");
-        if (badge) badge.innerText = String(count);
-      } catch (e) {}
-    }
-
-    sendPresenceHeartbeat();
-    setInterval(sendPresenceHeartbeat, 20000);
-    setInterval(fetchOnlineCount, 12000);
-    setTimeout(fetchOnlineCount, 2000);
-
-    window.addEventListener("beforeunload", () => {
-      try {
-        const sessionUrl = FIREBASE_PRESENCE_URL.replace(".json", `/${clientSessionId}.json`);
-        if (navigator.sendBeacon) {
-          navigator.sendBeacon(sessionUrl);
-        }
-      } catch(e) {}
-    });
-
-    // ШІ-ШТУРМАН: ДІАЛОГ ТА ОЧИЩЕННЯ
     function clearAiChatHistory(e) {
       if (e) e.stopPropagation();
       geminiChatHistory = [];
@@ -2239,7 +2136,7 @@
       }).join('\n');
 
       const systemInstructionText = `
-Ти — високоінтелектуальний військово-дорожній ШІ-штурман у місті Дніпро для водія (v5.1).
+Ти — високоінтелектуальний військово-дорожній ШІ-штурман у місті Дніпро для водія (v5.0).
 ТОЧКИ НА КАРТІ:
 ${allLiveReportsText || "Повідомлень немає"}
 КОМАНДИ:
@@ -2590,7 +2487,7 @@ ${allLiveReportsText || "Повідомлень немає"}
     }
 
     // =========================================================================
-    // 🔍 ПОШУКОВИЙ МОДУЛЬ
+    // 🔍 ГІБРИДНИЙ ПОШУКОВИЙ МОДУЛЬ
     // =========================================================================
     const streetSearchInput = document.getElementById("streetSearchInput");
     const searchResults = document.getElementById("searchResults");
@@ -2747,7 +2644,7 @@ ${allLiveReportsText || "Повідомлень немає"}
     }
 
     // =========================================================================
-    // 📍 РЕНДЕР МІТОК
+    // 📍 РЕНДЕР МІТОК ІЗ СУВОРОЮ БЛОКИРОВКОЮ ПЕРЕНЕСЕННЯ В ПРОСТОМУ РЕЖИМІ
     // =========================================================================
     function renderMarkers() {
       try {
@@ -2884,6 +2781,7 @@ ${allLiveReportsText || "Повідомлень немає"}
           marker.pointData = cluster.points[0];
           marker.bindPopup(popupContent, { autoClose: true, closeOnClick: true });
 
+          // БЛОКУВАННЯ ДОВГОГО ТАПА ТА СИСТЕМНОГО МЕНЮ В ПРОСТОМУ РЕЖИМІ
           marker.on('add', () => {
             const el = marker.getElement();
             if (!el) return;
