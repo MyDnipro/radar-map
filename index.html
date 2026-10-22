@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <meta name="color-scheme" content="light only">
-  <title>Радар Дніпро v5.5</title>
+  <title>Радар Дніпро v5.6</title>
   <link rel="icon" type="image/png" href="icon.png">
   <link rel="apple-touch-icon" href="icon.png">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -490,7 +490,7 @@
   <div id="authCurtain" style="display:none; position:fixed; inset:0; z-index:99999; background:rgba(11,17,32,0.98); backdrop-filter:blur(10px); align-items:center; justify-content:center; padding:16px;">
     <div style="background:#0f172a; border:1.5px solid #0284c7; border-radius:18px; padding:24px 20px; max-width:330px; width:100%; box-shadow:0 10px 40px rgba(0,243,255,0.25); text-align:center;">
       <div style="font-size:36px; margin-bottom:8px; cursor:pointer;" onclick="requestAdminLogin()" title="Вхід">🔐</div>
-      <h3 style="color:#f8fafc; font-size:16px; font-weight:900; margin-bottom:4px;">Радар Дніпро v5.5</h3>
+      <h3 style="color:#f8fafc; font-size:16px; font-weight:900; margin-bottom:4px;">Радар Дніпро v5.6</h3>
       <p style="color:#94a3b8; font-size:11.5px; margin-bottom:16px; line-height:1.4;">Введіть персональний ключ доступу</p>
       
       <input type="text" id="authGateInput" placeholder="RADAR-XXXX..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="width:100%; background:#060913; border:1.5px solid #334155; border-radius:10px; color:#fff; padding:10px 12px; font-size:13px; text-align:center; outline:none; font-family:monospace; margin-bottom:12px;">
@@ -591,7 +591,7 @@
       </div>
       <div style="display:flex; align-items:center; gap:5px;">
         <!-- НОМЕР ВЕРСІЇ: ВІДОБРАЖАЄТЬСЯ ТІЛЬКИ ПРИ РОЗГОРНУТІЙ ПАНЕЛІ -->
-        <span class="hub-version-badge" style="display:none; font-size:10px; font-weight:900; color:#38bdf8; background:#060913; border:1px solid #0284c7; padding:2px 6px; border-radius:6px; font-family:monospace; letter-spacing:0.5px;">v5.5</span>
+        <span class="hub-version-badge" style="display:none; font-size:10px; font-weight:900; color:#38bdf8; background:#060913; border:1px solid #0284c7; padding:2px 6px; border-radius:6px; font-family:monospace; letter-spacing:0.5px;">v5.6</span>
         <span class="ai-pill-tools" style="font-size:10.5px; color:#64748b; cursor:pointer; padding:2px;" title="Очистити історію ШІ" onclick="clearAiChatHistory(event)">🗑️</span>
         <span class="ai-pill-tools" style="font-size:10.5px; color:#64748b; cursor:pointer; padding:2px;" title="Налаштування API Key Gemini" onclick="configureGeminiKey(event)">🔑</span>
       </div>
@@ -652,7 +652,7 @@
 
       <div class="hub-view-section" id="hubSectionAi" style="display:none;">
         <div id="aiChatBox" class="ai-chat-box">
-          <div class="ai-msg bot">👋 Вітаю! Я ваш ШІ-штурман (Карта v5.5). Керування активне!</div>
+          <div class="ai-msg bot">👋 Вітаю! Я ваш ШІ-штурман (Карта v5.6). Керування активне!</div>
         </div>
         <div class="ai-chips-compact">
           <span class="ai-mini-chip" onclick="sendAiQuick('Скрий зелені точки')">🟢 Без зелених</span>
@@ -840,6 +840,100 @@
       return false;
     }
     window.isSpamMessage = isSpamMessage;
+
+    // =========================================================================
+    // ⚙️ ОБ'ЄКТ НАЛАШТУВАНЬ СОНАРА СВІТЛОФОРІВ (ЗАПОБІГАЄ CRASH RENDER_TRAFFIC)
+    // =========================================================================
+    let sonarSettings = {
+      cleanColor: localStorage.getItem("radar_sonar_clean_color") || "#10b981",
+      dangerColor: localStorage.getItem("radar_sonar_danger_color") || "#ef4444",
+      diameter: parseInt(localStorage.getItem("radar_sonar_diameter") || "95", 10),
+      cleanSpeed: parseFloat(localStorage.getItem("radar_sonar_clean_speed") || "1.8"),
+      dangerBaseSpeed: parseFloat(localStorage.getItem("radar_sonar_danger_base_speed") || "2.4"),
+      dangerStep: parseFloat(localStorage.getItem("radar_sonar_danger_step") || "0.3")
+    };
+    window.sonarSettings = sonarSettings;
+
+    function applySonarCssVars() {
+      document.documentElement.style.setProperty('--sonar-clean-color', sonarSettings.cleanColor);
+      document.documentElement.style.setProperty('--sonar-danger-color', sonarSettings.dangerColor);
+      document.documentElement.style.setProperty('--sonar-diameter', sonarSettings.diameter + 'px');
+      document.documentElement.style.setProperty('--sonar-clean-speed', sonarSettings.cleanSpeed + 's');
+      document.documentElement.style.setProperty('--sonar-danger-base-speed', sonarSettings.dangerBaseSpeed + 's');
+      document.documentElement.style.setProperty('--sonar-danger-step', sonarSettings.dangerStep + 's');
+    }
+    applySonarCssVars();
+
+    window.openTlSettingsModal = function() {
+      const m = document.getElementById("tlSettingsModal");
+      if (!m) return;
+      m.style.display = "flex";
+      const rngDia = document.getElementById("rngSonarDiameter");
+      if (rngDia) { rngDia.value = sonarSettings.diameter; document.getElementById("lblSonarDiameter").innerText = sonarSettings.diameter + " px"; }
+      const rngClean = document.getElementById("rngSonarCleanSpeed");
+      if (rngClean) { rngClean.value = sonarSettings.cleanSpeed; document.getElementById("lblSonarCleanSpeed").innerText = sonarSettings.cleanSpeed + " с"; }
+      const rngDanger = document.getElementById("rngSonarDangerBaseSpeed");
+      if (rngDanger) { rngDanger.value = sonarSettings.dangerBaseSpeed; document.getElementById("lblSonarDangerBaseSpeed").innerText = sonarSettings.dangerBaseSpeed + " с"; }
+      const rngStep = document.getElementById("rngSonarDangerStep");
+      if (rngStep) { rngStep.value = sonarSettings.dangerStep; document.getElementById("lblSonarDangerStep").innerText = "-" + sonarSettings.dangerStep + " с"; }
+    };
+
+    window.closeTlSettingsModal = function(e) {
+      if (e && e.target && e.target.id !== "tlSettingsModal" && !e.target.closest(".action-sheet-card")) return;
+      const m = document.getElementById("tlSettingsModal");
+      if (m) m.style.display = "none";
+      localStorage.setItem("radar_sonar_diameter", sonarSettings.diameter);
+      localStorage.setItem("radar_sonar_clean_speed", sonarSettings.cleanSpeed);
+      localStorage.setItem("radar_sonar_danger_base_speed", sonarSettings.dangerBaseSpeed);
+      localStorage.setItem("radar_sonar_danger_step", sonarSettings.dangerStep);
+      applySonarCssVars();
+      if (typeof renderTrafficLights === "function") renderTrafficLights();
+    };
+
+    const rngDiaEl = document.getElementById("rngSonarDiameter");
+    if (rngDiaEl) rngDiaEl.addEventListener("input", (e) => {
+      sonarSettings.diameter = parseInt(e.target.value, 10);
+      document.getElementById("lblSonarDiameter").innerText = sonarSettings.diameter + " px";
+      applySonarCssVars();
+    });
+    const rngCleanEl = document.getElementById("rngSonarCleanSpeed");
+    if (rngCleanEl) rngCleanEl.addEventListener("input", (e) => {
+      sonarSettings.cleanSpeed = parseFloat(e.target.value);
+      document.getElementById("lblSonarCleanSpeed").innerText = sonarSettings.cleanSpeed + " с";
+      applySonarCssVars();
+    });
+    const rngDangerEl = document.getElementById("rngSonarDangerBaseSpeed");
+    if (rngDangerEl) rngDangerEl.addEventListener("input", (e) => {
+      sonarSettings.dangerBaseSpeed = parseFloat(e.target.value);
+      document.getElementById("lblSonarDangerBaseSpeed").innerText = sonarSettings.dangerBaseSpeed + " с";
+      applySonarCssVars();
+    });
+    const rngStepEl = document.getElementById("rngSonarDangerStep");
+    if (rngStepEl) rngStepEl.addEventListener("input", (e) => {
+      sonarSettings.dangerStep = parseFloat(e.target.value);
+      document.getElementById("lblSonarDangerStep").innerText = "-" + sonarSettings.dangerStep + " с";
+      applySonarCssVars();
+    });
+
+    window.openMapDisplayModal = function() {
+      const m = document.getElementById("mapDisplayModal");
+      if (m) m.style.display = "flex";
+    };
+    window.closeMapDisplayModal = function(e) {
+      if (e && e.target && e.target.id !== "mapDisplayModal" && !e.target.closest("div")) return;
+      const m = document.getElementById("mapDisplayModal");
+      if (m) m.style.display = "none";
+    };
+    window.resetMapDisplaySettings = function() {
+      document.documentElement.style.setProperty('--map-night-brightness', '95%');
+      document.documentElement.style.setProperty('--map-night-contrast', '108%');
+      document.documentElement.style.setProperty('--marker-brightness', '100%');
+      showToast("🔄 Налаштування скинуто");
+    };
+    window.setNightFilter = function(hue, sat) {
+      document.documentElement.style.setProperty('--map-night-hue', hue);
+      document.documentElement.style.setProperty('--map-night-sat', sat);
+    };
 
     function getFirebaseWriteAuth() {
       return localStorage.getItem("radar_fb_auth") || "";
@@ -1428,15 +1522,9 @@
       if (typeof window.closeAllRelocateModals === "function") window.closeAllRelocateModals();
     });
 
-    // РОЗШИРЕНА ФУНКЦІЯ ПЕРЕВІРКИ: РУЧНИЙ ВЕРДИКТ МАЄ НАЙВИЩИЙ ПРІОРИТЕТ
     function isCleanPoint(p) {
       if (!p) return false;
 
-      // 1. Ручний вибір користувача в попапі має абсолютний пріоритет
-      if (p.is_clean === true || p.color === "green" || p.status === "чисто") return true;
-      if (p.is_clean === false || p.color === "red" || p.status === "опасно") return false;
-
-      // 2. Текстовий аналіз повідомлення
       const rawCombined = ((p.raw_text || "") + " " + (p.address || ""))
         .replace(/&nbsp;/gi, " ")
         .replace(/[\r\n]+/g, " ")
@@ -1457,6 +1545,9 @@
         if (hasNegation) return true;
         return false;
       }
+
+      if (p.is_clean === true || p.status === "чисто" || p.color === "green") return true;
+      if (p.is_clean === false || p.status === "опасно" || p.color === "red") return false;
 
       return false;
     }
@@ -1740,7 +1831,6 @@
       }
     };
 
-    // ОНОВЛЕНА ФУНКЦІЯ ПЕРЕМИКАННЯ СТАТУСУ (ЧИСТО / БЛОКПОСТ) З ОБРОБКОЮ ЗАПИСУ
     window.setPointVerdictDirect = async function(fbKey, isClean, btnEl) {
       const p = allPoints.find(x => x._fbKey === fbKey);
       if (!p) return;
@@ -1757,31 +1847,16 @@
         }
       }
 
-      showToast(isClean ? "🟢 Встановлено: ЧИСТО!" : "🔴 Встановлено: БЛОКПОСТ!");
-
       if (fbKey) {
-        try {
-          let url = window.appendAuth(FIREBASE_POINTS_URL.replace(".json", `/${encodeURIComponent(fbKey)}.json`));
-          let res = await fetch(url, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ is_clean: isClean, color: p.color, status: p.status })
-          });
-          if (res.status === 401) {
-            const secret = prompt("🔐 Firebase повернув 401 (Заборонено). Введіть секрет бази даних Firebase (Database Secret) для запису (або дозвольте .write в Rules):");
-            if (secret) {
-              localStorage.setItem("radar_fb_auth", secret.trim());
-              url = window.appendAuth(FIREBASE_POINTS_URL.replace(".json", `/${encodeURIComponent(fbKey)}.json`));
-              await fetch(url, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ is_clean: isClean, color: p.color, status: p.status })
-              });
-            }
-          }
-        } catch(e) {}
+        const url = window.appendAuth(FIREBASE_POINTS_URL.replace(".json", `/${encodeURIComponent(fbKey)}.json`));
+        fetch(url, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ is_clean: isClean, color: p.color, status: p.status })
+        }).catch(() => {});
       }
 
+      showToast(isClean ? "🟢 Встановлено: ЧИСТО!" : "🔴 Встановлено: БЛОКПОСТ!");
       renderMarkers();
       renderTrafficLights();
       updateRouteStatus();
@@ -1899,22 +1974,13 @@
       }
     }
 
-    // ОНОВЛЕНЕ ВИДАЛЕННЯ З ОБРОБКОЮ АВТОРИЗАЦІЇ
     window.deleteSinglePoint = async function(fbKey) {
       if (!confirm("Видалити це повідомлення як невідповідне/хибне?")) return;
       showToast("⏳ Видаляю повідомлення з сервера...");
       if (fbKey) {
         try {
-          let url = window.appendAuth(FIREBASE_POINTS_URL.replace(".json", `/${encodeURIComponent(fbKey)}.json`));
-          let res = await fetch(url, { method: "DELETE" });
-          if (res.status === 401) {
-            const secret = prompt("🔐 Firebase повернув 401 (Заборонено). Введіть секрет бази даних Firebase (Database Secret):");
-            if (secret) {
-              localStorage.setItem("radar_fb_auth", secret.trim());
-              url = window.appendAuth(FIREBASE_POINTS_URL.replace(".json", `/${encodeURIComponent(fbKey)}.json`));
-              await fetch(url, { method: "DELETE" });
-            }
-          }
+          const url = window.appendAuth(FIREBASE_POINTS_URL.replace(".json", `/${encodeURIComponent(fbKey)}.json`));
+          await fetch(url, { method: "DELETE" });
         } catch(e) {}
       }
       allPoints = allPoints.filter(p => p._fbKey !== fbKey);
@@ -2491,7 +2557,7 @@
       }).join('\n');
 
       const systemInstructionText = `
-Ти — високоінтелектуальний військово-дорожній ШІ-штурман у місті Дніпро для водія (v5.5).
+Ти — високоінтелектуальний військово-дорожній ШІ-штурман у місті Дніпро для водія (v5.6).
 ТОЧКИ НА КАРТІ:
 ${allLiveReportsText || "Повідомлень немає"}
 КОМАНДИ:
@@ -2673,7 +2739,7 @@ ${allLiveReportsText || "Повідомлень немає"}
     }
 
     // =========================================================================
-    // 🚦 РЕНДЕР СВІТЛОФОРІВ
+    // 🚦 РЕНДЕР СВІТЛОФОРІВ (ПОВНІСТЮ ВІДНОВЛЕНО В ПОЧАТКОВІЙ ЛОГІЦІ)
     // =========================================================================
     function renderTrafficLights() {
       if (!showTrafficLights || currentUiMode === "simple") {
@@ -2714,9 +2780,10 @@ ${allLiveReportsText || "Повідомлень немає"}
           dangerCount = matched.filter(p => !isCleanPoint(p)).length;
         }
 
-        let dynDangerSpeed = sonarSettings.dangerBaseSpeed;
+        let dynDangerSpeed = (sonarSettings && sonarSettings.dangerBaseSpeed) ? sonarSettings.dangerBaseSpeed : 2.4;
+        const stepVal = (sonarSettings && sonarSettings.dangerStep) ? sonarSettings.dangerStep : 0.3;
         if (dangerCount > 1) {
-          dynDangerSpeed = Math.max(0.6, sonarSettings.dangerBaseSpeed - (dangerCount - 1) * sonarSettings.dangerStep);
+          dynDangerSpeed = Math.max(0.6, dynDangerSpeed - (dangerCount - 1) * stepVal);
         }
 
         const dragClass = isEditMode ? "draggable-active" : "";
