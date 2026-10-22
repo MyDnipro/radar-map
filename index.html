@@ -515,8 +515,6 @@
 
       <!-- ІНФОРМАЦІЯ ПРО ТЕРМІН ДІЇ КЛЮЧА ДЛЯ ВОДІЇВ -->
       <div id="clientKeyExpiryBadge" style="display:none; font-size:10.5px; font-weight:800; color:#cbd5e1; background:#0b1120; border:1px solid #0284c7; border-radius:8px; padding:3px 8px; align-items:center; gap:4px; white-space:nowrap;" title="Термін дії вашого ключа доступу">
-        <span>⏳ До:</span>
-        <b id="clientExpiryVal" style="color:#38bdf8; font-family:monospace;">--</b>
       </div>
 
       <button id="btnThemeHeader" class="btn-theme-inline" onclick="toggleMapTheme()" title="Зміна теми"><span id="themeHeaderIcon">☀️</span></button>
@@ -1045,8 +1043,7 @@
     // ВІДОБРАЖЕННЯ ТЕРМІНУ ДІЇ КАРТИ ДЛЯ КОРИСТУВАЧІВ НА КЛЮЧАХ
     function updateClientExpiryUI(expiresAt) {
       const badge = document.getElementById("clientKeyExpiryBadge");
-      const valEl = document.getElementById("clientExpiryVal");
-      if (!badge || !valEl) return;
+      if (!badge) return;
 
       if (isUserAdmin()) {
         badge.style.display = "none";
@@ -1062,8 +1059,7 @@
       let exp = (expiresAt !== undefined) ? expiresAt : Number(localStorage.getItem("radar_client_expires_at") || 0);
 
       if (!exp || exp === 0) {
-        valEl.innerHTML = "Безліміт";
-        valEl.style.color = "#10b981";
+        badge.innerHTML = `🟢 <span style="color:#10b981; font-weight:800;">Ключ: Безліміт</span>`;
       } else {
         const d = new Date(exp);
         const day = String(d.getDate()).padStart(2, '0');
@@ -1072,8 +1068,8 @@
         const mins = String(d.getMinutes()).padStart(2, '0');
         
         const isExpired = Date.now() > exp;
-        valEl.innerHTML = `${day}.${month} ${hours}:${mins}`;
-        valEl.style.color = isExpired ? "#ef4444" : "#38bdf8";
+        const valColor = isExpired ? "#ef4444" : "#38bdf8";
+        badge.innerHTML = `⏳ <span style="color:#cbd5e1; font-weight:700;">Ключ дійсний до:</span> <b style="color:${valColor}; font-family:monospace; margin-left:3px;">${day}.${month} ${hours}:${mins}</b>`;
       }
       badge.style.display = "inline-flex";
     }
@@ -1432,9 +1428,15 @@
       if (typeof window.closeAllRelocateModals === "function") window.closeAllRelocateModals();
     });
 
+    // РОЗШИРЕНА ФУНКЦІЯ ПЕРЕВІРКИ: РУЧНИЙ ВЕРДИКТ МАЄ НАЙВИЩИЙ ПРІОРИТЕТ
     function isCleanPoint(p) {
       if (!p) return false;
 
+      // 1. Ручний вибір користувача в попапі має абсолютний пріоритет
+      if (p.is_clean === true || p.color === "green" || p.status === "чисто") return true;
+      if (p.is_clean === false || p.color === "red" || p.status === "опасно") return false;
+
+      // 2. Текстовий аналіз повідомлення
       const rawCombined = ((p.raw_text || "") + " " + (p.address || ""))
         .replace(/&nbsp;/gi, " ")
         .replace(/[\r\n]+/g, " ")
@@ -1455,9 +1457,6 @@
         if (hasNegation) return true;
         return false;
       }
-
-      if (p.is_clean === true || p.status === "чисто" || p.color === "green") return true;
-      if (p.is_clean === false || p.status === "опасно" || p.color === "red") return false;
 
       return false;
     }
@@ -1741,6 +1740,7 @@
       }
     };
 
+    // ОНОВЛЕНА ФУНКЦІЯ ПЕРЕМИКАННЯ СТАТУСУ (ЧИСТО / БЛОКПОСТ) З ОБРОБКОЮ ЗАПИСУ
     window.setPointVerdictDirect = async function(fbKey, isClean, btnEl) {
       const p = allPoints.find(x => x._fbKey === fbKey);
       if (!p) return;
@@ -1757,16 +1757,31 @@
         }
       }
 
+      showToast(isClean ? "🟢 Встановлено: ЧИСТО!" : "🔴 Встановлено: БЛОКПОСТ!");
+
       if (fbKey) {
-        const url = window.appendAuth(FIREBASE_POINTS_URL.replace(".json", `/${encodeURIComponent(fbKey)}.json`));
-        fetch(url, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ is_clean: isClean, color: p.color, status: p.status })
-        }).catch(() => {});
+        try {
+          let url = window.appendAuth(FIREBASE_POINTS_URL.replace(".json", `/${encodeURIComponent(fbKey)}.json`));
+          let res = await fetch(url, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ is_clean: isClean, color: p.color, status: p.status })
+          });
+          if (res.status === 401) {
+            const secret = prompt("🔐 Firebase повернув 401 (Заборонено). Введіть секрет бази даних Firebase (Database Secret) для запису (або дозвольте .write в Rules):");
+            if (secret) {
+              localStorage.setItem("radar_fb_auth", secret.trim());
+              url = window.appendAuth(FIREBASE_POINTS_URL.replace(".json", `/${encodeURIComponent(fbKey)}.json`));
+              await fetch(url, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ is_clean: isClean, color: p.color, status: p.status })
+              });
+            }
+          }
+        } catch(e) {}
       }
 
-      showToast(isClean ? "🟢 Встановлено: ЧИСТО!" : "🔴 Встановлено: БЛОКПОСТ!");
       renderMarkers();
       renderTrafficLights();
       updateRouteStatus();
@@ -1884,13 +1899,22 @@
       }
     }
 
+    // ОНОВЛЕНЕ ВИДАЛЕННЯ З ОБРОБКОЮ АВТОРИЗАЦІЇ
     window.deleteSinglePoint = async function(fbKey) {
       if (!confirm("Видалити це повідомлення як невідповідне/хибне?")) return;
       showToast("⏳ Видаляю повідомлення з сервера...");
       if (fbKey) {
         try {
-          const url = window.appendAuth(FIREBASE_POINTS_URL.replace(".json", `/${encodeURIComponent(fbKey)}.json`));
-          await fetch(url, { method: "DELETE" });
+          let url = window.appendAuth(FIREBASE_POINTS_URL.replace(".json", `/${encodeURIComponent(fbKey)}.json`));
+          let res = await fetch(url, { method: "DELETE" });
+          if (res.status === 401) {
+            const secret = prompt("🔐 Firebase повернув 401 (Заборонено). Введіть секрет бази даних Firebase (Database Secret):");
+            if (secret) {
+              localStorage.setItem("radar_fb_auth", secret.trim());
+              url = window.appendAuth(FIREBASE_POINTS_URL.replace(".json", `/${encodeURIComponent(fbKey)}.json`));
+              await fetch(url, { method: "DELETE" });
+            }
+          }
         } catch(e) {}
       }
       allPoints = allPoints.filter(p => p._fbKey !== fbKey);
