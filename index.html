@@ -51,6 +51,22 @@
       cursor: grabbing !important;
     }
 
+    /* ЖОРСТКЕ ПРИХОВУВАННЯ ЕЛЕМЕНТІВ РОЗРОБНИКА У ПРОСТОМУ РЕЖИМІ (МОЗОК, ПЕРЕНЕСЕННЯ) */
+    html.mode-simple #btnMemHud,
+    html.mode-simple #aiPillPanel,
+    html.mode-simple #routeStatusBar,
+    html.mode-simple #routeSubmenu,
+    html.mode-simple #btnStatsHud,
+    html.mode-simple .action-sheet-backdrop,
+    html.mode-simple .train-modal-backdrop,
+    html.mode-simple .confirm-modal-backdrop,
+    html.mode-simple #markerActionSheet,
+    html.mode-simple #relocateActionSheet {
+      display: none !important;
+      pointer-events: none !important;
+      visibility: hidden !important;
+    }
+
     /* ПЛАШКА «МІЙ ШЛЯХ» */
     #routeStatusBar {
       position: fixed;
@@ -183,7 +199,7 @@
     #btnStatsHud:active { transform: scale(0.92) !important; }
 
     /* =========================================================================
-       1. КОМПАКТНІСТЬ ТА ЗАЗОР ПРАВОЇ ПАНЕЛІ «КЛІЄНТИ» ВІД РАДІО
+       1. КОМПАКТНІСТЬ ТА ГАРАНТОВАНИЙ ЗАЗОР ВІД РАДІО (ПРАВА ПАНЕЛЬ)
        ========================================================================= */
     #aiPillPanel.compact {
       top: 15px !important;
@@ -191,11 +207,11 @@
       left: auto !important;
       bottom: auto !important;
       width: auto !important;
-      max-width: 135px !important;
+      max-width: 130px !important;
       height: 38px !important;
       min-height: 38px !important;
       max-height: 38px !important;
-      padding: 0 10px !important;
+      padding: 0 9px !important;
       display: inline-flex !important;
       align-items: center !important;
       justify-content: space-between !important;
@@ -543,8 +559,9 @@
   </div>
 
   <!-- 2. ПАНЕЛЬ «КЛІЄНТИ» (ШТАБ ДОСТУПІВ, СЕСІЇ ТА ШІ-ШТУРМАН) -->
-  <div id="aiPillPanel" class="ai-pill-panel compact" onclick="toggleAiPillExpand(event)">
-    <div id="aiPillHeader" class="ai-pill-compact-content">
+  <div id="aiPillPanel" class="ai-pill-panel compact">
+    <!-- КЛІКАБЕЛЬНА ТІЛЬКИ ШАПКА ДЛЯ ВІДКРИТТЯ / ЗАКРИТТЯ -->
+    <div id="aiPillHeader" class="ai-pill-compact-content" onclick="toggleAiPillExpand(event)">
       <div class="ai-titleBadge">
         <span style="font-size:13px;">👑</span>
         <span id="aiPillLabel" style="font-size:11px; font-weight:800; color:#38bdf8;">Клієнти</span>
@@ -557,14 +574,15 @@
       </div>
     </div>
 
-    <!-- ПЕРЕМИКАЧ ВКЛАДОК: КЛІЄНТИ / ШІ-ШТУРМАН -->
+    <!-- ПЕРЕМИКАЧ ВКЛАДОК -->
     <div class="hub-tab-bar" id="hubTabBar">
       <button class="hub-tab-btn active" id="tabBtnClients" onclick="switchHubTab('clients', event)">🔑 Доступи</button>
       <button class="hub-tab-btn" id="tabBtnAi" onclick="switchHubTab('ai', event)">🤖 ШІ-Штурман</button>
     </div>
 
-    <div class="ai-pill-body" id="aiPillBody">
-      <!-- СЕКЦІЯ 1: КЕРУВАННЯ ДОСТУПАМИ (СЕСІЇ ОНЛАЙН, ГЕНЕРАТОР ТА БАЗА КЛЮЧІВ) -->
+    <!-- ТІЛО ПАНЕЛІ (КЛІКИ ВСЕРЕДИНІ НЕ ЗАКРИВАЮТЬ ВІКНО) -->
+    <div class="ai-pill-body" id="aiPillBody" onclick="event.stopPropagation()">
+      <!-- СЕКЦІЯ 1: КЕРУВАННЯ ДОСТУПАМИ -->
       <div class="hub-view-section" id="hubSectionClients">
         
         <!-- ЖИВІ СЕСІЇ ПРИСТРОЇВ (ОНЛАЙН ПРЯМО ЗАРАЗ) -->
@@ -585,19 +603,20 @@
             <input type="text" id="hubInputClientLabel" class="hub-text-input" placeholder="Ім'я водія (напр. Олег Спринтер)" autocomplete="off">
           </div>
           <div class="hub-duration-group">
-            <span class="hub-duration-chip" data-days="7" onclick="selectDurationChip(this)">7 днів</span>
-            <span class="hub-duration-chip active" data-days="30" onclick="selectDurationChip(this)">30 днів</span>
-            <span class="hub-duration-chip" data-days="90" onclick="selectDurationChip(this)">90 днів</span>
-            <span class="hub-duration-chip" data-days="0" onclick="selectDurationChip(this)">Безліміт</span>
+            <span class="hub-duration-chip" data-days="1" onclick="selectDurationChip(this, event)">1 день</span>
+            <span class="hub-duration-chip" data-days="7" onclick="selectDurationChip(this, event)">7 днів</span>
+            <span class="hub-duration-chip active" data-days="30" onclick="selectDurationChip(this, event)">30 днів</span>
+            <span class="hub-duration-chip" data-days="90" onclick="selectDurationChip(this, event)">90 днів</span>
+            <span class="hub-duration-chip" data-days="0" onclick="selectDurationChip(this, event)">Безліміт</span>
           </div>
-          <button class="hub-btn-generate" onclick="generateNewAccessToken()">⚡ Згенерувати персональний ключ</button>
+          <button class="hub-btn-generate" onclick="generateNewAccessToken(event)">⚡ Згенерувати персональний ключ</button>
           
           <!-- ПЛАШКА ЗГЕНЕРОВАНОГО КЛЮЧА З ОЧИСТКОЮ Х -->
           <div class="hub-generated-box" id="hubGeneratedBox" style="display:none; align-items:center; justify-content:space-between;">
             <span class="hub-generated-code" id="hubGeneratedCode">RADAR-0000-X</span>
             <div style="display:flex; gap:4px; align-items:center;">
-              <button class="hub-btn-copy" onclick="copyGeneratedKey()">📋 Скопіювати</button>
-              <button class="hub-btn-copy" style="background:#334155; color:#cbd5e1; padding:3px 8px;" onclick="clearGeneratedKeyBox()" title="Очистити">✕</button>
+              <button class="hub-btn-copy" onclick="copyGeneratedKey(event)">📋 Скопіювати</button>
+              <button class="hub-btn-copy" style="background:#334155; color:#cbd5e1; padding:3px 8px;" onclick="clearGeneratedKeyBox(event)" title="Очистити">✕</button>
             </div>
           </div>
         </div>
@@ -1812,6 +1831,7 @@
       showToast("🤖 Мітку передано ШІ-штурману!");
     };
 
+    // БЕЗПЕЧНИЙ ВИКЛИК МЕНЮ ДІЙ (СТРОГИЙ ЗАМОК У ПРОСТОМУ РЕЖИМІ)
     function openMarkerActionSheet(point, marker) {
       if (currentUiMode === "simple") return;
       activeActionPoint = point;
@@ -1824,6 +1844,15 @@
       const sheet = document.getElementById("markerActionSheet");
       if (sheet) sheet.style.display = "flex";
     }
+
+    // Перехоплювач для relocate.js
+    const _origRelocateActionSheet = window.openRelocateActionSheet;
+    window.openRelocateActionSheet = function(point, marker) {
+      if (currentUiMode === "simple") return;
+      if (typeof _origRelocateActionSheet === "function") {
+        _origRelocateActionSheet(point, marker);
+      }
+    };
 
     function closeMarkerActionSheet(e) {
       const sheet = document.getElementById("markerActionSheet");
@@ -1922,7 +1951,6 @@
     // 👑 ПАНЕЛЬ «КЛІЄНТИ» (ШТАБ ДОСТУПІВ, СЕСІЇ ТА ШІ-ШТУРМАН)
     // =========================================================================
     const aiPillPanel = document.getElementById("aiPillPanel");
-    const aiPillHeader = document.getElementById("aiPillHeader");
     const aiInlineInput = document.getElementById("aiInlineInput");
     const aiChatBox = document.getElementById("aiChatBox");
 
@@ -1945,12 +1973,9 @@
     L.DomEvent.disableClickPropagation(document.getElementById("tlSettingsModal"));
     L.DomEvent.disableClickPropagation(document.getElementById("mapDisplayModal"));
 
+    // Відкриття / згортання плашки тільки по кліку на саму шапку
     function toggleAiPillExpand(e) {
-      if (e) {
-        if (e.target.closest('textarea') || e.target.closest('input') || e.target.closest('.hub-btn-copy') || e.target.closest('.hub-btn-act') || e.target.closest('.ai-mini-chip') || e.target.closest('span[title]') || e.target.closest('.hub-tab-btn')) {
-          return;
-        }
-      }
+      if (e) e.stopPropagation();
       const isExpanded = aiPillPanel.classList.toggle("expanded");
       aiPillPanel.classList.toggle("compact", !isExpanded);
       const toggleIcon = document.getElementById("btnAiPillToggle");
@@ -1994,10 +2019,12 @@
       }
     }
 
-    function selectDurationChip(el) {
+    function selectDurationChip(el, e) {
+      if (e) e.stopPropagation();
       document.querySelectorAll(".hub-duration-chip").forEach(c => c.classList.remove("active"));
       el.classList.add("active");
-      selectedDurationDays = parseInt(el.getAttribute("data-days"), 10) || 0;
+      selectedDurationDays = parseInt(el.getAttribute("data-days"), 10);
+      if (isNaN(selectedDurationDays)) selectedDurationDays = 30;
     }
 
     function generateKeyString() {
@@ -2007,7 +2034,8 @@
       return `RADAR-${num}-${char}`;
     }
 
-    async function generateNewAccessToken() {
+    async function generateNewAccessToken(e) {
+      if (e) e.stopPropagation();
       const input = document.getElementById("hubInputClientLabel");
       const label = input.value.trim() || "Без імені";
       const newKey = generateKeyString();
@@ -2031,7 +2059,6 @@
         });
 
         accessTokensCache[newKey] = payload;
-        input.value = "";
 
         const codeBox = document.getElementById("hubGeneratedBox");
         const codeText = document.getElementById("hubGeneratedCode");
@@ -2045,7 +2072,8 @@
       }
     }
 
-    function copyGeneratedKey() {
+    function copyGeneratedKey(e) {
+      if (e) e.stopPropagation();
       const code = document.getElementById("hubGeneratedCode").innerText;
       if (!code) return;
       navigator.clipboard.writeText(code).then(() => {
@@ -2055,7 +2083,8 @@
       });
     }
 
-    window.clearGeneratedKeyBox = function() {
+    window.clearGeneratedKeyBox = function(e) {
+      if (e) e.stopPropagation();
       const codeBox = document.getElementById("hubGeneratedBox");
       const input = document.getElementById("hubInputClientLabel");
       if (codeBox) codeBox.style.display = "none";
@@ -2205,7 +2234,6 @@
       try {
         const sessionUrl = FIREBASE_PRESENCE_URL.replace(".json", `/${clientSessionId}.json`);
         
-        // Перевіряємо чи сесію не кікнули
         const checkRes = await fetch(`${sessionUrl}?t=${Date.now()}`);
         if (checkRes.ok) {
           const checkData = await checkRes.json();
