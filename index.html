@@ -479,11 +479,11 @@
   <!-- 🔐 ШТОРКА ЗАХИСТУ ТА АВТОРИЗАЦІЇ -->
   <div id="authCurtain" style="display:none; position:fixed; inset:0; z-index:99999; background:rgba(11,17,32,0.98); backdrop-filter:blur(10px); align-items:center; justify-content:center; padding:16px;">
     <div style="background:#0f172a; border:1.5px solid #0284c7; border-radius:18px; padding:24px 20px; max-width:330px; width:100%; box-shadow:0 10px 40px rgba(0,243,255,0.25); text-align:center;">
-      <div style="font-size:36px; margin-bottom:8px; cursor:pointer;" onclick="requestAdminLogin()" title="Вхід адміністратора">🔐</div>
+      <div style="font-size:36px; margin-bottom:8px; cursor:pointer;" onclick="requestAdminLogin()" title="Вхід">🔐</div>
       <h3 style="color:#f8fafc; font-size:16px; font-weight:900; margin-bottom:4px;">Радар Дніпро v5.1</h3>
-      <p style="color:#94a3b8; font-size:11.5px; margin-bottom:16px; line-height:1.4;">Введіть ключ доступу або токен адміністратора</p>
+      <p style="color:#94a3b8; font-size:11.5px; margin-bottom:16px; line-height:1.4;">Введіть персональний ключ доступу</p>
       
-      <input type="text" id="authGateInput" placeholder="RADAR-XXXX або токен..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="width:100%; background:#060913; border:1.5px solid #334155; border-radius:10px; color:#fff; padding:10px 12px; font-size:13px; text-align:center; outline:none; font-family:monospace; margin-bottom:12px;">
+      <input type="text" id="authGateInput" placeholder="RADAR-XXXX..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="width:100%; background:#060913; border:1.5px solid #334155; border-radius:10px; color:#fff; padding:10px 12px; font-size:13px; text-align:center; outline:none; font-family:monospace; margin-bottom:12px;">
       
       <button id="btnAuthSubmit" onclick="submitAuthGateKey()" style="width:100%; background:linear-gradient(135deg, #0284c7 0%, #00f3ff 100%); border:none; color:#04101e; padding:11px; border-radius:10px; font-size:13px; font-weight:900; cursor:pointer;">
         🔓 Увійти в систему
@@ -1096,10 +1096,21 @@
         const res = await fetch(`${FIREBASE_TOKENS_URL.replace(".json", `/${encodeURIComponent(clientKey)}.json`)}?t=${Date.now()}`);
         if (res.ok) {
           const data = await res.json();
-          if (!data || data.status === "blocked" || (data.expires_at && data.expires_at > 0 && Date.now() > data.expires_at)) {
+          if (!data) {
             localStorage.removeItem("radar_client_token");
             showAuthCurtain();
-            showAuthError("Сесію завершено або ключ заблоковано");
+            showAuthError("❌ Ключ доступу видалено або не існує");
+            return;
+          }
+          if (data.status === "blocked") {
+            // Ключ залишається в пам'яті, щоб при розблокуванні екран відновився сам
+            showAuthCurtain();
+            showAuthError("🚫 Доступ тимчасово призупинено адміністратором");
+            return;
+          }
+          if (data.expires_at && data.expires_at > 0 && Date.now() > data.expires_at) {
+            showAuthCurtain();
+            showAuthError("⏳ Термін дії ключа вичерпано");
             return;
           }
           hideAuthCurtain();
@@ -1109,9 +1120,11 @@
       hideAuthCurtain();
     }
 
+    // Довге натискання дозволено ТІЛЬКИ авторизованому адміністратору
     const countTextEl = document.getElementById("countText");
     let countPressTimer = null;
     function startCountPress() {
+      if (!isUserAdmin()) return;
       countPressTimer = setTimeout(() => {
         if (navigator.vibrate) navigator.vibrate(60);
         requestAdminLogin();
@@ -2387,6 +2400,25 @@
           if (checkData && checkData.kicked) {
             handleKickedSession();
             return;
+          }
+        }
+
+        // Періодична фонова перевірка статусу ключа клієнта (розблокування на льоту)
+        if (!isUserAdmin()) {
+          const clientKey = localStorage.getItem("radar_client_token");
+          if (clientKey) {
+            const tokenRes = await fetch(`${FIREBASE_TOKENS_URL.replace(".json", `/${encodeURIComponent(clientKey)}.json`)}?t=${Date.now()}`);
+            if (tokenRes.ok) {
+              const tData = await tokenRes.json();
+              if (tData) {
+                if (tData.status === "blocked") {
+                  showAuthCurtain();
+                  showAuthError("🚫 Доступ тимчасово призупинено адміністратором");
+                } else if (!tData.expires_at || tData.expires_at === 0 || Date.now() <= tData.expires_at) {
+                  hideAuthCurtain();
+                }
+              }
+            }
           }
         }
 
