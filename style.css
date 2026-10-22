@@ -102,7 +102,7 @@ html, body {
 
 .collapsible-body { margin-top: 6px; }
 
-/* Кнопка-иконка темы День / Ночь */
+/* Кнопка-іконка теми День / Ніч */
 .btn-theme-inline {
   background: #1e293b;
   border: 1px solid #334155;
@@ -122,7 +122,7 @@ html, body {
 }
 .btn-theme-inline:active { transform: scale(0.92); }
 
-/* Иконка перехода в режим разработчика (в простом режиме) */
+/* Іконка переходу в режим розробника */
 .btn-dev-mode-icon {
   background: #1e293b;
   border: 1px solid #334155;
@@ -141,7 +141,7 @@ html, body {
 }
 .btn-dev-mode-icon:active { transform: scale(0.92); }
 
-/* Мини-кнопка перехода в простой режим (внизу блока 1) */
+/* Міні-кнопка переходу в простий режим (внизу дашборда) */
 .btn-admin-switch-mini {
   width: 100%;
   background: #1e293b;
@@ -164,7 +164,7 @@ html, body {
 }
 .btn-admin-switch-mini:active { transform: scale(0.96); }
 
-/* Поиск улиц */
+/* Пошук вулиць */
 .search-box { position: relative; margin-bottom: 8px; }
 .search-input-wrap { position: relative; display: flex; align-items: center; }
 .search-input {
@@ -215,10 +215,8 @@ html, body {
 .search-item:hover { background: #1e293b; color: #38bdf8; }
 
 /* =========================================================================
-   2. СХЛОПЫВАНИЕ ДАШБОРДА И ПРАВИЛА РЕЖИМОВ
+   2. СХЛОПУВАННЯ ДАШБОРДА ТА ПРАВИЛА РЕЖИМІВ
    ========================================================================= */
-
-/* Схлопывание в 38px при наличии класса .collapsed или в простом режиме */
 html.mode-simple #dashPanel,
 #dashPanel.collapsed {
   width: auto !important;
@@ -248,7 +246,7 @@ html.mode-simple #collapsibleBody,
   display: none !important;
 }
 
-/* В простом режиме скрываем инженерные панели */
+/* У простому режимі приховуємо інженерні панелі */
 html.mode-simple #aiPillPanel,
 html.mode-simple #routeStatusBar,
 html.mode-simple #routeSubmenu,
@@ -258,12 +256,12 @@ html.mode-simple #memWidget {
   display: none !important;
 }
 
-/* В режиме радио скрываем переключатель «Мій шлях / Все місто» ТОЛЬКО в простом режиме */
+/* У режимі радіо приховуємо перемикач «Мій шлях / Все місто» ТІЛЬКИ в простому режимі */
 html.mode-simple .radio-mode-switcher {
   display: none !important;
 }
 
-/* В простом режиме кнопка «Оновити» становится горизонтальной плашкой */
+/* У простому режимі кнопка «Оновити» стає горизонтальною плашкою */
 html.mode-simple #btnRefresh {
   width: auto !important;
   height: 38px !important;
@@ -303,7 +301,7 @@ html.mode-simple #btnRefresh span:last-child {
   gap: 7px !important;
 }
 
-/* Вертикальный вариант кнопки «Оновити» для полного режима */
+/* Вертикальний варіант кнопки «Оновити» для повного режиму */
 #btnRefresh {
   width: 44px;
   height: 83px;
@@ -358,7 +356,7 @@ html.mode-simple #btnRefresh span:last-child {
 }
 
 /* =========================================================================
-   4. ШИ-ПАНЕЛЬ (ВЕРХ СПРАВА, ПОЛНЫЙ РЕЖИМ)
+   4. ПАНЕЛЬ «КЛІЄНТИ / ШІ» (ВЕРХ СПРАВА, ПОВНИЙ РЕЖИМ)
    ========================================================================= */
 .ai-pill-panel {
   position: absolute;
@@ -381,13 +379,14 @@ html.mode-simple #btnRefresh span:last-child {
   bottom: auto !important;
   width: auto !important;
   height: 38px !important;
-  padding: 0 10px !important;
+  padding: 0 8px !important;
   display: inline-flex;
   align-items: center;
   gap: 6px;
   cursor: pointer;
 }
 .ai-pill-panel.compact .ai-pill-tools,
+.ai-pill-panel.compact .hub-tab-bar,
 .ai-pill-panel.compact .ai-pill-body { display: none !important; }
 
 .ai-pill-compact-content {
@@ -409,36 +408,73 @@ html.mode-simple #btnRefresh span:last-child {
 }
 
 .ai-pill-panel.expanded {
-  width: 320px !important;
+  width: 340px !important;
   max-width: calc(100vw - 20px) !important;
   height: auto !important;
-  max-height: 75vh;
+  max-height: 82vh;
   padding: 10px 12px !important;
   border-radius: 14px !important;
   border-color: #00f3ff !important;
-  box-shadow: 0 6px 30px rgba(0, 243, 255, 0.4) !important;
+  box-shadow: 0 6px 30px rgba(0, 243, 255, 0.35) !important;
   display: flex;
   flex-direction: column;
 }
+
 .ai-titleBadge {
   font-size: 12px;
   font-weight: 800;
   color: #00f3ff;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
   white-space: nowrap;
 }
-.ai-version-badge {
-  font-size: 9px;
+
+/* Живий бейдж онлайн-присутності */
+.hub-online-pill {
+  font-size: 10px;
   font-weight: 800;
-  background: #0284c7;
-  color: #ffffff;
-  padding: 1px 5px;
-  border-radius: 4px;
-  border: 1px solid #38bdf8;
-  letter-spacing: 0.5px;
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  padding: 2px 6px;
+  border-radius: 6px;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  letter-spacing: 0.2px;
 }
+
+/* Перемикач вкладок усередині панелі «Клієнти / ШІ» */
+.hub-tab-bar {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid #1e293b;
+  padding-bottom: 6px;
+}
+.hub-tab-btn {
+  flex: 1;
+  background: #0b1120;
+  border: 1px solid #1e293b;
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 6px 4px;
+  border-radius: 7px;
+  cursor: pointer;
+  text-align: center;
+  user-select: none;
+  transition: all 0.15s ease;
+}
+.hub-tab-btn.active {
+  background: #0284c7;
+  border-color: #38bdf8;
+  color: #ffffff;
+  box-shadow: 0 0 10px rgba(2, 132, 199, 0.5);
+}
+
+/* Тіло панелі та секції вкладок */
 .ai-pill-body {
   display: flex;
   flex-direction: column;
@@ -446,7 +482,162 @@ html.mode-simple #btnRefresh span:last-child {
   flex: 1;
   min-height: 0;
 }
+.hub-view-section {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  flex: 1;
+  min-height: 0;
+}
 
+/* Блок форми генератора ключів */
+.hub-key-form {
+  background: #0b1120;
+  border: 1px solid #1e293b;
+  border-radius: 9px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.hub-input-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.hub-text-input {
+  flex: 1;
+  background: #060913;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  color: #fff;
+  padding: 6px 8px;
+  font-size: 11px;
+  outline: none;
+}
+.hub-text-input:focus { border-color: #38bdf8; }
+
+.hub-duration-group {
+  display: flex;
+  gap: 4px;
+}
+.hub-duration-chip {
+  flex: 1;
+  background: #1e293b;
+  border: 1px solid #334155;
+  color: #cbd5e1;
+  padding: 4px 2px;
+  border-radius: 5px;
+  font-size: 9.5px;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: center;
+  user-select: none;
+}
+.hub-duration-chip.active {
+  background: #0284c7;
+  border-color: #00f3ff;
+  color: #fff;
+}
+
+.hub-btn-generate {
+  background: linear-gradient(135deg, #0284c7 0%, #00f3ff 100%);
+  border: none;
+  color: #04101e;
+  padding: 7px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 900;
+  cursor: pointer;
+  text-align: center;
+}
+.hub-btn-generate:active { transform: scale(0.97); }
+
+/* Блок відображення згенерованого ключа з кнопкою копіювання */
+.hub-generated-box {
+  display: none;
+  background: #064e3b;
+  border: 1px solid #10b981;
+  border-radius: 8px;
+  padding: 6px 8px;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11.5px;
+}
+.hub-generated-code {
+  font-family: monospace;
+  font-weight: 900;
+  color: #a7f3d0;
+  letter-spacing: 0.8px;
+}
+.hub-btn-copy {
+  background: #10b981;
+  border: none;
+  color: #022c22;
+  font-weight: 800;
+  font-size: 10px;
+  padding: 3px 7px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+/* Список виданих доступів */
+.hub-clients-list {
+  max-height: 190px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding-right: 2px;
+}
+.hub-client-card {
+  background: #0b1120;
+  border: 1px solid #1e293b;
+  border-radius: 7px;
+  padding: 6px 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+}
+.hub-client-info {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.35;
+}
+.hub-client-name {
+  font-size: 11px;
+  font-weight: 800;
+  color: #f8fafc;
+  word-break: break-word;
+}
+.hub-client-sub {
+  font-size: 9.5px;
+  color: #64748b;
+  font-family: monospace;
+}
+.hub-client-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.hub-btn-act {
+  background: #1e293b;
+  border: 1px solid #334155;
+  color: #cbd5e1;
+  padding: 4px 6px;
+  border-radius: 5px;
+  font-size: 10px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.hub-btn-act.danger {
+  background: #450a0a;
+  border-color: #ef4444;
+  color: #fca5a5;
+}
+
+/* Стилі вкладки ШІ всередині панелі */
 .ai-chat-box {
   max-height: 180px;
   min-height: 80px;
@@ -529,7 +720,7 @@ html.mode-simple #btnRefresh span:last-child {
 }
 
 /* =========================================================================
-   5. МАРШРУТ И ПОДМЕНЮ СЕКТОРОВ
+   5. МАРШРУТ І ПІДМЕНЮ СЕКТОРІВ
    ========================================================================= */
 .route-status-bar {
   position: absolute !important;
@@ -622,7 +813,7 @@ html.mode-simple #btnRefresh span:last-child {
 }
 
 /* =========================================================================
-   6. ПЛАВАЮЩИЕ КНОПКИ СТАТИСТИКИ И МЕНЮ СЕРВЕРА
+   6. ПЛАВАЮЧІ КНОПКИ СТАТИСТИКИ ТА МЕНЮ СЕРВЕРА
    ========================================================================= */
 #btnStatsHud {
   position: absolute !important;
@@ -759,7 +950,7 @@ html.mode-simple #btnRefresh span:last-child {
 .dot-red { background: var(--color-red); }
 
 /* =========================================================================
-   7. МЕТКИ НА КАРТЕ И СВЕТОФОРЫ
+   7. МЕТКИ НА КАРТІ ТА СВІТЛОФОРИ
    ========================================================================= */
 .custom-dot-marker { background: transparent !important; border: none !important; }
 .radar-circle { width: 18px; height: 18px; border-radius: 50%; cursor: pointer; position: relative; touch-action: none; transition: transform 0.2s ease; }
@@ -811,7 +1002,7 @@ html.mode-simple #btnRefresh span:last-child {
 .traffic-marker-icon { background: transparent !important; border: none !important; }
 
 /* =========================================================================
-   8. ТОАСТЫ (ВНИЗУ ЭКРАНА) И МОДАЛЬНЫЕ ОКНА
+   8. ТОАСТИ ТА МОДАЛЬНІ ВІКНА
    ========================================================================= */
 .toast-msg {
   position: absolute !important;
