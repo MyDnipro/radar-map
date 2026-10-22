@@ -201,7 +201,7 @@
     #btnStatsHud:active { transform: scale(0.92) !important; }
 
     /* =========================================================================
-       1. КОМПАКТНІСТЬ ТА МОНОЛІТНІСТЬ ПЛАШКИ «КЛІЄНТИ» (БЕЗ СТРІЛОЧКИ)
+       1. КОМПАКТНІСТЬ ТА ЗБІЛЬШЕНА ВИСОТА РОЗГОРНУТОЇ ПАНЕЛІ «КЛІЄНТИ»
        ========================================================================= */
     #aiPillPanel.compact {
       top: 15px !important;
@@ -234,6 +234,28 @@
     #aiPillPanel.compact .hub-tab-bar,
     #aiPillPanel.compact .ai-pill-body {
       display: none !important;
+    }
+
+    /* Розгортання вікна майже до самого низу екрана зі зручним скролом */
+    #aiPillPanel.expanded {
+      top: 15px !important;
+      right: 12px !important;
+      left: 12px !important;
+      max-width: 385px !important;
+      max-height: calc(100vh - 80px) !important;
+      height: auto !important;
+      display: flex !important;
+      flex-direction: column !important;
+      z-index: 2500 !important;
+    }
+    #aiPillPanel.expanded .ai-pill-body {
+      flex: 1 1 auto !important;
+      max-height: calc(100vh - 170px) !important;
+      overflow-y: auto !important;
+    }
+    #hubClientsList {
+      max-height: 250px !important;
+      overflow-y: auto !important;
     }
 
     #map.night-mode .leaflet-tile-pane {
@@ -610,7 +632,7 @@
             <span style="font-size:11px; font-weight:800; color:#38bdf8;">📡 Пристрої онлайн:</span>
             <span id="hubActiveSessionsCount" style="font-size:10px; color:#10b981; font-weight:800;">1 в мережі</span>
           </div>
-          <div id="hubActiveSessionsList" style="max-height:120px; overflow-y:auto; display:flex; flex-direction:column; gap:4px; padding-right:1px;">
+          <div id="hubActiveSessionsList" style="max-height:130px; overflow-y:auto; display:flex; flex-direction:column; gap:4px; padding-right:1px;">
             <div style="font-size:10.5px; color:#64748b; padding:4px;">Пошук активних пристроїв...</div>
           </div>
         </div>
@@ -2301,13 +2323,23 @@
         }
 
         const deviceState = item.device_id ? "📱 Прив'язано" : "⏳ Очікує";
-        const statusPill = isBlocked 
-          ? `<span style="color:#ef4444; font-weight:800;">[БЛОК]</span>` 
-          : (isExpired ? `<span style="color:#ef4444; font-weight:800;">[ЧАС]</span>` : `<span style="color:#10b981; font-weight:800;">[OK]</span>`);
+        
+        let statusPill = "";
+        if (isBlocked) {
+          statusPill = `<span style="display:inline-flex; align-items:center; justify-content:center; border:1.5px solid #ef4444; background:rgba(239,68,68,0.18); border-radius:6px; padding:1px 4px; font-size:11px;" title="Заблоковано">🔒</span>`;
+        } else if (isExpired) {
+          statusPill = `<span style="display:inline-flex; align-items:center; justify-content:center; border:1.5px solid #f59e0b; background:rgba(245,158,11,0.18); border-radius:6px; padding:1px 4px; font-size:11px;" title="Термін дії вичерпано">⏳</span>`;
+        } else {
+          statusPill = `<span style="font-size:12.5px; margin-right:2px;" title="Діючий ключ">🔓</span>`;
+        }
 
         card.innerHTML = `
           <div class="hub-client-info">
-            <div class="hub-client-name">${statusPill} ${escapeHtml(item.label || 'Водій')} <span style="color:#38bdf8; font-family:monospace;">${escapeHtml(key)}</span></div>
+            <div class="hub-client-name" style="display:flex; align-items:center; gap:5px;">
+              ${statusPill}
+              <span>${escapeHtml(item.label || 'Водій')}</span>
+              <span style="color:#38bdf8; font-family:monospace;">${escapeHtml(key)}</span>
+            </div>
             <div class="hub-client-sub">${deviceState} • ${expText}</div>
           </div>
           <div class="hub-client-actions">
@@ -2354,14 +2386,14 @@
     function getDeviceDescription() {
       const ua = navigator.userAgent || "";
       let os = "Пристрій";
-      if (/windows/i.test(ua)) os = "💻 Windows";
+      if (/windows/i.test(ua)) os = "Windows";
       else if (/android/i.test(ua)) {
-        if (/xiaomi|redmi|poco/i.test(ua) || /hyperos/i.test(ua)) os = "📱 Xiaomi";
-        else os = "📱 Android";
+        if (/xiaomi|redmi|poco/i.test(ua) || /hyperos/i.test(ua)) os = "Xiaomi";
+        else os = "Android";
       }
-      else if (/iphone|ipad|ipod/i.test(ua)) os = "🍏 iPhone";
-      else if (/macintosh|mac os x/i.test(ua)) os = "💻 Mac";
-      else if (/linux/i.test(ua)) os = "💻 Linux";
+      else if (/iphone|ipad|ipod/i.test(ua)) os = "iPhone";
+      else if (/macintosh|mac os x/i.test(ua)) os = "Mac";
+      else if (/linux/i.test(ua)) os = "Linux";
 
       let browser = "Браузер";
       if (/chrome|crios/i.test(ua) && !/edg|opr/i.test(ua)) browser = "Chrome";
@@ -2370,7 +2402,7 @@
       else if (/edg/i.test(ua)) browser = "Edge";
       else if (/opera|opr/i.test(ua)) browser = "Opera";
 
-      return `${os} (${browser})`;
+      return `${os} ${browser}`;
     }
 
     let clientSessionId = sessionStorage.getItem("radar_presence_session_id");
@@ -2430,7 +2462,7 @@
             admin: isUserAdmin(),
             mode: currentUiMode,
             device: getDeviceDescription(),
-            token_label: isUserAdmin() ? "👑 Адмін" : (localStorage.getItem("radar_client_label") || "Гість")
+            token_label: isUserAdmin() ? "Адмін" : (localStorage.getItem("radar_client_label") || "Гість")
           })
         });
       } catch(e) {}
@@ -2474,7 +2506,12 @@
         const isCurrent = (sessId === clientSessionId);
         const diffSec = Math.max(0, Math.round((now - (item.t || 0)) / 1000));
         const deviceName = item.device || "Пристрій";
-        const roleLabel = item.token_label || (item.admin ? "👑 Адмін" : "Гість");
+        
+        // Спочатку виводимо ім'я користувача, а в дужках синім — назву пристрою
+        let displayName = item.token_label || (item.admin ? "Адмін" : "Гість");
+        if (item.admin && !displayName.includes("👑")) {
+          displayName = `👑 ${displayName}`;
+        }
 
         const row = document.createElement("div");
         row.style.cssText = "display:flex; justify-content:space-between; align-items:center; background:#060913; border:1px solid #1e293b; padding:5px 8px; border-radius:6px; margin-bottom:4px; font-size:11px;";
@@ -2482,11 +2519,11 @@
         const left = document.createElement("div");
         left.style.cssText = "line-height:1.3; min-width:0; flex:1;";
         left.innerHTML = `
-          <div style="font-weight:800; color:#f8fafc; display:flex; align-items:center; gap:4px;">
-            <span>${escapeHtml(deviceName)}</span>
-            <span style="font-size:9.5px; color:#38bdf8;">(${escapeHtml(roleLabel)})</span>
+          <div style="font-weight:800; color:#f8fafc; display:flex; align-items:center; gap:5px; flex-wrap:wrap;">
+            <span>${escapeHtml(displayName)}</span>
+            <span style="font-size:10px; color:#38bdf8; font-weight:700;">(${escapeHtml(deviceName)})</span>
           </div>
-          <div style="font-size:9.5px; color:#64748b;">
+          <div style="font-size:9.5px; color:#64748b; margin-top:2px;">
             ${isCurrent ? '<b style="color:#10b981;">🟢 Цей екран</b>' : `🟢 в мережі (${diffSec}с тому)`}
           </div>
         `;
@@ -2500,7 +2537,7 @@
           btnKick.innerText = "🚫 Відключити";
           btnKick.onclick = (e) => {
             e.stopPropagation();
-            window.kickPresenceSession(sessId, deviceName);
+            window.kickPresenceSession(sessId, `${displayName} (${deviceName})`);
           };
           right.appendChild(btnKick);
         }
