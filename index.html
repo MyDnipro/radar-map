@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <meta name="color-scheme" content="light only">
-  <title>Радар Дніпро v5.7</title>
+  <title>Радар Дніпро v5.8</title>
   <link rel="icon" type="image/png" href="icon.png">
   <link rel="apple-touch-icon" href="icon.png">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -138,12 +138,11 @@
       display: inline-flex !important;
     }
 
-    /* КНОПКИ «МОЗОК 🧠» ТА «СТАТИСТИКА 📊» З АПАРАТНОЮ ІЗОЛЯЦІЄЮ */
-    #btnMemHud {
-      position: fixed;
-      bottom: 15px;
-      left: 172px;
-      z-index: 2400;
+    /* КНОПКИ «МОЗОК 🧠» ТА «СТАТИСТИКА 📊» З АПАРАТНОЮ ІЗОЛЯЦІЄЮ ТА СТАБІЛЬНИМ ЦЕНТРОМ */
+    #btnMemHud, #btnStatsHud {
+      position: fixed !important;
+      bottom: 15px !important;
+      z-index: 2400 !important;
       width: 38px !important;
       height: 38px !important;
       min-width: 38px !important;
@@ -155,79 +154,49 @@
       align-items: center !important;
       justify-content: center !important;
       padding: 0 !important;
+      margin: 0 !important;
       border-radius: 12px !important;
       background: #0f172a !important;
       border: 1.5px solid #0284c7 !important;
-      color: #38bdf8 !important;
-      font-size: 17px !important;
-      line-height: 1 !important;
-      cursor: pointer !important;
       box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45) !important;
       user-select: none !important;
       -webkit-user-select: none !important;
       -webkit-tap-highlight-color: transparent !important;
       outline: none !important;
-      transform: translate3d(0, 0, 0);
-      -webkit-transform: translate3d(0, 0, 0);
+      transform: translate3d(0, 0, 0) !important;
+      -webkit-transform: translate3d(0, 0, 0) !important;
       will-change: transform;
       -webkit-backface-visibility: hidden;
       backface-visibility: hidden;
-      transform-origin: center center;
-      transition: background 0.2s, border-color 0.2s;
+      transform-origin: center center !important;
+      transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
+      cursor: pointer !important;
     }
-    #btnMemHud:hover {
-      background: #1e293b !important;
-      border-color: #00f3ff !important;
-      box-shadow: 0 0 12px rgba(0, 243, 255, 0.45) !important;
+    #btnMemHud {
+      left: 172px !important;
+      color: #38bdf8 !important;
+      font-size: 17px !important;
+      line-height: 1 !important;
     }
-    #btnMemHud:active { transform: translate3d(0, 0, 0) scale(0.92) !important; }
-
     #btnStatsHud {
-      position: fixed;
-      bottom: 15px;
-      left: 218px;
-      z-index: 2400;
-      width: 38px !important;
-      height: 38px !important;
-      min-width: 38px !important;
-      min-height: 38px !important;
-      max-width: 38px !important;
-      max-height: 38px !important;
-      box-sizing: border-box !important;
-      display: inline-flex !important;
-      align-items: center !important;
-      justify-content: center !important;
-      padding: 0 !important;
-      border-radius: 12px !important;
-      background: #0f172a !important;
-      border: 1.5px solid #0284c7 !important;
-      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45) !important;
-      user-select: none !important;
-      -webkit-user-select: none !important;
-      -webkit-tap-highlight-color: transparent !important;
-      cursor: pointer;
-      outline: none;
-      transform: translate3d(0, 0, 0);
-      -webkit-transform: translate3d(0, 0, 0);
-      will-change: transform;
-      -webkit-backface-visibility: hidden;
-      backface-visibility: hidden;
-      transform-origin: center center;
-      transition: background 0.2s, border-color 0.2s;
+      left: 218px !important;
     }
-    #btnStatsHud:hover {
+    #btnMemHud:hover, #btnStatsHud:hover {
       background: #1e293b !important;
       border-color: #00f3ff !important;
       box-shadow: 0 0 12px rgba(0, 243, 255, 0.45) !important;
     }
-    #btnStatsHud:active { transform: translate3d(0, 0, 0) scale(0.92) !important; }
+    #btnMemHud:active, #btnStatsHud:active {
+      transform: translate3d(0, 0, 0) scale(0.92) !important;
+      -webkit-transform: translate3d(0, 0, 0) scale(0.92) !important;
+    }
 
     /* =========================================================================
-       1. РОЗШИРЕННЯ ШАПКИ (БЛОК 1) У ПРОСТОМУ РЕЖИМІ
+       1. РОЗШИРЕННЯ ШАПКИ (БЛОК 1) ТА ПЕРЕНЕСЕННЯ РАДІО ВПРАВО У ПРОСТОМУ РЕЖИМІ
        ========================================================================= */
     html.mode-simple #dashPanel {
       width: auto !important;
-      max-width: fit-content !important;
+      max-width: calc(100vw - 75px) !important;
       height: 38px !important;
       min-height: 38px !important;
       max-height: 38px !important;
@@ -238,7 +207,7 @@
       gap: 8px !important;
       border-radius: 12px !important;
       box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45) !important;
-      overflow: visible !important;
+      overflow: hidden !important;
     }
     html.mode-simple #dashHeader {
       margin-bottom: 0 !important;
@@ -247,16 +216,26 @@
       gap: 8px !important;
       display: inline-flex !important;
       align-items: center !important;
+      overflow: hidden !important;
+      max-width: 100% !important;
+    }
+    html.mode-simple #clientKeyExpiryBadge {
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+      white-space: nowrap !important;
+      max-width: 220px !important;
     }
     html.mode-simple #collapsibleBody {
       display: none !important;
     }
 
-    /* Зсув кнопки рації в простому режимі вправо */
+    /* ПЕРЕНЕСЕННЯ КНОПКИ РАДІО У ПРАВИЙ ВЕРХНІЙ КУТ У ПРОСТОМУ РЕЖИМІ */
     html.mode-simple #btnRadioTopCenter {
-      left: 245px !important;
-      transform: translate3d(0, 0, 0) !important;
-      -webkit-transform: translate3d(0, 0, 0) !important;
+      top: 15px !important;
+      right: 14px !important;
+      left: auto !important;
+      transform: none !important;
+      -webkit-transform: none !important;
     }
 
     #dashPanel.collapsed {
@@ -284,6 +263,9 @@
     }
 
     /* ПАНЕЛЬ «КЛІЄНТИ» */
+    #aiPillPanel {
+      touch-action: pan-y !important;
+    }
     #aiPillPanel.compact {
       top: 15px !important;
       right: 15px !important;
@@ -572,7 +554,7 @@
   <div id="authCurtain" style="display:none; position:fixed; inset:0; z-index:99999; background:rgba(11,17,32,0.98); backdrop-filter:blur(10px); align-items:center; justify-content:center; padding:16px;">
     <div style="background:#0f172a; border:1.5px solid #0284c7; border-radius:18px; padding:24px 20px; max-width:330px; width:100%; box-shadow:0 10px 40px rgba(0,243,255,0.25); text-align:center;">
       <div style="font-size:36px; margin-bottom:8px; cursor:pointer;" onclick="requestAdminLogin()" title="Вхід">🔐</div>
-      <h3 style="color:#f8fafc; font-size:16px; font-weight:900; margin-bottom:4px;">Радар Дніпро v5.7</h3>
+      <h3 style="color:#f8fafc; font-size:16px; font-weight:900; margin-bottom:4px;">Радар Дніпро v5.8</h3>
       <p style="color:#94a3b8; font-size:11.5px; margin-bottom:16px; line-height:1.4;">Введіть персональний ключ доступу</p>
       
       <input type="text" id="authGateInput" placeholder="RADAR-XXXX..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="width:100%; background:#060913; border:1.5px solid #334155; border-radius:10px; color:#fff; padding:10px 12px; font-size:13px; text-align:center; outline:none; font-family:monospace; margin-bottom:12px;">
@@ -672,8 +654,7 @@
         <span class="hub-online-pill" id="hubOnlinePill">🟢 <span id="hubOnlineCount">1</span></span>
       </div>
       <div style="display:flex; align-items:center; gap:5px;">
-        <!-- НОМЕР ВЕРСІЇ: ВІДОБРАЖАЄТЬСЯ ТІЛЬКИ ПРИ РОЗГОРНУТІЙ ПАНЕЛІ -->
-        <span class="hub-version-badge" style="display:none; font-size:10px; font-weight:900; color:#38bdf8; background:#060913; border:1px solid #0284c7; padding:2px 6px; border-radius:6px; font-family:monospace; letter-spacing:0.5px;">v5.7</span>
+        <span class="hub-version-badge" style="display:none; font-size:10px; font-weight:900; color:#38bdf8; background:#060913; border:1px solid #0284c7; padding:2px 6px; border-radius:6px; font-family:monospace; letter-spacing:0.5px;">v5.8</span>
         <span class="ai-pill-tools" style="font-size:10.5px; color:#64748b; cursor:pointer; padding:2px;" title="Очистити історію ШІ" onclick="clearAiChatHistory(event)">🗑️</span>
         <span class="ai-pill-tools" style="font-size:10.5px; color:#64748b; cursor:pointer; padding:2px;" title="Налаштування API Key Gemini" onclick="configureGeminiKey(event)">🔑</span>
       </div>
@@ -687,7 +668,7 @@
     <div class="ai-pill-body" id="aiPillBody" onclick="event.stopPropagation()">
       <div class="hub-view-section" id="hubSectionClients">
         
-        <!-- ЖИВІ СЕСІЇ ПРИСТРОЇВ ОНЛАЙН (ВМІЩУЄ 4 ПРИСТРОЇ) -->
+        <!-- ЖИВІ СЕСІЇ ПРИСТРОЇВ ОНЛАЙН -->
         <div style="background:#0b1120; border:1px solid #1e293b; border-radius:9px; padding:8px 10px; display:flex; flex-direction:column; gap:5px;">
           <div style="display:flex; justify-content:space-between; align-items:center;">
             <span style="font-size:11px; font-weight:800; color:#38bdf8;">📡 Пристрої онлайн:</span>
@@ -734,7 +715,7 @@
 
       <div class="hub-view-section" id="hubSectionAi" style="display:none;">
         <div id="aiChatBox" class="ai-chat-box">
-          <div class="ai-msg bot">👋 Вітаю! Я ваш ШІ-штурман (Карта v5.7). Керування активне!</div>
+          <div class="ai-msg bot">👋 Вітаю! Я ваш ШІ-штурман (Карта v5.8). Керування активне!</div>
         </div>
         <div class="ai-chips-compact">
           <span class="ai-mini-chip" onclick="sendAiQuick('Скрий зелені точки')">🟢 Без зелених</span>
@@ -1466,7 +1447,7 @@
 
         let devUuid = localStorage.getItem("radar_device_uuid");
         if (!devUuid) {
-          devUuid = "dev_" + Math.random().toString(36).substring(2, 9) + Date.now().toString(36);
+          devUuid = "dev_" + Math.random().toString(36).substring(2, 8) + Date.now().toString(36);
           localStorage.setItem("radar_device_uuid", devUuid);
         }
 
@@ -1866,10 +1847,8 @@
         const positions = JSON.parse(saved);
         HUD_ELEMENT_IDS.forEach(id => {
           const el = document.getElementById(id);
-          if (el && positions[id]) {
+          if (el && positions[id] && positions[id].left) {
             el.style.left = positions[id].left;
-            el.style.top = positions[id].top;
-            el.style.bottom = "auto";
           }
         });
       } catch (e) {}
@@ -1906,8 +1885,7 @@
           el.classList.remove("ui-wiggling");
           const rect = el.getBoundingClientRect();
           positions[id] = {
-            left: rect.left + "px",
-            top: rect.top + "px"
+            left: rect.left + "px"
           };
         }
       });
@@ -1929,12 +1907,9 @@
 
         const rect = el.getBoundingClientRect();
         const shiftX = e.clientX - rect.left;
-        const shiftY = e.clientY - rect.top;
 
         function onMove(evt) {
           el.style.left = (evt.clientX - shiftX) + "px";
-          el.style.top = (evt.clientY - shiftY) + "px";
-          el.style.bottom = "auto";
         }
 
         function onUp() {
@@ -2250,8 +2225,24 @@
     L.DomEvent.disableClickPropagation(document.getElementById("tlSettingsModal"));
     L.DomEvent.disableClickPropagation(document.getElementById("mapDisplayModal"));
 
+    // ЗАХИСТ ВІД ЗУМУВАННЯ КАРТИ ПРИ ПОДВІЙНОМУ ТАПІ
+    ["dblclick", "touchstart", "touchend"].forEach(evt => {
+      aiPillPanel.addEventListener(evt, (e) => {
+        e.stopPropagation();
+      }, { passive: false });
+    });
+
+    aiPillPanel.addEventListener("dblclick", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+    });
+
     function toggleAiPillExpand(e) {
-      if (e && (e.target.closest('textarea') || e.target.closest('input') || e.target.closest('button') || e.target.closest('.ai-mini-chip') || e.target.closest('span[title]'))) return;
+      if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+      if (e && e.target && (e.target.closest('textarea') || e.target.closest('input') || e.target.closest('button') || e.target.closest('.ai-mini-chip') || e.target.closest('span[title]'))) return;
       const isExpanded = aiPillPanel.classList.toggle("expanded");
       aiPillPanel.classList.toggle("compact", !isExpanded);
       if (isExpanded) {
@@ -2267,18 +2258,18 @@
       }
     }
 
-    // Згортання вікна «Клієнти» за подвійним тапом
+    // Згортання вікна «Клієнти» за подвійним тапом БЕЗ передачі події в Leaflet
     let lastHubTapTime = 0;
     aiPillPanel.addEventListener("pointerdown", (e) => {
       if (e.target.closest('input') || e.target.closest('textarea') || e.target.closest('button') || e.target.closest('.hub-btn-act') || e.target.closest('.hub-duration-chip') || e.target.closest('.ai-mini-chip') || e.target.closest('.hub-client-card')) {
         return;
       }
       const now = Date.now();
-      if (now - lastHubTapTime < 320) {
+      if (now - lastHubTapTime < 350) {
         e.preventDefault();
         e.stopPropagation();
         if (aiPillPanel.classList.contains("expanded")) {
-          toggleAiPillExpand();
+          toggleAiPillExpand(e);
         }
         lastHubTapTime = 0;
         return;
@@ -2526,7 +2517,7 @@
     };
 
     // =========================================================================
-    // 🟢 СЕСІЇ ТА ОНЛАЙН (PRESENCE)
+    // 🟢 СЕСІЇ ТА ОНЛАЙН (СТАБІЛЬНИЙ ID БЕЗ ДУБЛІВ АДМІНІВ)
     // =========================================================================
     function getDeviceDescription() {
       const ua = navigator.userAgent || "";
@@ -2550,14 +2541,16 @@
       return `${os} ${browser}`;
     }
 
-    let clientSessionId = sessionStorage.getItem("radar_presence_session_id");
-    if (!clientSessionId) {
-      clientSessionId = "sess_" + Math.random().toString(36).substring(2, 8) + "_" + Date.now().toString(36);
-      sessionStorage.setItem("radar_presence_session_id", clientSessionId);
+    let devUuid = localStorage.getItem("radar_device_uuid");
+    if (!devUuid) {
+      devUuid = "dev_" + Math.random().toString(36).substring(2, 8) + "_" + Date.now().toString(36);
+      localStorage.setItem("radar_device_uuid", devUuid);
     }
+    // Сесійний ключ тепер постійний для цього пристрою і не створює дублікатів при перезавантаженні
+    let clientSessionId = (isUserAdmin() ? "admin_" : "user_") + devUuid;
 
     window.resetAndReloadSession = function() {
-      sessionStorage.removeItem("radar_presence_session_id");
+      localStorage.removeItem("radar_device_uuid");
       location.reload();
     };
 
@@ -2809,7 +2802,7 @@
       }).join('\n');
 
       const systemInstructionText = `
-Ти — високоінтелектуальний військово-дорожній ШІ-штурман у місті Дніпро для водія (v5.7).
+Ти — високоінтелектуальний військово-дорожній ШІ-штурман у місті Дніпро для водія (v5.8).
 ТОЧКИ НА КАРТІ:
 ${allLiveReportsText || "Повідомлень немає"}
 КОМАНДИ:
@@ -3630,12 +3623,12 @@ ${allLiveReportsText || "Повідомлень немає"}
     setTimeout(checkAndDrawNavRoute, 400);
   </script>
 
-  <!-- ПІДКЛЮЧЕННЯ СКРИПТІВ ІЗ СКИДАННЯМ КЕШУ ДЛЯ V5.7 -->
-  <script src="relocate.js?v=5.7"></script>
-  <script src="memory.js?v=5.7"></script>
-  <script src="timeline.js?v=5.7"></script>
-  <script src="ticker.js?v=5.7"></script>
-  <script src="keepawake.js?v=5.7"></script>
-  <script src="gps.js?v=5.7"></script>
+  <!-- ПІДКЛЮЧЕННЯ СКРИПТІВ ІЗ СКИДАННЯМ КЕШУ ДЛЯ V5.8 -->
+  <script src="relocate.js?v=5.8"></script>
+  <script src="memory.js?v=5.8"></script>
+  <script src="timeline.js?v=5.8"></script>
+  <script src="ticker.js?v=5.8"></script>
+  <script src="keepawake.js?v=5.8"></script>
+  <script src="gps.js?v=5.8"></script>
 </body>
 </html>
