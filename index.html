@@ -328,15 +328,15 @@
       overflow-y: hidden !important;
       position: relative !important;
     }
-    #hubSectionClients {
+    #hubSectionClients, #hubSectionAdmins {
       display: flex;
       flex-direction: column;
       height: 100%;
       gap: 7px;
     }
 
-    #hubActiveSessionsList {
-      max-height: 175px !important;
+    #hubClientSessionsList, #hubAdminSessionsList {
+      max-height: 140px !important;
       overflow-y: auto !important;
       display: flex !important;
       flex-direction: column !important;
@@ -556,15 +556,24 @@
   <!-- 🔐 ШТОРКА ЗАХИСТУ ТА АВТОРИЗАЦІЇ -->
   <div id="authCurtain" style="display:none; position:fixed; inset:0; z-index:99999; background:rgba(11,17,32,0.98); backdrop-filter:blur(10px); align-items:center; justify-content:center; padding:16px;">
     <div style="background:#0f172a; border:1.5px solid #0284c7; border-radius:18px; padding:24px 20px; max-width:330px; width:100%; box-shadow:0 10px 40px rgba(0,243,255,0.25); text-align:center;">
-      <div style="font-size:36px; margin-bottom:8px; cursor:pointer;" onclick="requestAdminLogin()" title="Вхід">🔐</div>
-      <h3 style="color:#f8fafc; font-size:16px; font-weight:900; margin-bottom:4px;">Радар Дніпро v6.0</h3>
-      <p style="color:#94a3b8; font-size:11.5px; margin-bottom:16px; line-height:1.4;">Введіть персональний ключ доступу</p>
+      <div id="authCurtainIcon" style="font-size:36px; margin-bottom:8px; cursor:pointer;" onclick="requestAdminLogin()" title="Вхід">🔐</div>
+      <h3 id="authCurtainTitle" style="color:#f8fafc; font-size:16px; font-weight:900; margin-bottom:4px;">Радар Дніпро v6.0</h3>
+      <p id="authCurtainSubtitle" style="color:#94a3b8; font-size:11.5px; margin-bottom:16px; line-height:1.4;">Введіть персональний ключ доступу</p>
       
-      <input type="text" id="authGateInput" placeholder="RADAR-XXXX..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="width:100%; background:#060913; border:1.5px solid #334155; border-radius:10px; color:#fff; padding:10px 12px; font-size:13px; text-align:center; outline:none; font-family:monospace; margin-bottom:12px;">
-      
-      <button id="btnAuthSubmit" onclick="submitAuthGateKey()" style="width:100%; background:linear-gradient(135deg, #0284c7 0%, #00f3ff 100%); border:none; color:#04101e; padding:11px; border-radius:10px; font-size:13px; font-weight:900; cursor:pointer;">
-        🔓 Увійти в систему
-      </button>
+      <div id="authGateInputWrap">
+        <input type="text" id="authGateInput" placeholder="RADAR-XXXX..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="width:100%; background:#060913; border:1.5px solid #334155; border-radius:10px; color:#fff; padding:10px 12px; font-size:13px; text-align:center; outline:none; font-family:monospace; margin-bottom:12px;">
+        
+        <button id="btnAuthSubmit" onclick="submitAuthGateKey()" style="width:100%; background:linear-gradient(135deg, #0284c7 0%, #00f3ff 100%); border:none; color:#04101e; padding:11px; border-radius:10px; font-size:13px; font-weight:900; cursor:pointer;">
+          🔓 Увійти в систему
+        </button>
+      </div>
+
+      <div id="authGateGraceBox" style="display:none; flex-direction:column; gap:10px; margin-top:10px;">
+        <button id="btnCopyMyExpiredKey" onclick="copyMyExpiredKey()" style="width:100%; background:#1e293b; border:1.5px dashed #38bdf8; color:#38bdf8; padding:9px; border-radius:9px; font-size:11.5px; font-weight:800; cursor:pointer; font-family:monospace;">
+          📋 Скопіювати мій ключ
+        </button>
+        <button onclick="requestAnotherClientLogin()" style="background:transparent; border:none; color:#94a3b8; font-size:10.5px; text-decoration:underline; cursor:pointer;">Ввести інший ключ</button>
+      </div>
 
       <div id="authGateError" style="display:none; color:#ef4444; font-size:11px; font-weight:700; margin-top:10px; line-height:1.3;"></div>
     </div>
@@ -648,13 +657,14 @@
     </div>
   </div>
 
-  <!-- 2. ПАНЕЛЬ «КЛІЄНТИ» (ШТАБ ДОСТУПІВ, СЕСІЇ ТА ШІ-ШТУРМАН) -->
+  <!-- 2. ПАНЕЛЬ «КЛІЄНТИ» (ШТАБ ДОСТУПІВ З ТРЬОМА ВКЛАДКАМИ) -->
   <div id="aiPillPanel" class="ai-pill-panel compact">
     <div id="aiPillHeader" class="ai-pill-compact-content" onclick="toggleAiPillExpand(event)">
       <div class="ai-titleBadge">
         <span style="font-size:13px;">👑</span>
         <span id="aiPillLabel" style="font-size:11.5px; font-weight:800; color:#38bdf8;">Клієнти</span>
-        <span class="hub-online-pill" id="hubOnlinePill">🟢 <span id="hubOnlineCount">1</span></span>
+        <!-- ЛІЧИЛЬНИК ПОКАЗУЄ ТІЛЬКИ ПІДКЛЮЧЕНИХ ВОДІЇВ -->
+        <span class="hub-online-pill" id="hubOnlinePill">🟢 <span id="hubOnlineCount">0</span></span>
       </div>
       <div style="display:flex; align-items:center; gap:5px;">
         <span class="hub-version-badge" style="display:none; font-size:10px; font-weight:900; color:#38bdf8; background:#060913; border:1px solid #0284c7; padding:2px 6px; border-radius:6px; font-family:monospace; letter-spacing:0.5px;">v6.0</span>
@@ -663,28 +673,34 @@
       </div>
     </div>
 
+    <!-- ТРИ ОКРЕМІ ВКЛАДКИ -->
     <div class="hub-tab-bar" id="hubTabBar">
-      <button class="hub-tab-btn active" id="tabBtnClients" onclick="switchHubTab('clients', event)">🔑 Доступи</button>
+      <button class="hub-tab-btn active" id="tabBtnClients" onclick="switchHubTab('clients', event)">🔑 Клієнти</button>
+      <button class="hub-tab-btn" id="tabBtnAdmins" onclick="switchHubTab('admins', event)">👑 Адміни</button>
       <button class="hub-tab-btn" id="tabBtnAi" onclick="switchHubTab('ai', event)">🤖 ШІ-Штурман</button>
     </div>
 
     <div class="ai-pill-body" id="aiPillBody" onclick="event.stopPropagation()">
+      
+      <!-- ВКЛАДКА 1: КЛІЄНТИ (СЕСІЇ ВОДІЇВ + ГЕНЕРАТОР + БАЗА) -->
       <div class="hub-view-section" id="hubSectionClients">
         
-        <!-- ЖИВІ СЕСІЇ ПРИСТРОЇВ ОНЛАЙН -->
+        <!-- СЕСІЇ ВОДІЇВ ОНЛАЙН -->
         <div style="background:#0b1120; border:1px solid #1e293b; border-radius:9px; padding:8px 10px; display:flex; flex-direction:column; gap:5px;">
           <div style="display:flex; justify-content:space-between; align-items:center;">
-            <span style="font-size:11px; font-weight:800; color:#38bdf8;">📡 Пристрої онлайн:</span>
-            <span id="hubActiveSessionsCount" style="font-size:10px; color:#10b981; font-weight:800;">1 в мережі</span>
+            <span style="font-size:11px; font-weight:800; color:#38bdf8;">📡 Водії онлайн:</span>
+            <span id="hubClientSessionsCount" style="font-size:10px; color:#10b981; font-weight:800;">0 в мережі</span>
           </div>
-          <div id="hubActiveSessionsList">
-            <div style="font-size:10.5px; color:#64748b; padding:4px;">Пошук сесій...</div>
+          <div id="hubClientSessionsList">
+            <div style="font-size:10.5px; color:#64748b; padding:4px;">Пошук водіїв...</div>
           </div>
         </div>
 
-        <!-- ГЕНЕРАТОР КЛЮЧІВ -->
+        <!-- ГЕНЕРАТОР КЛЮЧІВ (ПОДВІЙНИЙ ТАП ПО ЗАГОЛОВКУ ДЛЯ ВВОДУ ХВИЛИН) -->
         <div class="hub-key-form">
-          <div style="font-size:11px; font-weight:800; color:#cbd5e1;">➕ Згенерувати новий ключ:</div>
+          <div style="font-size:11px; font-weight:800; color:#cbd5e1; cursor:pointer; user-select:none;" ondblclick="promptCustomMinuteKey()" title="Двічі натисніть для тесту на хвилини">
+            ➕ Згенерувати новий ключ:
+          </div>
           <div class="hub-input-row">
             <input type="text" id="hubInputClientLabel" class="hub-text-input" placeholder="Ім'я водія (напр. Олег Спринтер)" autocomplete="off">
           </div>
@@ -721,6 +737,20 @@
         </div>
       </div>
 
+      <!-- ВКЛАДКА 2: АДМІНИ (ТІЛЬКИ ПРИСТРОЇ ШЕФА) -->
+      <div class="hub-view-section" id="hubSectionAdmins" style="display:none;">
+        <div style="background:#0b1120; border:1px solid #1e293b; border-radius:9px; padding:8px 10px; display:flex; flex-direction:column; gap:5px;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size:11px; font-weight:800; color:#38bdf8;">👑 Адміністратори онлайн:</span>
+            <span id="hubAdminSessionsCount" style="font-size:10px; color:#00f3ff; font-weight:800;">0 в мережі</span>
+          </div>
+          <div id="hubAdminSessionsList">
+            <div style="font-size:10.5px; color:#64748b; padding:4px;">Пошук сесій...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ВКЛАДКА 3: ШІ-ШТУРМАН -->
       <div class="hub-view-section" id="hubSectionAi" style="display:none;">
         <div id="aiChatBox" class="ai-chat-box">
           <div class="ai-msg bot">👋 Вітаю! Я ваш ШІ-штурман (Карта v6.0). Керування активне!</div>
@@ -1339,7 +1369,7 @@
     }
 
     // =========================================================================
-    // 🚪 ШТОРКА ТА ВАЛІДАЦІЯ КЛЮЧІВ
+    // 🚪 ШТОРКА ТА ВАЛІДАЦІЯ КЛЮЧІВ (З ЛЬГОТНИМ ТАЙМЕРОМ ДЛЯ ВОДІЯ)
     // =========================================================================
     function showAuthCurtain() {
       const c = document.getElementById("authCurtain");
@@ -1357,6 +1387,41 @@
         err.innerText = msg;
         err.style.display = "block";
       }
+    }
+
+    function copyMyExpiredKey() {
+      const clientKey = localStorage.getItem("radar_client_token") || "";
+      if (clientKey) {
+        window.copyTokenText(clientKey);
+      }
+    }
+
+    function requestAnotherClientLogin() {
+      localStorage.removeItem("radar_client_token");
+      localStorage.removeItem("radar_client_expires_at");
+      document.getElementById("authGateGraceBox").style.display = "none";
+      document.getElementById("authGateInputWrap").style.display = "block";
+      document.getElementById("authCurtainTitle").innerText = "Радар Дніпро v6.0";
+      document.getElementById("authCurtainSubtitle").innerText = "Введіть персональний ключ доступу";
+      const err = document.getElementById("authGateError");
+      if (err) err.style.display = "none";
+    }
+
+    function showGracePeriodCurtain(clientKey, remainingMs) {
+      showAuthCurtain();
+      document.getElementById("authGateInputWrap").style.display = "none";
+      const graceBox = document.getElementById("authGateGraceBox");
+      graceBox.style.display = "flex";
+
+      const h = Math.floor(remainingMs / 3600000);
+      const m = Math.floor((remainingMs % 3600000) / 60000);
+      document.getElementById("authCurtainIcon").innerText = "⏳";
+      document.getElementById("authCurtainTitle").innerText = "Термін дії ключа закінчився";
+      document.getElementById("authCurtainSubtitle").innerHTML = `
+        До остаточного видалення з бази: <b style="color:#ef4444; font-family:monospace;">${h} год. ${m} хв.</b><br>
+        Зв'яжіться з адміністратором для подовження доступу.
+      `;
+      document.getElementById("btnCopyMyExpiredKey").innerText = `📋 Скопіювати мій ключ: ${clientKey}`;
     }
 
     function updateClientExpiryUI(expiresAt) {
@@ -1449,9 +1514,21 @@
           showAuthError("🚫 Цей ключ доступу заблоковано адміністратором");
           return;
         }
-        if (tokenData.expires_at && tokenData.expires_at > 0 && Date.now() > tokenData.expires_at) {
-          showAuthError("⏳ Термін дії ключа вичерпано");
-          return;
+
+        const now = Date.now();
+        const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+        if (tokenData.expires_at && tokenData.expires_at > 0 && now > tokenData.expires_at) {
+          const expiredDuration = now - tokenData.expires_at;
+          if (expiredDuration < ONE_DAY_MS) {
+            localStorage.setItem("radar_client_token", uppercaseKey);
+            localStorage.setItem("radar_client_label", tokenData.label || "Водій");
+            localStorage.setItem("radar_client_expires_at", tokenData.expires_at);
+            showGracePeriodCurtain(uppercaseKey, ONE_DAY_MS - expiredDuration);
+            return;
+          } else {
+            showAuthError("⏳ Термін дії ключа вичерпано і його видалено");
+            return;
+          }
         }
 
         let devUuid = localStorage.getItem("radar_device_uuid");
@@ -1516,10 +1593,19 @@
             showAuthError("🚫 Доступ тимчасово призупинено адміністратором");
             return;
           }
-          if (data.expires_at && data.expires_at > 0 && Date.now() > data.expires_at) {
-            showAuthCurtain();
-            showAuthError("⏳ Термін дії ключа вичерпано");
-            return;
+          const now = Date.now();
+          const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+          if (data.expires_at && data.expires_at > 0 && now > data.expires_at) {
+            const expiredDuration = now - data.expires_at;
+            if (expiredDuration < ONE_DAY_MS) {
+              showGracePeriodCurtain(clientKey, ONE_DAY_MS - expiredDuration);
+              return;
+            } else {
+              localStorage.removeItem("radar_client_token");
+              showAuthCurtain();
+              showAuthError("⏳ Термін дії ключа вичерпано");
+              return;
+            }
           }
           localStorage.setItem("radar_client_expires_at", data.expires_at || 0);
           updateClientExpiryUI(data.expires_at || 0);
@@ -2285,7 +2371,7 @@
       const isExpanded = aiPillPanel.classList.toggle("expanded");
       aiPillPanel.classList.toggle("compact", !isExpanded);
       if (isExpanded) {
-        if (currentHubTab === "clients") {
+        if (currentHubTab === "clients" || currentHubTab === "admins") {
           loadAccessTokens();
           fetchOnlineCount();
         } else {
@@ -2330,21 +2416,30 @@
       if (e) e.stopPropagation();
       currentHubTab = tabName;
       const btnClients = document.getElementById("tabBtnClients");
+      const btnAdmins = document.getElementById("tabBtnAdmins");
       const btnAi = document.getElementById("tabBtnAi");
       const secClients = document.getElementById("hubSectionClients");
+      const secAdmins = document.getElementById("hubSectionAdmins");
       const secAi = document.getElementById("hubSectionAi");
+
+      btnClients.classList.remove("active");
+      btnAdmins.classList.remove("active");
+      btnAi.classList.remove("active");
+      secClients.style.display = "none";
+      secAdmins.style.display = "none";
+      secAi.style.display = "none";
 
       if (tabName === "clients") {
         btnClients.classList.add("active");
-        btnAi.classList.remove("active");
         secClients.style.display = "flex";
-        secAi.style.display = "none";
         loadAccessTokens();
+        fetchOnlineCount();
+      } else if (tabName === "admins") {
+        btnAdmins.classList.add("active");
+        secAdmins.style.display = "flex";
         fetchOnlineCount();
       } else {
         btnAi.classList.add("active");
-        btnClients.classList.remove("active");
-        secClients.style.display = "none";
         secAi.style.display = "flex";
         verifyGeminiAuthorization();
         setTimeout(() => { aiChatBox.scrollTop = aiChatBox.scrollHeight; }, 50);
@@ -2365,6 +2460,52 @@
       const char = alphabet.charAt(Math.floor(Math.random() * alphabet.length));
       return `RADAR-${num}-${char}`;
     }
+
+    // ТЕСТОВИЙ РЕЖИМ: ВВІД ХВИЛИН ЧЕРЕЗ ПОДВІЙНИЙ ТАП ПО ЗАГОЛОВКУ
+    window.promptCustomMinuteKey = async function() {
+      const minsStr = prompt("🛠️ Тестовий режим генерації:\nВведіть тривалість ключа у хвилинах (наприклад, 1):", "1");
+      if (!minsStr) return;
+      const mins = parseFloat(minsStr);
+      if (isNaN(mins) || mins <= 0) {
+        alert("❌ Введіть коректне число хвилин більше 0");
+        return;
+      }
+
+      const input = document.getElementById("hubInputClientLabel");
+      const label = input.value.trim() || `Тест ${mins}хв`;
+      const newKey = generateKeyString();
+      const now = Date.now();
+      const expiresAt = now + Math.round(mins * 60 * 1000);
+
+      const payload = {
+        label: label,
+        created_at: now,
+        expires_at: expiresAt,
+        status: "active",
+        device_id: null
+      };
+
+      try {
+        const url = window.appendAuth(FIREBASE_TOKENS_URL.replace(".json", `/${encodeURIComponent(newKey)}.json`));
+        await fetch(url, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        accessTokensCache[newKey] = payload;
+
+        const codeBox = document.getElementById("hubGeneratedBox");
+        const codeText = document.getElementById("hubGeneratedCode");
+        codeText.innerText = newKey;
+        codeBox.style.display = "flex";
+
+        showToast(`⏱️ Створено тестовий ключ на ${mins} хв: ${newKey}`);
+        renderAccessTokensList();
+      } catch (e) {
+        showToast("❌ Помилка створення ключа");
+      }
+    };
 
     async function generateNewAccessToken(e) {
       if (e) e.stopPropagation();
@@ -2455,6 +2596,45 @@
       renderAccessTokensList();
     };
 
+    // ПОДОВЖЕННЯ ТЕРМІНУ ДІЇ КЛЮЧА (+ ДНІ АБО ОЖИВЛЕННЯ ЧЕРВОНИХ)
+    window.promptExtendToken = async function(key) {
+      const item = accessTokensCache[key];
+      if (!item) return;
+      const inputStr = prompt(`⏳ Подовження терміну для «${item.label || key}»:\nВведіть кількість днів (напр. 30), або 0 для безліміту:`, "30");
+      if (inputStr === null) return;
+      const days = parseInt(inputStr.trim(), 10);
+      if (isNaN(days) || days < 0) {
+        alert("❌ Введіть коректне число днів (0 або більше)");
+        return;
+      }
+
+      const now = Date.now();
+      let newExpires = 0;
+      if (days === 0) {
+        newExpires = 0; // безліміт
+      } else {
+        // Якщо ключ ще діє — додаємо в плюс. Якщо вже прострочений — від сьогоднішнього моменту
+        const baseTime = (item.expires_at && item.expires_at > now) ? item.expires_at : now;
+        newExpires = baseTime + (days * 24 * 60 * 60 * 1000);
+      }
+
+      item.expires_at = newExpires;
+      item.status = "active"; // автоматично знімаємо з блокування/паузи при подовженні
+
+      try {
+        const url = window.appendAuth(FIREBASE_TOKENS_URL.replace(".json", `/${encodeURIComponent(key)}.json`));
+        await fetch(url, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ expires_at: newExpires, status: "active" })
+        });
+        showToast(days === 0 ? `🟢 Ключ ${key} переведено в БЕЗЛІМІТ!` : `⏳ Ключ ${key} подовжено на +${days} дн.!`);
+      } catch(e) {
+        showToast("❌ Помилка збереження подовження");
+      }
+      renderAccessTokensList();
+    };
+
     // ПЕРЕМИКАЧ СОРТУВАННЯ КЛЮЧІВ
     window.setTokensSort = function(mode) {
       tokensSortMode = mode;
@@ -2495,7 +2675,7 @@
       pendingConfirmAction = null;
     }
 
-    // РЕНДЕР КЛЮЧІВ: АВТОВИДАЛЕННЯ ЧЕРЕЗ 24 ГОДИНИ + РЕДАГУВАННЯ ТА СОРТУВАННЯ
+    // РЕНДЕР КЛЮЧІВ: АВТОВИДАЛЕННЯ ЧЕРЕЗ 24 ГОДИНИ + КНОПКА ПОДОВЖЕННЯ ⏳+
     function renderAccessTokensList() {
       const listBox = document.getElementById("hubClientsList");
       const countBadge = document.getElementById("hubClientsCount");
@@ -2514,7 +2694,7 @@
       const ONE_DAY_MS = 24 * 60 * 60 * 1000;
       let entries = Object.entries(accessTokensCache);
 
-      // АВТОМАТИЧНЕ ОЧИЩЕННЯ: видаляємо ключі, термін яких вийшов більше 1 доби тому
+      // АВТОМАТИЧНЕ ОЧИЩЕННЯ: видаляємо ключі, термін яких вийшов більше 1 доби (24 год) тому
       const toDelete = [];
       entries = entries.filter(([key, item]) => {
         if (item.expires_at && item.expires_at > 0) {
@@ -2603,6 +2783,7 @@
             <div class="hub-client-sub" style="font-size:10px; margin-top:2px;">${deviceState} • ${expText}</div>
           </div>
           <div class="hub-client-actions" style="display:flex; gap:4px; flex-shrink:0;">
+            <button class="hub-btn-act" onclick="promptExtendToken('${escapeHtml(key)}')\" title="Подовжити дію ключа" style="color:#10b981; font-weight:900; font-size:11px;">⏳+</button>
             <button class="hub-btn-act" onclick="confirmToggleTokenBlock('${escapeHtml(key)}')\" title="${pausePlayTitle}">${pausePlayIcon}</button>
             <button class="hub-btn-act danger" onclick="confirmDeleteAccessToken('${escapeHtml(key)}')\" title="Видалити ключ">🗑️</button>
           </div>
@@ -2651,7 +2832,7 @@
     };
 
     // =========================================================================
-    // 🟢 СЕСІЇ ТА ОНЛАЙН (СТАБІЛЬНИЙ ID БЕЗ ДУБЛІВ АДМІНІВ)
+    // 🟢 СЕСІЇ ТА ОНЛАЙН (РОЗДІЛЕННЯ ВОДІЇВ ТА АДМІНІВ + ЖОРСТКИЙ РУБІЛЬНИК)
     // =========================================================================
     function getDeviceDescription() {
       const ua = navigator.userAgent || "";
@@ -2691,8 +2872,8 @@
       document.body.innerHTML = `
         <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; background:#0b1120; color:#fff; font-family:-apple-system,sans-serif; text-align:center; padding:20px;">
           <div style="font-size:52px; margin-bottom:12px;">🚫</div>
-          <h2 style="color:#ef4444; margin-bottom:8px; font-weight:900;">Сесію відключено</h2>
-          <p style="color:#94a3b8; font-size:13px; max-width:300px; line-height:1.4;">Доступ до карти було відкликано адміністратором.</p>
+          <h2 style="color:#ef4444; margin-bottom:8px; font-weight:900;">Доступ заблоковано</h2>
+          <p style="color:#94a3b8; font-size:13px; max-width:300px; line-height:1.4;">Ваш доступ до карти було призупинено адміністратором.</p>
           <button onclick="resetAndReloadSession()" style="margin-top:22px; background:#0284c7; border:none; color:#fff; padding:10px 20px; border-radius:8px; font-weight:800; cursor:pointer;">Спробувати знову</button>
         </div>
       `;
@@ -2723,6 +2904,17 @@
                   showAuthError("🚫 Доступ тимчасово призупинено адміністратором");
                 } else if (!tData.expires_at || tData.expires_at === 0 || Date.now() <= tData.expires_at) {
                   hideAuthCurtain();
+                } else {
+                  const now = Date.now();
+                  const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+                  const expiredDuration = now - tData.expires_at;
+                  if (expiredDuration < ONE_DAY_MS) {
+                    showGracePeriodCurtain(clientKey, ONE_DAY_MS - expiredDuration);
+                  } else {
+                    localStorage.removeItem("radar_client_token");
+                    showAuthCurtain();
+                    showAuthError("⏳ Термін дії ключа вичерпано");
+                  }
                 }
               }
             }
@@ -2737,7 +2929,8 @@
             admin: isUserAdmin(),
             mode: currentUiMode,
             device: getDeviceDescription(),
-            token_label: isUserAdmin() ? "Адмін" : (localStorage.getItem("radar_client_label") || "Гість")
+            token_label: isUserAdmin() ? "Адмін" : (localStorage.getItem("radar_client_label") || "Гість"),
+            client_key: localStorage.getItem("radar_client_token") || ""
           })
         });
       } catch(e) {}
@@ -2753,39 +2946,44 @@
 
         const now = Date.now();
         const activeEntries = Object.entries(data).filter(([k, item]) => item && !item.kicked && (now - (item.t || 0)) < 45000);
-        const count = Math.max(1, activeEntries.length);
 
+        // РОЗДІЛЕННЯ НА ВОДІЇВ ТА АДМІНІВ
+        const clientEntries = activeEntries.filter(([k, item]) => !item.admin);
+        const adminEntries = activeEntries.filter(([k, item]) => item.admin);
+
+        // ЛІЧИЛЬНИК У ШАПЦІ РАХУЄ ТІЛЬКИ ВОДІЇВ
         const badge = document.getElementById("hubOnlineCount");
-        if (badge) badge.innerText = String(count);
+        if (badge) badge.innerText = String(clientEntries.length);
 
-        const sessCountBadge = document.getElementById("hubActiveSessionsCount");
-        if (sessCountBadge) sessCountBadge.innerText = `${activeEntries.length} в мережі`;
+        const sessClientCountBadge = document.getElementById("hubClientSessionsCount");
+        if (sessClientCountBadge) sessClientCountBadge.innerText = `${clientEntries.length} в мережі`;
 
-        renderActiveSessionsList(activeEntries);
+        const sessAdminCountBadge = document.getElementById("hubAdminSessionsCount");
+        if (sessAdminCountBadge) sessAdminCountBadge.innerText = `${adminEntries.length} в мережі`;
+
+        renderClientSessionsList(clientEntries);
+        renderAdminSessionsList(adminEntries);
       } catch (e) {}
     }
 
-    function renderActiveSessionsList(activeEntries) {
-      const box = document.getElementById("hubActiveSessionsList");
+    function renderClientSessionsList(clientEntries) {
+      const box = document.getElementById("hubClientSessionsList");
       if (!box) return;
 
-      if (!activeEntries || activeEntries.length === 0) {
-        box.innerHTML = `<div style="font-size:10px; color:#64748b; padding:4px;">Немає активних сесій</div>`;
+      if (!clientEntries || clientEntries.length === 0) {
+        box.innerHTML = `<div style="font-size:10px; color:#64748b; padding:4px;">Немає підключених водіїв</div>`;
         return;
       }
 
       box.innerHTML = "";
       const now = Date.now();
 
-      activeEntries.forEach(([sessId, item]) => {
+      clientEntries.forEach(([sessId, item]) => {
         const isCurrent = (sessId === clientSessionId);
         const diffSec = Math.max(0, Math.round((now - (item.t || 0)) / 1000));
         const deviceName = item.device || "Пристрій";
-        
-        let displayName = item.token_label || (item.admin ? "Адмін" : "Гість");
-        if (item.admin && !displayName.includes("👑")) {
-          displayName = `👑 ${displayName}`;
-        }
+        const displayName = item.token_label || "Гість";
+        const clientKey = item.client_key || "";
 
         const row = document.createElement("div");
         row.style.cssText = "display:flex; justify-content:space-between; align-items:center; background:#060913; border:1px solid #1e293b; padding:5px 8px; border-radius:6px; margin-bottom:4px; font-size:11px;";
@@ -2796,6 +2994,7 @@
           <div style="font-weight:800; color:#f8fafc; display:flex; align-items:center; gap:5px; flex-wrap:wrap;">
             <span>${escapeHtml(displayName)}</span>
             <span style="font-size:10px; color:#38bdf8; font-weight:700;">(${escapeHtml(deviceName)})</span>
+            ${clientKey ? `<span style="font-size:9.5px; color:#94a3b8; font-family:monospace;">[${escapeHtml(clientKey)}]</span>` : ''}
           </div>
           <div style="font-size:9.5px; color:#64748b; margin-top:2px;">
             ${isCurrent ? '<b style="color:#10b981;">🟢 Цей екран</b>' : `🟢 в мережі (${diffSec}с тому)`}
@@ -2811,7 +3010,7 @@
           btnKick.innerText = "🚫 Відключити";
           btnKick.onclick = (e) => {
             e.stopPropagation();
-            window.kickPresenceSession(sessId, `${displayName} (${deviceName})`);
+            window.kickAndBlockClient(sessId, clientKey, `${displayName} (${deviceName})`);
           };
           right.appendChild(btnKick);
         }
@@ -2822,8 +3021,93 @@
       });
     }
 
-    window.kickPresenceSession = async function(sessionId, deviceName) {
-      if (!confirm(`Відключити сесію «${deviceName || sessionId}»?`)) return;
+    function renderAdminSessionsList(adminEntries) {
+      const box = document.getElementById("hubAdminSessionsList");
+      if (!box) return;
+
+      if (!adminEntries || adminEntries.length === 0) {
+        box.innerHTML = `<div style="font-size:10px; color:#64748b; padding:4px;">Немає активних сесій адміна</div>`;
+        return;
+      }
+
+      box.innerHTML = "";
+      const now = Date.now();
+
+      adminEntries.forEach(([sessId, item]) => {
+        const isCurrent = (sessId === clientSessionId);
+        const diffSec = Math.max(0, Math.round((now - (item.t || 0)) / 1000));
+        const deviceName = item.device || "Пристрій";
+
+        const row = document.createElement("div");
+        row.style.cssText = "display:flex; justify-content:space-between; align-items:center; background:#060913; border:1px solid #1e293b; padding:5px 8px; border-radius:6px; margin-bottom:4px; font-size:11px;";
+
+        const left = document.createElement("div");
+        left.style.cssText = "line-height:1.3; min-width:0; flex:1;";
+        left.innerHTML = `
+          <div style="font-weight:800; color:#f8fafc; display:flex; align-items:center; gap:5px; flex-wrap:wrap;">
+            <span>👑 Шеф / Адмін</span>
+            <span style="font-size:10px; color:#00f3ff; font-weight:700;">(${escapeHtml(deviceName)})</span>
+          </div>
+          <div style="font-size:9.5px; color:#64748b; margin-top:2px;">
+            ${isCurrent ? '<b style="color:#10b981;">🟢 Цей екран</b>' : `🟢 в мережі (${diffSec}с тому)`}
+          </div>
+        `;
+
+        const right = document.createElement("div");
+        right.style.cssText = "flex-shrink:0; margin-left:6px;";
+        if (!isCurrent) {
+          const btnKick = document.createElement("button");
+          btnKick.className = "hub-btn-act danger";
+          btnKick.style.cssText = "padding:3px 7px; font-size:9.5px;";
+          btnKick.innerText = "🚫 Закрити";
+          btnKick.onclick = (e) => {
+            e.stopPropagation();
+            window.kickPresenceSessionOnly(sessId, `Адмін (${deviceName})`);
+          };
+          right.appendChild(btnKick);
+        }
+
+        row.appendChild(left);
+        row.appendChild(right);
+        box.appendChild(row);
+      });
+    }
+
+    // ЖОРСТКЕ ВІДКЛЮЧЕННЯ: СЕСІЯ ВБИВАЄТЬСЯ + КЛЮЧ БЛОКУЄТЬСЯ НАЗАВЖДИ
+    window.kickAndBlockClient = async function(sessionId, clientKey, displayName) {
+      if (!confirm(`Відключити та заблокувати доступ для «${displayName}»?\n(Ключ перейде в режим паузи, пристрій не увійде навіть після перезавантаження)`)) return;
+      try {
+        // 1. Вбиваємо живу сесію
+        const sessionUrl = window.appendAuth(FIREBASE_PRESENCE_URL.replace(".json", `/${encodeURIComponent(sessionId)}.json`));
+        await fetch(sessionUrl, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ kicked: true, t: 0 })
+        });
+
+        // 2. Блокуємо ключ у базі, якщо він відомий
+        if (clientKey) {
+          const tokenUrl = window.appendAuth(FIREBASE_TOKENS_URL.replace(".json", `/${encodeURIComponent(clientKey)}.json`));
+          await fetch(tokenUrl, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status: "blocked" })
+          });
+          if (accessTokensCache[clientKey]) {
+            accessTokensCache[clientKey].status = "blocked";
+          }
+          renderAccessTokensList();
+        }
+
+        showToast("🚫 Пристрій відключено, а ключ заблоковано!");
+        fetchOnlineCount();
+      } catch(e) {
+        showToast("❌ Помилка блокування");
+      }
+    };
+
+    window.kickPresenceSessionOnly = async function(sessionId, displayName) {
+      if (!confirm(`Відключити сесію «${displayName}»?`)) return;
       try {
         const sessionUrl = window.appendAuth(FIREBASE_PRESENCE_URL.replace(".json", `/${encodeURIComponent(sessionId)}.json`));
         await fetch(sessionUrl, {
@@ -2831,10 +3115,10 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ kicked: true, t: 0 })
         });
-        showToast("🚫 Пристрій відключено!");
+        showToast("🚫 Сесію закрито!");
         fetchOnlineCount();
       } catch(e) {
-        showToast("❌ Помилка відключення");
+        showToast("❌ Помилка");
       }
     };
 
