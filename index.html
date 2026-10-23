@@ -553,7 +553,7 @@
   </script>
 </head>
 <body>
-  <!-- 🔐 ШТОРКА ЗАХИСТУ ТА АВТОРИЗАЦІЇ -->
+  <!-- 🔐 ШТОРКА ЗАХИСТУ ТА АВТОРИЗАЦІЇ (З ЛЬГОТНИМ ТАЙМЕРОМ ДЛЯ ВОДІЯ) -->
   <div id="authCurtain" style="display:none; position:fixed; inset:0; z-index:99999; background:rgba(11,17,32,0.98); backdrop-filter:blur(10px); align-items:center; justify-content:center; padding:16px;">
     <div style="background:#0f172a; border:1.5px solid #0284c7; border-radius:18px; padding:24px 20px; max-width:330px; width:100%; box-shadow:0 10px 40px rgba(0,243,255,0.25); text-align:center;">
       <div id="authCurtainIcon" style="font-size:36px; margin-bottom:8px; cursor:pointer;" onclick="requestAdminLogin()" title="Вхід">🔐</div>
@@ -568,6 +568,7 @@
         </button>
       </div>
 
+      <!-- БЛОК ЛЬГОТНОГО ПЕРІОДУ ДЛЯ ВОДІЯ З КНОПКОЮ КОПІЮВАННЯ КЛЮЧА -->
       <div id="authGateGraceBox" style="display:none; flex-direction:column; gap:10px; margin-top:10px;">
         <button id="btnCopyMyExpiredKey" onclick="copyMyExpiredKey()" style="width:100%; background:#1e293b; border:1.5px dashed #38bdf8; color:#38bdf8; padding:9px; border-radius:9px; font-size:11.5px; font-weight:800; cursor:pointer; font-family:monospace;">
           📋 Скопіювати мій ключ
@@ -696,9 +697,9 @@
           </div>
         </div>
 
-        <!-- ГЕНЕРАТОР КЛЮЧІВ (ПОДВІЙНИЙ ТАП ПО ЗАГОЛОВКУ ДЛЯ ВВОДУ ХВИЛИН) -->
+        <!-- ГЕНЕРАТОР КЛЮЧІВ -->
         <div class="hub-key-form">
-          <div style="font-size:11px; font-weight:800; color:#cbd5e1; cursor:pointer; user-select:none;" ondblclick="promptCustomMinuteKey()" title="Двічі натисніть для тесту на хвилини">
+          <div style="font-size:11px; font-weight:800; color:#cbd5e1;">
             ➕ Згенерувати новий ключ:
           </div>
           <div class="hub-input-row">
@@ -710,8 +711,10 @@
             <span class="hub-duration-chip active" data-days="30" onclick="selectDurationChip(this, event)">30 днів</span>
             <span class="hub-duration-chip" data-days="90" onclick="selectDurationChip(this, event)">90 днів</span>
             <span class="hub-duration-chip" data-days="0" onclick="selectDurationChip(this, event)">Безліміт</span>
+            <!-- КНОПКА ВВОДУ ХВИЛИН ДЛЯ ТЕСТУ БЕЗ КОНФЛІКТУ ДАБЛ-ТАПУ -->
+            <span class="hub-duration-chip" onclick="promptCustomMinuteKey(event)" style="border-color:#38bdf8; color:#38bdf8; font-weight:900;" title="Ввести тривалість у хвилинах вручну">⏱️ хв</span>
           </div>
-          <button class="hub-btn-generate" onclick="generateNewAccessToken(event)">⚡ Згенерувати персональний ключ</button>
+          <button id="hubBtnGenerate" class="hub-btn-generate" onclick="generateNewAccessToken(event)" title="Звичайний клік — за обраним терміном. Затисніть на 0.7с — тест у хвилинах!">⚡ Згенерувати персональний ключ</button>
           
           <div class="hub-generated-box" id="hubGeneratedBox" style="display:none; align-items:center; justify-content:space-between;">
             <span class="hub-generated-code" id="hubGeneratedCode">RADAR-0000-X</span>
@@ -2313,7 +2316,7 @@
     };
 
     // =========================================================================
-    // 👑 ПАНЕЛЬ «КЛІЄНТИ» (ШТАБ ДОСТУПІВ, СЕСІЇ ТА ШІ-ШТУРМАН)
+    // 👑 ПАНЕЛЬ «КЛІЄНТИ» (ШТАБ ДОСТУПІВ З ТРЬОМА ВКЛАДКАМИ)
     // =========================================================================
     const aiPillPanel = document.getElementById("aiPillPanel");
     const aiInlineInput = document.getElementById("aiInlineInput");
@@ -2461,8 +2464,9 @@
       return `RADAR-${num}-${char}`;
     }
 
-    // ТЕСТОВИЙ РЕЖИМ: ВВІД ХВИЛИН ЧЕРЕЗ ПОДВІЙНИЙ ТАП ПО ЗАГОЛОВКУ
-    window.promptCustomMinuteKey = async function() {
+    // ТЕСТОВИЙ РЕЖИМ ГЕНЕРАЦІЇ ХВИЛИН (ОДИН КЛІК ПО КНОПЦІ «⏱️ хв» АБО ЗАЖАТТЯ НА КНОПЦІ ГЕНЕРАТОРА)
+    window.promptCustomMinuteKey = async function(e) {
+      if (e) e.stopPropagation();
       const minsStr = prompt("🛠️ Тестовий режим генерації:\nВведіть тривалість ключа у хвилинах (наприклад, 1):", "1");
       if (!minsStr) return;
       const mins = parseFloat(minsStr);
@@ -2506,6 +2510,24 @@
         showToast("❌ Помилка створення ключа");
       }
     };
+
+    // ОБРОБНИК ДОВГОГО УТРИМАННЯ НА КНОПЦІ «⚡ Згенерувати» (0.7с) ДЛЯ МОБІЛОК
+    const genBtn = document.getElementById("hubBtnGenerate");
+    if (genBtn) {
+      let genLongPressTimer = null;
+      genBtn.addEventListener("touchstart", (e) => {
+        genLongPressTimer = setTimeout(() => {
+          if (navigator.vibrate) navigator.vibrate(50);
+          window.promptCustomMinuteKey(e);
+        }, 700);
+      }, { passive: true });
+      genBtn.addEventListener("touchend", () => {
+        if (genLongPressTimer) { clearTimeout(genLongPressTimer); genLongPressTimer = null; }
+      });
+      genBtn.addEventListener("touchmove", () => {
+        if (genLongPressTimer) { clearTimeout(genLongPressTimer); genLongPressTimer = null; }
+      });
+    }
 
     async function generateNewAccessToken(e) {
       if (e) e.stopPropagation();
@@ -2613,13 +2635,13 @@
       if (days === 0) {
         newExpires = 0; // безліміт
       } else {
-        // Якщо ключ ще діє — додаємо в плюс. Якщо вже прострочений — від сьогоднішнього моменту
+        // Якщо ключ ще діє — додаємо в плюс. Якщо вже прострочений — від поточної секунди
         const baseTime = (item.expires_at && item.expires_at > now) ? item.expires_at : now;
         newExpires = baseTime + (days * 24 * 60 * 60 * 1000);
       }
 
       item.expires_at = newExpires;
-      item.status = "active"; // автоматично знімаємо з блокування/паузи при подовженні
+      item.status = "active";
 
       try {
         const url = window.appendAuth(FIREBASE_TOKENS_URL.replace(".json", `/${encodeURIComponent(key)}.json`));
