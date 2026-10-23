@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <meta name="color-scheme" content="light only">
-  <title>Радар Дніпро v5.6</title>
+  <title>Радар Дніпро v5.7</title>
   <link rel="icon" type="image/png" href="icon.png">
   <link rel="apple-touch-icon" href="icon.png">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -23,6 +23,11 @@
       --sonar-clean-speed: 1.8s;
       --sonar-danger-base-speed: 2.4s;
       --sonar-danger-step: 0.3s;
+
+      /* Тюнінг ядра та ободка світлофора */
+      --sonar-core-size: 16px;
+      --sonar-border-width: 2.5px;
+      --sonar-border-color: #facc15;
 
       /* Налаштування яскравості карти та міток */
       --map-night-brightness: 95%;
@@ -133,7 +138,7 @@
       display: inline-flex !important;
     }
 
-    /* КНОПКИ «МОЗОК 🧠» ТА «СТАТИСТИКА 📊» */
+    /* КНОПКИ «МОЗОК 🧠» ТА «СТАТИСТИКА 📊» З АПАРАТНОЮ ІЗОЛЯЦІЄЮ */
     #btnMemHud {
       position: fixed;
       bottom: 15px;
@@ -158,15 +163,24 @@
       line-height: 1 !important;
       cursor: pointer !important;
       box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45) !important;
-      transition: background 0.2s, border-color 0.2s;
       user-select: none !important;
+      -webkit-user-select: none !important;
+      -webkit-tap-highlight-color: transparent !important;
+      outline: none !important;
+      transform: translate3d(0, 0, 0);
+      -webkit-transform: translate3d(0, 0, 0);
+      will-change: transform;
+      -webkit-backface-visibility: hidden;
+      backface-visibility: hidden;
+      transform-origin: center center;
+      transition: background 0.2s, border-color 0.2s;
     }
     #btnMemHud:hover {
       background: #1e293b !important;
       border-color: #00f3ff !important;
       box-shadow: 0 0 12px rgba(0, 243, 255, 0.45) !important;
     }
-    #btnMemHud:active { transform: scale(0.92) !important; }
+    #btnMemHud:active { transform: translate3d(0, 0, 0) scale(0.92) !important; }
 
     #btnStatsHud {
       position: fixed;
@@ -188,21 +202,88 @@
       background: #0f172a !important;
       border: 1.5px solid #0284c7 !important;
       box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45) !important;
-      transition: background 0.2s, border-color 0.2s;
       user-select: none !important;
+      -webkit-user-select: none !important;
+      -webkit-tap-highlight-color: transparent !important;
       cursor: pointer;
       outline: none;
+      transform: translate3d(0, 0, 0);
+      -webkit-transform: translate3d(0, 0, 0);
+      will-change: transform;
+      -webkit-backface-visibility: hidden;
+      backface-visibility: hidden;
+      transform-origin: center center;
+      transition: background 0.2s, border-color 0.2s;
     }
     #btnStatsHud:hover {
       background: #1e293b !important;
       border-color: #00f3ff !important;
       box-shadow: 0 0 12px rgba(0, 243, 255, 0.45) !important;
     }
-    #btnStatsHud:active { transform: scale(0.92) !important; }
+    #btnStatsHud:active { transform: translate3d(0, 0, 0) scale(0.92) !important; }
 
     /* =========================================================================
-       1. ПАНЕЛЬ «КЛІЄНТИ» (ЖОРСТКА ПРИВ'ЯЗКА СПРАВА ТА РОЗГОРТАННЯ ДОНИЗУ)
+       1. РОЗШИРЕННЯ ШАПКИ (БЛОК 1) У ПРОСТОМУ РЕЖИМІ
        ========================================================================= */
+    html.mode-simple #dashPanel {
+      width: auto !important;
+      max-width: fit-content !important;
+      height: 38px !important;
+      min-height: 38px !important;
+      max-height: 38px !important;
+      padding: 0 10px !important;
+      display: inline-flex !important;
+      flex-direction: row !important;
+      align-items: center !important;
+      gap: 8px !important;
+      border-radius: 12px !important;
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45) !important;
+      overflow: visible !important;
+    }
+    html.mode-simple #dashHeader {
+      margin-bottom: 0 !important;
+      padding-bottom: 0 !important;
+      border-bottom: none !important;
+      gap: 8px !important;
+      display: inline-flex !important;
+      align-items: center !important;
+    }
+    html.mode-simple #collapsibleBody {
+      display: none !important;
+    }
+
+    /* Зсув кнопки рації в простому режимі вправо */
+    html.mode-simple #btnRadioTopCenter {
+      left: 245px !important;
+      transform: translate3d(0, 0, 0) !important;
+      -webkit-transform: translate3d(0, 0, 0) !important;
+    }
+
+    #dashPanel.collapsed {
+      width: auto !important;
+      height: 38px !important;
+      min-height: 38px !important;
+      max-height: 38px !important;
+      padding: 0 8px !important;
+      display: inline-flex !important;
+      flex-direction: row !important;
+      align-items: center !important;
+      gap: 6px !important;
+      border-radius: 12px !important;
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45) !important;
+      overflow: hidden !important;
+    }
+    #dashPanel.collapsed #dashHeader {
+      margin-bottom: 0 !important;
+      padding-bottom: 0 !important;
+      border-bottom: none !important;
+      gap: 6px !important;
+    }
+    #dashPanel.collapsed #collapsibleBody {
+      display: none !important;
+    }
+
+    /* ПАНЕЛЬ «КЛІЄНТИ» */
     #aiPillPanel.compact {
       top: 15px !important;
       right: 15px !important;
@@ -237,7 +318,6 @@
       display: none !important;
     }
 
-    /* Розгортання: ЖОРСТКО СПРАВА НА ПК ТА СМАРТФОНІ */
     #aiPillPanel.expanded {
       top: 15px !important;
       right: 15px !important;
@@ -270,7 +350,6 @@
       gap: 7px;
     }
 
-    /* ВЕРХНІЙ СПИСОК СЕСІЙ: 175px (ВІЛЬНО ВМІЩУЄ 4 ПРИСТРОЇ) */
     #hubActiveSessionsList {
       max-height: 175px !important;
       overflow-y: auto !important;
@@ -280,7 +359,6 @@
       padding-right: 2px !important;
     }
 
-    /* НИЖНІЙ СПИСОК БАЗИ КЛЮЧІВ: ВЕРТИКАЛЬНИЙ СКРОЛЛ */
     #hubClientsList {
       flex: 1 1 auto !important;
       min-height: 120px !important;
@@ -289,7 +367,6 @@
       padding-right: 2px;
     }
 
-    /* КОМПАКТНЕ ПОЛУПРОЗОРЕ ВІКНО ПІДТВЕРДЖЕННЯ */
     #hubConfirmModal {
       display: none;
       position: absolute;
@@ -385,10 +462,10 @@
       pointer-events: none !important;
     }
     .tl-sonar-core {
-      width: 16px;
-      height: 16px;
+      width: var(--sonar-core-size);
+      height: var(--sonar-core-size);
       border-radius: 50%;
-      border: 2.5px solid #facc15 !important;
+      border: var(--sonar-border-width) solid var(--sonar-border-color) !important;
       z-index: 4;
       transition: all 0.25s ease;
       box-sizing: border-box;
@@ -398,15 +475,15 @@
     }
     .tl-sonar-core.green {
       background: var(--sonar-clean-color);
-      box-shadow: 0 0 10px var(--sonar-clean-color), 0 0 4px #facc15;
+      box-shadow: 0 0 10px var(--sonar-clean-color), 0 0 4px var(--sonar-border-color);
     }
     .tl-sonar-core.red {
       background: var(--sonar-danger-color);
-      box-shadow: 0 0 12px var(--sonar-danger-color), 0 0 4px #facc15;
+      box-shadow: 0 0 12px var(--sonar-danger-color), 0 0 4px var(--sonar-border-color);
     }
     .tl-sonar-core.cyan {
       background: #0284c7;
-      box-shadow: 0 0 10px #0284c7, 0 0 4px #facc15;
+      box-shadow: 0 0 10px #0284c7, 0 0 4px var(--sonar-border-color);
     }
 
     .tl-sonar-wave {
@@ -495,7 +572,7 @@
   <div id="authCurtain" style="display:none; position:fixed; inset:0; z-index:99999; background:rgba(11,17,32,0.98); backdrop-filter:blur(10px); align-items:center; justify-content:center; padding:16px;">
     <div style="background:#0f172a; border:1.5px solid #0284c7; border-radius:18px; padding:24px 20px; max-width:330px; width:100%; box-shadow:0 10px 40px rgba(0,243,255,0.25); text-align:center;">
       <div style="font-size:36px; margin-bottom:8px; cursor:pointer;" onclick="requestAdminLogin()" title="Вхід">🔐</div>
-      <h3 style="color:#f8fafc; font-size:16px; font-weight:900; margin-bottom:4px;">Радар Дніпро v5.6</h3>
+      <h3 style="color:#f8fafc; font-size:16px; font-weight:900; margin-bottom:4px;">Радар Дніпро v5.7</h3>
       <p style="color:#94a3b8; font-size:11.5px; margin-bottom:16px; line-height:1.4;">Введіть персональний ключ доступу</p>
       
       <input type="text" id="authGateInput" placeholder="RADAR-XXXX..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="width:100%; background:#060913; border:1.5px solid #334155; border-radius:10px; color:#fff; padding:10px 12px; font-size:13px; text-align:center; outline:none; font-family:monospace; margin-bottom:12px;">
@@ -596,7 +673,7 @@
       </div>
       <div style="display:flex; align-items:center; gap:5px;">
         <!-- НОМЕР ВЕРСІЇ: ВІДОБРАЖАЄТЬСЯ ТІЛЬКИ ПРИ РОЗГОРНУТІЙ ПАНЕЛІ -->
-        <span class="hub-version-badge" style="display:none; font-size:10px; font-weight:900; color:#38bdf8; background:#060913; border:1px solid #0284c7; padding:2px 6px; border-radius:6px; font-family:monospace; letter-spacing:0.5px;">v5.6</span>
+        <span class="hub-version-badge" style="display:none; font-size:10px; font-weight:900; color:#38bdf8; background:#060913; border:1px solid #0284c7; padding:2px 6px; border-radius:6px; font-family:monospace; letter-spacing:0.5px;">v5.7</span>
         <span class="ai-pill-tools" style="font-size:10.5px; color:#64748b; cursor:pointer; padding:2px;" title="Очистити історію ШІ" onclick="clearAiChatHistory(event)">🗑️</span>
         <span class="ai-pill-tools" style="font-size:10.5px; color:#64748b; cursor:pointer; padding:2px;" title="Налаштування API Key Gemini" onclick="configureGeminiKey(event)">🔑</span>
       </div>
@@ -657,7 +734,7 @@
 
       <div class="hub-view-section" id="hubSectionAi" style="display:none;">
         <div id="aiChatBox" class="ai-chat-box">
-          <div class="ai-msg bot">👋 Вітаю! Я ваш ШІ-штурман (Карта v5.6). Керування активне!</div>
+          <div class="ai-msg bot">👋 Вітаю! Я ваш ШІ-штурман (Карта v5.7). Керування активне!</div>
         </div>
         <div class="ai-chips-compact">
           <span class="ai-mini-chip" onclick="sendAiQuick('Скрий зелені точки')">🟢 Без зелених</span>
@@ -776,50 +853,70 @@
 
   <!-- МОДАЛКА НАЛАШТУВАННЯ СОНАРА СВІТЛОФОРІВ (НАПІВПРОЗОРИЙ СКЛЯНИЙ HUD) -->
   <div id="tlSettingsModal" class="action-sheet-backdrop" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.12); z-index:10000; align-items:center; justify-content:center; backdrop-filter:none;" onclick="closeTlSettingsModal(event)">
-    <div class="action-sheet-card" style="background:rgba(15, 23, 42, 0.74); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); border:2px solid #0284c7; border-radius:18px; width:92%; max-width:390px; padding:15px; display:flex; flex-direction:column; gap:10px; box-shadow:0 12px 35px rgba(0,0,0,0.8);" onclick="event.stopPropagation()">
+    <div class="action-sheet-card" style="background:rgba(15, 23, 42, 0.82); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); border:2px solid #0284c7; border-radius:18px; width:92%; max-width:390px; padding:15px; display:flex; flex-direction:column; gap:9px; box-shadow:0 12px 35px rgba(0,0,0,0.8);" onclick="event.stopPropagation()">
       <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(51,65,85,0.7); padding-bottom:7px;">
         <span style="font-size:13.5px; font-weight:900; color:#38bdf8;">⚙️ Калібрування сонара світлофорів</span>
         <span style="cursor:pointer; font-size:18px; color:#94a3b8; font-weight:800; padding:0 6px;" onclick="closeTlSettingsModal()">✕</span>
       </div>
       <div>
-        <div style="font-size:11px; font-weight:800; color:#cbd5e1; margin-bottom:5px;">Колір хвилі «Чисто» (5 кольорів):</div>
-        <div id="sonarCleanColors" style="display:flex; gap:10px; align-items:center;"></div>
+        <div style="font-size:11px; font-weight:800; color:#cbd5e1; margin-bottom:5px;">Колір хвилі «Чисто» (з темно-синім):</div>
+        <div id="sonarCleanColors" style="display:flex; gap:9px; align-items:center;"></div>
       </div>
       <div>
-        <div style="font-size:11px; font-weight:800; color:#cbd5e1; margin-bottom:5px;">Колір хвилі «Блокпост» (5 кольорів):</div>
-        <div id="sonarDangerColors" style="display:flex; gap:10px; align-items:center;"></div>
+        <div style="font-size:11px; font-weight:800; color:#cbd5e1; margin-bottom:5px;">Колір хвилі «Блокпост» (без жовтого):</div>
+        <div id="sonarDangerColors" style="display:flex; gap:9px; align-items:center;"></div>
       </div>
-      <div style="background:rgba(30, 41, 59, 0.65); padding:7px 10px; border-radius:9px;">
-        <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:800; color:#cbd5e1; margin-bottom:3px;">
+      <div>
+        <div style="font-size:11px; font-weight:800; color:#cbd5e1; margin-bottom:5px;">Колір кайомки ядра:</div>
+        <div id="sonarBorderColors" style="display:flex; gap:9px; align-items:center;"></div>
+      </div>
+
+      <!-- Тюнінг ядра та ободка -->
+      <div style="background:rgba(30, 41, 59, 0.65); padding:6px 10px; border-radius:9px;">
+        <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:800; color:#cbd5e1; margin-bottom:2px;">
+          <span>Діаметр кружка (ядра):</span><b id="lblSonarCoreSize" style="color:#38bdf8; font-family:monospace;">16 px</b>
+        </div>
+        <input type="range" id="rngSonarCoreSize" min="10" max="28" step="1" value="16" style="width:100%; cursor:pointer;">
+      </div>
+
+      <div style="background:rgba(30, 41, 59, 0.65); padding:6px 10px; border-radius:9px;">
+        <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:800; color:#cbd5e1; margin-bottom:2px;">
+          <span>Товщина кайомки ядра:</span><b id="lblSonarBorderWidth" style="color:#38bdf8; font-family:monospace;">2.5 px</b>
+        </div>
+        <input type="range" id="rngSonarBorderWidth" min="1" max="5" step="0.5" value="2.5" style="width:100%; cursor:pointer;">
+      </div>
+
+      <div style="background:rgba(30, 41, 59, 0.65); padding:6px 10px; border-radius:9px;">
+        <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:800; color:#cbd5e1; margin-bottom:2px;">
           <span>Кількість кілець (інтенсивність):</span><b id="lblSonarWaveCount" style="color:#00f3ff; font-family:monospace;">3 кільця</b>
         </div>
         <input type="range" id="rngSonarWaveCount" min="1" max="4" step="1" value="3" style="width:100%; cursor:pointer;">
       </div>
-      <div style="background:rgba(30, 41, 59, 0.65); padding:7px 10px; border-radius:9px;">
-        <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:800; color:#cbd5e1; margin-bottom:3px;">
+      <div style="background:rgba(30, 41, 59, 0.65); padding:6px 10px; border-radius:9px;">
+        <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:800; color:#cbd5e1; margin-bottom:2px;">
           <span>Діаметр розмаху хвилі:</span><b id="lblSonarDiameter" style="color:#38bdf8; font-family:monospace;">95 px</b>
         </div>
         <input type="range" id="rngSonarDiameter" min="10" max="160" step="2" value="95" style="width:100%; cursor:pointer;">
       </div>
-      <div style="background:rgba(30, 41, 59, 0.65); padding:7px 10px; border-radius:9px;">
-        <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:800; color:#cbd5e1; margin-bottom:3px;">
+      <div style="background:rgba(30, 41, 59, 0.65); padding:6px 10px; border-radius:9px;">
+        <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:800; color:#cbd5e1; margin-bottom:2px;">
           <span>Інтервал хвилі «Чисто»:</span><b id="lblSonarCleanSpeed" style="color:#10b981; font-family:monospace;">1.8 с</b>
         </div>
         <input type="range" id="rngSonarCleanSpeed" min="0.8" max="3.5" step="0.1" value="1.8" style="width:100%; cursor:pointer;">
       </div>
-      <div style="background:rgba(30, 41, 59, 0.65); padding:7px 10px; border-radius:9px;">
-        <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:800; color:#cbd5e1; margin-bottom:3px;">
+      <div style="background:rgba(30, 41, 59, 0.65); padding:6px 10px; border-radius:9px;">
+        <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:800; color:#cbd5e1; margin-bottom:2px;">
           <span>Базовий інтервал БП (1 звіт):</span><b id="lblSonarDangerBaseSpeed" style="color:#ef4444; font-family:monospace;">2.4 с</b>
         </div>
         <input type="range" id="rngSonarDangerBaseSpeed" min="1.2" max="3.5" step="0.1" value="2.4" style="width:100%; cursor:pointer;">
       </div>
-      <div style="background:rgba(30, 41, 59, 0.65); padding:7px 10px; border-radius:9px;">
-        <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:800; color:#cbd5e1; margin-bottom:3px;">
+      <div style="background:rgba(30, 41, 59, 0.65); padding:6px 10px; border-radius:9px;">
+        <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:800; color:#cbd5e1; margin-bottom:2px;">
           <span>Крок прискорення на кожен звіт:</span><b id="lblSonarDangerStep" style="color:#f59e0b; font-family:monospace;">-0.3 с</b>
         </div>
         <input type="range" id="rngSonarDangerStep" min="0.1" max="0.5" step="0.05" value="0.3" style="width:100%; cursor:pointer;">
       </div>
-      <button onclick="closeTlSettingsModal()" style="background:#0284c7; border:none; color:#fff; font-size:12px; font-weight:800; padding:9px; border-radius:8px; cursor:pointer; margin-top:3px;">
+      <button onclick="closeTlSettingsModal()" style="background:#0284c7; border:none; color:#fff; font-size:12px; font-weight:800; padding:8px; border-radius:8px; cursor:pointer; margin-top:2px;">
         💾 Зберегти налаштування
       </button>
     </div>
@@ -845,7 +942,6 @@
     }
     window.escapeHtml = escapeHtml;
 
-    // ФУНКЦІЯ ПЕРЕВІРКИ СПАМУ (ЗАХИСТ ВІД REFERENCE_ERROR)
     function isSpamMessage(text) {
       if (!text) return false;
       return false;
@@ -855,12 +951,16 @@
     // =========================================================================
     // ⚙️ ОБ'ЄКТ НАЛАШТУВАНЬ СОНАРА СВІТЛОФОРІВ + ПАЛІТРИ
     // =========================================================================
-    const CLEAN_PALETTE = ['#10b981', '#22c55e', '#0284c7', '#00f3ff', '#2563eb'];
-    const DANGER_PALETTE = ['#ef4444', '#b91c1c', '#f97316', '#f59e0b', '#ec4899'];
+    const CLEAN_PALETTE = ['#10b981', '#22c55e', '#1e40af', '#0284c7', '#00f3ff'];
+    const DANGER_PALETTE = ['#ef4444', '#b91c1c', '#991b1b', '#f97316', '#ec4899'];
+    const BORDER_PALETTE = ['#facc15', '#ffffff', '#00f3ff', '#94a3b8', '#ef4444'];
 
     let sonarSettings = {
       cleanColor: localStorage.getItem("radar_sonar_clean_color") || "#10b981",
       dangerColor: localStorage.getItem("radar_sonar_danger_color") || "#ef4444",
+      borderColor: localStorage.getItem("radar_sonar_border_color") || "#facc15",
+      coreSize: parseInt(localStorage.getItem("radar_sonar_core_size") || "16", 10),
+      borderWidth: parseFloat(localStorage.getItem("radar_sonar_border_width") || "2.5"),
       waveCount: parseInt(localStorage.getItem("radar_sonar_wave_count") || "3", 10),
       diameter: parseInt(localStorage.getItem("radar_sonar_diameter") || "95", 10),
       cleanSpeed: parseFloat(localStorage.getItem("radar_sonar_clean_speed") || "1.8"),
@@ -872,6 +972,9 @@
     function applySonarCssVars() {
       document.documentElement.style.setProperty('--sonar-clean-color', sonarSettings.cleanColor);
       document.documentElement.style.setProperty('--sonar-danger-color', sonarSettings.dangerColor);
+      document.documentElement.style.setProperty('--sonar-border-color', sonarSettings.borderColor || "#facc15");
+      document.documentElement.style.setProperty('--sonar-core-size', (sonarSettings.coreSize || 16) + 'px');
+      document.documentElement.style.setProperty('--sonar-border-width', (sonarSettings.borderWidth || 2.5) + 'px');
       document.documentElement.style.setProperty('--sonar-diameter', sonarSettings.diameter + 'px');
       document.documentElement.style.setProperty('--sonar-clean-speed', sonarSettings.cleanSpeed + 's');
       document.documentElement.style.setProperty('--sonar-danger-base-speed', sonarSettings.dangerBaseSpeed + 's');
@@ -882,6 +985,7 @@
     function renderSonarColorPills() {
       const cleanBox = document.getElementById("sonarCleanColors");
       const dangerBox = document.getElementById("sonarDangerColors");
+      const borderBox = document.getElementById("sonarBorderColors");
       if (!cleanBox || !dangerBox) return;
 
       cleanBox.innerHTML = CLEAN_PALETTE.map(col => `
@@ -895,15 +999,26 @@
              style="background:${col};" 
              onclick="setSonarColor('danger', '${col}')"></div>
       `).join('');
+
+      if (borderBox) {
+        borderBox.innerHTML = BORDER_PALETTE.map(col => `
+          <div class="sonar-color-pill ${(sonarSettings.borderColor || '#facc15') === col ? 'active' : ''}" 
+               style="background:${col};" 
+               onclick="setSonarColor('border', '${col}')"></div>
+        `).join('');
+      }
     }
 
     window.setSonarColor = function(type, color) {
       if (type === 'clean') {
         sonarSettings.cleanColor = color;
         localStorage.setItem("radar_sonar_clean_color", color);
-      } else {
+      } else if (type === 'danger') {
         sonarSettings.dangerColor = color;
         localStorage.setItem("radar_sonar_danger_color", color);
+      } else if (type === 'border') {
+        sonarSettings.borderColor = color;
+        localStorage.setItem("radar_sonar_border_color", color);
       }
       applySonarCssVars();
       renderSonarColorPills();
@@ -915,6 +1030,11 @@
       if (!m) return;
       m.style.display = "flex";
       renderSonarColorPills();
+
+      const rngCore = document.getElementById("rngSonarCoreSize");
+      if (rngCore) { rngCore.value = sonarSettings.coreSize || 16; document.getElementById("lblSonarCoreSize").innerText = (sonarSettings.coreSize || 16) + " px"; }
+      const rngBrdW = document.getElementById("rngSonarBorderWidth");
+      if (rngBrdW) { rngBrdW.value = sonarSettings.borderWidth || 2.5; document.getElementById("lblSonarBorderWidth").innerText = (sonarSettings.borderWidth || 2.5) + " px"; }
 
       const rngWave = document.getElementById("rngSonarWaveCount");
       if (rngWave) { rngWave.value = sonarSettings.waveCount; document.getElementById("lblSonarWaveCount").innerText = sonarSettings.waveCount + " кільця"; }
@@ -932,6 +1052,8 @@
       if (e && e.target && e.target.id !== "tlSettingsModal" && !e.target.closest(".action-sheet-card")) return;
       const m = document.getElementById("tlSettingsModal");
       if (m) m.style.display = "none";
+      localStorage.setItem("radar_sonar_core_size", sonarSettings.coreSize || 16);
+      localStorage.setItem("radar_sonar_border_width", sonarSettings.borderWidth || 2.5);
       localStorage.setItem("radar_sonar_wave_count", sonarSettings.waveCount);
       localStorage.setItem("radar_sonar_diameter", sonarSettings.diameter);
       localStorage.setItem("radar_sonar_clean_speed", sonarSettings.cleanSpeed);
@@ -940,6 +1062,20 @@
       applySonarCssVars();
       if (typeof renderTrafficLights === "function") renderTrafficLights();
     };
+
+    const rngCoreEl = document.getElementById("rngSonarCoreSize");
+    if (rngCoreEl) rngCoreEl.addEventListener("input", (e) => {
+      sonarSettings.coreSize = parseInt(e.target.value, 10);
+      document.getElementById("lblSonarCoreSize").innerText = sonarSettings.coreSize + " px";
+      applySonarCssVars();
+    });
+
+    const rngBrdWEl = document.getElementById("rngSonarBorderWidth");
+    if (rngBrdWEl) rngBrdWEl.addEventListener("input", (e) => {
+      sonarSettings.borderWidth = parseFloat(e.target.value);
+      document.getElementById("lblSonarBorderWidth").innerText = sonarSettings.borderWidth + " px";
+      applySonarCssVars();
+    });
 
     const rngWaveEl = document.getElementById("rngSonarWaveCount");
     if (rngWaveEl) rngWaveEl.addEventListener("input", (e) => {
@@ -974,21 +1110,63 @@
       applySonarCssVars();
     });
 
+    // =========================================================================
+    // 🌙 СЛУХАЧІ НІЧНОЇ КАРТИ НАЖИВО
+    // =========================================================================
     window.openMapDisplayModal = function() {
       const m = document.getElementById("mapDisplayModal");
-      if (m) m.style.display = "flex";
+      if (!m) return;
+      m.style.display = "flex";
+      
+      const bVal = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--map-night-brightness')) || 95;
+      const cVal = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--map-night-contrast')) || 108;
+      const mVal = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--marker-brightness')) || 100;
+
+      const rngB = document.getElementById("rngMapBrightness");
+      if (rngB) { rngB.value = bVal; document.getElementById("lblMapBrightness").innerText = bVal + "%"; }
+      const rngC = document.getElementById("rngMapContrast");
+      if (rngC) { rngC.value = cVal; document.getElementById("lblMapContrast").innerText = cVal + "%"; }
+      const rngM = document.getElementById("rngMarkerBrightness");
+      if (rngM) { rngM.value = mVal; document.getElementById("lblMarkerBrightness").innerText = mVal + "%"; }
     };
+    
     window.closeMapDisplayModal = function(e) {
       if (e && e.target && e.target.id !== "mapDisplayModal" && !e.target.closest("div")) return;
       const m = document.getElementById("mapDisplayModal");
       if (m) m.style.display = "none";
     };
+
+    const rngMapB = document.getElementById("rngMapBrightness");
+    if (rngMapB) rngMapB.addEventListener("input", (e) => {
+      document.documentElement.style.setProperty('--map-night-brightness', e.target.value + '%');
+      document.getElementById("lblMapBrightness").innerText = e.target.value + '%';
+    });
+
+    const rngMapC = document.getElementById("rngMapContrast");
+    if (rngMapC) rngMapC.addEventListener("input", (e) => {
+      document.documentElement.style.setProperty('--map-night-contrast', e.target.value + '%');
+      document.getElementById("lblMapContrast").innerText = e.target.value + '%';
+    });
+
+    const rngMarkerB = document.getElementById("rngMarkerBrightness");
+    if (rngMarkerB) rngMarkerB.addEventListener("input", (e) => {
+      document.documentElement.style.setProperty('--marker-brightness', e.target.value + '%');
+      document.getElementById("lblMarkerBrightness").innerText = e.target.value + '%';
+    });
+
     window.resetMapDisplaySettings = function() {
       document.documentElement.style.setProperty('--map-night-brightness', '95%');
       document.documentElement.style.setProperty('--map-night-contrast', '108%');
       document.documentElement.style.setProperty('--marker-brightness', '100%');
+      document.getElementById("lblMapBrightness").innerText = '95%';
+      document.getElementById("lblMapContrast").innerText = '108%';
+      document.getElementById("lblMarkerBrightness").innerText = '100%';
+      document.getElementById("rngMapBrightness").value = 95;
+      document.getElementById("rngMapContrast").value = 108;
+      document.getElementById("rngMarkerBrightness").value = 100;
       showToast("🔄 Налаштування скинуто");
     };
+
     window.setNightFilter = function(hue, sat) {
       document.documentElement.style.setProperty('--map-night-hue', hue);
       document.documentElement.style.setProperty('--map-night-sat', sat);
@@ -1089,7 +1267,6 @@
       showToast("🚗 Простий режим водія активовано!");
     }
 
-    // ВАЛІДАЦІЯ ШЕФА ЧЕРЕЗ GITHUB API (СТРОГО ДЛЯ АККАУНТА MyDnipro)
     async function requestAdminLogin() {
       const token = prompt("🔐 Введіть персональний GitHub токен адміністратора (ghp_...):\n(Вхід виконується 1 раз, пристрій запам'ятовується)");
       if (!token) return;
@@ -1125,7 +1302,6 @@
       }
     }
 
-    // СЕКРЕТНИЙ ВХІД АДМІНА: ДОВГИЙ ТАП АБО СЕРЕДНЯ КНОПКА МИШІ
     const countTextEl = document.getElementById("countText");
     let countPressTimer = null;
     function startCountPress() {
@@ -1193,7 +1369,6 @@
       }
     }
 
-    // ВІДОБРАЖЕННЯ ТЕРМІНУ ДІЇ КАРТИ ДЛЯ КОРИСТУВАЧІВ НА КЛЮЧАХ
     function updateClientExpiryUI(expiresAt) {
       const badge = document.getElementById("clientKeyExpiryBadge");
       if (!badge) return;
@@ -2076,7 +2251,7 @@
     L.DomEvent.disableClickPropagation(document.getElementById("mapDisplayModal"));
 
     function toggleAiPillExpand(e) {
-      if (e) e.stopPropagation();
+      if (e && (e.target.closest('textarea') || e.target.closest('input') || e.target.closest('button') || e.target.closest('.ai-mini-chip') || e.target.closest('span[title]'))) return;
       const isExpanded = aiPillPanel.classList.toggle("expanded");
       aiPillPanel.classList.toggle("compact", !isExpanded);
       if (isExpanded) {
@@ -2091,6 +2266,25 @@
         setTimeout(() => { if (map) map.invalidateSize(); }, 150);
       }
     }
+
+    // Згортання вікна «Клієнти» за подвійним тапом
+    let lastHubTapTime = 0;
+    aiPillPanel.addEventListener("pointerdown", (e) => {
+      if (e.target.closest('input') || e.target.closest('textarea') || e.target.closest('button') || e.target.closest('.hub-btn-act') || e.target.closest('.hub-duration-chip') || e.target.closest('.ai-mini-chip') || e.target.closest('.hub-client-card')) {
+        return;
+      }
+      const now = Date.now();
+      if (now - lastHubTapTime < 320) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (aiPillPanel.classList.contains("expanded")) {
+          toggleAiPillExpand();
+        }
+        lastHubTapTime = 0;
+        return;
+      }
+      lastHubTapTime = now;
+    });
 
     function switchHubTab(tabName, e) {
       if (e) e.stopPropagation();
@@ -2222,7 +2416,6 @@
       pendingConfirmAction = null;
     }
 
-    // РЕНДЕР КЛЮЧІВ: ЗНАЧКИ ⏸️ / ▶️ ТА ЗАХИСТ ВІКНОМ ПІДТВЕРДЖЕННЯ
     function renderAccessTokensList() {
       const listBox = document.getElementById("hubClientsList");
       const countBadge = document.getElementById("hubClientsCount");
@@ -2333,7 +2526,7 @@
     };
 
     // =========================================================================
-    // 🟢 СЕСІЇ ТА ОНЛАЙН (PRESENCE): ІМ'Я + (СИНЄ ЖЕЛЕЗО)
+    // 🟢 СЕСІЇ ТА ОНЛАЙН (PRESENCE)
     // =========================================================================
     function getDeviceDescription() {
       const ua = navigator.userAgent || "";
@@ -2616,7 +2809,7 @@
       }).join('\n');
 
       const systemInstructionText = `
-Ти — високоінтелектуальний військово-дорожній ШІ-штурман у місті Дніпро для водія (v5.6).
+Ти — високоінтелектуальний військово-дорожній ШІ-штурман у місті Дніпро для водія (v5.7).
 ТОЧКИ НА КАРТІ:
 ${allLiveReportsText || "Повідомлень немає"}
 КОМАНДИ:
@@ -2798,7 +2991,7 @@ ${allLiveReportsText || "Повідомлень немає"}
     }
 
     // =========================================================================
-    // 🚦 РЕНДЕР СВІТЛОФОРІВ (З ДИНАМІЧНОЮ КІЛЬКІСТЮ КІЛЕЦЬ ТА ДЕЛЕЄМ)
+    // 🚦 РЕНДЕР СВІТЛОФОРІВ
     // =========================================================================
     function renderTrafficLights() {
       if (!showTrafficLights || currentUiMode === "simple") {
@@ -2847,7 +3040,6 @@ ${allLiveReportsText || "Повідомлень немає"}
 
         const dragClass = isEditMode ? "draggable-active" : "";
 
-        // ГЕНЕРАЦІЯ ХВИЛЬ ЗАЛЕЖНО ВІД ПАРАМЕТРА ІНТЕНСИВНОСТІ (waveCount)
         const waveCount = (sonarSettings && sonarSettings.waveCount) ? sonarSettings.waveCount : 3;
         const currentSpeed = (colorClass === "green") 
           ? ((sonarSettings && sonarSettings.cleanSpeed) ? sonarSettings.cleanSpeed : 1.8) 
@@ -3094,7 +3286,7 @@ ${allLiveReportsText || "Повідомлень немає"}
     }
 
     // =========================================================================
-    // 📡 БЕЗУМОВНЕ ЗАВАНТАЖЕННЯ ТОЧОК НА КАРТУ (БЕЗ ЗБОЇВ ТА З АВТОРИЗАЦІЄЮ)
+    // 📡 БЕЗУМОВНЕ ЗАВАНТАЖЕННЯ ТОЧОК НА КАРТУ
     // =========================================================================
     async function loadPoints() {
       if (pendingRelocation) return;
@@ -3146,7 +3338,7 @@ ${allLiveReportsText || "Повідомлень немає"}
     }
 
     // =========================================================================
-    // 📍 РЕНДЕР МІТОК ІЗ ПОВНИМИ ДІЯМИ ТА СЕРЕДНЬОЮ КНОПКОЮ МИШІ
+    // 📍 РЕНДЕР МІТОК
     // =========================================================================
     function renderMarkers() {
       try {
@@ -3438,12 +3630,12 @@ ${allLiveReportsText || "Повідомлень немає"}
     setTimeout(checkAndDrawNavRoute, 400);
   </script>
 
-  <!-- ПІДКЛЮЧЕННЯ ВСІХ ЗОВНІШНІХ СКРИПТІВ КЕРУВАННЯ ТА ПЕРЕНЕСЕННЯ -->
-  <script src="relocate.js"></script>
-  <script src="memory.js"></script>
-  <script src="timeline.js"></script>
-  <script src="ticker.js"></script>
-  <script src="keepawake.js"></script>
-  <script src="gps.js"></script>
+  <!-- ПІДКЛЮЧЕННЯ СКРИПТІВ ІЗ СКИДАННЯМ КЕШУ ДЛЯ V5.7 -->
+  <script src="relocate.js?v=5.7"></script>
+  <script src="memory.js?v=5.7"></script>
+  <script src="timeline.js?v=5.7"></script>
+  <script src="ticker.js?v=5.7"></script>
+  <script src="keepawake.js?v=5.7"></script>
+  <script src="gps.js?v=5.7"></script>
 </body>
 </html>
