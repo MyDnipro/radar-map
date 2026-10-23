@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <meta name="color-scheme" content="light only">
-  <title>Радар Дніпро v5.9</title>
+  <title>Радар Дніпро v6.0</title>
   <link rel="icon" type="image/png" href="icon.png">
   <link rel="apple-touch-icon" href="icon.png">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -229,13 +229,16 @@
       display: none !important;
     }
 
-    /* ПЕРЕНЕСЕННЯ КНОПКИ РАДІО У ПРАВИЙ ВЕРХНІЙ КУТ У ПРОСТОМУ РЕЖИМІ */
+    /* ПЕРЕНЕСЕННЯ КНОПКИ РАДІО У САМИЙ ПРАВИЙ ВЕРХНІЙ КУТ У ПРОСТОМУ РЕЖИМІ */
     html.mode-simple #btnRadioTopCenter {
+      position: fixed !important;
       top: 15px !important;
       right: 14px !important;
       left: auto !important;
       transform: none !important;
       -webkit-transform: none !important;
+      z-index: 2400 !important;
+      display: flex !important;
     }
 
     #dashPanel.collapsed {
@@ -554,7 +557,7 @@
   <div id="authCurtain" style="display:none; position:fixed; inset:0; z-index:99999; background:rgba(11,17,32,0.98); backdrop-filter:blur(10px); align-items:center; justify-content:center; padding:16px;">
     <div style="background:#0f172a; border:1.5px solid #0284c7; border-radius:18px; padding:24px 20px; max-width:330px; width:100%; box-shadow:0 10px 40px rgba(0,243,255,0.25); text-align:center;">
       <div style="font-size:36px; margin-bottom:8px; cursor:pointer;" onclick="requestAdminLogin()" title="Вхід">🔐</div>
-      <h3 style="color:#f8fafc; font-size:16px; font-weight:900; margin-bottom:4px;">Радар Дніпро v5.9</h3>
+      <h3 style="color:#f8fafc; font-size:16px; font-weight:900; margin-bottom:4px;">Радар Дніпро v6.0</h3>
       <p style="color:#94a3b8; font-size:11.5px; margin-bottom:16px; line-height:1.4;">Введіть персональний ключ доступу</p>
       
       <input type="text" id="authGateInput" placeholder="RADAR-XXXX..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="width:100%; background:#060913; border:1.5px solid #334155; border-radius:10px; color:#fff; padding:10px 12px; font-size:13px; text-align:center; outline:none; font-family:monospace; margin-bottom:12px;">
@@ -654,7 +657,7 @@
         <span class="hub-online-pill" id="hubOnlinePill">🟢 <span id="hubOnlineCount">1</span></span>
       </div>
       <div style="display:flex; align-items:center; gap:5px;">
-        <span class="hub-version-badge" style="display:none; font-size:10px; font-weight:900; color:#38bdf8; background:#060913; border:1px solid #0284c7; padding:2px 6px; border-radius:6px; font-family:monospace; letter-spacing:0.5px;">v5.9</span>
+        <span class="hub-version-badge" style="display:none; font-size:10px; font-weight:900; color:#38bdf8; background:#060913; border:1px solid #0284c7; padding:2px 6px; border-radius:6px; font-family:monospace; letter-spacing:0.5px;">v6.0</span>
         <span class="ai-pill-tools" style="font-size:10.5px; color:#64748b; cursor:pointer; padding:2px;" title="Очистити історію ШІ" onclick="clearAiChatHistory(event)">🗑️</span>
         <span class="ai-pill-tools" style="font-size:10.5px; color:#64748b; cursor:pointer; padding:2px;" title="Налаштування API Key Gemini" onclick="configureGeminiKey(event)">🔑</span>
       </div>
@@ -703,9 +706,14 @@
           </div>
         </div>
 
+        <!-- ПАНЕЛЬ СОРТУВАННЯ ТА КІЛЬКОСТІ КЛЮЧІВ -->
         <div style="display:flex; justify-content:space-between; align-items:center; margin-top:2px;">
-          <span style="font-size:11px; font-weight:800; color:#cbd5e1;">📋 База ключів доступу:</span>
-          <span id="hubClientsCount" style="font-size:10px; color:#38bdf8; font-family:monospace; font-weight:800;">0 активних</span>
+          <span style="font-size:11px; font-weight:800; color:#cbd5e1;">📋 База ключів:</span>
+          <div style="display:flex; gap:4px; align-items:center;">
+            <button id="btnSortDate" onclick="setTokensSort('date')" style="background:#0284c7; border:none; color:#fff; font-size:9.5px; padding:2px 7px; border-radius:5px; cursor:pointer; font-weight:800;">🕒 Свіжі</button>
+            <button id="btnSortAlpha" onclick="setTokensSort('alpha')" style="background:#1e293b; border:1px solid #334155; color:#94a3b8; font-size:9.5px; padding:2px 7px; border-radius:5px; cursor:pointer; font-weight:800;">🔤 А-Я</button>
+            <span id="hubClientsCount" style="font-size:10px; color:#38bdf8; font-family:monospace; font-weight:800; margin-left:4px;">0</span>
+          </div>
         </div>
 
         <div class="hub-clients-list" id="hubClientsList">
@@ -715,7 +723,7 @@
 
       <div class="hub-view-section" id="hubSectionAi" style="display:none;">
         <div id="aiChatBox" class="ai-chat-box">
-          <div class="ai-msg bot">👋 Вітаю! Я ваш ШІ-штурман (Карта v5.9). Керування активне!</div>
+          <div class="ai-msg bot">👋 Вітаю! Я ваш ШІ-штурман (Карта v6.0). Керування активне!</div>
         </div>
         <div class="ai-chips-compact">
           <span class="ai-mini-chip" onclick="sendAiQuick('Скрий зелені точки')">🟢 Без зелених</span>
@@ -2229,6 +2237,7 @@
     let currentHubTab = "clients";
     let selectedDurationDays = 30;
     let accessTokensCache = {};
+    let tokensSortMode = localStorage.getItem("radar_tokens_sort") || "date";
 
     L.DomEvent.disableClickPropagation(aiPillPanel);
     L.DomEvent.disableScrollPropagation(aiPillPanel);
@@ -2288,7 +2297,7 @@
       }
     }
 
-    // Згортання вікна «Клієнти» за подвійним тапом БЕЗ передачі події в Leaflet
+    // Згортання вікна «Клієнти» за подвійним тапом БЕЗ зуму карти
     let lastHubTapTime = 0;
     aiPillPanel.addEventListener("pointerdown", (e) => {
       if (e.target.closest('input') || e.target.closest('textarea') || e.target.closest('button') || e.target.closest('.hub-btn-act') || e.target.closest('.hub-duration-chip') || e.target.closest('.ai-mini-chip') || e.target.closest('.hub-client-card')) {
@@ -2399,11 +2408,7 @@
       if (e) e.stopPropagation();
       const code = document.getElementById("hubGeneratedCode").innerText;
       if (!code) return;
-      navigator.clipboard.writeText(code).then(() => {
-        showToast("📋 Ключ скопійовано в буфер!");
-      }).catch(() => {
-        prompt("Скопіюйте ключ:", code);
-      });
+      window.copyTokenText(code);
     }
 
     window.clearGeneratedKeyBox = function(e) {
@@ -2412,6 +2417,49 @@
       const input = document.getElementById("hubInputClientLabel");
       if (codeBox) codeBox.style.display = "none";
       if (input) input.value = "";
+    };
+
+    // КОПІЮВАННЯ КОДУ КЛЮЧА
+    window.copyTokenText = function(key) {
+      if (!key) return;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(key).then(() => {
+          showToast(`📋 Ключ ${key} скопійовано!`);
+        }).catch(() => prompt("Скопіюйте ключ:", key));
+      } else {
+        prompt("Скопіюйте ключ:", key);
+      }
+    };
+
+    // РЕДАГУВАННЯ ІМЕНІ ВОДІЯ (ПЕРЕЙМЕНУВАННЯ)
+    window.editClientTokenLabel = async function(key) {
+      const item = accessTokensCache[key];
+      if (!item) return;
+      const oldLabel = item.label || "";
+      const newLabel = prompt(`Введіть нове ім'я для ключа ${key}:`, oldLabel);
+      if (newLabel === null) return;
+      const clean = newLabel.trim() || "Без імені";
+      item.label = clean;
+
+      try {
+        const url = window.appendAuth(FIREBASE_TOKENS_URL.replace(".json", `/${encodeURIComponent(key)}.json`));
+        await fetch(url, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ label: clean })
+        });
+        showToast(`✏️ Ім'я оновлено: ${clean}`);
+      } catch(e) {
+        showToast("❌ Помилка оновлення імені");
+      }
+      renderAccessTokensList();
+    };
+
+    // ПЕРЕМИКАЧ СОРТУВАННЯ КЛЮЧІВ
+    window.setTokensSort = function(mode) {
+      tokensSortMode = mode;
+      localStorage.setItem("radar_tokens_sort", mode);
+      renderAccessTokensList();
     };
 
     async function loadAccessTokens() {
@@ -2447,15 +2495,56 @@
       pendingConfirmAction = null;
     }
 
+    // РЕНДЕР КЛЮЧІВ: АВТОВИДАЛЕННЯ ЧЕРЕЗ 24 ГОДИНИ + РЕДАГУВАННЯ ТА СОРТУВАННЯ
     function renderAccessTokensList() {
       const listBox = document.getElementById("hubClientsList");
       const countBadge = document.getElementById("hubClientsCount");
+      const btnDate = document.getElementById("btnSortDate");
+      const btnAlpha = document.getElementById("btnSortAlpha");
       if (!listBox) return;
 
-      const entries = Object.entries(accessTokensCache);
-      entries.sort((a, b) => (b[1].created_at || 0) - (a[1].created_at || 0));
+      if (btnDate && btnAlpha) {
+        btnDate.style.background = (tokensSortMode === "date") ? "#0284c7" : "#1e293b";
+        btnDate.style.color = (tokensSortMode === "date") ? "#ffffff" : "#94a3b8";
+        btnAlpha.style.background = (tokensSortMode === "alpha") ? "#0284c7" : "#1e293b";
+        btnAlpha.style.color = (tokensSortMode === "alpha") ? "#ffffff" : "#94a3b8";
+      }
 
-      const activeCount = entries.filter(([k, v]) => v.status === "active").length;
+      const now = Date.now();
+      const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+      let entries = Object.entries(accessTokensCache);
+
+      // АВТОМАТИЧНЕ ОЧИЩЕННЯ: видаляємо ключі, термін яких вийшов більше 1 доби тому
+      const toDelete = [];
+      entries = entries.filter(([key, item]) => {
+        if (item.expires_at && item.expires_at > 0) {
+          const expiredDuration = now - item.expires_at;
+          if (expiredDuration > ONE_DAY_MS) {
+            toDelete.push(key);
+            return false;
+          }
+        }
+        return true;
+      });
+
+      if (toDelete.length > 0) {
+        toDelete.forEach(k => {
+          delete accessTokensCache[k];
+          try {
+            const url = window.appendAuth(FIREBASE_TOKENS_URL.replace(".json", `/${encodeURIComponent(k)}.json`));
+            fetch(url, { method: "DELETE" }).catch(() => {});
+          } catch(e) {}
+        });
+      }
+
+      // СОРТУВАННЯ
+      if (tokensSortMode === "alpha") {
+        entries.sort((a, b) => (a[1].label || a[0]).localeCompare(b[1].label || b[0], 'uk'));
+      } else {
+        entries.sort((a, b) => (b[1].created_at || 0) - (a[1].created_at || 0));
+      }
+
+      const activeCount = entries.filter(([k, v]) => v.status === "active" && (!v.expires_at || v.expires_at === 0 || v.expires_at > now)).length;
       if (countBadge) countBadge.innerText = `${activeCount} активних`;
 
       if (entries.length === 0) {
@@ -2464,7 +2553,6 @@
       }
 
       listBox.innerHTML = "";
-      const now = Date.now();
 
       entries.forEach(([key, item]) => {
         const card = document.createElement("div");
@@ -2477,12 +2565,17 @@
         if (item.expires_at && item.expires_at > 0) {
           const diffDays = Math.ceil((item.expires_at - now) / (1000 * 60 * 60 * 24));
           const dateStr = new Date(item.expires_at).toLocaleDateString([], { day: '2-digit', month: '2-digit' });
-          if (diffDays <= 0) {
-            expText = `<span style="color:#ef4444;">Прострочено (${dateStr})</span>`;
+          if (now > item.expires_at) {
+            expText = `<span style="color:#ef4444; font-weight:800;">Прострочено (${dateStr}) — видалення сьогодні</span>`;
             isExpired = true;
           } else {
             expText = `до ${dateStr} (${diffDays} дн.)`;
           }
+        }
+
+        if (isExpired) {
+          card.style.border = "1.5px solid #ef4444";
+          card.style.background = "rgba(239, 68, 68, 0.08)";
         }
 
         const deviceState = item.device_id ? "📱 Прив'язано" : "⏳ Очікує";
@@ -2491,7 +2584,7 @@
         if (isBlocked) {
           statusPill = `<span style="display:inline-flex; align-items:center; justify-content:center; border:1.5px solid #ef4444; background:rgba(239,68,68,0.18); border-radius:6px; padding:1px 4px; font-size:11px;" title="Заблоковано">🔒</span>`;
         } else if (isExpired) {
-          statusPill = `<span style="display:inline-flex; align-items:center; justify-content:center; border:1.5px solid #f59e0b; background:rgba(245,158,11,0.18); border-radius:6px; padding:1px 4px; font-size:11px;" title="Термін дії вичерпано">⏳</span>`;
+          statusPill = `<span style="display:inline-flex; align-items:center; justify-content:center; border:1.5px solid #ef4444; background:rgba(239,68,68,0.25); border-radius:6px; padding:1px 4px; font-size:10.5px; color:#ef4444; font-weight:900;" title="Прострочено (останній день у базі)">⚠️</span>`;
         } else {
           statusPill = `<span style="font-size:12.5px; margin-right:2px;" title="Діючий ключ">🔓</span>`;
         }
@@ -2500,15 +2593,16 @@
         const pausePlayTitle = isBlocked ? "Відновити доступ (зняти з паузи)" : "Призупинити дію (пауза)";
 
         card.innerHTML = `
-          <div class="hub-client-info">
-            <div class="hub-client-name" style="display:flex; align-items:center; gap:5px;">
+          <div class="hub-client-info" style="min-width:0; flex:1;">
+            <div class="hub-client-name" style="display:flex; align-items:center; gap:5px; flex-wrap:wrap;">
               ${statusPill}
-              <span>${escapeHtml(item.label || 'Водій')}</span>
-              <span style="color:#38bdf8; font-family:monospace;">${escapeHtml(key)}</span>
+              <span style="font-weight:800; color:#f8fafc;">${escapeHtml(item.label || 'Водій')}</span>
+              <button onclick="editClientTokenLabel('${escapeHtml(key)}')" style="background:transparent; border:none; color:#38bdf8; font-size:11px; cursor:pointer; padding:0 3px;" title="Перейменувати">✏️</button>
+              <span class="hub-key-code" style="color:#38bdf8; font-family:monospace; cursor:pointer; background:#060913; padding:1px 5px; border-radius:4px; border:1px solid #1e293b;" title="Натисніть для копіювання коду" onclick="copyTokenText('${escapeHtml(key)}')">${escapeHtml(key)} 📋</span>
             </div>
-            <div class="hub-client-sub">${deviceState} • ${expText}</div>
+            <div class="hub-client-sub" style="font-size:10px; margin-top:2px;">${deviceState} • ${expText}</div>
           </div>
-          <div class="hub-client-actions">
+          <div class="hub-client-actions" style="display:flex; gap:4px; flex-shrink:0;">
             <button class="hub-btn-act" onclick="confirmToggleTokenBlock('${escapeHtml(key)}')\" title="${pausePlayTitle}">${pausePlayIcon}</button>
             <button class="hub-btn-act danger" onclick="confirmDeleteAccessToken('${escapeHtml(key)}')\" title="Видалити ключ">🗑️</button>
           </div>
@@ -2586,7 +2680,6 @@
       devUuid = "dev_" + Math.random().toString(36).substring(2, 8) + "_" + Date.now().toString(36);
       localStorage.setItem("radar_device_uuid", devUuid);
     }
-    // Сесійний ключ постійний для цього пристрою і не створює дублікатів при перезавантаженні
     let clientSessionId = (isUserAdmin() ? "admin_" : "user_") + devUuid;
 
     window.resetAndReloadSession = function() {
@@ -2842,7 +2935,7 @@
       }).join('\n');
 
       const systemInstructionText = `
-Ти — високоінтелектуальний військово-дорожній ШІ-штурман у місті Дніпро для водія (v5.9).
+Ти — високоінтелектуальний військово-дорожній ШІ-штурман у місті Дніпро для водія (v6.0).
 ТОЧКИ НА КАРТІ:
 ${allLiveReportsText || "Повідомлень немає"}
 КОМАНДИ:
@@ -3666,12 +3759,12 @@ ${allLiveReportsText || "Повідомлень немає"}
     setTimeout(alignHudButtonsWithRouteBar, 500);
   </script>
 
-  <!-- ПІДКЛЮЧЕННЯ СКРИПТІВ ІЗ СКИДАННЯМ КЕШУ ДЛЯ V5.9 -->
-  <script src="relocate.js?v=5.9"></script>
-  <script src="memory.js?v=5.9"></script>
-  <script src="timeline.js?v=5.9"></script>
-  <script src="ticker.js?v=5.9"></script>
-  <script src="keepawake.js?v=5.9"></script>
-  <script src="gps.js?v=5.9"></script>
+  <!-- ПІДКЛЮЧЕННЯ СКРИПТІВ ІЗ СКИДАННЯМ КЕШУ ДЛЯ V6.0 -->
+  <script src="relocate.js?v=6.0"></script>
+  <script src="memory.js?v=6.0"></script>
+  <script src="timeline.js?v=6.0"></script>
+  <script src="ticker.js?v=6.0"></script>
+  <script src="keepawake.js?v=6.0"></script>
+  <script src="gps.js?v=6.0"></script>
 </body>
 </html>
