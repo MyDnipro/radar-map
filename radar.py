@@ -58,6 +58,30 @@ def fb_url(url, is_write=False):
         return f"{url}{sep}auth={FIREBASE_SECRET}"
     return url
 
+def fb_request(method, url, **kwargs):
+    """
+    Виконує надійний HTTP-запит до Firebase:
+    - Заголовок Connection: close запобігає зависанню застарілих TLS-сокетів після паузи.
+    - Автоматично повторює спробу при виникненні SSLEOFError, ConnectionError або Timeout.
+    """
+    if not url:
+        return None
+    headers = kwargs.pop("headers", {}) or {}
+    if "Connection" not in headers:
+        headers["Connection"] = "close"
+
+    timeout = kwargs.pop("timeout", 10)
+
+    for attempt in range(3):
+        try:
+            with requests.Session() as s:
+                return s.request(method, url, headers=headers, timeout=timeout, **kwargs)
+        except (requests.exceptions.SSLError, requests.exceptions.ConnectionError, requests.exceptions.Timeout) as err:
+            if attempt == 2:
+                raise err
+            time.sleep(0.5 * (attempt + 1))
+    return None
+
 def sanitize_fb_key(raw_str):
     """Очищає ключ від заборонених у Firebase символів."""
     return re.sub(r'[\.\$\#\[\]\/]', '_', str(raw_str))
@@ -321,18 +345,18 @@ def sync_cloud_knowledge_and_spam():
 
     try:
         if CUSTOM_STREETS_URL:
-            r_streets = requests.get(f"{CUSTOM_STREETS_URL}?t={int(time.time()*1000)}", timeout=5)
-            if r_streets.status_code == 200 and r_streets.json():
+            r_streets = fb_request("GET", f"{CUSTOM_STREETS_URL}?t={int(time.time()*1000)}", timeout=6)
+            if r_streets and r_streets.status_code == 200 and r_streets.json():
                 CUSTOM_STREETS_CACHE = r_streets.json()
 
         if STREET_OVERRIDES_URL:
-            r_overrides = requests.get(f"{STREET_OVERRIDES_URL}?t={int(time.time()*1000)}", timeout=5)
-            if r_overrides.status_code == 200 and r_overrides.json():
+            r_overrides = fb_request("GET", f"{STREET_OVERRIDES_URL}?t={int(time.time()*1000)}", timeout=6)
+            if r_overrides and r_overrides.status_code == 200 and r_overrides.json():
                 STREET_OVERRIDES_CACHE = r_overrides.json()
 
         if SPAM_FILTERS_URL:
-            r_spam = requests.get(f"{SPAM_FILTERS_URL}?t={int(time.time()*1000)}", timeout=5)
-            if r_spam.status_code == 200 and r_spam.json():
+            r_spam = fb_request("GET", f"{SPAM_FILTERS_URL}?t={int(time.time()*1000)}", timeout=6)
+            if r_spam and r_spam.status_code == 200 and r_spam.json():
                 words = set()
                 for val in r_spam.json().values():
                     if isinstance(val, str) and len(val.strip()) >= 2:
@@ -347,12 +371,17 @@ def geocode_local(text):
     clean_t = text.lower().replace('ё', 'е')
     t = " " + clean_t + " "
 
-    # 0. Ручні зсуви з папки street_overrides
+    # 0. Ручні зсуви з папки street_overrides (захищено від некоректних типів)
     for raw_key, data in STREET_OVERRIDES_CACHE.items():
         if isinstance(data, dict):
-            st_name = (data.get("street") or "").lower().replace('ё', 'е')
+            st_name = (data.get("street") or data.get("name") or "").lower().replace('ё', 'е')
             if st_name and len(st_name) >= 3 and st_name in t:
-                return data.get("street"), float(data.get("lat")), float(data.get("lng"))
+                try:
+                    lat_val = float(data.get("lat"))
+                    lng_val = float(data.get("lng"))
+                    return data.get("street") or data.get("name"), lat_val, lng_val
+                except (ValueError, TypeError):
+                    continue
 
     # Жорстка фіксація вул. Каштанової на Лівому березі (віадук Слобожанського)
     if re.search(r'(?:каштанов)', t):
@@ -389,7 +418,10 @@ def geocode_local(text):
         if isinstance(data, dict):
             alias = unquote(raw_alias).lower().replace('ё', 'е')
             if alias in t:
-                return data.get("name", alias), data.get("lat"), data.get("lng")
+                try:
+                    return data.get("name", alias), float(data.get("lat")), float(data.get("lng"))
+                except (ValueError, TypeError):
+                    continue
 
     sorted_items = sorted(
         LOCAL_STREETS_DB,
@@ -418,8 +450,8 @@ def geocode_osm_fallback(text):
         try:
             time.sleep(1.1)
             url = f"https://nominatim.openstreetmap.org/search?format=json&q={requests.utils.quote(query + ', Дніпро')}&countrycodes=ua&limit=1"
-            headers = {"User-Agent": "DniproRadarMap/5.0"}
-            r = requests.get(url, headers=headers, timeout=5)
+            headers = {"User-Agent": "DniproRadarMap/5.6", "Connection": "close"}
+            r = requests.get(url, headers=headers, timeout=6)
             if r.status_code == 200:
                 data = r.json()
                 if data and len(data) > 0:
@@ -439,8 +471,8 @@ def get_knowledge_base():
     if not KNOWLEDGE_BASE_URL:
         return []
     try:
-        r = requests.get(f"{KNOWLEDGE_BASE_URL}?t={int(time.time() * 1000)}", timeout=8)
-        if r.status_code == 200 and r.json():
+        r = fb_request("GET", f"{KNOWLEDGE_BASE_URL}?t={int(time.time() * 1000)}", timeout=8)
+        if r and r.status_code == 200 and r.json():
             data = r.json()
             if isinstance(data, dict):
                 return [v for v in data.values() if isinstance(v, dict)]
@@ -472,8 +504,8 @@ def cleanup_old_points():
         return
 
     try:
-        r = requests.get(POINTS_URL, timeout=8)
-        if r.status_code == 200 and r.json():
+        r = fb_request("GET", POINTS_URL, timeout=10)
+        if r and r.status_code == 200 and r.json():
             data = r.json()
             to_delete = {}
             for k, v in data.items():
@@ -483,7 +515,7 @@ def cleanup_old_points():
                     if (now_ms - point_time) > LIFETIME_MS or is_ad_or_spam(full_txt):
                         to_delete[k] = None
             if to_delete:
-                requests.patch(fb_url(POINTS_URL, is_write=True), json=to_delete, timeout=8)
+                fb_request("PATCH", fb_url(POINTS_URL, is_write=True), json=to_delete, timeout=10)
                 log(f"🧹 Видалено міток (застарілих або спам): {len(to_delete)}")
     except Exception as e:
         log(f"⚠️ Помилка очищення Firebase: {e}")
@@ -535,8 +567,8 @@ def update_traffic_stats_history():
         return
 
     try:
-        r_arch = requests.get(f"{STATS_ARCHIVE_URL}?t={int(time.time() * 1000)}", timeout=12)
-        if r_arch.status_code != 200 or not r_arch.json():
+        r_arch = fb_request("GET", f"{STATS_ARCHIVE_URL}?t={int(time.time() * 1000)}", timeout=12)
+        if not r_arch or r_arch.status_code != 200 or not r_arch.json():
             return
 
         archive_data = r_arch.json()
@@ -551,8 +583,8 @@ def update_traffic_stats_history():
 
         existing_history = {}
         try:
-            r_hist = requests.get(TRAFFIC_STATS_HISTORY_URL, timeout=8)
-            if r_hist.status_code == 200 and r_hist.json():
+            r_hist = fb_request("GET", TRAFFIC_STATS_HISTORY_URL, timeout=8)
+            if r_hist and r_hist.status_code == 200 and r_hist.json():
                 existing_history = r_hist.json()
         except Exception:
             existing_history = {}
@@ -590,10 +622,10 @@ def update_traffic_stats_history():
                 cp_count = calculate_checkpoint_episodes(matched_reps)
                 updated_history[date_str][cp_id] = cp_count
 
-        r_save = requests.put(fb_url(TRAFFIC_STATS_HISTORY_URL, is_write=True), json=updated_history, timeout=10)
-        if r_save.status_code == 200:
+        r_save = fb_request("PUT", fb_url(TRAFFIC_STATS_HISTORY_URL, is_write=True), json=updated_history, timeout=10)
+        if r_save and r_save.status_code == 200:
             log(f"📊 [ДОВГОТРИВАЛА СТАТИСТИКА]: Успішно оновлено {len(updated_history)} днів у traffic_stats_history.json")
-        
+
         LAST_STATS_AGGREGATION = time.time()
     except Exception as e:
         log(f"⚠️ Помилка оновлення traffic_stats_history: {e}")
@@ -605,7 +637,8 @@ def fetch_channel_messages():
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
         "Cache-Control": "no-cache, no-store, must-revalidate",
         "Pragma": "no-cache",
-        "Expires": "0"
+        "Expires": "0",
+        "Connection": "close"
     }
 
     try:
@@ -682,6 +715,7 @@ def parse_batch_with_gemini(items_to_parse):
             try:
                 r = requests.post(
                     url,
+                    headers={"Connection": "close"},
                     json={
                         "contents": [{"role": "user", "parts": [{"text": prompt}]}],
                         "generationConfig": {"temperature": 0.1, "responseMimeType": "application/json"}
@@ -739,7 +773,7 @@ def save_point_to_firebase(sub_post_id, msg, parsed_result, is_clean, post_time_
         }
         try:
             target_pt_url = POINTS_URL.replace(".json", f"/{safe_id}.json")
-            requests.put(fb_url(target_pt_url, is_write=True), json=point_data, timeout=8)
+            fb_request("PUT", fb_url(target_pt_url, is_write=True), json=point_data, timeout=8)
         except Exception as e:
             log(f"⚠️ Помилка запису в Firebase points: {e}")
 
@@ -755,7 +789,7 @@ def save_point_to_firebase(sub_post_id, msg, parsed_result, is_clean, post_time_
                 "time": post_time_ms
             }
             target_arch_url = STATS_ARCHIVE_URL.replace(".json", f"/{safe_id}.json")
-            requests.put(fb_url(target_arch_url, is_write=True), json=archive_entry, timeout=8)
+            fb_request("PUT", fb_url(target_arch_url, is_write=True), json=archive_entry, timeout=8)
         except Exception:
             pass
 
@@ -766,14 +800,14 @@ def preload_existing_ids():
         return
     try:
         if POINTS_URL:
-            r = requests.get(f"{POINTS_URL}?shallow=true", timeout=6)
-            if r.status_code == 200 and isinstance(r.json(), dict):
+            r = fb_request("GET", f"{POINTS_URL}?shallow=true", timeout=8)
+            if r and r.status_code == 200 and isinstance(r.json(), dict):
                 for k in r.json().keys():
                     if k.startswith("tg_"):
                         PROCESSED_POST_IDS.add(k[3:])
         if STATS_ARCHIVE_URL:
-            r2 = requests.get(f"{STATS_ARCHIVE_URL}?shallow=true", timeout=8)
-            if r2.status_code == 200 and isinstance(r2.json(), dict):
+            r2 = fb_request("GET", f"{STATS_ARCHIVE_URL}?shallow=true", timeout=10)
+            if r2 and r2.status_code == 200 and isinstance(r2.json(), dict):
                 for k in r2.json().keys():
                     if k.startswith("tg_"):
                         PROCESSED_POST_IDS.add(k[3:])
@@ -901,7 +935,7 @@ def sync_cycle():
             save_point_to_firebase(sub_post_id, msg, parsed_result, is_clean, post_time_ms)
 
 if __name__ == "__main__":
-    log(f"🚀 Запуск оновленого радара 24/7 v5.0 (Завантажено {len(GEMINI_KEYS)} API ключів)...")
+    log(f"🚀 Запуск оновленого радара 24/7 v5.6 (Завантажено {len(GEMINI_KEYS)} API ключів)...")
     start_time = time.time()
     MAX_RUNTIME_SEC = 5 * 3600 + 40 * 60
 
