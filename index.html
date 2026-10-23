@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <meta name="color-scheme" content="light only">
-  <title>Радар Дніпро v5.8</title>
+  <title>Радар Дніпро v5.9</title>
   <link rel="icon" type="image/png" href="icon.png">
   <link rel="apple-touch-icon" href="icon.png">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -72,12 +72,12 @@
       visibility: hidden !important;
     }
 
-    /* ПЛАШКА «МІЙ ШЛЯХ» */
+    /* ПЛАШКА «МІЙ ШЛЯХ» ТА КНОПКИ «МОЗОК / СТАТИСТИКА» СТРОГО НА ОДНІЙ ЛІНІЇ */
     #routeStatusBar {
-      position: fixed;
-      bottom: 15px;
-      left: 14px;
-      z-index: 2400;
+      position: fixed !important;
+      bottom: 25px !important;
+      left: 14px !important;
+      z-index: 2400 !important;
       width: auto !important;
       max-width: 155px !important;
       height: 38px !important;
@@ -138,10 +138,10 @@
       display: inline-flex !important;
     }
 
-    /* КНОПКИ «МОЗОК 🧠» ТА «СТАТИСТИКА 📊» З АПАРАТНОЮ ІЗОЛЯЦІЄЮ ТА СТАБІЛЬНИМ ЦЕНТРОМ */
+    /* КНОПКИ «МОЗОК 🧠» ТА «СТАТИСТИКА 📊» */
     #btnMemHud, #btnStatsHud {
       position: fixed !important;
-      bottom: 15px !important;
+      bottom: 25px !important;
       z-index: 2400 !important;
       width: 38px !important;
       height: 38px !important;
@@ -554,7 +554,7 @@
   <div id="authCurtain" style="display:none; position:fixed; inset:0; z-index:99999; background:rgba(11,17,32,0.98); backdrop-filter:blur(10px); align-items:center; justify-content:center; padding:16px;">
     <div style="background:#0f172a; border:1.5px solid #0284c7; border-radius:18px; padding:24px 20px; max-width:330px; width:100%; box-shadow:0 10px 40px rgba(0,243,255,0.25); text-align:center;">
       <div style="font-size:36px; margin-bottom:8px; cursor:pointer;" onclick="requestAdminLogin()" title="Вхід">🔐</div>
-      <h3 style="color:#f8fafc; font-size:16px; font-weight:900; margin-bottom:4px;">Радар Дніпро v5.8</h3>
+      <h3 style="color:#f8fafc; font-size:16px; font-weight:900; margin-bottom:4px;">Радар Дніпро v5.9</h3>
       <p style="color:#94a3b8; font-size:11.5px; margin-bottom:16px; line-height:1.4;">Введіть персональний ключ доступу</p>
       
       <input type="text" id="authGateInput" placeholder="RADAR-XXXX..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="width:100%; background:#060913; border:1.5px solid #334155; border-radius:10px; color:#fff; padding:10px 12px; font-size:13px; text-align:center; outline:none; font-family:monospace; margin-bottom:12px;">
@@ -654,7 +654,7 @@
         <span class="hub-online-pill" id="hubOnlinePill">🟢 <span id="hubOnlineCount">1</span></span>
       </div>
       <div style="display:flex; align-items:center; gap:5px;">
-        <span class="hub-version-badge" style="display:none; font-size:10px; font-weight:900; color:#38bdf8; background:#060913; border:1px solid #0284c7; padding:2px 6px; border-radius:6px; font-family:monospace; letter-spacing:0.5px;">v5.8</span>
+        <span class="hub-version-badge" style="display:none; font-size:10px; font-weight:900; color:#38bdf8; background:#060913; border:1px solid #0284c7; padding:2px 6px; border-radius:6px; font-family:monospace; letter-spacing:0.5px;">v5.9</span>
         <span class="ai-pill-tools" style="font-size:10.5px; color:#64748b; cursor:pointer; padding:2px;" title="Очистити історію ШІ" onclick="clearAiChatHistory(event)">🗑️</span>
         <span class="ai-pill-tools" style="font-size:10.5px; color:#64748b; cursor:pointer; padding:2px;" title="Налаштування API Key Gemini" onclick="configureGeminiKey(event)">🔑</span>
       </div>
@@ -715,7 +715,7 @@
 
       <div class="hub-view-section" id="hubSectionAi" style="display:none;">
         <div id="aiChatBox" class="ai-chat-box">
-          <div class="ai-msg bot">👋 Вітаю! Я ваш ШІ-штурман (Карта v5.8). Керування активне!</div>
+          <div class="ai-msg bot">👋 Вітаю! Я ваш ШІ-штурман (Карта v5.9). Керування активне!</div>
         </div>
         <div class="ai-chips-compact">
           <span class="ai-mini-chip" onclick="sendAiQuick('Скрий зелені точки')">🟢 Без зелених</span>
@@ -1226,6 +1226,7 @@
       renderMarkers();
       if (typeof renderTrafficLights === "function") renderTrafficLights();
       updateRouteStatus();
+      alignHudButtonsWithRouteBar();
       window.dispatchEvent(new CustomEvent('radar:uiModeChanged', { detail: mode }));
       if (window.map) setTimeout(() => window.map.invalidateSize(), 150);
     }
@@ -1447,7 +1448,7 @@
 
         let devUuid = localStorage.getItem("radar_device_uuid");
         if (!devUuid) {
-          devUuid = "dev_" + Math.random().toString(36).substring(2, 8) + Date.now().toString(36);
+          devUuid = "dev_" + Math.random().toString(36).substring(2, 9) + Date.now().toString(36);
           localStorage.setItem("radar_device_uuid", devUuid);
         }
 
@@ -1831,11 +1832,27 @@
         if (icon) icon.innerText = "🟢";
         if (text) text.innerText = "Мій шлях: Чисто";
       }
+      alignHudButtonsWithRouteBar();
     }
 
     // =========================================================================
-    // 🎛️ ПЕРЕМІЩЕННЯ ТА КАЛІБРУВАННЯ ПОЗИЦІЙ
+    // 🎛️ СИНХРОНІЗАЦІЯ ВИСОТИ КНОПОК ТА КАЛІБРУВАННЯ ПОЗИЦІЙ
     // =========================================================================
+    function alignHudButtonsWithRouteBar() {
+      const rsb = document.getElementById("routeStatusBar");
+      const mem = document.getElementById("btnMemHud");
+      const stats = document.getElementById("btnStatsHud");
+      if (!rsb || !mem || !stats) return;
+      
+      const rsbRect = rsb.getBoundingClientRect();
+      if (rsbRect.top > 0) {
+        mem.style.setProperty("top", rsbRect.top + "px", "important");
+        stats.style.setProperty("top", rsbRect.top + "px", "important");
+        mem.style.setProperty("bottom", "auto", "important");
+        stats.style.setProperty("bottom", "auto", "important");
+      }
+    }
+
     let isUiLayoutEditMode = false;
     let routeLongPressTimer = null;
     const HUD_ELEMENT_IDS = ["routeStatusBar", "btnMemHud", "btnStatsHud"];
@@ -1852,6 +1869,7 @@
           }
         });
       } catch (e) {}
+      alignHudButtonsWithRouteBar();
     }
 
     function enterUiLayoutEditMode() {
@@ -1896,6 +1914,7 @@
       if (routeBar) {
         routeBar.classList.remove("in-edit-mode");
       }
+      alignHudButtonsWithRouteBar();
       showToast("✅ Положення кнопок зафіксовано!");
     }
 
@@ -2226,15 +2245,26 @@
     L.DomEvent.disableClickPropagation(document.getElementById("mapDisplayModal"));
 
     // ЗАХИСТ ВІД ЗУМУВАННЯ КАРТИ ПРИ ПОДВІЙНОМУ ТАПІ
-    ["dblclick", "touchstart", "touchend"].forEach(evt => {
-      aiPillPanel.addEventListener(evt, (e) => {
-        e.stopPropagation();
-      }, { passive: false });
-    });
+    aiPillPanel.addEventListener("touchstart", (e) => {
+      e.stopPropagation();
+      if (window.map && window.map.doubleClickZoom) {
+        window.map.doubleClickZoom.disable();
+      }
+    }, { passive: false });
+
+    aiPillPanel.addEventListener("touchend", (e) => {
+      e.stopPropagation();
+      setTimeout(() => {
+        if (window.map && window.map.doubleClickZoom) {
+          window.map.doubleClickZoom.enable();
+        }
+      }, 600);
+    }, { passive: false });
 
     aiPillPanel.addEventListener("dblclick", (e) => {
       e.preventDefault();
       e.stopPropagation();
+      e.stopImmediatePropagation();
     });
 
     function toggleAiPillExpand(e) {
@@ -2264,17 +2294,27 @@
       if (e.target.closest('input') || e.target.closest('textarea') || e.target.closest('button') || e.target.closest('.hub-btn-act') || e.target.closest('.hub-duration-chip') || e.target.closest('.ai-mini-chip') || e.target.closest('.hub-client-card')) {
         return;
       }
+      if (window.map && window.map.doubleClickZoom) {
+        window.map.doubleClickZoom.disable();
+      }
       const now = Date.now();
-      if (now - lastHubTapTime < 350) {
+      if (now - lastHubTapTime < 380) {
         e.preventDefault();
         e.stopPropagation();
+        e.stopImmediatePropagation();
         if (aiPillPanel.classList.contains("expanded")) {
           toggleAiPillExpand(e);
         }
         lastHubTapTime = 0;
+        setTimeout(() => {
+          if (window.map && window.map.doubleClickZoom) window.map.doubleClickZoom.enable();
+        }, 700);
         return;
       }
       lastHubTapTime = now;
+      setTimeout(() => {
+        if (window.map && window.map.doubleClickZoom) window.map.doubleClickZoom.enable();
+      }, 700);
     });
 
     function switchHubTab(tabName, e) {
@@ -2546,7 +2586,7 @@
       devUuid = "dev_" + Math.random().toString(36).substring(2, 8) + "_" + Date.now().toString(36);
       localStorage.setItem("radar_device_uuid", devUuid);
     }
-    // Сесійний ключ тепер постійний для цього пристрою і не створює дублікатів при перезавантаженні
+    // Сесійний ключ постійний для цього пристрою і не створює дублікатів при перезавантаженні
     let clientSessionId = (isUserAdmin() ? "admin_" : "user_") + devUuid;
 
     window.resetAndReloadSession = function() {
@@ -2802,7 +2842,7 @@
       }).join('\n');
 
       const systemInstructionText = `
-Ти — високоінтелектуальний військово-дорожній ШІ-штурман у місті Дніпро для водія (v5.8).
+Ти — високоінтелектуальний військово-дорожній ШІ-штурман у місті Дніпро для водія (v5.9).
 ТОЧКИ НА КАРТІ:
 ${allLiveReportsText || "Повідомлень немає"}
 КОМАНДИ:
@@ -3621,14 +3661,17 @@ ${allLiveReportsText || "Повідомлень немає"}
     };
 
     setTimeout(checkAndDrawNavRoute, 400);
+    window.addEventListener("resize", alignHudButtonsWithRouteBar);
+    window.addEventListener("orientationchange", alignHudButtonsWithRouteBar);
+    setTimeout(alignHudButtonsWithRouteBar, 500);
   </script>
 
-  <!-- ПІДКЛЮЧЕННЯ СКРИПТІВ ІЗ СКИДАННЯМ КЕШУ ДЛЯ V5.8 -->
-  <script src="relocate.js?v=5.8"></script>
-  <script src="memory.js?v=5.8"></script>
-  <script src="timeline.js?v=5.8"></script>
-  <script src="ticker.js?v=5.8"></script>
-  <script src="keepawake.js?v=5.8"></script>
-  <script src="gps.js?v=5.8"></script>
+  <!-- ПІДКЛЮЧЕННЯ СКРИПТІВ ІЗ СКИДАННЯМ КЕШУ ДЛЯ V5.9 -->
+  <script src="relocate.js?v=5.9"></script>
+  <script src="memory.js?v=5.9"></script>
+  <script src="timeline.js?v=5.9"></script>
+  <script src="ticker.js?v=5.9"></script>
+  <script src="keepawake.js?v=5.9"></script>
+  <script src="gps.js?v=5.9"></script>
 </body>
 </html>
