@@ -1,12 +1,11 @@
 /**
- * memory.js — Модуль бази знань, синонімів та калібрування вулиць v12.0
- * Реалізує:
- * - Повноцінне редагування у вкладці «Зсунуті вулиці»: зміна назви та координат
- * - Автоматичне очищення старого ключа (DELETE) у Firebase при виправленні назви вулиці
- * - Розумне обрізання хвостів часу та статусів при автонавчанні з фолбеком на повний текст
- * - Захист ручних правок від перезапису (флаг is_manual: true)
- * - Сортування за часом: найсвіжіші правила завжди зверху
- * - Дворівневий інтерфейс: швидке вікно з лічильником + повноекранний журнал
+ * memory.js — Модуль бази знань, синонімів та калібрування вулиць v12.1
+ * Виправлено:
+ * - Пряме збереження в Firebase без помилок інтерполяції URL (виправлено баг з \${...})
+ * - Гарантоване видалення старого ключа (DELETE) при перейменуванні вулиці
+ * - Автоматичне очищення пошкоджених ключів із бази при старті
+ * - Захист ручних правок від затирання (is_manual: true)
+ * - Безпечна передача назв вулиць з апострофами (з'їзд тощо) в кнопки інтерфейсу
  */
 
 (function () {
@@ -51,26 +50,14 @@
     ).replace(/%/g, "_").slice(0, 80);
   }
 
-  // 1. РОЗУМНЕ АВТОНАВЧАННЯ ЗІ СРІЗКОЮ ХВОСТІВ ТА ЗАХИСТОМ РУЧНИХ ПРАВОК
+  // 1. РОЗУМНЕ АВТОНАВЧАННЯ ЗІ ЗРІЗАННЯМ ХВОСТІВ ТА ЗАХИСТОМ РУЧНИХ ПРАВОК
   window.saveMemorySynonymFromRelocate = async function (rawMsg, officialStreetName, lat, lng, isManual = false) {
     if (!rawMsg || !officialStreetName || !lat || !lng) return;
 
     const safeKey = toSafeFirebaseKey(rawMsg);
 
     if (!isManual && customStreetsCache[safeKey] && customStreetsCache[safeKey].is_manual) {
-      customStreetsCache[safeKey].lat = Number(Number(lat).toFixed(5));
-      customStreetsCache[safeKey].lng = Number(Number(lng).toFixed(5));
-      customStreetsCache[safeKey].updated_at = Date.now();
-      
-      try {
-        localStorage.setItem("radar_custom_streets", JSON.stringify(customStreetsCache));
-        const url = appendAuth(`${BASE_URL}/custom_streets/${safeKey}.json`);
-        await fetch(url, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(customStreetsCache[safeKey])
-        });
-      } catch (e) {}
+      // Ручна правка захищена від автоматичного перезапису
       return;
     }
 
@@ -101,7 +88,7 @@
     } catch (e) {}
 
     try {
-      const url = appendAuth(`${BASE_URL}/custom_streets/${finalKey}.json`);
+      const url = appendAuth(`${BASE_URL}/custom_streets/${encodeURIComponent(finalKey)}.json`);
       await fetch(url, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -162,7 +149,7 @@
     } catch (e) {}
 
     try {
-      const resStreets = await fetch(`${FIREBASE_CUSTOM_STREETS_URL}?t=${Date.now()}`);
+      const resStreets = await fetch(appendAuth(`${FIREBASE_CUSTOM_STREETS_URL}?t=${Date.now()}`));
       if (resStreets.ok) {
         const data = await resStreets.json();
         if (data && typeof data === "object") {
@@ -171,10 +158,20 @@
         }
       }
 
-      const resOverrides = await fetch(`${FIREBASE_OVERRIDES_URL}?t=${Date.now()}`);
+      const resOverrides = await fetch(appendAuth(`${FIREBASE_OVERRIDES_URL}?t=${Date.now()}`));
       if (resOverrides.ok) {
         const data = await resOverrides.json();
         if (data && typeof data === "object") {
+          // Очищаємо залишки пошкоджених ключів (якщо потрапили раніше через баг)
+          Object.keys(data).forEach(k => {
+            if (k.includes("${") || k.includes("encodeURIComponent")) {
+              delete data[k];
+              try {
+                fetch(appendAuth(`${BASE_URL}/street_overrides/${encodeURIComponent(k)}.json`), { method: "DELETE" }).catch(() => {});
+              } catch (e) {}
+            }
+          });
+
           streetOverridesCache = data;
           localStorage.setItem("radar_street_overrides", JSON.stringify(data));
 
@@ -244,7 +241,7 @@
           </div>
 
           <button id="quickBtnOpenFull" style="width:100%; background:linear-gradient(135deg, #0284c7 0%, #00f3ff 100%); border:none; color:#04101e; padding:10px; border-radius:9px; font-size:12px; font-weight:900; cursor:pointer; margin-top:2px; box-shadow:0 0 16px rgba(0,243,255,0.4); transition:transform 0.15s ease;">
-            📖 Відкрити всю базу знань (0 правил) ➔
+            📖 Відкрити всю базу знань ➔
           </button>
         </div>
       `;
@@ -531,7 +528,7 @@
     if (editingSynonymKey && editingSynonymKey !== toSafeFirebaseKey(phrase)) {
       try {
         delete customStreetsCache[editingSynonymKey];
-        const oldUrl = appendAuth(`${BASE_URL}/custom_streets/${editingSynonymKey}.json`);
+        const oldUrl = appendAuth(`${BASE_URL}/custom_streets/${encodeURIComponent(editingSynonymKey)}.json`);
         fetch(oldUrl, { method: "DELETE" }).catch(() => {});
       } catch (e) {}
     }
@@ -544,15 +541,15 @@
   }
 
   // =========================================================================
-  // 6. ПОВНЕ РЕДАГУВАННЯ ЗСУНУТОЇ ВУЛИЦІ (НАЗВА + КООРДИНАТИ З ОЧИЩЕННЯМ СТАРОГО КЛЮЧА)
+  // 6. ПОВНЕ РЕДАГУВАННЯ ЗСУНУТОЇ ВУЛИЦІ (НАЗВА + КООРДИНАТИ НАМЕРТВО В FIREBASE)
   // =========================================================================
   window.editStreetOverrideRecord = async function (key, currentStreetName) {
     const item = streetOverridesCache[key];
     if (!item) return;
 
     const oldName = item.street || item.name || currentStreetName || key;
-    
-    // Крок 1: Введення чистої назви вулиці (прибирання слів «чисто», дублів тощо)
+
+    // Крок 1: Введення чистої назви вулиці
     const newName = prompt(
       `Введіть назву вулиці (без слів «чисто», «норм» тощо):\n(Поточна: ${oldName})`,
       oldName
@@ -582,33 +579,47 @@
     const newLng = Number(parts[1].toFixed(5));
     const newKey = toSafeFirebaseKey(cleanStreetName);
 
-    // Якщо назва змінилася — видаляємо старий кривий ключ з бази та локального кешу
+    // Якщо назва змінилася — видаляємо старий ключ з бази та кешу
     if (key !== newKey) {
       delete streetOverridesCache[key];
       try {
-        const oldUrl = appendAuth(`${FIREBASE_OVERRIDES_URL.replace(".json", `/\${encodeURIComponent(key)}.json`)}`);
-        fetch(oldUrl, { method: "DELETE" }).catch(() => {});
-      } catch (e) {}
+        const oldUrl = appendAuth(`${BASE_URL}/street_overrides/${encodeURIComponent(key)}.json`);
+        await fetch(oldUrl, { method: "DELETE" });
+      } catch (e) {
+        console.warn("Помилка видалення старого ключа з Firebase:", e);
+      }
     }
 
-    item.street = cleanStreetName;
-    item.name = cleanStreetName;
-    item.lat = newLat;
-    item.lng = newLng;
-    item.updated_at = Date.now();
+    const payload = {
+      ...(item || {}),
+      street: cleanStreetName,
+      name: cleanStreetName,
+      lat: newLat,
+      lng: newLng,
+      is_manual: true,
+      updated_at: Date.now()
+    };
 
-    streetOverridesCache[newKey] = item;
+    streetOverridesCache[newKey] = payload;
 
+    // Зберігаємо локально
     try {
       localStorage.setItem("radar_street_overrides", JSON.stringify(streetOverridesCache));
-      const newUrl = appendAuth(`${FIREBASE_OVERRIDES_URL.replace(".json", `/\${encodeURIComponent(newKey)}.json`)}`);
-      await fetch(newUrl, {
+    } catch (e) {}
+
+    // Зберігаємо безпосередньо у хмару Firebase
+    try {
+      const newUrl = appendAuth(`${BASE_URL}/street_overrides/${encodeURIComponent(newKey)}.json`);
+      const res = await fetch(newUrl, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(item)
+        body: JSON.stringify(payload)
       });
+      if (!res.ok) {
+        console.error("Firebase відхилив збереження:", res.status);
+      }
     } catch (e) {
-      console.warn("Помилка збереження зміщення вулиці:", e);
+      console.warn("Помилка збереження зміщення вулиці в Firebase:", e);
     }
 
     // Оновлюємо внутрішній довідник вулиць Дніпра
@@ -623,14 +634,18 @@
     }
 
     renderFullRulesList();
-    if (typeof renderMarkers === "function") renderMarkers();
-    if (typeof showToast === "function") showToast(`📍 «${escapeHtml(cleanStreetName)}» успішно оновлено!`);
+    if (typeof loadPoints === "function") {
+      loadPoints();
+    } else if (typeof renderMarkers === "function") {
+      renderMarkers();
+    }
+    if (typeof showToast === "function") showToast(`📍 «${escapeHtml(cleanStreetName)}» збережено в хмарі!`);
   };
 
   // Псевдонім для зворотної сумісності
   window.editStreetOverrideCoords = window.editStreetOverrideRecord;
 
-  // РЕНДЕР СПИСКУ ПРАВИЛ (НОВІ ЗАВЖДИ ЗВЕРХУ ЗА ЧАСОМ)
+  // РЕНДЕР СПИСКУ ПРАВИЛ (НОВІ ЗАВЖДИ ЗВЕРХУ)
   function renderFullRulesList() {
     const box = document.getElementById("fullRulesListBox");
     if (!box) return;
@@ -639,9 +654,13 @@
     const searchInput = document.getElementById("fullFilterSearch");
     const filterQuery = searchInput ? searchInput.value.trim().toLowerCase() : "";
 
-    const totalSyn = Object.keys(customStreetsCache).length;
     const subBadge = document.getElementById("fullRulesCountSubBadge");
-    if (subBadge) subBadge.innerText = `${totalSyn} правил`;
+    if (subBadge) {
+      const totalCount = fullModalActiveTab === "synonyms" 
+        ? Object.keys(customStreetsCache).length 
+        : Object.keys(streetOverridesCache).length;
+      subBadge.innerText = fullModalActiveTab === "synonyms" ? `${totalCount} правил` : `${totalCount} вулиць`;
+    }
 
     if (fullModalActiveTab === "synonyms") {
       let items = Object.entries(customStreetsCache);
@@ -662,6 +681,7 @@
       items.forEach(([key, item]) => {
         const card = document.createElement("div");
         card.style.cssText = "background:#0b1120; border:1px solid #1e293b; border-left:4px solid #00f3ff; border-radius:8px; padding:10px 12px; display:flex; justify-content:space-between; align-items:center; gap:8px;";
+        const safeKeyEncoded = encodeURIComponent(key);
         card.innerHTML = `
           <div style="line-height:1.4; flex:1; min-width:0;">
             <div style="font-size:12px; font-weight:800; color:#f8fafc; word-break:break-word;">
@@ -672,8 +692,8 @@
             </div>
           </div>
           <div style="display:flex; gap:6px; flex-shrink:0;">
-            <button style="background:#0f172a; border:1px solid #0284c7; color:#38bdf8; padding:6px 9px; border-radius:6px; font-size:11px; cursor:pointer;" title="Редагувати правило" onclick="window.editSynonymRule('${key}')">✏️</button>
-            <button style="background:#450a0a; border:1px solid #ef4444; color:#fca5a5; padding:6px 9px; border-radius:6px; font-size:11px; cursor:pointer;" title="Видалити правило" onclick="window.deleteMemoryRule('${key}')">🗑️</button>
+            <button style="background:#0f172a; border:1px solid #0284c7; color:#38bdf8; padding:6px 9px; border-radius:6px; font-size:11px; cursor:pointer;" title="Редагувати правило" onclick="window.editSynonymRule(decodeURIComponent('${safeKeyEncoded}'))">✏️</button>
+            <button style="background:#450a0a; border:1px solid #ef4444; color:#fca5a5; padding:6px 9px; border-radius:6px; font-size:11px; cursor:pointer;" title="Видалити правило" onclick="window.deleteMemoryRule(decodeURIComponent('${safeKeyEncoded}'))">🗑️</button>
           </div>
         `;
         box.appendChild(card);
@@ -696,18 +716,21 @@
       items.forEach(([key, item]) => {
         const card = document.createElement("div");
         card.style.cssText = "background:#0b1120; border:1px solid #1e293b; border-left:4px solid #f59e0b; border-radius:8px; padding:10px 12px; display:flex; justify-content:space-between; align-items:center; gap:8px;";
+        const safeKeyEncoded = encodeURIComponent(key);
+        const streetVal = item.street || item.name || key;
+        const safeStreetEncoded = encodeURIComponent(streetVal);
         card.innerHTML = `
           <div style="line-height:1.4; flex:1; min-width:0;">
             <div style="font-size:12px; font-weight:800; color:#fbbf24; word-break:break-word;">
-              📍 ${escapeHtml(item.street || item.name || key)}
+              📍 ${escapeHtml(streetVal)}
             </div>
             <div style="font-size:10px; color:#64748b; font-family:monospace; margin-top:2px;">
-              lat: ${item.lat}, lng: ${item.lng}
+              lat: ${item.lat}, lng: ${item.lng} ${item.is_manual ? '• ✍️ вручну' : ''}
             </div>
           </div>
           <div style="display:flex; gap:6px; flex-shrink:0;">
-            <button style="background:#0f172a; border:1px solid #0284c7; color:#38bdf8; padding:6px 9px; border-radius:6px; font-size:11px; cursor:pointer;" title="Редагувати назву та координати" onclick="window.editStreetOverrideRecord('${key}', '${escapeHtml(item.street || item.name || key)}')">✏️</button>
-            <button style="background:#1e293b; border:1px solid #334155; color:#94a3b8; padding:6px 9px; border-radius:6px; font-size:10.5px; font-weight:800; cursor:pointer;" title="Скинути до заводських" onclick="window.resetStreetOverride('${key}', '${escapeHtml(item.street || item.name)}')">🔄 Скинути</button>
+            <button style="background:#0f172a; border:1px solid #0284c7; color:#38bdf8; padding:6px 9px; border-radius:6px; font-size:11px; cursor:pointer;" title="Редагувати назву та координати" onclick="window.editStreetOverrideRecord(decodeURIComponent('${safeKeyEncoded}'), decodeURIComponent('${safeStreetEncoded}'))">✏️</button>
+            <button style="background:#1e293b; border:1px solid #334155; color:#94a3b8; padding:6px 9px; border-radius:6px; font-size:10.5px; font-weight:800; cursor:pointer;" title="Скинути до заводських" onclick="window.resetStreetOverride(decodeURIComponent('${safeKeyEncoded}'), decodeURIComponent('${safeStreetEncoded}'))">🔄 Скинути</button>
           </div>
         `;
         box.appendChild(card);
@@ -720,7 +743,7 @@
     delete customStreetsCache[key];
     try {
       localStorage.setItem("radar_custom_streets", JSON.stringify(customStreetsCache));
-      const url = appendAuth(`${BASE_URL}/custom_streets/${key}.json`);
+      const url = appendAuth(`${BASE_URL}/custom_streets/${encodeURIComponent(key)}.json`);
       await fetch(url, { method: "DELETE" });
     } catch (e) {}
     updateQuickModalUI();
@@ -733,10 +756,15 @@
     delete streetOverridesCache[key];
     try {
       localStorage.setItem("radar_street_overrides", JSON.stringify(streetOverridesCache));
-      const url = appendAuth(`${FIREBASE_OVERRIDES_URL.replace(".json", `/\${key}.json`)}`);
+      const url = appendAuth(`${BASE_URL}/street_overrides/${encodeURIComponent(key)}.json`);
       await fetch(url, { method: "DELETE" });
     } catch (e) {}
     renderFullRulesList();
+    if (typeof loadPoints === "function") {
+      loadPoints();
+    } else if (typeof renderMarkers === "function") {
+      renderMarkers();
+    }
     if (typeof showToast === "function") showToast("🔄 Координати скинуто до заводських");
   };
 
