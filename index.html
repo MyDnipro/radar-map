@@ -711,7 +711,7 @@
             <span class="hub-duration-chip active" data-days="30" onclick="selectDurationChip(this, event)">30 днів</span>
             <span class="hub-duration-chip" data-days="90" onclick="selectDurationChip(this, event)">90 днів</span>
             <span class="hub-duration-chip" data-days="0" onclick="selectDurationChip(this, event)">Безліміт</span>
-            <!-- КНОПКА ВВОДУ ХВИЛИН ДЛЯ ТЕСТУ БЕЗ КОНФЛІКТУ ДАБЛ-ТАПУ -->
+            <!-- КНОПКА ВВОДУ ХВИЛИН ДЛЯ ТЕСТУ -->
             <span class="hub-duration-chip" onclick="promptCustomMinuteKey(event)" style="border-color:#38bdf8; color:#38bdf8; font-weight:900;" title="Ввести тривалість у хвилинах вручну">⏱️ хв</span>
           </div>
           <button id="hubBtnGenerate" class="hub-btn-generate" onclick="generateNewAccessToken(event)" title="Звичайний клік — за обраним терміном. Затисніть на 0.7с — тест у хвилинах!">⚡ Згенерувати персональний ключ</button>
@@ -719,7 +719,8 @@
           <div class="hub-generated-box" id="hubGeneratedBox" style="display:none; align-items:center; justify-content:space-between;">
             <span class="hub-generated-code" id="hubGeneratedCode">RADAR-0000-X</span>
             <div style="display:flex; gap:4px; align-items:center;">
-              <button class="hub-btn-copy" onclick="copyGeneratedKey(event)">📋 Скопіювати</button>
+              <button class="hub-btn-copy" onclick="copyGeneratedKey(event)">📋 Ключ</button>
+              <button class="hub-btn-copy" style="background:#0284c7; color:#fff;" onclick="copyGeneratedKeyLink(event)" title="Скопіювати готове пряме посилання для активації">🔗 Посилання</button>
               <button class="hub-btn-copy" style="background:#334155; color:#cbd5e1; padding:3px 8px;" onclick="clearGeneratedKeyBox(event)">✕</button>
             </div>
           </div>
@@ -1372,7 +1373,7 @@
     }
 
     // =========================================================================
-    // 🚪 ШТОРКА ТА ВАЛІДАЦІЯ КЛЮЧІВ (З ЛЬГОТНИМ ТАЙМЕРОМ ДЛЯ ВОДІЯ)
+    // 🚪 ШТОРКА ТА ВАЛІДАЦІЯ КЛЮЧІВ (З АВТО-ВХОДОМ ЗА ПОСИЛАННЯМ ?key=...)
     // =========================================================================
     function showAuthCurtain() {
       const c = document.getElementById("authCurtain");
@@ -1460,9 +1461,9 @@
       badge.style.display = "inline-flex";
     }
 
-    async function submitAuthGateKey() {
+    async function submitAuthGateKey(overrideKey) {
       const input = document.getElementById("authGateInput");
-      const val = (input.value || "").trim();
+      const val = (overrideKey || input.value || "").trim();
       const err = document.getElementById("authGateError");
       if (err) err.style.display = "none";
       if (!val) return;
@@ -1499,8 +1500,10 @@
       }
 
       const btnSubmit = document.getElementById("btnAuthSubmit");
-      btnSubmit.disabled = true;
-      btnSubmit.innerText = "⏳ Перевірка ключа...";
+      if (btnSubmit) {
+        btnSubmit.disabled = true;
+        btnSubmit.innerText = "⏳ Перевірка ключа...";
+      }
 
       try {
         const uppercaseKey = val.toUpperCase();
@@ -1565,12 +1568,24 @@
       } catch(e) {
         showAuthError("⚠️ Помилка з'єднання з базою перевірки");
       } finally {
-        btnSubmit.disabled = false;
-        btnSubmit.innerText = "🔓 Увійти в систему";
+        if (btnSubmit) {
+          btnSubmit.disabled = false;
+          btnSubmit.innerText = "🔓 Увійти в систему";
+        }
       }
     }
 
     async function verifyInitialAccess() {
+      // 1. АВТО-ВХІД ЗА ПРЯМИМ ПОСИЛАННЯМ ?key=RADAR-XXXX
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlKey = urlParams.get("key");
+      if (urlKey) {
+        const cleanUrl = window.location.pathname + window.location.hash;
+        window.history.replaceState({}, document.title, cleanUrl);
+        await submitAuthGateKey(urlKey.trim().toUpperCase());
+        return;
+      }
+
       if (isUserAdmin()) {
         hideAuthCurtain();
         return;
@@ -1835,9 +1850,23 @@
       if (typeof window.closeAllRelocateModals === "function") window.closeAllRelocateModals();
     });
 
+    // =========================================================================
+    // 🚦 ПРІОРИТЕТНЕ ВИЗНАЧЕННЯ СТАТУСУ (РУЧНИЙ ВЕРДИКТ АДМІНА ПОНАД УСЕ)
+    // =========================================================================
     function isCleanPoint(p) {
       if (!p) return false;
 
+      // ПРІОРИТЕТ №1: якщо адмін вручну перемикав статус — текст повідомлення більше НЕ аналізуємо!
+      if (p.manual_override === true || p._manualOverride === true) {
+        if (p.is_clean !== undefined) return !!p.is_clean;
+        if (p.status === "чисто" || p.color === "green") return true;
+        if (p.status === "опасно" || p.color === "red") return false;
+      }
+      if (p.is_clean !== undefined && (p.status === "чисто" || p.status === "опасно" || p.color === "green" || p.color === "red")) {
+        return !!p.is_clean;
+      }
+
+      // ПРІОРИТЕТ №2: автоматичний контекстний аналіз за ключовими словами
       const rawCombined = ((p.raw_text || "") + " " + (p.address || ""))
         .replace(/&nbsp;/gi, " ")
         .replace(/[\r\n]+/g, " ")
@@ -2156,6 +2185,7 @@
       }
     };
 
+    // ФІКСОВАНЕ ПЕРЕМИКАННЯ ВЕРДИКТУ З БЛОКУВАННЯМ ПЕРЕТИРАННЯ ТЕКСТОМ
     window.setPointVerdictDirect = async function(fbKey, isClean, btnEl) {
       const p = allPoints.find(x => x._fbKey === fbKey);
       if (!p) return;
@@ -2163,6 +2193,8 @@
       p.is_clean = isClean;
       p.color = isClean ? "green" : "red";
       p.status = isClean ? "чисто" : "опасно";
+      p.manual_override = true;
+      p._manualOverride = true;
 
       if (btnEl) {
         const row = btnEl.closest('.report-row-item');
@@ -2177,7 +2209,12 @@
         fetch(url, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ is_clean: isClean, color: p.color, status: p.status })
+          body: JSON.stringify({ 
+            is_clean: isClean, 
+            color: p.color, 
+            status: p.status, 
+            manual_override: true 
+          })
         }).catch(() => {});
       }
 
@@ -2316,7 +2353,7 @@
     };
 
     // =========================================================================
-    // 👑 ПАНЕЛЬ «КЛІЄНТИ» (ШТАБ ДОСТУПІВ З ТРЬОМА ВКЛАДКАМИ)
+    // 👑 ПАНЕЛЬ «КЛІЄНТИ» (ШТАБ ДОСТУПІВ, СЕСІЇ ТА ШІ-ШТУРМАН)
     // =========================================================================
     const aiPillPanel = document.getElementById("aiPillPanel");
     const aiInlineInput = document.getElementById("aiInlineInput");
@@ -2464,7 +2501,7 @@
       return `RADAR-${num}-${char}`;
     }
 
-    // ТЕСТОВИЙ РЕЖИМ ГЕНЕРАЦІЇ ХВИЛИН (ОДИН КЛІК ПО КНОПЦІ «⏱️ хв» АБО ЗАЖАТТЯ НА КНОПЦІ ГЕНЕРАТОРА)
+    // ТЕСТОВИЙ РЕЖИМ ГЕНЕРАЦІЇ ХВИЛИН
     window.promptCustomMinuteKey = async function(e) {
       if (e) e.stopPropagation();
       const minsStr = prompt("🛠️ Тестовий режим генерації:\nВведіть тривалість ключа у хвилинах (наприклад, 1):", "1");
@@ -2511,7 +2548,7 @@
       }
     };
 
-    // ОБРОБНИК ДОВГОГО УТРИМАННЯ НА КНОПЦІ «⚡ Згенерувати» (0.7с) ДЛЯ МОБІЛОК
+    // ОБРОБНИК ДОВГОГО УТРИМАННЯ НА КНОПЦІ «⚡ Згенерувати» (0.7с)
     const genBtn = document.getElementById("hubBtnGenerate");
     if (genBtn) {
       let genLongPressTimer = null;
@@ -2572,6 +2609,31 @@
       const code = document.getElementById("hubGeneratedCode").innerText;
       if (!code) return;
       window.copyTokenText(code);
+    }
+
+    // КОПІЮВАННЯ ГОТОВОГО ПРЯМОГО ПОСИЛАННЯ
+    function getDirectKeyUrl(key) {
+      const base = window.location.origin + window.location.pathname;
+      return `${base}?key=${encodeURIComponent(key)}`;
+    }
+
+    window.copyTokenLink = function(key) {
+      if (!key) return;
+      const link = getDirectKeyUrl(key);
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(link).then(() => {
+          showToast(`🔗 Посилання для авто-входу скопійовано!`);
+        }).catch(() => prompt("Посилання для водія:", link));
+      } else {
+        prompt("Посилання для водія:", link);
+      }
+    };
+
+    function copyGeneratedKeyLink(e) {
+      if (e) e.stopPropagation();
+      const code = document.getElementById("hubGeneratedCode").innerText;
+      if (!code) return;
+      window.copyTokenLink(code);
     }
 
     window.clearGeneratedKeyBox = function(e) {
@@ -2697,7 +2759,7 @@
       pendingConfirmAction = null;
     }
 
-    // РЕНДЕР КЛЮЧІВ: АВТОВИДАЛЕННЯ ЧЕРЕЗ 24 ГОДИНИ + КНОПКА ПОДОВЖЕННЯ ⏳+
+    // РЕНДЕР КЛЮЧІВ: АВТОВИДАЛЕННЯ ЧЕРЕЗ 24 ГОДИНИ + КНОПКА ПОДОВЖЕННЯ ⏳+ ТА ПОСИЛАННЯ 🔗
     function renderAccessTokensList() {
       const listBox = document.getElementById("hubClientsList");
       const countBadge = document.getElementById("hubClientsCount");
@@ -2805,6 +2867,7 @@
             <div class="hub-client-sub" style="font-size:10px; margin-top:2px;">${deviceState} • ${expText}</div>
           </div>
           <div class="hub-client-actions" style="display:flex; gap:4px; flex-shrink:0;">
+            <button class="hub-btn-act" onclick="copyTokenLink('${escapeHtml(key)}')\" title="Скопіювати посилання для швидкого входу" style="color:#38bdf8; font-weight:900;">🔗</button>
             <button class="hub-btn-act" onclick="promptExtendToken('${escapeHtml(key)}')\" title="Подовжити дію ключа" style="color:#10b981; font-weight:900; font-size:11px;">⏳+</button>
             <button class="hub-btn-act" onclick="confirmToggleTokenBlock('${escapeHtml(key)}')\" title="${pausePlayTitle}">${pausePlayIcon}</button>
             <button class="hub-btn-act danger" onclick="confirmDeleteAccessToken('${escapeHtml(key)}')\" title="Видалити ключ">🗑️</button>
@@ -3099,7 +3162,6 @@
     window.kickAndBlockClient = async function(sessionId, clientKey, displayName) {
       if (!confirm(`Відключити та заблокувати доступ для «${displayName}»?\n(Ключ перейде в режим паузи, пристрій не увійде навіть після перезавантаження)`)) return;
       try {
-        // 1. Вбиваємо живу сесію
         const sessionUrl = window.appendAuth(FIREBASE_PRESENCE_URL.replace(".json", `/${encodeURIComponent(sessionId)}.json`));
         await fetch(sessionUrl, {
           method: "PATCH",
@@ -3107,7 +3169,6 @@
           body: JSON.stringify({ kicked: true, t: 0 })
         });
 
-        // 2. Блокуємо ключ у базі, якщо він відомий
         if (clientKey) {
           const tokenUrl = window.appendAuth(FIREBASE_TOKENS_URL.replace(".json", `/${encodeURIComponent(clientKey)}.json`));
           await fetch(tokenUrl, {
