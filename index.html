@@ -265,7 +265,9 @@
       display: none !important;
     }
 
-    /* ПАНЕЛЬ «КЛІЄНТИ» */
+    /* =========================================================================
+       2. ПАНЕЛЬ «КЛІЄНТИ» (ШТАБ ДОСТУПІВ З ПОВНИМ СКРОЛОМ)
+       ========================================================================= */
     #aiPillPanel {
       touch-action: pan-y !important;
     }
@@ -311,45 +313,57 @@
       width: 385px !important;
       max-width: calc(100vw - 30px) !important;
       height: auto !important;
-      max-height: none !important;
+      max-height: calc(100vh - 90px) !important;
       display: flex !important;
       flex-direction: column !important;
       z-index: 2500 !important;
       box-shadow: 0 12px 40px rgba(0, 0, 0, 0.85) !important;
       position: fixed !important;
+      overflow: hidden !important;
     }
     #aiPillPanel.expanded .hub-version-badge {
       display: inline-flex !important;
     }
+    
+    /* ЄДИНИЙ ПОВНИЙ СКРОЛЛ ТІЛА ВІКНА */
     #aiPillPanel.expanded .ai-pill-body {
       flex: 1 1 auto !important;
       display: flex !important;
       flex-direction: column !important;
-      overflow-y: hidden !important;
+      overflow-y: auto !important;
+      overflow-x: hidden !important;
       position: relative !important;
+      -webkit-overflow-scrolling: touch !important;
+      overscroll-behavior: contain !important;
+      padding-right: 4px;
     }
+    
     #hubSectionClients {
       display: flex;
       flex-direction: column;
-      height: 100%;
-      gap: 7px;
+      height: auto !important;
+      min-height: 100%;
+      gap: 8px;
     }
 
+    /* Компактний блок онлайн-пристроїв (не перекриває екран) */
     #hubActiveSessionsList {
-      max-height: 175px !important;
+      max-height: 115px !important;
       overflow-y: auto !important;
       display: flex !important;
       flex-direction: column !important;
-      gap: 4px !important;
+      gap: 3px !important;
       padding-right: 2px !important;
     }
 
+    /* Список бази ключів вільно займає місце в загальній ленті */
     #hubClientsList {
       flex: 1 1 auto !important;
-      min-height: 120px !important;
+      min-height: 180px !important;
       max-height: none !important;
-      overflow-y: auto !important;
+      overflow-y: visible !important;
       padding-right: 2px;
+      padding-bottom: 15px;
     }
 
     #hubConfirmModal {
@@ -423,7 +437,7 @@
     .radar-circle.fresh.color-green { animation: pulseGroupClean 1.4s infinite !important; }
 
     /* =========================================================================
-       2. СОНАР СВІТЛОФОРІВ ТА ПАЛІТРА КОЛЬОРІВ
+       3. СОНАР СВІТЛОФОРІВ ТА ПАЛІТРА КОЛЬОРІВ
        ========================================================================= */
     .tl-sonar-icon-container {
       background: transparent !important;
