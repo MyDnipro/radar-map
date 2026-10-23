@@ -1,25 +1,25 @@
 /**
- * Radar Dnipro — Модуль "Радіо ефір" (ticker.js) v5.0
- * - 4 рядки за замовчуванням + розгортання на весь екран (кнопка ⤢ / ⤡)
- * - Автоматична темна підкладка («скло») при розгортанні для зручного читання
- * - Скрол ВСІХ повідомлень за сьогодні (з 00:00 до 24:00)
- * - Контрольні точки маршруту розширено: Стан 550, Набережна, Канатна, Щепкіна
- * - Кнопка 📻 строго по центру (left: 50%, transform: translateX(-50%))
- * - Вкладки "Мій шлях / Все місто" збережені в повному обсязі
- * - Клікабельний ТІЛЬКИ кружок (🟢/🔴) для точного переходу до точки
- * - Розумний ластик під відкриті попапи у компактному режимі
+ * Radar Dnipro — Модуль "Радіо ефір" (ticker.js) v5.6
+ * Виправлено:
+ * - Повністю усунено мерехтіння кнопки рації та рядків повідомлень
+ * - Оптимізовано Smart Mask (без безперервного завантаження CPU/GPU кожні 100 мс)
+ * - Апаратна ізоляція шарів через 3D-композитинг (translate3d, backface-visibility)
+ * - Захист від подвійного кліка (Ghost clicks) та залипання тапа на смартфонах
+ * - Стабільна фіксація висоти без стрибків у простому та повному режимах
  */
 (function() {
   let isRadioActive = localStorage.getItem("radar_radio_active") === "true";
   let radioMode = localStorage.getItem("radar_radio_mode") || "route";
   let isExpanded = false;
   let lastDataSignature = "";
+  let lastRadioTapTime = 0;
+  let lastExpandTapTime = 0;
 
   const STATS_ARCHIVE_URL = (window.FIREBASE_POINTS_URL 
     ? window.FIREBASE_POINTS_URL.replace("points.json", "stats_archive.json") 
     : "https://dnepr-radar-2026-alexx-default-rtdb.europe-west1.firebasedatabase.app/stats_archive.json");
 
-  // Контрольні точки маршруту водія (включаючи Канатну, Щепкіна, Стан 550 та Набережну)
+  // Контрольні точки маршруту водія
   const CHECKPOINT_REGEXES = [
     /кайдак/i, /ровд/i, /райотдел/i,
     /водолечеб/i, /водолікарн/i, /пр[\s.]*свободи/i,
@@ -40,23 +40,23 @@
     return CHECKPOINT_REGEXES.some(rgx => rgx.test(fullText));
   }
 
-  // 1. СТИЛІ РАДІО-ЕФІРУ
+  // 1. СТИЛІ РАДІО-ЕФІРУ З АПАРАТНОЮ СТАБІЛІЗАЦІЄЮ
   const style = document.createElement("style");
   style.textContent = `
     #btnKeepAwake { display: none !important; }
 
-    /* Кнопка 📻 строго по центру екрана */
+    /* Кнопка 📻 строго по центру екрана зі стабільним 3D-шаром */
     #btnRadioTopCenter {
       position: absolute !important;
       top: 15px !important;
       left: 50% !important;
-      transform: translateX(-50%) !important;
+      transform: translate3d(-50%, 0, 0) !important;
+      -webkit-transform: translate3d(-50%, 0, 0) !important;
       z-index: 850 !important;
       width: 38px;
       height: 38px;
       box-sizing: border-box;
       background: rgba(15, 23, 42, 0.94);
-      backdrop-filter: blur(10px);
       border: 1.5px solid #38bdf8;
       border-radius: 12px;
       display: flex;
@@ -66,16 +66,25 @@
       cursor: pointer;
       box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
       user-select: none;
-      transition: transform 0.2s ease;
+      -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      outline: none;
+      -webkit-backface-visibility: hidden;
+      backface-visibility: hidden;
+      will-change: transform;
+      transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
     }
-    #btnRadioTopCenter:active { transform: translateX(-50%) scale(0.92); }
+    #btnRadioTopCenter:active {
+      transform: translate3d(-50%, 0, 0) scale(0.92) !important;
+      -webkit-transform: translate3d(-50%, 0, 0) scale(0.92) !important;
+    }
     #btnRadioTopCenter.active {
       background: #0284c7 !important;
       border-color: #00f3ff !important;
       box-shadow: 0 0 18px rgba(0, 243, 255, 0.6) !important;
     }
 
-    /* Контейнер радіо-стрічки */
+    /* Контейнер радіо-стрічки з ізольованим шаром відеопам'яті */
     #radioFeedOverlay {
       position: absolute !important;
       top: 58px !important;
@@ -87,11 +96,17 @@
       gap: 3px;
       pointer-events: none;
       user-select: none;
+      -webkit-user-select: none;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+      -webkit-backface-visibility: hidden;
+      backface-visibility: hidden;
+      transform: translate3d(0, 0, 0);
+      -webkit-transform: translate3d(0, 0, 0);
+      will-change: opacity, height;
+      transition: background 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease;
     }
 
-    /* Верхня панель: вкладки + кнопка розгортання */
+    /* Верхня панель */
     .radio-header-bar {
       display: flex;
       align-items: center;
@@ -99,18 +114,20 @@
       pointer-events: auto !important;
       margin-bottom: 3px;
       gap: 6px;
+      height: 24px;
+      box-sizing: border-box;
     }
 
-    /* Перемикач над текстом у повному режимі */
+    /* Перемикач над текстом */
     .radio-mode-switcher {
       display: inline-flex;
       align-items: center;
       gap: 2px;
-      background: rgba(15, 23, 42, 0.65);
-      backdrop-filter: blur(6px);
+      background: rgba(15, 23, 42, 0.75);
       border: 1px solid rgba(56, 189, 248, 0.35);
       border-radius: 14px;
       padding: 1px 3px;
+      -webkit-tap-highlight-color: transparent;
     }
     .radio-mode-tab {
       cursor: pointer;
@@ -119,8 +136,10 @@
       padding: 2px 8px;
       border-radius: 10px;
       color: #94a3b8;
-      transition: all 0.15s ease;
+      transition: background 0.15s ease, color 0.15s ease;
       user-select: none;
+      -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
     }
     .radio-mode-tab.active {
       background: #0284c7;
@@ -128,7 +147,7 @@
       box-shadow: 0 0 8px rgba(2, 132, 199, 0.6);
     }
 
-    /* Кнопка розгортання на весь екран */
+    /* Кнопка розгортання */
     .radio-expand-btn {
       cursor: pointer;
       font-size: 13px;
@@ -137,24 +156,21 @@
       border-radius: 10px;
       color: #38bdf8;
       background: rgba(15, 23, 42, 0.75);
-      backdrop-filter: blur(6px);
       border: 1px solid rgba(56, 189, 248, 0.35);
       display: inline-flex;
       align-items: center;
       justify-content: center;
       user-select: none;
-      transition: all 0.15s ease;
-    }
-    .radio-expand-btn:hover {
-      background: #0284c7;
-      color: #ffffff;
-      box-shadow: 0 0 8px rgba(2, 132, 199, 0.6);
+      -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      outline: none;
+      transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
     }
     .radio-expand-btn:active {
       transform: scale(0.92);
     }
 
-    /* Скрол-список (за замовчуванням 4 рядки по 24px) */
+    /* Скрол-список (4 рядки по 24px = 96px) */
     .radio-scroll-list {
       display: block !important;
       height: 96px !important;
@@ -166,7 +182,9 @@
       -webkit-overflow-scrolling: touch !important;
       overscroll-behavior: contain !important;
       scrollbar-width: none;
-      transition: height 0.22s cubic-bezier(0.16, 1, 0.3, 1), max-height 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+      -webkit-backface-visibility: hidden;
+      backface-visibility: hidden;
+      transform: translate3d(0, 0, 0);
     }
     .radio-scroll-list::-webkit-scrollbar {
       display: none;
@@ -184,12 +202,16 @@
       display: flex;
       align-items: center;
       gap: 6px;
-      transition: opacity 0.15s ease;
+      box-sizing: border-box;
+      -webkit-backface-visibility: hidden;
+      backface-visibility: hidden;
+      transform: translate3d(0, 0, 0);
+      transition: opacity 0.15s linear;
     }
 
     /* Точковий клікабельний кружок фокусу */
     .radio-msg-dot {
-      pointer-events: auto;
+      pointer-events: auto !important;
       cursor: pointer;
       font-size: 13px;
       flex-shrink: 0;
@@ -199,6 +221,7 @@
       width: 20px;
       height: 20px;
       border-radius: 50%;
+      -webkit-tap-highlight-color: transparent;
       transition: transform 0.15s ease;
     }
     .radio-msg-dot:active {
@@ -209,7 +232,7 @@
       font-size: 11px;
       font-weight: 900;
       flex-shrink: 0;
-      pointer-events: auto;
+      pointer-events: none;
     }
     .radio-msg-text {
       overflow: hidden;
@@ -218,7 +241,7 @@
       pointer-events: none;
     }
 
-    /* Кольори за замовчуванням (без підкладки) */
+    /* Кольори за замовчуванням */
     .radio-msg-line.clean,
     .radio-msg-line.clean * {
       color: #000000 !important;
@@ -240,7 +263,6 @@
        ========================================================================= */
     #radioFeedOverlay.expanded {
       background: rgba(15, 23, 42, 0.94) !important;
-      backdrop-filter: blur(14px) !important;
       border: 1.5px solid #0284c7 !important;
       border-radius: 16px !important;
       padding: 10px 12px !important;
@@ -324,9 +346,16 @@
     feedBox.addEventListener(evt, (e) => e.stopPropagation(), { passive: true });
   });
 
-  // Перемикання розгортання
-  expandBtn.addEventListener("click", (e) => {
-    e.stopPropagation();
+  // Обробник розгортання з анти-дребезгом
+  function toggleExpandFeed(e) {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    const now = Date.now();
+    if (now - lastExpandTapTime < 300) return;
+    lastExpandTapTime = now;
+
     isExpanded = !isExpanded;
     feedBox.classList.toggle("expanded", isExpanded);
     expandBtn.innerText = isExpanded ? "⤡" : "⤢";
@@ -335,32 +364,45 @@
     if (isExpanded) {
       scrollList.querySelectorAll(".radio-msg-line").forEach(r => r.style.opacity = "1");
     }
-  });
+  }
 
-  // Ластик під попапи (активний тільки у згорнутому стані)
+  expandBtn.addEventListener("pointerdown", toggleExpandFeed);
+
+  // ОПТИМІЗОВАНИЙ SMART MASK (без нескінченного перерахунку DOM)
+  let hadPopupLastCheck = false;
   function updateSmartMask() {
     if (!isRadioActive || feedBox.style.display === "none" || isExpanded) return;
 
     const popupWrapper = document.querySelector(".leaflet-popup");
     const rows = scrollList.querySelectorAll(".radio-msg-line");
+    if (rows.length === 0) return;
 
     if (!popupWrapper) {
-      rows.forEach(r => r.style.opacity = "1");
+      if (hadPopupLastCheck) {
+        rows.forEach(r => r.style.opacity = "1");
+        hadPopupLastCheck = false;
+      }
       return;
     }
 
+    hadPopupLastCheck = true;
     const pRect = popupWrapper.getBoundingClientRect();
+
     rows.forEach(row => {
       const rRect = row.getBoundingClientRect();
-      const isOverlapped = !(rRect.bottom < pRect.top + 5 || rRect.top > pRect.bottom - 5 || rRect.right < pRect.left || rRect.left > pRect.right);
-      row.style.opacity = isOverlapped ? "0" : "1";
+      const isOverlapped = !(rRect.bottom < pRect.top + 4 || rRect.top > pRect.bottom - 4 || rRect.right < pRect.left || rRect.left > pRect.right);
+      const targetOpacity = isOverlapped ? "0" : "1";
+      if (row.style.opacity !== targetOpacity) {
+        row.style.opacity = targetOpacity;
+      }
     });
   }
 
-  setInterval(updateSmartMask, 100);
+  setInterval(updateSmartMask, 200);
 
-  // Перемикання вкладок у повному режимі
+  // Перемикання вкладок
   switcher.addEventListener("click", (e) => {
+    e.stopPropagation();
     const tab = e.target.closest(".radio-mode-tab");
     if (!tab) return;
     const newMode = tab.getAttribute("data-mode");
@@ -569,7 +611,16 @@
     }
   }
 
-  radioBtn.addEventListener("click", () => {
+  // Обробник натискання рації без двоїння на смартфонах
+  function handleRadioToggle(e) {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    const now = Date.now();
+    if (now - lastRadioTapTime < 300) return;
+    lastRadioTapTime = now;
+
     isRadioActive = !isRadioActive;
     localStorage.setItem("radar_radio_active", isRadioActive ? "true" : "false");
     lastDataSignature = "";
@@ -577,7 +628,9 @@
     if (typeof window.showToast === "function") {
       window.showToast(isRadioActive ? "📻 Ефір увімкнено!" : "📻 Радіо ефір вимкнено");
     }
-  });
+  }
+
+  radioBtn.addEventListener("pointerdown", handleRadioToggle);
 
   window.addEventListener('radar:pointsUpdated', (e) => {
     if (e.detail && Array.isArray(e.detail)) {
